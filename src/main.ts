@@ -68,6 +68,8 @@ function startShowcase(): void {
     ctl = null;
     hud.ctl = null;
     document.getElementById('menu')!.classList.remove('on');
+    // the game's panels stay hidden while the new closet is built
+    document.body.classList.add('demo');
     const sc = await Showcase.create(stage, !syncPhysics, { play: playNext, tutorial: () => start(TUTORIAL), another: startShowcase }, (f) => {
       text.textContent = `Le technicien précédent est passé par là… ${Math.round(f * 100)} %`;
     });
