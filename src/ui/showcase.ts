@@ -366,7 +366,7 @@ export class Showcase {
     title.className = this.state;
     title.textContent = this.state === 'before' ? 'AVANT' : this.state === 'after' ? 'APRÈS' : '…';
     btn.disabled = this.state === 'moving';
-    btn.textContent = this.state === 'after' ? '↺ Remettre le désordre' : '✨ Ranger la baie';
+    btn.textContent = this.state === 'after' ? '↺ Remettre le désordre' : 'Ranger la baie';
     stats.style.visibility = ev ? 'visible' : 'hidden';
     if (!ev) return;
     const n = ev.total;
