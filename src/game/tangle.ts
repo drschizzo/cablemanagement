@@ -153,7 +153,7 @@ function tangledPath(rack: Rack, ends: [string | null, string | null], length: n
     const k = Math.max(1, mess + Math.floor(attempt / 2));
     wps = [];
     for (let i = 0; i < k; i++) {
-      wps.push([lo[0] + r() * (hi[0] - lo[0]), lo[1] + r() * (hi[1] - lo[1]), zAt()]);
+      wps.push([lo[0] + r() * (hi[0] - lo[0]), lo[1] + Math.pow(r(), spread?.fall ?? 1) * (hi[1] - lo[1]), zAt()]);
     }
     const make = (t: number): V3[] => {
       const pts: V3[] = [A.pin[1], A.tail];

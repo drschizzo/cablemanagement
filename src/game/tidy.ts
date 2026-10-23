@@ -26,18 +26,23 @@ export function tidyRoutes(rack: Rack, circuits: Circuit[], radius: number, seg 
     const side = a.x + b.x * 0.3 < 0 ? -1 : 1;
     return { a, b, upper, lower, side, li: 0, lo: 0, duct: 0 };
   });
-  // lanes, per side and per manager; duct columns per side
+  // lanes, per side and per manager (a manager may serve cords leaving a panel
+  // and cords arriving at a switch: they share its lanes); duct columns per side
+  const ductCount = { [-1]: 0, [1]: 0 } as Record<number, number>;
   for (const side of [-1, 1]) {
     const mine = plan.filter((p) => p.side === side);
     const toSide = (x: number) => Math.abs(side * 0.25 - x);
-    for (const m of new Set(mine.map((p) => p.upper))) {
-      mine.filter((p) => p.upper === m).sort((p, q) => toSide(p.a.x) - toSide(q.a.x)).forEach((p, i) => { p.li = i; });
-    }
-    for (const m of new Set(mine.map((p) => p.lower))) {
-      mine.filter((p) => p.lower === m).sort((p, q) => toSide(p.b.x) - toSide(q.b.x)).forEach((p, i) => { p.lo = i; });
+    for (const m of new Set(mine.flatMap((p) => [p.upper, p.lower]))) {
+      const uses: { p: (typeof plan)[number]; lower: boolean; x: number }[] = [];
+      for (const p of mine) {
+        if (p.upper === m) uses.push({ p, lower: false, x: p.a.x });
+        if (p.lower === m && p.upper !== m) uses.push({ p, lower: true, x: p.b.x });
+      }
+      uses.sort((u, v) => toSide(u.x) - toSide(v.x)).forEach((u, i) => { if (u.lower) u.p.lo = i; else u.p.li = i; });
     }
     // in the duct, the cords of the upper managers ride outermost
     [...mine].sort((p, q) => p.upper - q.upper || p.li - q.li).forEach((p, i) => { p.duct = i; });
+    ductCount[side] = mine.length;
   }
   const d = 2 * radius + 0.0008;
   const laneY = (unit: number, i: number) => rack.unitBottom(unit) + 0.004 + FINGER_R + radius + Math.floor(i / LANES_Z) * d;
@@ -69,8 +74,8 @@ export function tidyRoutes(rack: Rack, circuits: Circuit[], radius: number, seg 
     }
     const yU = laneY(p.upper, p.li), zU = laneZ(p.li);
     const yL = laneY(p.lower, p.lo), zL = laneZ(p.lo);
-    // duct column: across the width, then in depth
-    const cols = 6, rows = 4;
+    // duct column: across the width, then in depth (more of both for a full duct)
+    const cols = ductCount[s] > 24 ? 8 : 6, rows = Math.max(4, Math.ceil(ductCount[s] / cols));
     const dx = s * (SIDE_OUT - 0.012 - (p.duct % cols) * ((SIDE_OUT - SIDE_IN - 0.024) / (cols - 1)));
     const dz = 0.058 - (Math.floor(p.duct / cols) % rows) * ((0.058 - SIDE_BACK - 0.012) / (rows - 1));
     const pts: V3[] = [

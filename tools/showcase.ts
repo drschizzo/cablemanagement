@@ -1,29 +1,25 @@
-// Headless check of the before/after cabinet: the mess, then the tidy cords.
+// Headless check of the before/after cabinet, over a few random closets: the
+// mess (settled as in the demo), then the tidy cords on their routes.
+//   npx esbuild tools/showcase.ts --bundle --platform=node --format=esm --outfile=/tmp/showcase.mjs && node /tmp/showcase.mjs [seeds]
+declare const process: { argv: string[] };
 import { World } from '../src/game/world';
-import { showcaseRack } from '../src/game/levels';
+import { SHOWCASE_SETTLE, showcaseRack } from '../src/game/levels';
 
-{
+const seeds = process.argv[2] ? process.argv[2].split(',').map(Number) : [1, 2, 3, 4, 5, 6, 7, 8];
+for (const seed of seeds) {
+  const m = new World(showcaseRack('mess', seed));
+  Object.assign(m.sim.P, SHOWCASE_SETTLE.solver);
   const t0 = performance.now();
-  const w = new World(showcaseRack('mess'));
-  const build = performance.now() - t0;
-  let ms = 0;
-  const log: string[] = [];
-  for (let f = 0; f < 180; f++) { w.sim.step(); ms += w.sim.stats.ms; if (f % 30 === 29) log.push(`${w.sim.stats.awake}/${w.sim.stats.ms.toFixed(0)}ms`); }
-  let low = 0;
-  for (let i = 0; i < w.sim.n; i++) if (w.sim.x[3 * i + 1] < w.rack.floorY + 0.02) low++;
-  const ev = w.evaluate();
-  console.log(`mess: ${w.sim.n} nodes, build ${build.toFixed(0)} ms, ${(ms / 180).toFixed(1)} ms/step, awake/ms ${log.join(' ')}, nodes on the floor ${low}, routed ${ev.routed} clear ${ev.clear}`);
-}
-{
-  const w = new World(showcaseRack('tidy'));
+  for (let f = 0; f < SHOWCASE_SETTLE.frames; f++) m.sim.step();
+  const settle = performance.now() - t0;
+  let low = 0, nan = 0;
+  for (let i = 0; i < m.sim.n; i++) if (m.sim.x[3 * i + 1] < m.rack.floorY + 0.02) low++;
+  for (const v of m.sim.x) if (!Number.isFinite(v)) nan++;
+
+  const w = new World(showcaseRack('tidy', seed));
   w.sim.teleport(w.tidyTargets());
-  let ms = 0;
-  const awake: number[] = [];
-  for (let f = 0; f < 300; f++) { w.sim.step(); ms += w.sim.stats.ms; if (f % 50 === 49) awake.push(w.sim.stats.awake); }
   w.circuits.forEach((ci, i) => { for (const e of w.cables[i].ends) e.label = ci.service; });
   const ev = w.evaluate();
-  let bad = 0;
-  for (const v of w.sim.x) if (!Number.isFinite(v)) bad++;
   const x = w.sim.x;
   const faults: string[] = [];
   w.cables.forEach((cb, c) => {
@@ -37,5 +33,6 @@ import { showcaseRack } from '../src/game/levels';
       }
     }
   });
-  console.log(`tidy: ${w.sim.n} nodes, ${(ms / 300).toFixed(1)} ms/step, awake ${awake.join(',')}, routed ${ev.routed}/${ev.total} clear ${ev.clear} stars ${ev.stars}, NaN ${bad} ${faults.join(' ')}`);
+  const layout = m.rack.units.map((u) => (u.kind === 'blank' ? '_' : u.kind[0])).join('');
+  console.log(`seed ${seed} ${layout}: mess ${m.sim.n} nodes settled in ${settle.toFixed(0)} ms, ${(low / m.sim.n * 100).toFixed(0)}% on the floor, NaN ${nan} | tidy ${w.cables.length} cords, routed ${ev.routed} clear ${ev.clear} ${faults.join(' ')}`);
 }

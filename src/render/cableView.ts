@@ -15,6 +15,7 @@ interface CableMesh {
   nrm: Float32Array;
   samples: number;
   ends: EndMesh[];
+  visible: boolean;
   lastSig: number;
 }
 
@@ -89,15 +90,22 @@ export class CableView {
         this.group.add(group);
         return { group, label, labelMat };
       });
-      this.cables.push({ mesh, mat, pos, nrm, samples, ends, lastSig: NaN });
+      this.cables.push({ mesh, mat, pos, nrm, samples, ends, visible: true, lastSig: NaN });
     });
   }
 
-  update(force = false): void {
+  /** `force`: rebuild every cord, or only those it picks (scripted motion) */
+  update(force: boolean | ((c: number) => boolean) = false): void {
     const sim = this.world.sim;
     const x = sim.x;
     this.world.cables.forEach((cb, c) => {
       const cm = this.cables[c];
+      if (!cm.visible) return;
+      if (typeof force === 'function') {
+        if (force(c)) this.buildTube(c);
+        this.updateEnds(c);
+        return;
+      }
       // skip cables that did not move (asleep)
       const sig = x[3 * cb.start] + x[3 * (cb.start + (cb.count >> 1)) + 1] * 3.1 + x[3 * (cb.start + cb.count - 1) + 2] * 7.7;
       const asleep = sim.cables[c].asleep;
@@ -134,6 +142,15 @@ export class CableView {
       const r = sim.bundles[s.bundle].r + 0.0025;
       m.scale.set(r, r, r * 1.8);
     });
+  }
+
+  /** shows or hides one cord with its connectors */
+  setVisible(c: number, on: boolean): void {
+    const cm = this.cables[c];
+    cm.visible = on;
+    cm.mesh.visible = on;
+    for (const e of cm.ends) e.group.visible = on;
+    if (on) { this.buildTube(c); this.updateEnds(c); }
   }
 
   setHighlight(c: number, on: boolean, color = '#3a3a3a'): void {

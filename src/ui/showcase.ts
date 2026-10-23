@@ -1,33 +1,55 @@
-// Before / after: one packed wiring closet. Before, 100 long patch cords
-// spill out of an open rack down to the floor; after, each one has been
-// replaced by a short cord on its tidy route, labelled and strapped.
+// Before / after: one packed wiring closet, drawn at random each time. Before,
+// long patch cords spill out of an open rack down to the floor; after, each
+// one has been replaced by a short cord on its tidy route, labelled and strapped.
 //
 // The two states are two worlds sharing the same rack and patching schedule:
 // the mess (long cords, nothing managed) and the tidy cabinet (short cords,
-// managers and ducts). The mess is settled once, in its worker, then frozen;
-// the switch from one to the other is a choreography: each cord flies from
-// its shape in one world to its shape in the other, shrinking on the way.
+// managers and ducts). The mess falls once, in its worker, then is frozen;
+// the switch from one to the other is a choreography played by the dense
+// cords of the mess: each one is dressed into its tidy route from one end to
+// the other (or slumps back to the floor), and is swapped for the short cord
+// of the other world where the two shapes coincide.
 
 import * as THREE from 'three';
 import type { Stage } from '../render/stage';
 import { RackView, buildRoom } from '../render/rackView';
 import { CableView } from '../render/cableView';
 import { World, type Evaluation } from '../game/world';
-import { showcaseRack, type FibreType } from '../game/levels';
+import { SHOWCASE_SETTLE, showcaseRack, type FibreType } from '../game/levels';
+import { U } from '../game/rack';
+import { resample } from '../game/tidy';
 import { sfx } from '../audio/sfx';
 
-interface Flight {
-  from: Float64Array;
-  to: Float64Array;
-  t: number;
-  starts: number[];
+interface FlightOpts {
+  stagger: number;
   dur: number;
+  /** share of the flight the motion takes to run along the cord */
+  wave: number;
+  /** when each point of the cord sets off (0..1), by its place along it (0..1) */
+  lag: (s: number) => number;
+  ease: (p: number) => number;
+  /** the cord bows out towards the viewer on its way (m) */
   lift: number;
-  end: number;
-  landed: Set<number>;
+  takeoff: (c: number) => void;
   land: (c: number, k: number) => void;
   done: () => void;
 }
+
+interface Flight extends FlightOpts {
+  from: Float64Array;
+  to: Float64Array;
+  vel: Float64Array;
+  t: number;
+  starts: number[];
+  /** per cord: 0 waiting, 1 on its way, 2 landed */
+  phase: Uint8Array;
+  landed: number;
+}
+
+// the cord follows its moving target like a spring (rad/s, damping ratio): a
+// little lag on the way, a little overshoot on landing
+const SPRING_W = 22;
+const SPRING_Z = 0.5;
 
 class Bay {
   world: World;
@@ -35,9 +57,10 @@ class Bay {
   cableView: CableView;
   group = new THREE.Group();
   flight: Flight | null = null;
+  private moved: Uint8Array;
 
-  constructor(stage: Stage, state: 'mess' | 'tidy') {
-    this.world = new World(showcaseRack(state));
+  constructor(stage: Stage, state: 'mess' | 'tidy', seed: number) {
+    this.world = new World(showcaseRack(state, seed));
     const types = new Map<number, FibreType>();
     this.world.circuits.forEach((c) => types.set(this.world.rack.port(c.a).unit, c.type));
     this.rackView = new RackView(this.world.rack, types, { roomFloor: false });
@@ -46,6 +69,7 @@ class Bay {
     stage.scene.add(this.group);
     this.rackView.syncItems(this.world.itemsVersion);
     this.cableView.update(true);
+    this.moved = new Uint8Array(this.world.cables.length);
     this.leds();
   }
 
@@ -57,76 +81,94 @@ class Bay {
 
   /** the cords only: the rack itself is drawn by one of the two bays */
   set cordsVisible(v: boolean) {
-    this.cableView.group.visible = v;
+    for (let c = 0; c < this.world.cables.length; c++) this.cableView.setVisible(c, v);
   }
 
   tick(dt: number): void {
-    if (this.flight) this.stepFlight(dt);
-    else if (!this.world.sim.hold) this.world.sim.advance(dt >= 1 / 90 ? 1 : 0);
-    this.cableView.update(!!this.flight);
+    if (this.flight) {
+      this.stepFlight(dt);
+      this.cableView.update((c) => this.moved[c] === 1);
+    } else if (this.world.sim.hold) {
+      // frozen: nothing to rebuild but the labels and straps
+      this.cableView.update(() => false);
+    } else {
+      this.world.sim.advance(dt >= 1 / 90 ? 1 : 0);
+      this.cableView.update();
+    }
     this.rackView.syncItems(this.world.itemsVersion);
   }
 
-  fly(from: Float64Array, to: Float64Array, order: number[], o: { stagger: number; dur: number; lift: number; land: (c: number, k: number) => void; done: () => void }): void {
+  /** moves every cord from one shape to the other, one after the other in `order` */
+  fly(from: Float64Array, to: Float64Array, order: number[], o: FlightOpts): void {
     const starts = new Array(this.world.cables.length).fill(0);
     order.forEach((c, k) => { starts[c] = k * o.stagger; });
     this.world.sim.hold = true;
     this.world.sim.x.set(from);
     this.flight = {
-      from, to, t: 0, starts, dur: o.dur, lift: o.lift,
-      end: (order.length - 1) * o.stagger + o.dur, landed: new Set(), land: o.land, done: o.done,
+      ...o, from, to, vel: new Float64Array(from.length), t: 0, starts,
+      phase: new Uint8Array(this.world.cables.length), landed: 0,
     };
   }
 
   private stepFlight(dt: number): void {
     const m = this.flight!;
     m.t += dt;
-    const sim = this.world.sim;
-    const x = sim.x;
+    const x = this.world.sim.x, v = m.vel;
+    const floor = this.world.rack.floorY + this.world.radius;
+    const steps = Math.max(1, Math.ceil(dt * 240)), h = dt / steps;
+    const k2 = SPRING_W * SPRING_W, c2 = 2 * SPRING_Z * SPRING_W;
+    this.moved.fill(0);
     this.world.cables.forEach((cb, c) => {
-      const u = Math.min(1, Math.max(0, (m.t - m.starts[c]) / m.dur));
-      if (u <= 0) return;
-      if (u >= 1 && !m.landed.has(c)) { m.landed.add(c); m.land(c, m.landed.size); }
-      const e = u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
-      const arc = Math.sin(Math.PI * u) * m.lift;
+      const u = (m.t - m.starts[c]) / m.dur;
+      if (m.phase[c] === 2 || u <= 0) return;
+      if (m.phase[c] === 0) { m.phase[c] = 1; m.takeoff(c); }
+      this.moved[c] = 1;
+      let off = 0;
       for (let k = 0; k < cb.count; k++) {
-        const i = cb.start + k;
-        if (sim.pinned[i]) continue;
-        const along = Math.sin((Math.PI * k) / (cb.count - 1));
-        for (let d = 0; d < 3; d++) x[3 * i + d] = m.from[3 * i + d] + (m.to[3 * i + d] - m.from[3 * i + d]) * e;
-        x[3 * i + 2] += arc * along;
+        const i = 3 * (cb.start + k);
+        // each point of the cord has its own progress: the motion runs along it
+        const p = Math.min(1, Math.max(0, (u - m.wave * m.lag(k / (cb.count - 1))) / (1 - m.wave)));
+        const e = m.ease(p);
+        const bow = m.lift * Math.sin(Math.PI * p);
+        for (let d = 0; d < 3; d++) {
+          const target = m.from[i + d] + (m.to[i + d] - m.from[i + d]) * e + (d === 2 ? bow : 0);
+          let xd = x[i + d], vd = v[i + d];
+          for (let s = 0; s < steps; s++) {
+            vd += (k2 * (target - xd) - c2 * vd) * h;
+            xd += vd * h;
+          }
+          x[i + d] = xd;
+          v[i + d] = vd;
+          off = Math.max(off, Math.abs(m.to[i + d] - xd), Math.abs(vd) * 0.02);
+        }
+        if (x[i + 1] < floor) { x[i + 1] = floor; v[i + 1] = Math.max(0, v[i + 1]); }
+      }
+      // landed once it has come to rest on its target (or a moment after, whatever it does)
+      if (u >= 1 && (off < 0.0015 || u > 1 + 0.6 / m.dur)) {
+        for (let k = 3 * cb.start; k < 3 * (cb.start + cb.count); k++) { x[k] = m.to[k]; v[k] = 0; }
+        m.phase[c] = 2;
+        m.land(c, ++m.landed);
       }
     });
-    if (m.t >= m.end) {
+    if (m.landed === this.world.cables.length) {
       this.flight = null;
       m.done();
     }
   }
 
   /**
-   * The shape of every cord of `other` (same schedule, other lengths), sampled
-   * at this world's nodes: where each of our cords starts its flight.
+   * The tidy route of every cord of `tidy` (same schedule, shorter cords),
+   * sampled at the nodes of our cords: where they go to be swapped for them.
    */
-  shapesOf(other: World, pos: Float64Array): Float64Array {
+  tidyShapes(tidy: World): Float64Array {
     const out = Float64Array.from(this.world.sim.x);
+    const rest = this.world.sim.rest;
     this.world.cables.forEach((cb, c) => {
-      const ob = other.cables[c];
-      const cum = [0];
-      for (let k = 1; k < ob.count; k++) {
-        const i = 3 * (ob.start + k), j = i - 3;
-        cum.push(cum[k - 1] + Math.hypot(pos[i] - pos[j], pos[i + 1] - pos[j + 1], pos[i + 2] - pos[j + 2]));
-      }
-      const L = cum[ob.count - 1];
-      let seg = 1;
-      for (let k = 0; k < cb.count; k++) {
-        const s = (L * k) / (cb.count - 1);
-        while (seg < ob.count - 1 && cum[seg] < s) seg++;
-        const t = Math.min(1, Math.max(0, (s - cum[seg - 1]) / Math.max(1e-9, cum[seg] - cum[seg - 1])));
-        const a = 3 * (ob.start + seg - 1), b = a + 3, o = 3 * (cb.start + k);
-        // the connectors stay in their ports
-        if (this.world.sim.pinned[cb.start + k]) continue;
-        for (let d = 0; d < 3; d++) out[o + d] = pos[a + d] + (pos[b + d] - pos[a + d]) * t;
-      }
+      // the connector tips are in the same ports; the rest of the cord along the route between them
+      const path = tidy.tidyPaths[c];
+      const arcs = [0];
+      for (let k = 1; k < cb.count - 2; k++) arcs.push(arcs[k - 1] + rest[cb.start + k]);
+      resample(path.slice(1, path.length - 1), arcs, out, cb.start + 1);
     });
     return out;
   }
@@ -143,7 +185,8 @@ export class Showcase {
   private mess!: Bay;
   private tidy!: Bay;
   private messPos!: Float64Array;
-  private tidyPos!: Float64Array;
+  /** the cords of the mess laid along the tidy routes */
+  private tidyShapes!: Float64Array;
   private el: HTMLElement;
   private state: 'before' | 'after' | 'moving' = 'before';
   private timers: number[] = [];
@@ -151,31 +194,33 @@ export class Showcase {
   private last = performance.now();
   private floor: THREE.Group;
 
-  /** builds the closet and settles its mess (in the workers), reporting progress */
-  static async create(stage: Stage, threaded: boolean, actions: { play(): void; tutorial(): void }, progress: (f: number) => void): Promise<Showcase> {
+  /** builds a closet at random and lets its mess fall (in the worker), reporting progress */
+  static async create(stage: Stage, threaded: boolean, actions: { play(): void; tutorial(): void }, progress: (f: number) => void, seed = Math.floor(Math.random() * 1e9)): Promise<Showcase> {
     const sc = new Showcase(stage, actions);
-    sc.mess = new Bay(stage, 'mess');
-    sc.tidy = new Bay(stage, 'tidy');
-    if (threaded) { sc.mess.world.sim.startWorker(); sc.tidy.world.sim.startWorker(); }
+    sc.mess = new Bay(stage, 'mess', seed);
+    sc.tidy = new Bay(stage, 'tidy', seed);
+    // the mess only falls once: a cheap solver will do
+    Object.assign(sc.mess.world.sim.P, SHOWCASE_SETTLE.solver);
+    if (threaded) sc.mess.world.sim.startWorker();
     // one rack on screen: the tidy bay draws it with its managers, the mess bay only its cords
     sc.mess.rackView.group.visible = false;
-    sc.tidy.cordsVisible = false;
     sc.tidy.rackView.itemsGroup.visible = false;
-    const tidyDone = sc.tidy.world.sim.settle(1);
-    const chunks = 8;
+    // the tidy closet is shown exactly on its routes: a demonstration, perfect every time
+    const tw = sc.tidy.world;
+    tw.sim.hold = true;
+    tw.sim.teleport(tw.tidyTargets());
+    sc.tidy.cordsVisible = false;
+    const chunks = 5;
     for (let i = 0; i < chunks; i++) {
-      await sc.mess.world.sim.settle(10);
+      await sc.mess.world.sim.settle(Math.ceil(SHOWCASE_SETTLE.frames / chunks));
       progress((i + 1) / chunks);
       sc.mess.cableView.update(true);
       stage.render();
     }
-    await tidyDone;
-    sc.messPos = Float64Array.from(sc.mess.world.sim.x);
-    // the tidy closet is shown exactly on its routes: a demonstration, perfect every time
-    sc.tidyPos = sc.tidy.world.tidyTargets();
-    // both frozen: the mess as it fell, the tidy cords where they settled
+    // frozen as it fell
     sc.mess.world.sim.hold = true;
-    sc.tidy.world.sim.hold = true;
+    sc.messPos = Float64Array.from(sc.mess.world.sim.x);
+    sc.tidyShapes = sc.mess.tidyShapes(tw);
     sc.mess.cableView.update(true);
     sc.start();
     return sc;
@@ -225,7 +270,7 @@ export class Showcase {
     if (this.disposed) return;
     requestAnimationFrame(this.frame);
     const now = performance.now();
-    const dt = Math.min(0.1, (now - this.last) / 1000);
+    const dt = Math.min(0.05, (now - this.last) / 1000);
     this.last = now;
     this.tick(dt);
   };
@@ -236,40 +281,50 @@ export class Showcase {
     else this.messUp();
   }
 
+  /** swaps one cord of a bay for the same cord of the other */
+  private swap(c: number, show: Bay, hide: Bay): void {
+    hide.cableView.setVisible(c, false);
+    show.cableView.setVisible(c, true);
+  }
+
   private tidyUp(): void {
     this.state = 'moving';
     this.render(null);
     const w = this.tidy.world;
-    // the managers and ducts go in, then every long cord flies to its place as a short one
+    // the managers and ducts go in, then every cord is pulled out of the heap and dressed into its route
     this.tidy.rackView.itemsGroup.visible = true;
     sfx.place();
-    this.mess.cordsVisible = false;
-    this.tidy.cordsVisible = true;
     for (const cb of w.cables) for (const e of cb.ends) e.label = null;
-    const from = this.tidy.shapesOf(this.mess.world, this.messPos);
     // row after row, left to right: the closet fills up like a printed page
     const order = w.cables.map((_, c) => c).sort((p, q) => {
       const a = w.rack.port(w.circuits[p].a), b = w.rack.port(w.circuits[q].a);
       return a.unit - b.unit || a.x - b.x;
     });
     sfx.whoosh();
-    this.tidy.fly(from, this.tidyPos, order, {
-      stagger: 0.035, dur: 1.0, lift: 0.18,
+    this.mess.fly(this.messPos, this.tidyShapes, order, {
+      stagger: 2.8 / order.length, dur: 1.2, wave: 0.5,
+      // from the panel to the switch, as a technician would dress it
+      lag: (s) => s,
+      ease: (p) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2),
+      lift: 0.07,
+      takeoff: () => {},
       land: (c, k) => {
+        this.swap(c, this.tidy, this.mess);
         for (const e of w.cables[c].ends) e.label = w.circuits[c].service;
         if (k % 2 === 0) sfx.land(k);
       },
       done: () => {
-        w.sim.teleport(this.tidyPos);
-        w.sim.hold = true;
-        this.later(300, () => {
-          // velcro along the ducts
+        this.later(250, () => {
+          // velcro all along the ducts
+          const ducts = w.rack.items.filter((it) => it.kind === 'duct' && it.side === 1);
+          const top = w.rack.topY - Math.min(...ducts.map((d) => d.unit)) * U;
+          const bottom = w.rack.topY - Math.max(...ducts.map((d) => d.unit + d.span)) * U;
           for (const side of [-1, 1]) {
-            for (let y = w.rack.topY - 0.13; y > w.rack.unitBottom(17); y -= 0.09) w.addStrap(side * 0.318, y, 0.006, 0.08);
+            for (let y = top - 0.04; y > bottom + 0.02; y -= 0.09) w.addStrap(side * 0.318, y, 0.006, 0.08);
           }
           sfx.velcro();
         });
-        this.later(1200, () => { this.state = 'after'; this.render(w.evaluate()); sfx.win(); });
+        this.later(1100, () => { this.state = 'after'; this.render(w.evaluate()); sfx.win(); });
       },
     });
   }
@@ -280,21 +335,20 @@ export class Showcase {
     const tw = this.tidy.world;
     tw.clearStraps();
     for (const cb of tw.cables) for (const e of cb.ends) e.label = null;
-    this.tidyPos = Float64Array.from(tw.sim.x);
-    tw.sim.hold = true;
-    const from = this.mess.shapesOf(tw, this.tidyPos);
-    this.tidy.cordsVisible = false;
-    this.mess.cordsVisible = true;
     sfx.whoosh();
+    // the last cord in is the first one out; each slumps from its middle to the floor
     const order = this.mess.world.cables.map((_, c) => c).reverse();
-    this.mess.fly(from, this.messPos, order, {
-      stagger: 0.012, dur: 0.9, lift: 0.1,
+    this.mess.fly(this.tidyShapes, this.messPos, order, {
+      stagger: 1.2 / order.length, dur: 0.9, wave: 0.35,
+      lag: (s) => Math.abs(2 * s - 1),
+      ease: (p) => p * p,
+      lift: 0.03,
+      takeoff: (c) => this.swap(c, this.mess, this.tidy),
       land: () => {},
       done: () => {
-        this.mess.world.sim.x.set(this.messPos);
         this.tidy.rackView.itemsGroup.visible = false;
         sfx.remove();
-        this.later(600, () => { this.state = 'before'; this.render(this.mess.world.evaluate()); });
+        this.later(500, () => { this.state = 'before'; this.render(this.mess.world.evaluate()); });
       },
     });
   }

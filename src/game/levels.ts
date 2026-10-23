@@ -1,5 +1,5 @@
 import type { ItemKind, Rack, UnitSpec } from './rack';
-import type { Circuit } from './tangle';
+import { rng, type Circuit } from './tangle';
 
 /** OS2 / OM4: optical fibre; CU: copper (RJ45) */
 export type FibreType = 'OS2' | 'OM4' | 'CU';
@@ -52,8 +52,8 @@ export interface LevelDef {
   radius?: number;
   /** an open two-post rack (no cabinet walls) */
   open?: boolean;
-  /** where the starting mess may wander: half width, depth range in front of the rack */
-  messSpread?: { x: number; z: [number, number] };
+  /** where the starting mess may wander: half width, depth range in front of the rack, pull of the detours towards the floor (power) */
+  messSpread?: { x: number; z: [number, number]; fall?: number };
   /** absolute cord lengths of the mess (m), instead of tidy route + slack */
   messLength?: [number, number];
   /** cords coloured by their service (copper patch cords) */
@@ -239,66 +239,88 @@ export const LEVELS: LevelDef[] = [
  * 'mess': the cords are long and tangled, nothing is managed.
  * 'tidy': short cords on their tidy routes, managers and ducts installed.
  */
-export function showcaseRack(state: 'mess' | 'tidy'): LevelDef {
+/**
+ * How the mess of the demo is settled before it is shown: a short fall with a
+ * cheap solver (it is frozen afterwards, nobody touches it).
+ */
+export const SHOWCASE_SETTLE = { frames: 40, solver: { substeps: 1, iterations: 4 } };
+
+export function showcaseRack(state: 'mess' | 'tidy', seed: number): LevelDef {
+  // the closet is drawn from the seed: both worlds of the demo get the same one
+  const r = rng(seed);
+  const pick = <T>(a: T[]): T => a[Math.floor(r() * a.length)];
   const cu = (name: string): UnitSpec => ({ kind: 'panel', name, ports: 24, style: 'copper', label: `Panneau de brassage ${name}` });
   const sw = (name: string): UnitSpec => ({ kind: 'switch', name, ports: 24, style: 'switch', label: `Switch ${name}` });
-  const units: UnitSpec[] = [
-    B,
-    cu('A'), sw('S'), B,
-    cu('B'), sw('T'), B,
-    cu('C'), sw('U'), B,
-    cu('D'), sw('V'), B,
-    { kind: 'switch', name: 'F', ports: 8, style: 'firewall', label: 'Pare-feu' }, B,
-    { kind: 'switch', name: 'R', ports: 8, style: 'router', label: 'Routeur' }, B,
-    { kind: 'server', name: 'X', portsAt: [0.025, 0.05], style: 'server', label: 'Serveur X' },
-    { kind: 'server', name: 'Y', portsAt: [0.075, 0.1], style: 'server', label: 'Serveur Y' },
-    { kind: 'server', style: 'server', label: 'Serveur' },
-    { kind: 'server', style: 'server', label: 'Serveur' },
-    B,
-    { kind: 'server', style: 'ups', label: 'Onduleur' },
-    { kind: 'server', style: 'ups', label: 'Onduleur' },
-  ];
-  const managers = [3, 6, 9, 12, 14, 16];
-  const schedule = (): Circuit[] => {
-    const out: Circuit[] = [];
-    // colour codes of the panels: data, voice, data, guests
-    const svc = [0, 1, 0, 5];
-    ['A', 'B', 'C', 'D'].forEach((p, k) => {
-      const swn = 'STUV'[k];
-      for (let i = 1; i <= 22; i++) out.push({ a: `${p}${i}`, b: `${swn}${i}`, type: 'CU', service: i % 11 === 0 ? 3 : svc[k] });
-    });
-    'STUV'.split('').forEach((n, k) => {
-      out.push({ a: `${n}23`, b: `F${k + 1}`, type: 'CU', service: 3 });
-      out.push({ a: `${n}24`, b: `R${k + 1}`, type: 'CU', service: 2 });
-    });
-    ['X', 'Y'].forEach((n, k) => {
-      out.push({ a: `F${5 + k}`, b: `${n}1`, type: 'CU', service: 4 });
-      out.push({ a: `R${5 + k}`, b: `${n}2`, type: 'CU', service: 4 });
-    });
-    return out;
-  };
+  const pairs = 3 + Math.floor(r() * 2);
+  const panels = 'ABCD'.slice(0, pairs).split(''), switches = 'STUV'.slice(0, pairs).split('');
+  // each panel right above its switch (short jumpers), or all the panels above all the switches (through the ducts)
+  const grouped = r() < 0.5;
+  const units: UnitSpec[] = [B];
+  if (grouped) {
+    for (const p of panels) units.push(cu(p), B);
+    for (const n of switches) units.push(sw(n), B);
+  } else panels.forEach((p, k) => units.push(cu(p), sw(switches[k]), B));
+  const fw: UnitSpec = { kind: 'switch', name: 'F', ports: 8, style: 'firewall', label: 'Pare-feu' };
+  const rt: UnitSpec = { kind: 'switch', name: 'R', ports: 8, style: 'router', label: 'Routeur' };
+  units.push(...(r() < 0.5 ? [fw, B, rt, B] : [rt, B, fw, B]));
+  const servers = r() < 0.7 ? ['X', 'Y'] : ['X'];
+  for (const n of servers) {
+    const at = 0.02 + r() * 0.1;
+    units.push({ kind: 'server', name: n, portsAt: [at, at + 0.025], style: 'server', label: `Serveur ${n}` });
+  }
+  for (let k = Math.floor(r() * 3); k > 0; k--) units.push({ kind: 'server', style: 'server', label: 'Serveur' });
+  units.push(B);
+  for (let k = 1 + Math.floor(r() * 2); k > 0; k--) units.push({ kind: 'server', style: 'ups', label: 'Onduleur' });
+  // a finger manager on every blank next to a panel or a switch
+  const cabled = (k: number) => units[k] && (units[k].kind === 'panel' || units[k].kind === 'switch');
+  const managers = units.map((u, k) => (k > 0 && u.kind === 'blank' && (cabled(k - 1) || cabled(k + 1)) ? k : -1)).filter((k) => k >= 0);
+  // ducts down both sides, from the top manager to the bottom one
+  const ducts: number[] = [];
+  for (let u = managers[0]; u - 1 <= managers[managers.length - 1]; u += 4) ducts.push(u);
+  // the patching: a share of each panel's ports, to its switch, coloured by service
+  const out: Circuit[] = [];
+  const shuffle = <T>(a: T[]): T[] => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const special = pick([0, 7, 11]);
+  panels.forEach((p, k) => {
+    const svc = pick([0, 0, 1, 2, 4, 5]);
+    const used = shuffle([...Array(22).keys()].map((i) => i + 1)).slice(0, 16 + Math.floor(r() * 7)).sort((a, b) => a - b);
+    // straight across under its panel; a shuffled patching when the switch is further down
+    const to = grouped ? shuffle([...Array(22).keys()].map((i) => i + 1)) : null;
+    used.forEach((i, j) => out.push({ a: `${p}${i}`, b: `${switches[k]}${to ? to[j] : i}`, type: 'CU', service: special && i % special === 0 ? 3 : svc }));
+  });
+  switches.forEach((n, k) => {
+    out.push({ a: `${n}23`, b: `F${k + 1}`, type: 'CU', service: 3 });
+    out.push({ a: `${n}24`, b: `R${k + 1}`, type: 'CU', service: 2 });
+  });
+  servers.forEach((n, k) => {
+    out.push({ a: `F${5 + k}`, b: `${n}1`, type: 'CU', service: 4 });
+    out.push({ a: `R${5 + k}`, b: `${n}2`, type: 'CU', service: 4 });
+  });
+  const lo = 1.3 + r() * 0.3;
   return {
     id: `showcase-${state}`,
     title: 'Avant / Après',
     brief: '',
-    units, cables: 100, wrong: 0, loose: 0, slack: [0, 0], mess: 3,
+    units, cables: out.length, wrong: 0, loose: 0, slack: [0, 0], mess: 3,
     labels: true, services: 6, types: ['CU'],
     inventory: { velcro: 60 },
     preinstalled: [
       ...managers.map((unit) => ({ kind: 'hmgr' as const, unit, side: 0 })),
-      ...[-1, 1].flatMap((side) => [3, 7, 11, 15].map((unit) => ({ kind: 'duct' as const, unit, side }))),
+      ...[-1, 1].flatMap((side) => ducts.map((unit) => ({ kind: 'duct' as const, unit, side }))),
     ],
-    seed: 777,
+    seed,
     showcase: state,
     // the old cords of the mess are limp, the new ones springy
     bend: state === 'mess' ? 1.5 : 0,
     open: true,
-    seg: state === 'mess' ? 0.045 : 0.025,
+    // the mess is coarser: it only has to fall once, and quickly
+    seg: state === 'mess' ? 0.05 : 0.025,
     radius: 0.0028,
-    messSpread: { x: 0.55, z: [0.02, 0.36] },
-    messLength: [1.5, 3.2],
+    // most detours start low, close to where they will end up
+    messSpread: { x: 0.45 + r() * 0.15, z: [0.02, 0.3 + r() * 0.1], fall: 2.5 },
+    messLength: [lo, lo + 1.2 + r() * 0.6],
     colorByService: true,
-    schedule,
+    schedule: () => out,
   };
 }
 
