@@ -68,7 +68,7 @@ function startShowcase(): void {
     ctl = null;
     hud.ctl = null;
     document.getElementById('menu')!.classList.remove('on');
-    const sc = await Showcase.create(stage, !syncPhysics, { play: playNext, tutorial: () => start(TUTORIAL) }, (f) => {
+    const sc = await Showcase.create(stage, !syncPhysics, { play: playNext, tutorial: () => start(TUTORIAL), another: startShowcase }, (f) => {
       text.textContent = `Le technicien précédent est passé par là… ${Math.round(f * 100)} %`;
     });
     if (token !== sceneToken) { sc.dispose(); loadEnded(); return; }

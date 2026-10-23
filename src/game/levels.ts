@@ -253,13 +253,20 @@ export function showcaseRack(state: 'mess' | 'tidy', seed: number): LevelDef {
   const sw = (name: string): UnitSpec => ({ kind: 'switch', name, ports: 24, style: 'switch', label: `Switch ${name}` });
   const pairs = 3 + Math.floor(r() * 2);
   const panels = 'ABCD'.slice(0, pairs).split(''), switches = 'STUV'.slice(0, pairs).split('');
-  // each panel right above its switch (short jumpers), or all the panels above all the switches (through the ducts)
-  const grouped = r() < 0.5;
+  // three ways to fill a closet, all of them patched across through the side ducts:
+  // the panels above the switches, the switches between two banks of panels,
+  // or panel / switch pairs patched to each other's switch
+  const layout = pick(['grouped', 'sandwich', 'pairs'] as const);
   const units: UnitSpec[] = [B];
-  if (grouped) {
+  if (layout === 'grouped') {
     for (const p of panels) units.push(cu(p), B);
     for (const n of switches) units.push(sw(n), B);
-  } else panels.forEach((p, k) => units.push(cu(p), sw(switches[k]), B));
+  } else if (layout === 'sandwich') {
+    const top = Math.ceil(pairs / 2);
+    for (const p of panels.slice(0, top)) units.push(cu(p), B);
+    for (const n of switches) units.push(sw(n), B);
+    for (const p of panels.slice(top)) units.push(cu(p), B);
+  } else panels.forEach((p, k) => units.push(cu(p), B, sw(switches[k]), B));
   const fw: UnitSpec = { kind: 'switch', name: 'F', ports: 8, style: 'firewall', label: 'Pare-feu' };
   const rt: UnitSpec = { kind: 'switch', name: 'R', ports: 8, style: 'router', label: 'Routeur' };
   units.push(...(r() < 0.5 ? [fw, B, rt, B] : [rt, B, fw, B]));
@@ -281,12 +288,18 @@ export function showcaseRack(state: 'mess' | 'tidy', seed: number): LevelDef {
   const out: Circuit[] = [];
   const shuffle = <T>(a: T[]): T[] => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   const special = pick([0, 7, 11]);
+  // each switch has 22 ports for the panels (the last two are its uplinks)
+  const free = switches.map(() => shuffle([...Array(22).keys()].map((i) => i + 1)));
   panels.forEach((p, k) => {
     const svc = pick([0, 0, 1, 2, 4, 5]);
     const used = shuffle([...Array(22).keys()].map((i) => i + 1)).slice(0, 16 + Math.floor(r() * 7)).sort((a, b) => a - b);
-    // straight across under its panel; a shuffled patching when the switch is further down
-    const to = grouped ? shuffle([...Array(22).keys()].map((i) => i + 1)) : null;
-    used.forEach((i, j) => out.push({ a: `${p}${i}`, b: `${switches[k]}${to ? to[j] : i}`, type: 'CU', service: special && i % special === 0 ? 3 : svc }));
+    used.forEach((i) => {
+      // any switch but the one next to the panel, as long as it has ports left
+      const others = switches.map((_, j) => j).filter((j) => j !== k && free[j].length > 0);
+      const j = others.length ? pick(others) : k;
+      if (!free[j].length) return;
+      out.push({ a: `${p}${i}`, b: `${switches[j]}${free[j].pop()}`, type: 'CU', service: special && i % special === 0 ? 3 : svc });
+    });
   });
   switches.forEach((n, k) => {
     out.push({ a: `${n}23`, b: `F${k + 1}`, type: 'CU', service: 3 });

@@ -195,7 +195,7 @@ export class Showcase {
   private floor: THREE.Group;
 
   /** builds a closet at random and lets its mess fall (in the worker), reporting progress */
-  static async create(stage: Stage, threaded: boolean, actions: { play(): void; tutorial(): void }, progress: (f: number) => void, seed = Math.floor(Math.random() * 1e9)): Promise<Showcase> {
+  static async create(stage: Stage, threaded: boolean, actions: { play(): void; tutorial(): void; another(): void }, progress: (f: number) => void, seed = Math.floor(Math.random() * 1e9)): Promise<Showcase> {
     const sc = new Showcase(stage, actions);
     sc.mess = new Bay(stage, 'mess', seed);
     sc.tidy = new Bay(stage, 'tidy', seed);
@@ -210,12 +210,12 @@ export class Showcase {
     tw.sim.hold = true;
     tw.sim.teleport(tw.tidyTargets());
     sc.tidy.cordsVisible = false;
+    // nothing on screen until the mess has fallen: only its end state is shown
+    sc.mess.group.visible = sc.tidy.group.visible = sc.floor.visible = false;
     const chunks = 5;
     for (let i = 0; i < chunks; i++) {
       await sc.mess.world.sim.settle(Math.ceil(SHOWCASE_SETTLE.frames / chunks));
       progress((i + 1) / chunks);
-      sc.mess.cableView.update(true);
-      stage.render();
     }
     // frozen as it fell
     sc.mess.world.sim.hold = true;
@@ -226,13 +226,14 @@ export class Showcase {
     return sc;
   }
 
-  private constructor(private stage: Stage, private actions: { play(): void; tutorial(): void }) {
+  private constructor(private stage: Stage, private actions: { play(): void; tutorial(): void; another(): void }) {
     this.el = document.getElementById('showcase')!;
     this.floor = buildRoom(0);
     stage.scene.add(this.floor);
   }
 
   private start(): void {
+    this.mess.group.visible = this.tidy.group.visible = this.floor.visible = true;
     const r = this.tidy.world.rack;
     this.floor.position.y = r.floorY;
     this.stage.frame((r.topY + r.floorY) / 2 + 0.02, r.topY - r.floorY + 0.1, 0.6);
@@ -242,6 +243,7 @@ export class Showcase {
     (this.el.querySelector('#sc-play') as HTMLElement).onclick = () => this.actions.play();
     (this.el.querySelector('#sc-tuto') as HTMLElement).onclick = () => this.actions.tutorial();
     (this.el.querySelector('#sc-toggle') as HTMLElement).onclick = () => this.toggle();
+    (this.el.querySelector('#sc-new') as HTMLElement).onclick = () => this.actions.another();
     this.stage.sway(true);
     this.render(this.mess.world.evaluate());
     requestAnimationFrame(this.frame);
