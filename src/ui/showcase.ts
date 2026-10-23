@@ -10,7 +10,7 @@
 
 import * as THREE from 'three';
 import type { Stage } from '../render/stage';
-import { RackView } from '../render/rackView';
+import { RackView, buildRoom } from '../render/rackView';
 import { CableView } from '../render/cableView';
 import { World, type Evaluation } from '../game/world';
 import { showcaseRack, type FibreType } from '../game/levels';
@@ -149,7 +149,7 @@ export class Showcase {
   private timers: number[] = [];
   private disposed = false;
   private last = performance.now();
-  private floor: THREE.Mesh;
+  private floor: THREE.Group;
 
   /** builds the closet and settles its mess (in the workers), reporting progress */
   static async create(stage: Stage, threaded: boolean, actions: { play(): void; tutorial(): void }, progress: (f: number) => void): Promise<Showcase> {
@@ -183,9 +183,7 @@ export class Showcase {
 
   private constructor(private stage: Stage, private actions: { play(): void; tutorial(): void }) {
     this.el = document.getElementById('showcase')!;
-    this.floor = new THREE.Mesh(new THREE.PlaneGeometry(10, 10), new THREE.MeshStandardMaterial({ color: '#2b3038', roughness: 0.85 }));
-    this.floor.rotation.x = -Math.PI / 2;
-    this.floor.receiveShadow = true;
+    this.floor = buildRoom(0);
     stage.scene.add(this.floor);
   }
 
@@ -210,7 +208,7 @@ export class Showcase {
     this.mess?.dispose(this.stage);
     this.tidy?.dispose(this.stage);
     this.stage.scene.remove(this.floor);
-    this.floor.geometry.dispose();
+    this.floor.traverse((o) => { if (o instanceof THREE.Mesh) o.geometry.dispose(); });
     this.el.classList.remove('on');
     document.body.classList.remove('demo');
     this.stage.sway(false);
