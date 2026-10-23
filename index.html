@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Baie de brassage</title>
+    <link rel="stylesheet" href="/src/ui/style.css" />
+  </head>
+  <body>
+    <div id="view"></div>
+
+    <header id="topbar">
+      <button id="btn-menu" class="ghost" title="Niveaux">☰ Niveaux</button>
+      <div id="level-title"></div>
+      <div id="timer">0:00</div>
+      <div id="cuts" title="Fenêtre de maintenance : liaisons en production coupées en même temps / maximum autorisé"></div>
+      <div class="spacer"></div>
+      <button id="btn-view" class="ghost" title="Vue de face (R)">⟲ Vue</button>
+      <button id="btn-restart" class="ghost" title="Recommencer le niveau">↺ Recommencer</button>
+      <button id="btn-sound" class="ghost" title="Son (M)">♪</button>
+      <button id="btn-help" class="ghost" title="Consignes">?</button>
+    </header>
+
+    <nav id="toolbar"></nav>
+
+    <aside id="side">
+      <h2>Plan de brassage</h2>
+      <div class="plan-wrap">
+        <table id="plan">
+          <thead><tr><th>#</th><th>Liaison</th><th>Fibre</th><th id="plan-label-h">Service</th><th>État</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="legend"><i class="s-conn ok"></i>branchée <i class="s-route ok"></i>rangée <i class="s-clear ok"></i>façade <i class="s-label ok"></i>étiquetée</div>
+      <div id="scores">
+        <div class="score" id="bar-conn"><span>Connexions</span><div class="bar"><div class="fill"></div></div><span class="val"></span></div>
+        <div class="score" id="bar-route"><span>Rangement</span><div class="bar"><div class="fill"></div></div><span class="val"></span></div>
+        <div class="score" id="bar-clear"><span>Façade</span><div class="bar"><div class="fill"></div></div><span class="val"></span></div>
+        <div class="score" id="bar-label"><span>Étiquettes</span><div class="bar"><div class="fill"></div></div><span class="val"></span></div>
+      </div>
+      <div id="live-stars"></div>
+      <button id="btn-validate" disabled>Valider la baie</button>
+    </aside>
+
+    <div id="hint"></div>
+    <div id="tooltip"></div>
+    <div id="toast"></div>
+    <div id="length-menu" class="popmenu"></div>
+    <div id="stock-menu" class="popmenu"></div>
+    <div id="stats"></div>
+
+    <div id="menu" class="overlay">
+      <div class="panel wide">
+        <h1>Baie de brassage</h1>
+        <p class="sub">Démêlez, rebranchez et rangez les jarretières optiques d'une baie réseau.</p>
+        <div class="menu-intro">
+          <button id="menu-tuto" class="intro-card"><b>Tutoriel</b><span>Les équipements, les gestes, le score</span></button>
+          <button id="menu-show" class="intro-card"><b>Avant / Après</b><span>Une baie en désordre, puis parfaitement rangée</span></button>
+        </div>
+        <div id="menu-levels"></div>
+        <div class="free">
+          <span>Partie libre :</span>
+          <input id="free-n" type="range" min="4" max="48" step="2" value="16" />
+          <span id="free-n-val">16 câbles</span>
+          <button id="free-go">Générer une baie</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="brief" class="overlay">
+      <div class="panel">
+        <h1 id="brief-title"></h1>
+        <p id="brief-text"></p>
+        <ul id="brief-tips"></ul>
+        <p id="brief-inv" class="sub"></p>
+        <button id="brief-go" class="primary">Commencer</button>
+      </div>
+    </div>
+
+    <div id="result" class="overlay">
+      <div class="panel">
+        <h1>Baie validée</h1>
+        <div id="result-stars"></div>
+        <p id="result-time"></p>
+        <ul id="result-lines"></ul>
+        <div class="row">
+          <button id="result-again" class="ghost">Continuer à ranger</button>
+          <button id="result-menu" class="ghost">Niveaux</button>
+          <button id="result-next" class="primary">Niveau suivant →</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="showcase">
+      <div id="sc-title" class="before">AVANT</div>
+      <div id="sc-stats"></div>
+      <div class="row">
+        <button id="sc-toggle" class="primary big">✨ Ranger la baie</button>
+      </div>
+      <div class="row small">
+        <button id="sc-tuto" class="ghost">Tutoriel</button>
+        <button id="sc-play" class="ghost">Jouer →</button>
+      </div>
+    </div>
+
+    <div id="tuto">
+      <div class="head"><span id="tuto-n"></span><button id="tuto-skip" class="link">Passer le tutoriel</button></div>
+      <h3 id="tuto-title"></h3>
+      <p id="tuto-text"></p>
+      <div id="tuto-task"></div>
+      <div class="row">
+        <button id="tuto-prev" class="ghost">← Précédent</button>
+        <button id="tuto-next" class="primary">Suivant →</button>
+      </div>
+      <div id="tuto-end" class="row">
+        <button id="tuto-show" class="ghost">Voir l'avant / après</button>
+        <button id="tuto-play" class="primary">Jouer le niveau 1 →</button>
+      </div>
+    </div>
+
+    <div id="loading" class="overlay"><div class="panel"><p>Emmêlage des câbles…</p></div></div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
