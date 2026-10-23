@@ -4,6 +4,9 @@ import { rng, type Circuit } from './tangle';
 /** OS2 / OM4: optical fibre; CU: copper (RJ45) */
 export type FibreType = 'OS2' | 'OM4' | 'CU';
 
+/** what the player reads for each cord type */
+export const FIBRE_NAMES: Record<FibreType, string> = { OS2: 'Monomode OS2', OM4: 'Multimode OM4', CU: 'Cuivre RJ45' };
+
 export interface Service {
   name: string;
   color: string;
@@ -196,8 +199,9 @@ export const LEVELS: LevelDef[] = [
     id: 'l7',
     title: 'Migration',
     brief: 'Trois panneaux et trois switchs, une fibre vers l\'opérateur, beaucoup de ports à corriger. Prenez votre temps.',
-    // 1 fibre, 2 mgr, 3 A, 4 S, 5 mgr, 6 B, 7 T, 8 mgr, 9 C, 10 U, 11 mgr, 12 firewall, 13 mgr, 14 router
-    units: [B, P('O', 12), B, CP('A', 24), SW('S', 24), B, CP('B', 24), SW('T', 24), B, CP('C', 24), SW('U', 24), B, FW, B, RT, B, SVd, SVd, UPS, B],
+    // 1 fibre, 2 mgr, 3 free (the fibres lying in the drawer's manager would hang in front of A's ports),
+    // 4 A, 5 S, 6 mgr, 7 B, 8 T, 9 mgr, 10 C, 11 U, 12 mgr, 13 firewall, 14 mgr, 15 router
+    units: [B, P('O', 12), B, B, CP('A', 24), SW('S', 24), B, CP('B', 24), SW('T', 24), B, CP('C', 24), SW('U', 24), B, FW, B, RT, B, SVd, SVd, UPS, B],
     cables: 30, wrong: 5, loose: 4, slack: [0.3, 0.8], mess: 4,
     links: [
       { a: 'S24', b: 'F1' }, { a: 'T24', b: 'F2' }, { a: 'U24', b: 'F3' },
@@ -207,7 +211,7 @@ export const LEVELS: LevelDef[] = [
     maxCuts: 3,
     labels: true, services: 5, types: ['OS2', 'CU'], colorByService: true,
     inventory: { hmgr: 2, duct: 8, vring: 4, velcro: 10 },
-    preinstalled: [M(5), M(8), M(11), M(13)],
+    preinstalled: [M(6), M(9), M(12), M(14)],
     seed: 79,
   },
   {

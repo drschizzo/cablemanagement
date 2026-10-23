@@ -104,7 +104,6 @@ for (const [label, params] of variants) {
     { kind: 'box', min: [-0.6, -0.2, -0.3], max: [0.6, 1, -0.0] },
   ];
   sim.setStatics(statics);
-  const ov0 = worstOverlap(sim);
   let ms = 0, worstMs = 0;
   const F = 300;
   for (let f = 0; f < F; f++) {
@@ -125,7 +124,6 @@ for (const [label, params] of variants) {
   const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
   const NC = Number(process.env.NC ?? 24);
   const defs: CableInit[] = [];
-  const pins: [number, number, number, number][] = [];
   const perm = Array.from({ length: NC }, (_, i) => i);
   for (let i = NC - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [perm[i], perm[j]] = [perm[j], perm[i]]; }
   for (let c = 0; c < NC; c++) {

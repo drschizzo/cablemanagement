@@ -9,8 +9,12 @@ générée (jusqu'à 48 câbles).
 ```bash
 npm install
 npm run dev        # http://localhost:5173
-npm run build
+npm run build      # dist/
+npm run check      # lint, types et tests, à lancer avant de pousser
 ```
+
+L'organisation du code, le sens des dépendances et où ajouter une évolution :
+[`docs/architecture.md`](docs/architecture.md).
 
 ## Tutoriel et avant / après
 
@@ -73,7 +77,9 @@ chaque étape :
 Les niveaux reprennent l'équipement d'un vrai local technique : panneaux de
 brassage cuivre et tiroirs optiques, switchs, pare-feu, routeur, serveurs,
 onduleur, avec les liaisons montantes et les liens serveurs du plan.
-`tools/solvable.ts` vérifie que chaque niveau peut atteindre 3 étoiles.
+`tests/levels.test.ts` (et `npm run solvable`) vérifie que chaque niveau peut
+atteindre 3 étoiles une fois rangé par un technicien soigneux (`tidyKit` dans
+`src/game/tidy.ts`).
 
 ### Fenêtre de maintenance
 
@@ -138,21 +144,25 @@ Les « portes » (doigts avant des guide-câbles, faces des goulottes, avant des
 anneaux) laissent passer la portion de câble tenue par la main : on pousse un
 câble dedans, il y reste une fois lâché.
 
-`tools/bench.ts` et `tools/levels.ts` testent le moteur sans navigateur :
+Les bancs de `tools/` testent le moteur sans navigateur :
 
 ```bash
-npx esbuild tools/levels.ts --bundle --platform=node --format=esm --outfile=/tmp/levels.mjs && node /tmp/levels.mjs
+npm run bench      # solveur seul : câble suspendu, tas sur une barre, rideau de cordons
+npm run precision  # gestes qui frustrent (goulotte, guide-câbles, repos, gros tas)
+npm run levels     # chaque niveau : construction, coût d'un pas, mise au repos
+npm run solvable   # chaque niveau peut-il atteindre 3 étoiles ?
+npm run showcase   # la vitrine avant / après, sur quelques baies tirées au sort
 ```
 
 ## Organisation
 
-| Fichier | Rôle |
+| Dossier | Rôle |
 |---|---|
-| `src/physics/` | moteur de câbles AVBD, géométrie |
-| `src/game/rack.ts` | baie 19", ports, guide-câbles, goulottes, anneaux, géométrie de collision, zones de rangement |
-| `src/game/levels.ts` | niveaux, services (couleurs d'étiquettes), partie libre |
-| `src/game/tangle.ts` | plan de brassage, erreurs de départ, chemins emmêlés |
-| `src/game/world.ts` | état de partie, branchement, velcro, évaluation |
-| `src/game/controller.ts` | boucle, saisie, outils |
+| `src/physics/` | moteur de câbles AVBD, géométrie, Worker |
+| `src/game/` | baie, niveaux, plan de brassage, routes idéales, état d'une partie et score, contrôleur |
 | `src/render/` | three.js : scène, baie, câbles (tubes lissés), connecteurs LC |
-| `src/ui/` | interface (plan, outils, menus) |
+| `src/ui/` | interface (plan, outils, menus), tutoriel, vitrine avant / après |
+| `tests/` | tests unitaires (Vitest) |
+| `tools/` | bancs sans navigateur |
+
+Le détail est dans [`docs/architecture.md`](docs/architecture.md).

@@ -14,6 +14,7 @@ import * as THREE from 'three';
 import type { Stage } from '../render/stage';
 import { RackView, buildRoom } from '../render/rackView';
 import { CableView } from '../render/cableView';
+import { disposeTree } from '../render/dispose';
 import { World, type Evaluation } from '../game/world';
 import { SHOWCASE_SETTLE, showcaseRack, type FibreType } from '../game/levels';
 import { U } from '../game/rack';
@@ -76,7 +77,7 @@ class Bay {
   dispose(stage: Stage): void {
     this.world.dispose();
     stage.scene.remove(this.group);
-    this.group.traverse((o) => { if (o instanceof THREE.Mesh) o.geometry.dispose(); });
+    disposeTree(this.group);
   }
 
   /** the cords only: the rack itself is drawn by one of the two bays */
@@ -174,10 +175,7 @@ class Bay {
   }
 
   leds(): void {
-    const ev = this.world.evaluate();
-    const ok = new Set<string>();
-    ev.circuits.forEach((s, i) => { if (s.connected) { ok.add(this.world.circuits[i].a); ok.add(this.world.circuits[i].b); } });
-    for (const p of this.world.rack.ports) this.rackView.setLed(p, p.plug < 0 ? 'off' : ok.has(p.id) ? 'ok' : 'wrong');
+    this.rackView.showLeds(this.world.okPorts(this.world.evaluate()));
   }
 }
 
@@ -194,7 +192,10 @@ export class Showcase {
   private last = performance.now();
   private floor: THREE.Group;
 
-  /** builds a closet at random and lets its mess fall (in the worker), reporting progress */
+  /**
+   * Builds a closet at random and lets its mess fall (in the worker), reporting
+   * progress. Nothing shows until start(): the caller may throw it away first.
+   */
   static async create(stage: Stage, threaded: boolean, actions: { play(): void; tutorial(): void; another(): void }, progress: (f: number) => void, seed = Math.floor(Math.random() * 1e9)): Promise<Showcase> {
     const sc = new Showcase(stage, actions);
     sc.mess = new Bay(stage, 'mess', seed);
@@ -222,7 +223,6 @@ export class Showcase {
     sc.messPos = Float64Array.from(sc.mess.world.sim.x);
     sc.tidyShapes = sc.mess.tidyShapes(tw);
     sc.mess.cableView.update(true);
-    sc.start();
     return sc;
   }
 
@@ -232,7 +232,8 @@ export class Showcase {
     stage.scene.add(this.floor);
   }
 
-  private start(): void {
+  /** puts the closet on screen: its title, its panel, the camera sway */
+  start(): void {
     this.mess.group.visible = this.tidy.group.visible = this.floor.visible = true;
     const r = this.tidy.world.rack;
     this.floor.position.y = r.floorY;
@@ -255,7 +256,7 @@ export class Showcase {
     this.mess?.dispose(this.stage);
     this.tidy?.dispose(this.stage);
     this.stage.scene.remove(this.floor);
-    this.floor.traverse((o) => { if (o instanceof THREE.Mesh) o.geometry.dispose(); });
+    disposeTree(this.floor);
     this.el.classList.remove('on');
     document.body.classList.remove('demo');
     this.stage.sway(false);

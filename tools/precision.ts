@@ -127,7 +127,6 @@ function nodesIn(w: World, c: number, kind: 'hmgr' | 'duct'): number {
   return n;
 }
 
-let total = 0;
 const t0 = performance.now();
 // S1: into the duct
 {
@@ -139,7 +138,6 @@ const t0 = performance.now();
   const g = gesture(w, node, [[0.2, y, 0.16], [0.318, y, 0.16], [0.318, y, 0.0], [0.318, y - 0.12, 0.0]]);
   const inside = nodesIn(w, c, 'duct');
   console.log(`S1 goulotte : ${g.atRelease} nœuds dedans au lâcher, ${inside} restent, pic vitesse après lâcher ${g.peakAfter.toFixed(2)} m/s, repos ${g.settle < 0 ? 'jamais' : (g.settle / 60).toFixed(1) + ' s'}, étirement max ${(g.stretchPeak * 100).toFixed(1)} %, pénétration ${(statPen(w) * 1000).toFixed(1)} mm`);
-  total += g.peakAfter;
 }
 // S2: along the finger manager, the way a player does it: near the panel end, then a sweep
 {

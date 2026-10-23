@@ -1,0 +1,65 @@
+// Every level builds, its schedule makes sense, and a perfect cabinet is possible.
+import { describe, it, expect } from 'vitest';
+import { World } from '../src/game/world';
+import { LEVELS, TUTORIAL, freeLevel, showcaseRack, type LevelDef } from '../src/game/levels';
+import { tidyKit } from '../src/game/tidy';
+
+const ALL: LevelDef[] = [...LEVELS, TUTORIAL, freeLevel(30, 1), showcaseRack('mess', 1), showcaseRack('tidy', 1)];
+
+describe.each(ALL.map((lv) => [lv.id, lv] as const))('%s', (_, lv) => {
+  const w = new World(lv);
+
+  it('a schedule on existing ports, each port used once', () => {
+    const ids = w.circuits.flatMap((c) => [c.a, c.b]);
+    for (const id of ids) expect(() => w.rack.port(id)).not.toThrow();
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(w.circuits).toHaveLength(lv.schedule ? w.cables.length : lv.cables + (lv.links?.length ?? 0));
+  });
+
+  it('the services of the schedule have a label colour', () => {
+    for (const c of w.circuits) expect(c.service).toBeGreaterThanOrEqual(0);
+  });
+
+  it('the starting mess settles without blowing up', () => {
+    w.preroll(20);
+    expect(w.sim.x.every(Number.isFinite)).toBe(true);
+  });
+});
+
+describe('levels', () => {
+  it('unique ids, the cabinets grow', () => {
+    expect(new Set(LEVELS.map((l) => l.id)).size).toBe(LEVELS.length);
+    for (let i = 1; i < LEVELS.length; i++) expect(LEVELS[i].cables).toBeGreaterThanOrEqual(LEVELS[i - 1].cables);
+  });
+
+  it('a level’s cabinet is the same every time (seeded)', () => {
+    const a = new World(LEVELS[2]), b = new World(LEVELS[2]);
+    expect(a.circuits).toEqual(b.circuits);
+    expect(a.cables.map((c) => c.ends.map((e) => e.port))).toEqual(b.cables.map((c) => c.ends.map((e) => e.port)));
+  });
+});
+
+/** the cabinet of a level finished by a careful technician, settled and labelled */
+function finished(lv: LevelDef) {
+  const w = new World(tidyKit(lv));
+  for (let f = 0; f < 240; f++) w.sim.step();
+  w.circuits.forEach((ci, i) => { for (const e of w.cables[i].ends) e.label = ci.service; });
+  return w.evaluate();
+}
+
+describe('three stars are possible', () => {
+  for (const lv of LEVELS) {
+    it(`${lv.id} ${lv.title}`, () => {
+      expect(finished(lv).stars).toBe(3);
+    });
+  }
+
+  it('the tidy cabinet of the before/after is perfect', () => {
+    const w = new World(showcaseRack('tidy', 7));
+    w.sim.teleport(w.tidyTargets());
+    w.circuits.forEach((ci, i) => { for (const e of w.cables[i].ends) e.label = ci.service; });
+    const ev = w.evaluate();
+    expect(ev.routed).toBe(ev.total);
+    expect(ev.clear).toBe(ev.total);
+  });
+});

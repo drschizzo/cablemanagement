@@ -3,8 +3,8 @@
 // evaluation of how tidy it all is.
 
 import { ThreadedSim } from '../physics/threadedSim';
-import { CABLE_R, CONNECTOR, Rack, SEG, type Item, type ItemKind } from './rack';
-import { LEVELS, SERVICES, type FibreType, type LevelDef } from './levels';
+import { CABLE_R, CONNECTOR, Rack, SEG, insideBox, type Item, type ItemKind } from './rack';
+import { SERVICES, type FibreType, type LevelDef } from './levels';
 import { makeCables, makeSchedule, rng, type Circuit } from './tangle';
 import { pathToNodes, polyLength, resample, tidyRoutes, type V3 } from './tidy';
 
@@ -150,10 +150,6 @@ export class World {
       if (this.rack.port(ci.a).plug >> 1 === c) cuts++;
     }
     return cuts === 0 || this.liveDown() + cuts <= max;
-  }
-
-  static byId(id: string): LevelDef | undefined {
-    return LEVELS.find((l) => l.id === id);
   }
 
   /** bumps when the cords are rebuilt (a cord swapped for another length) */
@@ -453,6 +449,13 @@ export class World {
 
   // ---------------------------------------------------------- evaluation
 
+  /** ports of the lines connected as planned (their LEDs are green) */
+  okPorts(ev: Evaluation): Set<string> {
+    const ok = new Set<string>();
+    ev.circuits.forEach((s, i) => { if (s.connected) ok.add(this.circuits[i].a).add(this.circuits[i].b); });
+    return ok;
+  }
+
   evaluate(): Evaluation {
     const supports = this.rack.supports();
     const x = this.sim.x;
@@ -473,7 +476,7 @@ export class World {
         let held = !!nearEnd;
         if (!held) {
           for (const s of supports) {
-            if (px >= s.min[0] && px <= s.max[0] && py >= s.min[1] && py <= s.max[1] && pz >= s.min[2] && pz <= s.max[2]) { held = true; break; }
+            if (insideBox(s, px, py, pz)) { held = true; break; }
           }
         }
         if (held) { run = 0; continue; }

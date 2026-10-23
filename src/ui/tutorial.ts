@@ -4,8 +4,9 @@
 // player has done it (any step can be skipped).
 
 import type { Controller, Tool } from '../game/controller';
-import { COLUMN_X, SIDE_BACK, SIDE_IN, SIDE_OUT, U, WALL_X } from '../game/rack';
+import { COLUMN_X, SIDE_BACK, SIDE_IN, SIDE_OUT, U, WALL_X, insideBox } from '../game/rack';
 import { sfx } from '../audio/sfx';
+import { save } from '../storage';
 
 type Box = { min: [number, number, number]; max: [number, number, number] };
 
@@ -49,7 +50,7 @@ function held(c: Controller, kind: 'hmgr' | 'duct'): number {
     let n = 0;
     for (let k = 6; k < cb.count - 6; k++) {
       const i = cb.start + k;
-      if (boxes.some((s) => x[3 * i] >= s.min[0] && x[3 * i] <= s.max[0] && x[3 * i + 1] >= s.min[1] && x[3 * i + 1] <= s.max[1] && x[3 * i + 2] >= s.min[2] && x[3 * i + 2] <= s.max[2])) n++;
+      if (boxes.some((s) => insideBox(s, x[3 * i], x[3 * i + 1], x[3 * i + 2]))) n++;
     }
     best = Math.max(best, n);
   }
@@ -168,6 +169,8 @@ export class Tutorial {
   private i = 0;
   private el: HTMLElement;
   private poll: number;
+  /** the move to the next step, a moment after a task is done */
+  private advance = 0;
   private doneAt = -1;
 
   constructor(private ctl: Controller, private hud: { selectTool(t: Tool): void }, private actions: { showcase(): void; play(): void }) {
@@ -185,6 +188,8 @@ export class Tutorial {
 
   dispose(): void {
     clearInterval(this.poll);
+    // a step done just before leaving must not move on in the next level
+    clearTimeout(this.advance);
     this.el.classList.remove('on');
     document.body.classList.remove('tutorial');
     document.querySelectorAll('.tool.pulse').forEach((b) => b.classList.remove('pulse'));
@@ -200,6 +205,7 @@ export class Tutorial {
   private go(i: number): void {
     this.i = Math.max(0, Math.min(STEPS.length - 1, i));
     const s = STEPS[this.i];
+    clearTimeout(this.advance);
     this.doneAt = -1;
     this.ctl.focus(-1);
     this.ctl.spotlight(s.spot ? s.spot(this.ctl) : null);
@@ -240,9 +246,8 @@ export class Tutorial {
     (this.el.querySelector('#tuto-task') as HTMLElement).classList.add('done');
     sfx.label();
     this.setNext();
-    // move on by itself after a moment
-    const at = this.i;
-    window.setTimeout(() => { if (this.i === at) this.next(); }, 1600);
+    // move on by itself after a moment (go() and dispose() call it off)
+    this.advance = window.setTimeout(() => this.next(), 1600);
   }
 
   private finish(): void {
@@ -251,6 +256,6 @@ export class Tutorial {
   }
 
   private markDone(): void {
-    try { localStorage.setItem('cable.tutorial', 'done'); } catch { /* private mode */ }
+    save('tutorialDone', true);
   }
 }

@@ -10,7 +10,12 @@ import type { FromWorker, ToWorker } from './sim.worker';
 export class ThreadedSim extends CableSim {
   private worker: Worker | null = null;
   private defs: CableInit[] = [];
+  /** a regular step request is in flight (its id) */
   private inFlight = false;
+  private flushId = 0;
+  private lastId = 0;
+  /** settle() requests waiting for their answer, by id */
+  private settling = new Map<number, () => void>();
   private owed = 0;
   /** bumps whenever new positions arrived */
   version = 0;
@@ -36,23 +41,38 @@ export class ThreadedSim extends CableSim {
     for (let i = 0; i < this.n; i++) if (this.pinned[i]) pins.push(i);
     this.post({ type: 'init', params: this.P, defs: this.defs, x: this.x, v: this.v, pins, statics: this.statics });
     for (const b of this.bundles) if (b.alive) this.post({ type: 'addBundle', nodes: b.nodes, r: b.r });
-    w.onmessage = (e: MessageEvent<FromWorker>) => {
-      const m = e.data;
-      this.inFlight = false;
-      // answers computed before a teleport, or during scripted motion, are stale
-      if (m.gen !== this.gen || this.hold) { this.flush(); return; }
-      this.x.set(m.x);
-      m.asleep.forEach((a, c) => { this.cables[c].asleep = a === 1; });
-      this.stats = m.stats;
-      this.version++;
-      this.flush();
-    };
+    w.onmessage = (e: MessageEvent<FromWorker>) => this.receive(e.data);
     w.onerror = (e) => console.error('physics worker', e);
+  }
+
+  private receive(m: FromWorker): void {
+    // answers computed before a teleport are stale
+    const fresh = m.gen === this.gen;
+    const settled = this.settling.get(m.id);
+    if (settled) {
+      this.settling.delete(m.id);
+      if (fresh) this.apply(m);
+      settled();
+      return;
+    }
+    if (m.id === this.flushId) this.inFlight = false;
+    // during scripted motion, nobody steps: the answer is ignored too
+    if (fresh && !this.hold) this.apply(m);
+    this.flush();
+  }
+
+  private apply(m: FromWorker): void {
+    this.x.set(m.x);
+    m.asleep.forEach((a, c) => { this.cables[c].asleep = a === 1; });
+    this.stats = m.stats;
+    this.version++;
   }
 
   dispose(): void {
     this.worker?.terminate();
     this.worker = null;
+    // nobody will answer them any more (and nothing must run on a disposed sim)
+    this.settling.clear();
   }
 
   /** runs `frames` frames at once (in the worker when there is one) and resolves when done */
@@ -61,20 +81,11 @@ export class ThreadedSim extends CableSim {
       for (let i = 0; i < frames; i++) this.step();
       return Promise.resolve();
     }
+    // its own request: a regular step still in flight is answered first, and on its own
     return new Promise((done) => {
-      const w = this.worker!;
-      const prev = w.onmessage;
-      w.onmessage = (e: MessageEvent<FromWorker>) => {
-        w.onmessage = prev;
-        this.inFlight = false;
-        this.x.set(e.data.x);
-        e.data.asleep.forEach((a, c) => { this.cables[c].asleep = a === 1; });
-        this.stats = e.data.stats;
-        this.version++;
-        done();
-      };
-      this.inFlight = true;
-      this.post({ type: 'step', k: frames, target: [this.grabTarget[0], this.grabTarget[1], this.grabTarget[2]], gen: this.gen });
+      const id = ++this.lastId;
+      this.settling.set(id, done);
+      this.post({ type: 'step', id, k: frames, target: [this.grabTarget[0], this.grabTarget[1], this.grabTarget[2]], gen: this.gen });
     });
   }
 
@@ -94,7 +105,8 @@ export class ThreadedSim extends CableSim {
     this.inFlight = true;
     const k = this.owed;
     this.owed = 0;
-    this.post({ type: 'step', k, target: [this.grabTarget[0], this.grabTarget[1], this.grabTarget[2]], gen: this.gen });
+    this.flushId = ++this.lastId;
+    this.post({ type: 'step', id: this.flushId, k, target: [this.grabTarget[0], this.grabTarget[1], this.grabTarget[2]], gen: this.gen });
   }
 
   private post(m: ToWorker): void {

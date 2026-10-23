@@ -67,6 +67,11 @@ export interface SupportBox {
   item: number;
 }
 
+/** a point inside a box (bounds included) */
+export function insideBox(b: { min: [number, number, number]; max: [number, number, number] }, x: number, y: number, z: number): boolean {
+  return x >= b.min[0] && x <= b.max[0] && y >= b.min[1] && y <= b.max[1] && z >= b.min[2] && z <= b.max[2];
+}
+
 export const DUCT_SPAN = 4;
 
 export class Rack {

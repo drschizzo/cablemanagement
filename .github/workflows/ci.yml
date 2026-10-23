@@ -1,0 +1,29 @@
+name: CI
+
+# Lancement manuel seulement (onglet Actions → CI → Run workflow) : les vérifications se font en local avant de
+# pousser (npm run check). Pour la relancer à chaque push, ajouter sous « on: » :
+#   push:
+#     branches: [main]
+#   pull_request:
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Lint, types, tests, construction
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Analyse statique
+        run: npm run lint
+      - name: Types
+        run: npm run typecheck
+      - name: Tests (géométrie, baie, stockage, règles, niveaux)
+        run: npm test
+      - name: Construction du jeu
+        run: npm run build

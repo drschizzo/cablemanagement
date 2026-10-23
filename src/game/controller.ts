@@ -5,9 +5,10 @@ import * as THREE from 'three';
 import { Stage } from '../render/stage';
 import { RackView, buildItem, ghostBadMat, ghostMat } from '../render/rackView';
 import { CableView } from '../render/cableView';
+import { disposeTree } from '../render/dispose';
 import { World, type Evaluation, type Strap } from './world';
 import { COLUMN_X, FRONT_Z, ROOM_FLOOR, U, WALL_X, type Item, type ItemKind, type Port } from './rack';
-import type { FibreType, LevelDef } from './levels';
+import { FIBRE_NAMES, type FibreType, type LevelDef } from './levels';
 import { sfx } from '../audio/sfx';
 
 export type Tool = 'hand' | ItemKind | 'velcro' | 'label' | 'length' | 'trace' | 'deposit';
@@ -33,6 +34,7 @@ interface Pick {
 }
 
 const MAX_TARGET_STEP = 0.035; // m per frame the hand may move
+const CORD_TOOLS = new Set<Tool>(['hand', 'label', 'velcro', 'length', 'trace', 'deposit']);
 
 export class Controller {
   world: World;
@@ -76,7 +78,8 @@ export class Controller {
   private spot: THREE.Group | null = null;
   private spotTime = 0;
   private cycleAt = { x: -1e9, y: -1e9 };
-  private listeners: [EventTarget, string, EventListener][] = [];
+  /** undoes every subscription made by bind() */
+  private unbind: (() => void)[] = [];
 
   constructor(public stage: Stage, level: LevelDef, private events: ControllerEvents, threaded = true) {
     this.world = new World(level);
@@ -103,14 +106,13 @@ export class Controller {
   dispose(): void {
     this.disposed = true;
     this.world.dispose();
-    for (const [t, n, f] of this.listeners) t.removeEventListener(n, f);
-    this.stage.scene.remove(this.rackView.group, this.cableView.group);
-    if (this.ghost) this.stage.scene.remove(this.ghost);
+    for (const off of this.unbind) off();
     this.spotlight(null);
-    this.stage.scene.remove(this.guide);
-    const free = (o: THREE.Object3D) => o.traverse((m) => { if (m instanceof THREE.Mesh) m.geometry.dispose(); });
-    free(this.rackView.group);
-    free(this.cableView.group);
+    for (const g of [this.rackView.group, this.cableView.group, this.guide, this.ghost]) {
+      if (!g) continue;
+      this.stage.scene.remove(g);
+      disposeTree(g);
+    }
   }
 
   setTool(t: Tool): void {
@@ -179,9 +181,7 @@ export class Controller {
     this.evalTimer += dt;
     if (this.evalTimer > 0.4) {
       this.evalTimer = 0;
-      this.lastEval = this.world.evaluate();
-      this.refreshLeds();
-      this.events.onEval(this.lastEval);
+      this.reevaluate();
       if (this.debug) {
         const s = this.world.sim.stats;
         this.events.onStats(`${this.world.sim.n} nœuds · ${s.contacts} contacts · ${s.awake}/${this.world.cables.length} câbles actifs · physique ${ms.toFixed(1)} ms${this.world.sim.threaded ? ' (worker)' : ''}`);
@@ -241,8 +241,8 @@ export class Controller {
   private bind(): void {
     const el = this.stage.renderer.domElement;
     const on = (t: EventTarget, n: string, f: (e: any) => void, opt?: AddEventListenerOptions) => {
-      t.addEventListener(n, f as EventListener, opt);
-      this.listeners.push([t, n, f as EventListener]);
+      t.addEventListener(n, f, opt);
+      this.unbind.push(() => t.removeEventListener(n, f));
     };
     on(el, 'pointermove', (e: PointerEvent) => this.onMove(e));
     on(el, 'pointerdown', (e: PointerEvent) => this.onDown(e));
@@ -252,7 +252,7 @@ export class Controller {
     on(el, 'pointerleave', () => this.events.onHover(null, 0, 0));
     const onOrbit = () => { this.counters.orbited++; };
     this.stage.controls.addEventListener('start', onOrbit);
-    this.listeners.push([{ removeEventListener: () => this.stage.controls.removeEventListener('start', onOrbit) } as unknown as EventTarget, 'x', onOrbit]);
+    this.unbind.push(() => this.stage.controls.removeEventListener('start', onOrbit));
     on(window, 'keydown', (e: KeyboardEvent) => { if (e.key === 'Shift' && this.drag && !this.drag.depthMode) this.setDepthMode(true); });
     on(window, 'keyup', (e: KeyboardEvent) => { if (e.key === 'Shift' && this.drag && this.drag.depthMode) this.setDepthMode(false); });
     on(window, 'keydown', (e: KeyboardEvent) => {
@@ -346,8 +346,9 @@ export class Controller {
     }
   }
 
+  /** every tool but the rack items works on a cord */
   private picksCords(): boolean {
-    return this.tool === 'hand' || this.tool === 'label' || this.tool === 'velcro' || this.tool === 'length' || this.tool === 'trace' || this.tool === 'deposit';
+    return CORD_TOOLS.has(this.tool);
   }
 
   /** swaps a cord for one of another length; false when it would not reach */
@@ -371,6 +372,11 @@ export class Controller {
 
   private afterRewire(): void {
     this.syncCableView();
+    this.reevaluate();
+  }
+
+  /** scores the cabinet now, and shows it (LEDs, schedule) */
+  private reevaluate(): void {
     this.lastEval = this.world.evaluate();
     this.refreshLeds();
     this.events.onEval(this.lastEval);
@@ -381,7 +387,7 @@ export class Controller {
     if (this.builtCables === this.world.cablesVersion) return;
     this.builtCables = this.world.cablesVersion;
     this.stage.scene.remove(this.cableView.group);
-    this.cableView.group.traverse((o) => { if (o instanceof THREE.Mesh) o.geometry.dispose(); });
+    disposeTree(this.cableView.group);
     this.cableView = new CableView(this.world);
     this.stage.scene.add(this.cableView.group);
     this.highlighted.clear();
@@ -415,11 +421,8 @@ export class Controller {
       if (port) {
         this.world.plug(d.cable, d.end, port.id);
         this.counters.plugged++;
-        const ok = this.circuitOkAt(port);
-        sfx.plug(ok);
-        this.lastEval = this.world.evaluate();
-        this.refreshLeds();
-        this.events.onEval(this.lastEval);
+        this.reevaluate();
+        sfx.plug(this.circuitOkAt(port));
       }
     }
     this.setPortHint(null);
@@ -447,9 +450,7 @@ export class Controller {
         w.unplug(eo.cable, eo.end);
         this.counters.unplugged++;
         sfx.unplug();
-        this.lastEval = w.evaluate();
-        this.refreshLeds();
-        this.events.onEval(this.lastEval);
+        this.reevaluate();
       }
     } else sfx.grab();
     w.sim.grab(node);
@@ -503,9 +504,9 @@ export class Controller {
     if (!p && this.focusCircuit >= 0) this.focus(this.focusCircuit);
   }
 
+  /** a line of the schedule through this port is connected (as of the last evaluation) */
   private circuitOkAt(port: Port): boolean {
-    const ev = this.world.evaluate();
-    return ev.circuits.some((s, i) => s.connected && (this.world.circuits[i].a === port.id || this.world.circuits[i].b === port.id));
+    return this.lastEval.circuits.some((s, i) => s.connected && (this.world.circuits[i].a === port.id || this.world.circuits[i].b === port.id));
   }
 
   // ------------------------------------------------------- choreography
@@ -564,7 +565,7 @@ export class Controller {
   spotlight(box: { min: [number, number, number]; max: [number, number, number] } | null): void {
     if (this.spot) {
       this.stage.scene.remove(this.spot);
-      this.spot.traverse((o) => { if (o instanceof THREE.Mesh || o instanceof THREE.LineSegments) o.geometry.dispose(); });
+      disposeTree(this.spot);
       this.spot = null;
     }
     if (!box) return;
@@ -700,9 +701,8 @@ export class Controller {
     const w = this.world;
     const cb = w.cables[p.cable];
     const ends = cb.ends.map((e) => e.port ?? '—').join(' ↔ ') + ` · ${this.world.cableLength(p.cable).toFixed(2).replace('.', ',')} m`;
-    const type = cb.type === 'OS2' ? 'Monomode OS2' : cb.type === 'OM4' ? 'Multimode OM4' : 'Cuivre RJ45';
-    let what = `<b>${type}</b> · ${ends}`;
-    const ci = w.circuits.findIndex((c, i) => this.lastEval.circuits[i].cable === p.cable && c);
+    let what = `<b>${FIBRE_NAMES[cb.type]}</b> · ${ends}`;
+    const ci = this.lastEval.circuits.findIndex((s) => s.cable === p.cable);
     if (ci >= 0) what += ` · <span class="ok">liaison ${ci + 1} ✓</span>`;
     if (this.tool === 'hand' && (p.end >= 0 || w.endOfNode(p.node))) what += '<br><i>connecteur : saisir pour débrancher</i>';
     return what;
@@ -792,7 +792,7 @@ export class Controller {
     }
     if (key === this.ghostKey) return;
     this.ghostKey = key;
-    if (this.ghost) { this.stage.scene.remove(this.ghost); this.ghost.traverse((m) => { if (m instanceof THREE.Mesh) m.geometry.dispose(); }); this.ghost = null; }
+    if (this.ghost) { this.stage.scene.remove(this.ghost); disposeTree(this.ghost); this.ghost = null; }
     if (!s || !key) return;
     const k = kind as ItemKind;
     const rack = this.world.rack;
@@ -804,10 +804,7 @@ export class Controller {
   }
 
   private refreshLeds(): void {
-    const ev = this.lastEval;
-    const okPorts = new Set<string>();
-    ev.circuits.forEach((s, i) => { if (s.connected) { okPorts.add(this.world.circuits[i].a); okPorts.add(this.world.circuits[i].b); } });
-    for (const p of this.world.rack.ports) this.rackView.setLed(p, p.plug < 0 ? 'off' : okPorts.has(p.id) ? 'ok' : 'wrong');
+    this.rackView.showLeds(this.world.okPorts(this.lastEval));
   }
 }
 

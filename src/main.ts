@@ -1,43 +1,78 @@
+// Entry point: puts together the stage (render/), the scenes (a level run by
+// game/controller, the tutorial over a level, the before/after showcase) and
+// the interface (ui/), then opens the first scene.
+//
+// One scene at a time: every load bumps `sceneToken`, and a load that has been
+// overtaken by another throws its result away.
+
 import { Stage } from './render/stage';
 import { Controller } from './game/controller';
 import { Hud } from './ui/hud';
 import { Showcase } from './ui/showcase';
 import { Tutorial } from './ui/tutorial';
 import { LEVELS, TUTORIAL, freeLevel, type LevelDef } from './game/levels';
+import { load } from './storage';
 
 const stage = new Stage(document.getElementById('view')!);
 let ctl: Controller | null = null;
+let showcase: Showcase | null = null;
+/** what runs over the scene (tutorial) or is the scene (showcase) */
 let mode: { dispose(): void } | null = null;
 /** bumps on every scene change: a slow load that has been overtaken throws its result away */
 let sceneToken = 0;
-/** loads in progress: the veil stays up while any is running */
-let loads = 0;
-function loadStarted(): void {
-  loads++;
-  document.getElementById('loading')!.classList.add('on');
-}
-function loadEnded(): void {
-  loads = Math.max(0, loads - 1);
-  if (loads === 0) {
-    const l = document.getElementById('loading')!;
-    l.classList.remove('on');
-    l.querySelector('p')!.textContent = 'Emmêlage des câbles…';
-  }
-}
 // ?sync keeps the physics on the main thread (deterministic, for automated checks)
 const syncPhysics = new URLSearchParams(location.search).has('sync');
 
 const hud = new Hud((level) => start(level));
 
-function start(level: LevelDef, brief = true): void {
-  sceneToken++;
+// ------------------------------------------------------------- loading veil
+
+const veil = document.getElementById('loading')!;
+const veilText = veil.querySelector('p')!;
+/** loads in progress: the veil stays up while any is running */
+let loads = 0;
+
+function loadStarted(): void {
+  loads++;
+  veil.classList.add('on');
+}
+
+function loadEnded(): void {
+  loads = Math.max(0, loads - 1);
+  if (loads > 0) return;
+  veil.classList.remove('on');
+  veilText.textContent = 'Emmêlage des câbles…';
+}
+
+/** runs a scene load once the veil has painted; `build` only runs if no other load overtook it */
+function loadScene(build: (token: number) => void | Promise<void>): void {
+  const token = ++sceneToken;
   loadStarted();
-  // let the overlay paint before the (blocking) settle of the mess
-  setTimeout(() => {
-    mode?.dispose();
-    mode = null;
-    showcase = null;
-    ctl?.dispose();
+  // let the veil paint before the (blocking) settle of the mess
+  setTimeout(async () => {
+    try {
+      if (token === sceneToken) await build(token);
+    } finally {
+      loadEnded();
+    }
+  }, 30);
+}
+
+/** leaves the current scene, whatever it is */
+function leaveScene(): void {
+  mode?.dispose();
+  mode = null;
+  showcase = null;
+  ctl?.dispose();
+  ctl = null;
+  hud.ctl = null;
+}
+
+// ------------------------------------------------------------------ scenes
+
+function start(level: LevelDef, brief = true): void {
+  loadScene(() => {
+    leaveScene();
     ctl = new Controller(stage, level, {
       onEval: (ev) => hud.onEval(ev),
       onInventory: () => hud.refreshInventory(),
@@ -48,39 +83,29 @@ function start(level: LevelDef, brief = true): void {
       onHint: (t) => hud.hint(t),
     }, !syncPhysics);
     hud.attach(ctl, level);
-    loadEnded();
     if (level.tutorial) mode = new Tutorial(ctl, hud, { showcase: startShowcase, play: playNext });
     else if (brief) hud.showBrief(level);
     measureInsets();
-  }, 30);
+  });
 }
 
 /** the before/after closet: no level, no controller */
 function startShowcase(): void {
-  const token = ++sceneToken;
-  const text = document.getElementById('loading')!.querySelector('p')!;
-  loadStarted();
-  setTimeout(async () => {
-    mode?.dispose();
-    mode = null;
-    showcase = null;
-    ctl?.dispose();
-    ctl = null;
-    hud.ctl = null;
+  loadScene(async (token) => {
+    leaveScene();
     document.getElementById('menu')!.classList.remove('on');
     // the game's panels stay hidden while the new closet is built
     document.body.classList.add('demo');
     const sc = await Showcase.create(stage, !syncPhysics, { play: playNext, tutorial: () => start(TUTORIAL), another: startShowcase }, (f) => {
-      text.textContent = `Le technicien précédent est passé par là… ${Math.round(f * 100)} %`;
+      veilText.textContent = `Le technicien précédent est passé par là… ${Math.round(f * 100)} %`;
     });
-    if (token !== sceneToken) { sc.dispose(); loadEnded(); return; }
-    mode = sc;
-    showcase = sc;
-    loadEnded();
+    // overtaken while it was falling: thrown away before it ever showed
+    if (token !== sceneToken) { sc.dispose(); return; }
+    mode = showcase = sc;
+    sc.start();
     measureInsets();
-  }, 30);
+  });
 }
-let showcase: Showcase | null = null;
 
 /** the first level without stars, or the menu once they all have some */
 function playNext(): void {
@@ -88,6 +113,8 @@ function playNext(): void {
   if (next) start(next);
   else hud.showMenu();
 }
+
+// -------------------------------------------------------------------- menu
 
 document.getElementById('menu-tuto')!.onclick = () => { document.getElementById('menu')!.classList.remove('on'); start(TUTORIAL); };
 document.getElementById('menu-show')!.onclick = startShowcase;
@@ -101,6 +128,8 @@ document.getElementById('free-go')!.onclick = () => {
 };
 
 setInterval(() => hud.tick(), 250);
+
+// ------------------------------------------------------------------ layout
 
 // frame the cabinet in the space the panels leave free (hidden panels leave it all)
 function measureInsets(): void {
@@ -121,10 +150,10 @@ function measureInsets(): void {
 window.addEventListener('resize', measureInsets);
 new ResizeObserver(measureInsets).observe(document.getElementById('side')!);
 
+// ------------------------------------------------------------------- start
+
 // first visit: the before/after, which leads to the tutorial; afterwards, the menu
-let seen = false;
-try { seen = localStorage.getItem('cable.tutorial') === 'done' || Object.keys(hud.progress.stars).length > 0; } catch { /* private mode */ }
-if (!seen) startShowcase();
+if (!load('tutorialDone') && Object.keys(hud.progress.stars).length === 0) startShowcase();
 else {
   start(LEVELS[0], false);
   hud.showMenu();

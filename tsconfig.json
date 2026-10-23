@@ -10,7 +10,7 @@
     "isolatedModules": true,
     "allowImportingTsExtensions": true,
     "noEmit": true,
-    "types": ["vite/client"]
+    "types": ["vite/client", "vitest/importMeta"]
   },
-  "include": ["src", "tools"]
+  "include": ["src", "tools", "tests", "vite.config.ts"]
 }

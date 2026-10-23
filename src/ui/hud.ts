@@ -1,27 +1,11 @@
 import type { Controller, Tool } from '../game/controller';
-import { LEVELS, SERVICES, type LevelDef } from '../game/levels';
+import { FIBRE_NAMES, LEVELS, SERVICES, type LevelDef } from '../game/levels';
 import type { Evaluation } from '../game/world';
 import { FIBRE_COLORS } from '../render/cableView';
 import { isMuted, setMuted, sfx } from '../audio/sfx';
+import { load, save } from '../storage';
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector(sel) as T;
-
-export interface Progress {
-  stars: Record<string, number>;
-  times: Record<string, number>;
-}
-
-export function loadProgress(): Progress {
-  try {
-    const p = JSON.parse(localStorage.getItem('cable.progress') ?? '');
-    if (p && p.stars) return p;
-  } catch { /* first run */ }
-  return { stars: {}, times: {} };
-}
-
-function saveProgress(p: Progress): void {
-  try { localStorage.setItem('cable.progress', JSON.stringify(p)); } catch { /* private mode */ }
-}
 
 const TOOLS: { tool: Tool; key: string; name: string; icon: string; stock?: 'hmgr' | 'duct' | 'vring' | 'velcro'; help: string }[] = [
   { tool: 'hand', key: '1', name: 'Main', icon: iconHand(), help: 'Saisir, tirer, débrancher et brancher les câbles (Maj en tirant : profondeur). Glisser dans le vide : déplacer la vue.' },
@@ -42,8 +26,9 @@ const fmtLen = (m: number) => (m < 1 ? `${Math.round(m * 100)} cm` : `${m.toFixe
 export class Hud {
   ctl: Controller | null = null;
   level: LevelDef | null = null;
-  progress = loadProgress();
+  progress = load('progress');
   private planRows: HTMLTableRowElement[] = [];
+  private toastTimer = 0;
 
   constructor(private start: (level: LevelDef) => void) {
     this.buildToolbar();
@@ -169,13 +154,13 @@ export class Hud {
     let color: string | undefined = lv.colorByService ? SERVICES[0].color : undefined;
     const render = () => {
       m.innerHTML = `<div class="h">Stock de cordons neufs<span>Ils arrivent enroulés dans le bac, au sol.</span></div>
-        ${types.length > 1 ? `<div class="types">${types.map((t) => `<button data-t="${t}" class="${t === type ? 'cur' : ''}"><i style="background:${FIBRE_COLORS[t]}"></i>${typeName(t)}</button>`).join('')}</div>` : ''}
+        ${types.length > 1 ? `<div class="types">${types.map((t) => `<button data-t="${t}" class="${t === type ? 'cur' : ''}"><i style="background:${FIBRE_COLORS[t]}"></i>${FIBRE_NAMES[t]}</button>`).join('')}</div>` : ''}
         ${type === 'CU' && lv.colorByService ? `<div class="colors">${SERVICES.slice(0, Math.max(1, lv.services)).map((sv) => `<button data-c="${sv.color}" class="${sv.color === color ? 'cur' : ''}" style="background:${sv.color}" title="${sv.name}"></button>`).join('')}</div>` : ''}
         <div class="grid">${CATALOGUE.map((L) => `<button data-l="${L}">${fmtLen(L)}</button>`).join('')}</div>`;
       m.querySelectorAll<HTMLButtonElement>('[data-t]').forEach((b) => { b.onclick = () => { type = b.dataset.t as typeof type; render(); }; });
       m.querySelectorAll<HTMLButtonElement>('[data-c]').forEach((b) => { b.onclick = () => { color = b.dataset.c; render(); }; });
       m.querySelectorAll<HTMLButtonElement>('[data-l]').forEach((b) => {
-        b.onclick = () => { ctl.newCord(type, Number(b.dataset.l), type === 'CU' ? color : undefined); this.toast(`Cordon ${typeName(type)} de ${fmtLen(Number(b.dataset.l))} dans le bac.`); };
+        b.onclick = () => { ctl.newCord(type, Number(b.dataset.l), type === 'CU' ? color : undefined); this.toast(`Cordon ${FIBRE_NAMES[type]} de ${fmtLen(Number(b.dataset.l))} dans le bac.`); };
       });
     };
     render();
@@ -239,7 +224,7 @@ export class Hud {
       const svc = SERVICES[c.service];
       const prod = w.live.has(i) ? '<span class="prod" title="En production : ne pas la couper trop longtemps">⚡</span>' : '';
       tr.innerHTML = `<td class="n">${i + 1}${prod}</td><td class="ports">${c.a} <span class="arrow">↔</span> ${c.b}</td>
-        <td><span class="chip" style="background:${FIBRE_COLORS[c.type]}" title="${typeName(c.type)}">${c.type}</span></td>
+        <td><span class="chip" style="background:${FIBRE_COLORS[c.type]}" title="${FIBRE_NAMES[c.type]}">${c.type}</span></td>
         <td class="svc" style="${this.level!.labels ? '' : 'display:none'}"><span class="dot" style="background:${svc.color}"></span>${svc.name}</td>
         <td class="st"><i class="s-conn" title="Branchée"></i><i class="s-route" title="Rangée"></i><i class="s-clear" title="Façade dégagée"></i>${this.level!.labels ? '<i class="s-label" title="Étiquetée"></i>' : ''}</td>`;
       tr.onmouseenter = () => this.ctl?.focus(i);
@@ -288,7 +273,7 @@ export class Hud {
     const prev = this.progress.stars[lv.id] ?? 0;
     this.progress.stars[lv.id] = Math.max(prev, ev.stars);
     if (!this.progress.times[lv.id] || t < this.progress.times[lv.id]) this.progress.times[lv.id] = t;
-    saveProgress(this.progress);
+    save('progress', this.progress);
     sfx.win();
     $('#result-stars').innerHTML = starsHtml(ev.stars, true);
     $('#result-time').textContent = `Temps : ${fmtTime(t)}`;
@@ -332,8 +317,8 @@ export class Hud {
     const t = $('#toast');
     t.textContent = text;
     t.classList.add('on');
-    clearTimeout((t as any)._h);
-    (t as any)._h = setTimeout(() => t.classList.remove('on'), 2200);
+    clearTimeout(this.toastTimer);
+    this.toastTimer = window.setTimeout(() => t.classList.remove('on'), 2200);
   }
 
   stats(text: string): void {
@@ -384,10 +369,6 @@ function starsHtml(n: number, big = false): string {
 export function fmtTime(t: number): string {
   const m = Math.floor(t / 60), s = Math.floor(t % 60);
   return `${m}:${String(s).padStart(2, '0')}`;
-}
-
-function typeName(t: string): string {
-  return t === 'OS2' ? 'Monomode OS2' : t === 'OM4' ? 'Multimode OM4' : 'Cuivre RJ45';
 }
 
 function svg(body: string): string {

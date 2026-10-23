@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { World } from '../game/world';
 import { CONNECTOR } from '../game/rack';
 import { SERVICES } from '../game/levels';
+import { shared } from './dispose';
 
 const RADIAL = 8;
 const SUB = 2; // samples per segment (Catmull-Rom in between)
@@ -39,7 +40,7 @@ function connectorGeos(radius: number, copper: boolean) {
   return { housing, latch, boot, label };
 }
 
-const strapGeo = new THREE.TorusGeometry(1, 0.22, 8, 20);
+const strapGeo = shared(new THREE.TorusGeometry(1, 0.22, 8, 20));
 
 export class CableView {
   group = new THREE.Group();

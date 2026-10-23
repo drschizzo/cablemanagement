@@ -1,6 +1,7 @@
 // Dev-only helpers to drive the game from the console or automated checks
 // (the game loop can be pumped by hand when the page is hidden).
 import * as THREE from 'three';
+import { insideBox, type SupportBox } from '../game/rack';
 
 export function installTestkit(get: () => any): void {
   const w = window as any;
@@ -21,7 +22,6 @@ export function installTestkit(get: () => any): void {
     window.dispatchEvent(new PointerEvent('pointerup', { clientX: x, clientY: y, button: 0, pointerId: 1 }));
     w.__pump(50);
   };
-  /** drags from one 3D point to another (screen-space path), holding at the end */
   /** drags along 3D waypoints (straight lines on screen between them), holding at the end */
   w.__drag3 = (from: number[], ...rest: (number[] | number)[]) => {
     const pts = rest.filter((p) => Array.isArray(p)) as number[][];
@@ -50,7 +50,7 @@ export function installTestkit(get: () => any): void {
     for (let k = 0; k < cb.count; k++) {
       const i = cb.start + k;
       const px = x[3 * i], py = x[3 * i + 1], pz = x[3 * i + 2];
-      if (sup.some((s: any) => px >= s.min[0] && px <= s.max[0] && py >= s.min[1] && py <= s.max[1] && pz >= s.min[2] && pz <= s.max[2])) out.push(k);
+      if (sup.some((s: SupportBox) => insideBox(s, px, py, pz))) out.push(k);
     }
     return out;
   };

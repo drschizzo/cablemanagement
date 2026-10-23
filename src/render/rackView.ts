@@ -3,6 +3,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { COLUMN_X, FRONT_Z, Rack, SIDE_BACK, SIDE_IN, SIDE_OUT, U, WALL_X, type Item, type Port } from '../game/rack';
 import type { StaticShape } from '../physics/cableSim';
 import type { FibreType } from '../game/levels';
+import { disposeTree, shared } from './dispose';
 
 // warm graphite powder-coat rather than blue-grey steel
 const mat = {
@@ -31,8 +32,11 @@ const mat = {
   strip: new THREE.MeshStandardMaterial({ color: '#fff1dc', emissive: '#ffd7a3', emissiveIntensity: 2.2 }),
 };
 
-export const ghostMat = new THREE.MeshStandardMaterial({ color: '#6fd3ff', transparent: true, opacity: 0.45, emissive: '#1f6f99', depthWrite: false });
-export const ghostBadMat = new THREE.MeshStandardMaterial({ color: '#ff6f6f', transparent: true, opacity: 0.4, emissive: '#992020', depthWrite: false });
+// made once, used by every level
+for (const m of Object.values(mat)) shared(m);
+
+export const ghostMat = shared(new THREE.MeshStandardMaterial({ color: '#6fd3ff', transparent: true, opacity: 0.45, emissive: '#1f6f99', depthWrite: false }));
+export const ghostBadMat = shared(new THREE.MeshStandardMaterial({ color: '#ff6f6f', transparent: true, opacity: 0.4, emissive: '#992020', depthWrite: false }));
 
 export class RackView {
   group = new THREE.Group();
@@ -237,6 +241,11 @@ export class RackView {
     this.group.add(m);
   }
 
+  /** every port LED: off when free, green on a line connected as planned, orange otherwise */
+  showLeds(okPorts: Set<string>): void {
+    for (const p of this.rack.ports) this.setLed(p, p.plug < 0 ? 'off' : okPorts.has(p.id) ? 'ok' : 'wrong');
+  }
+
   setLed(port: Port, state: 'off' | 'ok' | 'wrong'): void {
     const m = this.leds.get(port.id);
     if (!m) return;
@@ -252,7 +261,7 @@ export class RackView {
     this.builtVersion = version;
     for (const c of [...this.itemsGroup.children]) {
       this.itemsGroup.remove(c);
-      c.traverse((o) => { if (o instanceof THREE.Mesh) o.geometry.dispose(); });
+      disposeTree(c);
     }
     const statics = this.rack.statics();
     for (const it of this.rack.items) this.itemsGroup.add(buildItem(this.rack, it, statics, null));
@@ -328,7 +337,7 @@ function grilleTexture(): THREE.CanvasTexture {
   g.fillStyle = '#2a3038'; g.fillRect(0, 0, 256, 64);
   g.fillStyle = '#07090c';
   for (let y = 6; y < 60; y += 9) for (let x = 6 + ((y / 9) % 2) * 4; x < 252; x += 9) { g.beginPath(); g.arc(x, y, 3, 0, Math.PI * 2); g.fill(); }
-  grille = new THREE.CanvasTexture(c);
+  grille = shared(new THREE.CanvasTexture(c));
   grille.colorSpace = THREE.SRGBColorSpace;
   return grille;
 }
@@ -472,7 +481,7 @@ function poolTexture(): THREE.CanvasTexture {
   hint.addColorStop(1, 'rgba(139,227,180,0)');
   g.fillStyle = hint;
   g.fillRect(0, 0, N, N);
-  pool = new THREE.CanvasTexture(c);
+  pool = shared(new THREE.CanvasTexture(c));
   pool.anisotropy = 8;
   pool.colorSpace = THREE.SRGBColorSpace;
   return pool;
@@ -500,7 +509,7 @@ function tileNormals(): THREE.DataTexture {
     const o = (y * N + x) * 4;
     data[o] = (nx * 0.5 + 0.5) * 255; data[o + 1] = (ny * 0.5 + 0.5) * 255; data[o + 2] = (nz * 0.5 + 0.5) * 255; data[o + 3] = 255;
   }
-  tileN = new THREE.DataTexture(data, N, N);
+  tileN = shared(new THREE.DataTexture(data, N, N));
   tileN.wrapS = tileN.wrapT = THREE.RepeatWrapping;
   tileN.repeat.set(15, 15);
   tileN.magFilter = THREE.LinearFilter;
@@ -538,6 +547,6 @@ function blobTexture(): THREE.CanvasTexture {
     g.fill();
   }
   // only the alpha counts: the material colour is black
-  blob = new THREE.CanvasTexture(c);
+  blob = shared(new THREE.CanvasTexture(c));
   return blob;
 }

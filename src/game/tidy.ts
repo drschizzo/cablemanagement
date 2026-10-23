@@ -8,8 +8,9 @@
 // the shortest run to the side rides in front, the others pass behind the
 // points where it drops in.
 
-import { CONNECTOR, Rack, SEG, SIDE_BACK, SIDE_IN, SIDE_OUT, type Port } from './rack';
+import { CONNECTOR, DUCT_SPAN, Rack, SEG, SIDE_BACK, SIDE_IN, SIDE_OUT, type Port } from './rack';
 import type { Circuit } from './tangle';
+import type { LevelDef } from './levels';
 
 export type V3 = [number, number, number];
 
@@ -90,6 +91,24 @@ export function tidyRoutes(rack: Rack, circuits: Circuit[], radius: number, seg 
     ];
     return smooth(pts, 2, 2);
   });
+}
+
+/**
+ * A level as a careful technician would finish it: a finger manager in every
+ * empty unit between the equipment, ducts all down both sides, and every cord
+ * cut to its tidy route and plugged as planned. Its score says whether the
+ * level can reach three stars (tools/solvable.ts, tests/levels.test.ts).
+ */
+export function tidyKit(level: LevelDef): LevelDef {
+  const pre = [...level.preinstalled];
+  const last = level.units.reduce((m, u, k) => (u.kind !== 'blank' ? k : m), 0);
+  level.units.forEach((u, k) => {
+    if (u.kind === 'blank' && k > 0 && k < last && !pre.some((p) => p.kind === 'hmgr' && p.unit === k)) pre.push({ kind: 'hmgr', unit: k, side: 0 });
+  });
+  for (const side of [-1, 1]) {
+    for (let u = 1; u + DUCT_SPAN <= level.units.length + 1; u += DUCT_SPAN) pre.push({ kind: 'duct', unit: Math.min(u + 1, level.units.length - 1), side });
+  }
+  return { ...level, preinstalled: pre, showcase: 'tidy', wrong: 0, loose: 0 };
 }
 
 /** the two pinned connector nodes, then the cord leaving the boot towards the manager */

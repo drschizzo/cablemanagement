@@ -15,9 +15,11 @@ export type ToWorker =
   | { type: 'removeBundle'; id: number }
   | { type: 'teleport'; x: Float64Array }
   | { type: 'move'; start: number; pos: Float64Array }
-  | { type: 'step'; k: number; target: [number, number, number]; gen: number };
+  | { type: 'step'; id: number; k: number; target: [number, number, number]; gen: number };
 
+/** the answer to one step request (same `id`) */
 export interface FromWorker {
+  id: number;
   gen: number;
   x: Float64Array;
   asleep: Uint8Array;
@@ -57,7 +59,7 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
       }
       const x = sim.x.slice();
       const asleep = Uint8Array.from(sim.cables, (c) => (c.asleep ? 1 : 0));
-      const out: FromWorker = { gen: m.gen, x, asleep, stats: { ...sim.stats, ms: performance.now() - t0 } };
+      const out: FromWorker = { id: m.id, gen: m.gen, x, asleep, stats: { ...sim.stats, ms: performance.now() - t0 } };
       (self as unknown as Worker).postMessage(out, [x.buffer, asleep.buffer]);
       break;
     }
