@@ -4,6 +4,7 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+  base: './', // chemins relatifs : le jeu marche aussi sous https://<compte>.github.io/cablemanagement/
   worker: { format: 'es' },
   build: { target: 'es2022', chunkSizeWarningLimit: 900 }, // three.js
   test: {
