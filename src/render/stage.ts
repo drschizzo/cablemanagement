@@ -2,18 +2,21 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { SSRPass } from 'three/examples/jsm/postprocessing/SSRPass.js';
 import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 
 /** colour of the backdrop where the floor fades out (also the fog) */
-const HORIZON = '#2a2023';
+const HORIZON = '#1a1e21';
 
 /** Renderer, camera, lights and camera controls. */
 export class Stage {
   renderer: THREE.WebGLRenderer;
   /** scene → ambient occlusion → tone mapping */
   private composer: EffectComposer;
+  private ssr: SSRPass;
+  /** meshes flagged `userData.reflective`, gathered each frame for the reflections */
+  private mirrors: THREE.Mesh[] = [];
   private ao: GTAOPass;
   scene = new THREE.Scene();
   camera: THREE.PerspectiveCamera;
@@ -36,7 +39,7 @@ export class Stage {
     this.renderer.toneMappingExposure = 1.15;
     host.appendChild(this.renderer.domElement);
 
-    // an abstract warm backdrop: the rack is the only subject
+    // an abstract dark, neutral backdrop (the tone of the panels): the rack is the only subject
     this.scene.background = backdropTexture();
     this.scene.fog = new THREE.Fog(HORIZON, 3, 7);
     const pmrem = new THREE.PMREMGenerator(this.renderer);
@@ -60,9 +63,9 @@ export class Stage {
     this.controls.keyPanSpeed = 14;
     this.controls.addEventListener('start', () => { this.swaying = false; });
 
-    // warm key, cool fill: the contrast between the two gives the volumes
-    this.scene.add(new THREE.HemisphereLight('#f4e4d0', '#2a221b', 0.75));
-    this.key = new THREE.DirectionalLight('#ffe0bd', 2.6);
+    // neutral key, cool fill: the cords carry the only strong colours
+    this.scene.add(new THREE.HemisphereLight('#dde4ea', '#16191b', 0.75));
+    this.key = new THREE.DirectionalLight('#f3f4f5', 2.6);
     this.key.position.set(0.6, 2.2, 2.0);
     this.key.castShadow = true;
     this.key.shadow.mapSize.set(2048, 2048);
@@ -70,14 +73,34 @@ export class Stage {
     this.key.shadow.normalBias = 0.01;
     this.key.shadow.radius = 3;
     this.scene.add(this.key, this.key.target);
-    const fill = new THREE.DirectionalLight('#9dbdff', 0.45);
+    const fill = new THREE.DirectionalLight('#a9c4e8', 0.4);
     fill.position.set(-1.5, 0.5, 1.5);
     this.scene.add(fill);
 
     // multisampled target: the composer would otherwise lose the antialiasing
     const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 });
     this.composer = new EffectComposer(this.renderer, target);
-    this.composer.addPass(new RenderPass(this.scene, this.camera));
+    // the scene itself, plus soft screen-space reflections on the floor only
+    this.ssr = new SSRPass({ renderer: this.renderer, scene: this.scene, camera: this.camera, width: 1, height: 1, selects: this.mirrors, groundReflector: null });
+    this.ssr.beautyRenderTarget.samples = 4;
+    // the pass ships a 16-bit depth buffer: the port openings and the unit faces, a few mm apart,
+    // fought in it and flickered from frame to frame
+    this.ssr.beautyRenderTarget.depthTexture!.type = THREE.UnsignedIntType;
+    // half resolution and a short reach (m): a polished-vinyl sheen, not a mirror, at a fraction of the cost
+    this.ssr.resolutionScale = 0.5;
+    this.ssr.opacity = 0.2;
+    this.ssr.maxDistance = 0.5;
+    this.ssr.thickness = 0.02;
+    this.ssr.blur = true;
+    // the reflections are computed at half resolution and blurred: they bled over the edges of
+    // the cords and units, so the overlay is cut by the full-resolution mask of the floor
+    const copy = this.ssr.copyMaterial, ssr = this.ssr;
+    copy.uniforms.tMask = { value: ssr.metalnessRenderTarget.texture };
+    copy.uniforms.masked = { get value() { return copy.uniforms.tDiffuse.value === ssr.blurRenderTarget2.texture ? 1 : 0; } };
+    copy.fragmentShader = copy.fragmentShader
+      .replace('uniform sampler2D tDiffuse;', 'uniform sampler2D tDiffuse;\nuniform sampler2D tMask;\nuniform float masked;')
+      .replace(/}\s*$/, '\tif ( masked > 0.5 ) gl_FragColor.a *= texture2D( tMask, vUv ).r;\n}');
+    this.composer.addPass(this.ssr);
     this.ao = new GTAOPass(this.scene, this.camera, 1, 1);
     // metres: a short reach darkens the corners, the ports and under the cords;
     // longer, a tangle of cords goes muddy and loses its colours
@@ -161,6 +184,13 @@ export class Stage {
       this.controls.target.copy(this.home.target);
     }
     this.controls.update();
+    // same array, refilled: the pass keeps a reference to it
+    this.mirrors.length = 0;
+    this.scene.traverseVisible((o) => { if (o.userData.reflective) this.mirrors.push(o as THREE.Mesh); });
+    // the pass only reads the projection on resize, before the view offset is applied
+    const u = this.ssr.ssrMaterial.uniforms;
+    u.cameraProjectionMatrix.value.copy(this.camera.projectionMatrix);
+    u.cameraInverseProjectionMatrix.value.copy(this.camera.projectionMatrixInverse);
     this.composer.render();
   }
 }
@@ -171,13 +201,13 @@ function backdropTexture(): THREE.CanvasTexture {
   c.width = W; c.height = H;
   const g = c.getContext('2d')!;
   const v = g.createLinearGradient(0, 0, 0, H);
-  v.addColorStop(0, '#120e12');
+  v.addColorStop(0, '#0a0b0c');
   v.addColorStop(0.62, HORIZON);
-  v.addColorStop(1, '#1a1416');
+  v.addColorStop(1, '#101214');
   g.fillStyle = v; g.fillRect(0, 0, W, H);
   const glow = g.createRadialGradient(W / 2, H * 0.55, 0, W / 2, H * 0.55, W * 0.55);
-  glow.addColorStop(0, 'rgba(255,170,120,0.10)');
-  glow.addColorStop(1, 'rgba(255,170,120,0)');
+  glow.addColorStop(0, 'rgba(190,210,225,0.07)');
+  glow.addColorStop(1, 'rgba(190,210,225,0)');
   g.fillStyle = glow; g.fillRect(0, 0, W, H);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
