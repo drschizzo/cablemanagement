@@ -22,6 +22,10 @@ let mode: { dispose(): void } | null = null;
 let sceneToken = 0;
 // ?sync keeps the physics on the main thread (deterministic, for automated checks)
 const syncPhysics = new URLSearchParams(location.search).has('sync');
+// ?seed=N draws the same before/after closet every time (the first one only)
+let showcaseSeed: number | undefined = Number(new URLSearchParams(location.search).get('seed')) || undefined;
+// ?bays=N: how many closets stand side by side in the before/after aisle
+const showcaseBays = Math.max(1, Math.min(16, Number(new URLSearchParams(location.search).get('bays')) || 5));
 
 const hud = new Hud((level) => start(level));
 
@@ -98,7 +102,8 @@ function startShowcase(): void {
     document.body.classList.add('demo');
     const sc = await Showcase.create(stage, !syncPhysics, { play: playNext, tutorial: () => start(TUTORIAL), another: startShowcase }, (f) => {
       veilText.textContent = `Le technicien précédent est passé par là… ${Math.round(f * 100)} %`;
-    });
+    }, showcaseSeed, showcaseBays);
+    showcaseSeed = undefined;
     // overtaken while it was falling: thrown away before it ever showed
     if (token !== sceneToken) { sc.dispose(); return; }
     mode = showcase = sc;

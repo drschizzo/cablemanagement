@@ -19,6 +19,7 @@ import { World, type Evaluation } from '../game/world';
 import { SHOWCASE_SETTLE, showcaseRack, type FibreType } from '../game/levels';
 import { U } from '../game/rack';
 import { resample } from '../game/tidy';
+import { rng } from '../game/tangle';
 import { sfx } from '../audio/sfx';
 
 interface FlightOpts {
@@ -60,13 +61,15 @@ class Bay {
   flight: Flight | null = null;
   private moved: Uint8Array;
 
-  constructor(stage: Stage, state: 'mess' | 'tidy', seed: number) {
+  constructor(stage: Stage, state: 'mess' | 'tidy', seed: number, at: Place) {
     this.world = new World(showcaseRack(state, seed));
     const types = new Map<number, FibreType>();
     this.world.circuits.forEach((c) => types.set(this.world.rack.port(c.a).unit, c.type));
     this.rackView = new RackView(this.world.rack, types, { roomFloor: false });
     this.cableView = new CableView(this.world);
     this.group.add(this.rackView.group, this.cableView.group);
+    this.group.position.set(at.x, 0, at.z);
+    this.group.rotation.y = at.yaw;
     stage.scene.add(this.group);
     this.rackView.syncItems(this.world.itemsVersion);
     this.cableView.update(true);
@@ -179,109 +182,94 @@ class Bay {
   }
 }
 
-export class Showcase {
-  private mess!: Bay;
-  private tidy!: Bay;
-  private messPos!: Float64Array;
-  /** the cords of the mess laid along the tidy routes */
-  private tidyShapes!: Float64Array;
-  private el: HTMLElement;
-  private state: 'before' | 'after' | 'moving' = 'before';
-  private timers: number[] = [];
-  private disposed = false;
-  private last = performance.now();
-  private floor: THREE.Group;
+/** where a closet stands on the floor (m), and which way it faces (rad) */
+interface Place { x: number; z: number; yaw: number }
 
-  /**
-   * Builds a closet at random and lets its mess fall (in the worker), reporting
-   * progress. Nothing shows until start(): the caller may throw it away first.
-   */
-  static async create(stage: Stage, threaded: boolean, actions: { play(): void; tutorial(): void; another(): void }, progress: (f: number) => void, seed = Math.floor(Math.random() * 1e9)): Promise<Showcase> {
-    const sc = new Showcase(stage, actions);
-    sc.mess = new Bay(stage, 'mess', seed);
-    sc.tidy = new Bay(stage, 'tidy', seed);
+/** distance between two neighbouring racks, at their front (m): their side ducts (0.77 m) nearly touch */
+const PITCH = 0.78;
+/** the front of the ducts, ahead of the rails (m) */
+const FRONT = 0.08;
+/** the whole arc of racks, end to end (rad): nearly a half circle */
+const SWEEP = Math.PI * 0.85;
+
+/**
+ * A packed wiring room rather than a showroom line: the racks stand in a half
+ * circle around the viewer, all facing in, each a little out of line (pushed
+ * back or forward, turned, never quite square to its neighbours). Their messes
+ * spill towards the middle and pile up on the floor there.
+ */
+function layout(n: number, seed: number): Place[] {
+  if (n === 1) return [{ x: 0, z: 0, yaw: 0 }];
+  const r = rng(seed ^ 0x5bd1e995);
+  const jitter = (a: number) => (r() * 2 - 1) * a;
+  // a few racks close the half circle, many open it wider
+  const step = SWEEP / Math.max(4, n - 1);
+  // turned towards the middle, they come closer at the front: that is where they must not overlap
+  const radius = PITCH / (2 * Math.sin(step / 2)) + FRONT;
+  const out: Place[] = [];
+  for (let k = 0; k < n; k++) {
+    const a = (k - (n - 1) / 2) * step;
+    // pushed back only: one pulled forward would run its ducts into its neighbours'
+    const rr = radius + 0.015 + jitter(0.015);
+    out.push({ x: Math.sin(a) * rr, z: radius - Math.cos(a) * rr, yaw: -a + jitter(0.025) });
+  }
+  return out;
+}
+
+/** delay between two racks of the aisle, when they are tidied up or messed up (ms) */
+const WAVE = 700;
+
+/** one closet of the aisle: its mess and its tidy self, drawn on the same rack */
+class Closet {
+  mess: Bay;
+  tidy: Bay;
+  messPos!: Float64Array;
+  /** the cords of the mess laid along the tidy routes */
+  tidyShapes!: Float64Array;
+
+  constructor(stage: Stage, seed: number, at: Place, threaded: boolean) {
+    this.mess = new Bay(stage, 'mess', seed, at);
+    this.tidy = new Bay(stage, 'tidy', seed, at);
     // the mess only falls once: a cheap solver will do
-    Object.assign(sc.mess.world.sim.P, SHOWCASE_SETTLE.solver);
-    if (threaded) sc.mess.world.sim.startWorker();
+    Object.assign(this.mess.world.sim.P, SHOWCASE_SETTLE.solver);
+    if (threaded) this.mess.world.sim.startWorker();
     // one rack on screen: the tidy bay draws it with its managers, the mess bay only its cords
-    sc.mess.rackView.group.visible = false;
-    sc.tidy.rackView.itemsGroup.visible = false;
+    this.mess.rackView.group.visible = false;
+    this.tidy.rackView.itemsGroup.visible = false;
     // the tidy closet is shown exactly on its routes: a demonstration, perfect every time
-    const tw = sc.tidy.world;
+    const tw = this.tidy.world;
     tw.sim.hold = true;
     tw.sim.teleport(tw.tidyTargets());
-    sc.tidy.cordsVisible = false;
+    this.tidy.cordsVisible = false;
     // nothing on screen until the mess has fallen: only its end state is shown
-    sc.mess.group.visible = sc.tidy.group.visible = sc.floor.visible = false;
-    const chunks = 5;
+    this.visible = false;
+  }
+
+  set visible(v: boolean) {
+    this.mess.group.visible = this.tidy.group.visible = v;
+  }
+
+  /** lets the mess fall, in `chunks` steps */
+  async settle(chunks: number, step: () => void): Promise<void> {
     for (let i = 0; i < chunks; i++) {
-      await sc.mess.world.sim.settle(Math.ceil(SHOWCASE_SETTLE.frames / chunks));
-      progress((i + 1) / chunks);
+      await this.mess.world.sim.settle(Math.ceil(SHOWCASE_SETTLE.frames / chunks));
+      step();
     }
     // frozen as it fell
-    sc.mess.world.sim.hold = true;
-    sc.messPos = Float64Array.from(sc.mess.world.sim.x);
-    sc.tidyShapes = sc.mess.tidyShapes(tw);
-    sc.mess.cableView.update(true);
-    return sc;
+    this.mess.world.sim.hold = true;
+    this.messPos = Float64Array.from(this.mess.world.sim.x);
+    this.tidyShapes = this.mess.tidyShapes(this.tidy.world);
+    this.mess.cableView.update(true);
   }
 
-  private constructor(private stage: Stage, private actions: { play(): void; tutorial(): void; another(): void }) {
-    this.el = document.getElementById('showcase')!;
-    this.floor = buildRoom(0);
-    stage.scene.add(this.floor);
+  dispose(stage: Stage): void {
+    this.mess.dispose(stage);
+    this.tidy.dispose(stage);
   }
 
-  /** puts the closet on screen: its title, its panel, the camera sway */
-  start(): void {
-    this.mess.group.visible = this.tidy.group.visible = this.floor.visible = true;
-    const r = this.tidy.world.rack;
-    this.floor.position.y = r.floorY;
-    this.stage.frame((r.topY + r.floorY) / 2 + 0.02, r.topY - r.floorY + 0.1, 0.6);
-    document.body.classList.add('demo');
-    document.getElementById('level-title')!.textContent = 'Avant / Après';
-    this.el.classList.add('on');
-    (this.el.querySelector('#sc-play') as HTMLElement).onclick = () => this.actions.play();
-    (this.el.querySelector('#sc-tuto') as HTMLElement).onclick = () => this.actions.tutorial();
-    (this.el.querySelector('#sc-toggle') as HTMLElement).onclick = () => this.toggle();
-    (this.el.querySelector('#sc-new') as HTMLElement).onclick = () => this.actions.another();
-    this.stage.sway(true);
-    this.render(this.mess.world.evaluate());
-    requestAnimationFrame(this.frame);
-  }
-
-  dispose(): void {
-    this.disposed = true;
-    for (const t of this.timers) clearTimeout(t);
-    this.mess?.dispose(this.stage);
-    this.tidy?.dispose(this.stage);
-    this.stage.scene.remove(this.floor);
-    disposeTree(this.floor);
-    this.el.classList.remove('on');
-    document.body.classList.remove('demo');
-    this.stage.sway(false);
-  }
-
-  /** advances by dt and draws (also called by the automated checks) */
   tick(dt: number): void {
     this.mess.tick(dt);
     this.tidy.tick(dt);
-    this.stage.render();
-  }
-
-  private frame = (): void => {
-    if (this.disposed) return;
-    requestAnimationFrame(this.frame);
-    const now = performance.now();
-    const dt = Math.min(0.05, (now - this.last) / 1000);
-    this.last = now;
-    this.tick(dt);
-  };
-
-  private toggle(): void {
-    if (this.state === 'moving') return;
-    if (this.state === 'before') this.tidyUp();
-    else this.messUp();
   }
 
   /** swaps one cord of a bay for the same cord of the other */
@@ -290,11 +278,9 @@ export class Showcase {
     show.cableView.setVisible(c, true);
   }
 
-  private tidyUp(): void {
-    this.state = 'moving';
-    this.render(null);
+  /** the managers and ducts go in, then every cord is pulled out of the heap and dressed into its route */
+  tidyUp(later: (ms: number, f: () => void) => void, sound: boolean, done: () => void): void {
     const w = this.tidy.world;
-    // the managers and ducts go in, then every cord is pulled out of the heap and dressed into its route
     this.tidy.rackView.itemsGroup.visible = true;
     sfx.place();
     for (const cb of w.cables) for (const e of cb.ends) e.label = null;
@@ -314,10 +300,10 @@ export class Showcase {
       land: (c, k) => {
         this.swap(c, this.tidy, this.mess);
         for (const e of w.cables[c].ends) e.label = w.circuits[c].service;
-        if (k % 2 === 0) sfx.land(k);
+        if (sound && k % 2 === 0) sfx.land(k);
       },
       done: () => {
-        this.later(250, () => {
+        later(250, () => {
           // velcro all along the ducts
           const ducts = w.rack.items.filter((it) => it.kind === 'duct' && it.side === 1);
           const top = w.rack.topY - Math.min(...ducts.map((d) => d.unit)) * U;
@@ -327,14 +313,12 @@ export class Showcase {
           }
           sfx.velcro();
         });
-        this.later(1100, () => { this.state = 'after'; this.render(w.evaluate()); sfx.win(); });
+        later(1100, done);
       },
     });
   }
 
-  private messUp(): void {
-    this.state = 'moving';
-    this.render(null);
+  messUp(later: (ms: number, f: () => void) => void, done: () => void): void {
     const tw = this.tidy.world;
     tw.clearStraps();
     for (const cb of tw.cables) for (const e of cb.ends) e.label = null;
@@ -351,9 +335,117 @@ export class Showcase {
       done: () => {
         this.tidy.rackView.itemsGroup.visible = false;
         sfx.remove();
-        this.later(500, () => { this.state = 'before'; this.render(this.mess.world.evaluate()); });
+        later(500, done);
       },
     });
+  }
+}
+
+export class Showcase {
+  private closets: Closet[] = [];
+  private el: HTMLElement;
+  private state: 'before' | 'after' | 'moving' = 'before';
+  private timers: number[] = [];
+  private disposed = false;
+  private last = performance.now();
+  private floor: THREE.Group;
+
+  /**
+   * Builds an aisle of `bays` closets at random and lets their mess fall (each
+   * in its worker), reporting progress. Nothing shows until start(): the caller
+   * may throw it away first.
+   */
+  static async create(stage: Stage, threaded: boolean, actions: { play(): void; tutorial(): void; another(): void }, progress: (f: number) => void, seed = Math.floor(Math.random() * 1e9), bays = 1): Promise<Showcase> {
+    const sc = new Showcase(stage, actions);
+    layout(bays, seed).forEach((at, k) => sc.closets.push(new Closet(stage, seed + k, at, threaded)));
+    sc.floor.visible = false;
+    const chunks = 5;
+    let steps = 0;
+    await Promise.all(sc.closets.map((c) => c.settle(chunks, () => progress(++steps / (chunks * bays)))));
+    return sc;
+  }
+
+  private constructor(private stage: Stage, private actions: { play(): void; tutorial(): void; another(): void }) {
+    this.el = document.getElementById('showcase')!;
+    this.floor = buildRoom(0);
+    stage.scene.add(this.floor);
+  }
+
+  /** puts the aisle on screen: its title, its panel, the camera sway */
+  start(): void {
+    for (const c of this.closets) c.visible = true;
+    this.floor.visible = true;
+    const r = this.closets[0].tidy.world.rack;
+    this.floor.position.y = r.floorY;
+    const n = this.closets.length;
+    // the whole half circle, as close as it fits: the racks at its ends come towards the camera
+    const ends = this.closets.map((c) => c.mess.group.position);
+    const side = Math.max(...ends.map((p) => Math.abs(p.x)));
+    const near = Math.max(...ends.map((p) => p.z));
+    this.stage.frame((r.topY + r.floorY) / 2 + 0.02, r.topY - r.floorY + 0.1, side + (n > 1 ? 0.15 : 0.6), n > 1 ? 0 : 0.03, side + 0.6, near);
+    document.body.classList.add('demo');
+    document.getElementById('level-title')!.textContent = 'Avant / Après';
+    this.el.classList.add('on');
+    (this.el.querySelector('#sc-play') as HTMLElement).onclick = () => this.actions.play();
+    (this.el.querySelector('#sc-tuto') as HTMLElement).onclick = () => this.actions.tutorial();
+    (this.el.querySelector('#sc-toggle') as HTMLElement).onclick = () => this.toggle();
+    (this.el.querySelector('#sc-new') as HTMLElement).onclick = () => this.actions.another();
+    this.stage.sway(true);
+    this.stage.dragPans(true);
+    this.render(this.evaluate('mess'));
+    requestAnimationFrame(this.frame);
+  }
+
+  dispose(): void {
+    this.disposed = true;
+    for (const t of this.timers) clearTimeout(t);
+    for (const c of this.closets) c.dispose(this.stage);
+    this.stage.scene.remove(this.floor);
+    disposeTree(this.floor);
+    this.el.classList.remove('on');
+    document.body.classList.remove('demo');
+    this.stage.sway(false);
+    this.stage.dragPans(false);
+  }
+
+  /** advances by dt and draws (also called by the automated checks) */
+  tick(dt: number): void {
+    for (const c of this.closets) c.tick(dt);
+    this.stage.render();
+  }
+
+  private frame = (): void => {
+    if (this.disposed) return;
+    requestAnimationFrame(this.frame);
+    const now = performance.now();
+    const dt = Math.min(0.05, (now - this.last) / 1000);
+    this.last = now;
+    this.tick(dt);
+  };
+
+  private toggle(): void {
+    if (this.state === 'moving') return;
+    const tidy = this.state === 'before';
+    this.state = 'moving';
+    this.render(null);
+    // a wave down the aisle: left to right to tidy up, back the other way to mess up
+    const order = tidy ? this.closets : [...this.closets].reverse();
+    let left = order.length;
+    const done = () => {
+      if (--left) return;
+      this.state = tidy ? 'after' : 'before';
+      this.render(this.evaluate(tidy ? 'tidy' : 'mess'));
+      if (tidy) sfx.win();
+    };
+    const later = (ms: number, f: () => void) => this.later(ms, f);
+    order.forEach((c, k) => this.later(k * WAVE, () => (tidy ? c.tidyUp(later, k === 0, done) : c.messUp(later, done))));
+  }
+
+  /** the score of the whole aisle, in one state or the other */
+  private evaluate(state: 'mess' | 'tidy'): Evaluation {
+    const evs = this.closets.map((c) => c[state].world.evaluate());
+    const sum = (f: (e: Evaluation) => number) => evs.reduce((a, e) => a + f(e), 0);
+    return { ...evs[0], total: sum((e) => e.total), routed: sum((e) => e.routed), clear: sum((e) => e.clear), labelled: sum((e) => e.labelled), stars: Math.min(...evs.map((e) => e.stars)) };
   }
 
   private later(ms: number, f: () => void): void {
@@ -367,10 +459,13 @@ export class Showcase {
     title.className = this.state;
     title.textContent = this.state === 'before' ? 'AVANT' : this.state === 'after' ? 'APRÈS' : '…';
     btn.disabled = this.state === 'moving';
-    btn.textContent = this.state === 'after' ? '↺ Remettre le désordre' : 'Ranger la baie';
+    const many = this.closets.length > 1;
+    btn.textContent = this.state === 'after' ? '↺ Remettre le désordre' : many ? 'Ranger les baies' : 'Ranger la baie';
+    (this.el.querySelector('#sc-new') as HTMLElement).textContent = many ? '↻ Nouvelles baies' : '↻ Nouvelle baie';
     stats.style.visibility = ev ? 'visible' : 'hidden';
     if (!ev) return;
     const n = ev.total;
-    stats.innerHTML = `<span><b>${n}</b> cordons</span><span>Rangés <b>${ev.routed}/${n}</b></span><span>Façade dégagée <b>${ev.clear}/${n}</b></span><span>Étiquetés <b>${ev.labelled}/${n}</b></span><span class="st">${'★'.repeat(ev.stars)}${'☆'.repeat(3 - ev.stars)}</span>`;
+    const bays = this.closets.length > 1 ? `<span><b>${this.closets.length}</b> baies</span>` : '';
+    stats.innerHTML = `${bays}<span><b>${n}</b> cordons</span><span>Rangés <b>${ev.routed}/${n}</b></span><span>Façade dégagée <b>${ev.clear}/${n}</b></span><span>Étiquetés <b>${ev.labelled}/${n}</b></span><span class="st">${'★'.repeat(ev.stars)}${'☆'.repeat(3 - ev.stars)}</span>`;
   }
 }

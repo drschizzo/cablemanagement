@@ -23,7 +23,7 @@ export class Stage {
   controls: OrbitControls;
   key: THREE.DirectionalLight;
   private home = { pos: new THREE.Vector3(), target: new THREE.Vector3() };
-  private framed = { cy: 0, height: 1, halfWidth: 0.41, cx: 0.03 };
+  private framed = { cy: 0, height: 1, halfWidth: 0.41, cx: 0.03, shadowWidth: 0.41, near: 0 };
   /** screen space taken by the panels (px): the cabinet is framed in the rest */
   insets = { left: 0, right: 0, top: 0, bottom: 0 };
   /** slow sway of the camera around the cabinet (demo), stopped by the player */
@@ -114,20 +114,27 @@ export class Stage {
     this.resize();
   }
 
-  /** frames the cabinet: its centre and height */
-  frame(cy: number, height: number, halfWidth = 0.41, cx = 0.03): void {
-    this.framed = { cy, height, halfWidth, cx };
+  /**
+   * frames the cabinet: its centre and height (and how far around it the shadows
+   * reach, and how far towards the camera its sides come)
+   */
+  frame(cy: number, height: number, halfWidth = 0.41, cx = 0.03, shadowWidth = halfWidth, near = 0): void {
+    this.framed = { cy, height, halfWidth, cx, shadowWidth, near };
     const W = window.innerWidth, H = window.innerHeight;
     const freeW = Math.max(200, W - this.insets.left - this.insets.right);
     const freeH = Math.max(200, H - this.insets.top - this.insets.bottom);
     const tanV = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2));
     // fit the height in the free height, and the cabinet width (0.82 m) in the free width
     const dH = (height * 0.55) / (tanV * (freeH / H));
-    const dW = halfWidth / (tanV * (W / H) * (freeW / W));
+    const dW = halfWidth / (tanV * (W / H) * (freeW / W)) + near;
     const d = Math.max(dH, dW);
     this.home.target.set(cx, cy, 0.02);
     // slightly from above, so that the floor of the cabinet is in view
     const dist = Math.max(1.0, d);
+    // a wide subject (the aisle of the demo) is framed from further than the player may zoom out
+    this.controls.maxDistance = Math.max(9, dist * 1.2);
+    this.camera.far = Math.max(20, dist * 3);
+    this.camera.updateProjectionMatrix();
     // the fog starts behind the subject, wherever the camera stands
     const fog = this.scene.fog as THREE.Fog;
     fog.near = dist + 1.5;
@@ -135,7 +142,7 @@ export class Stage {
     this.home.pos.set(cx, cy + dist * 0.16, dist);
     this.resetView();
     const s = this.key.shadow.camera;
-    const half = Math.max(height * 0.75, halfWidth) + 0.3;
+    const half = Math.max(height * 0.75, shadowWidth) + 0.3;
     s.left = -half; s.right = half; s.top = half; s.bottom = -half;
     s.near = 0.5; s.far = 6;
     s.updateProjectionMatrix();
@@ -166,7 +173,14 @@ export class Stage {
   setInsets(i: { left: number; right: number; top: number; bottom: number }): void {
     this.insets = i;
     this.resize();
-    this.frame(this.framed.cy, this.framed.height, this.framed.halfWidth, this.framed.cx);
+    const f = this.framed;
+    this.frame(f.cy, f.height, f.halfWidth, f.cx, f.shadowWidth, f.near);
+  }
+
+  /** a left drag in the scene pans the view (the demo, where it grabs nothing) */
+  dragPans(on: boolean): void {
+    this.controls.mouseButtons.LEFT = on ? THREE.MOUSE.PAN : (null as unknown as THREE.MOUSE);
+    this.renderer.domElement.style.cursor = on ? 'grab' : 'default';
   }
 
   sway(on: boolean): void {
