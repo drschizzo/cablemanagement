@@ -1,6 +1,7 @@
 {
   "name": "cable-management",
   "private": true,
+  "license": "MIT",
   "version": "0.1.0",
   "type": "module",
   "description": "Baie de brassage : jeu de cable management en 3D (three.js), moteur de câbles AVBD dans un Web Worker",

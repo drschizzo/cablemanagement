@@ -9,7 +9,12 @@ un vrai chantier.
 Les câbles sont simulés physiquement : ils ont un poids, frottent les uns sur
 les autres, s'empilent et se coincent dans les guide-câbles.
 
-## Lancer le jeu
+**[Jouer en ligne](https://drschizzo.github.io/cablemanagement/)**, sans rien
+installer (un navigateur récent avec WebGL 2 suffit).
+
+![L'écran titre : une salle de baies en désordre, avec le bouton avant / après](docs/accueil.jpg)
+
+## Lancer le jeu en local
 
 Il faut Node.js 20 ou plus récent.
 
@@ -22,7 +27,8 @@ npm run dev
 ```
 
 Le jeu s'ouvre sur http://localhost:5173, sur l'**écran titre** : une salle de
-baies en désordre (l'**avant**), qu'un bouton range toute seule (l'**après**).
+baies en désordre (l'**avant**), qu'un interrupteur **Avant / Après** range
+toute seule.
 De là, **Commencer** lance le **tutoriel**, qui explique chaque outil pas à pas,
 puis le premier niveau ; ensuite, le même bouton reprend là où on s'était arrêté.
 
@@ -95,21 +101,20 @@ La **partie libre** génère une baie au hasard, de 4 à 48 câbles.
 
 ### Les outils
 
-On les choisit dans la barre d'outils ou au clavier. Ils suivent l'ordre d'une
-vraie remise en ordre de baie.
+On les choisit dans la barre d'outils ou au clavier.
 
 | Touche | Outil | Usage |
 |---|---|---|
 | 1 | Main | saisir, tirer, brancher, débrancher |
-| 8 | Traceur | fait clignoter un câble et montre ses deux ports, pour l'identifier |
-| 6 | Étiquette | en mode A (auto), étiquette les deux bouts d'un cordon bien branché à la couleur de son service ; sinon un bout à la couleur choisie |
-| 9 | Déposer | débranche un câble, l'enroule et le jette dans le bac au pied de la baie |
 | 2 | Guide-câbles 1U | barre horizontale à doigts, entre deux équipements |
 | 3 | Goulotte | conduit vertical sur le côté de la baie |
 | 4 | Anneau | petit passe-câble |
-| 7 | Longueur | remplace un câble par un cordon plus court ou plus long, sans le débrancher ; « Ajuster au rangement » propose la longueur de sa route rangée |
-| 0 | Stock | prend un cordon neuf (type, couleur, longueur), livré dans le bac |
 | 5 | Velcro | attache ensemble les câbles d'un faisceau |
+| 6 | Étiquette | en mode A (auto), étiquette les deux bouts d'un cordon bien branché à la couleur de son service ; sinon un bout à la couleur choisie |
+| 7 | Longueur | remplace un câble par un cordon plus court ou plus long, sans le débrancher ; « Ajuster au rangement » propose la longueur de sa route rangée |
+| 8 | Traceur | fait clignoter un câble et montre ses deux ports, pour l'identifier |
+| 9 | Déposer | débranche un câble, l'enroule et le jette dans le bac au pied de la baie |
+| 0 | Stock | prend un cordon neuf (type, couleur, longueur), livré dans le bac |
 
 Pour faire entrer un câble dans un guide-câbles ou une goulotte, on le tient à
 la main et on le pousse dedans : il y reste une fois lâché. Pendant qu'on le
@@ -140,7 +145,7 @@ niveau, un outil ou un critère de score.
 | Commande | Rôle |
 |---|---|
 | `npm run dev` | serveur de développement |
-| `npm run build` | version de production dans `dist/` |
+| `npm run build` | version de production dans `dist/` (publiée sur GitHub Pages à chaque push sur `main`) |
 | `npm run check` | lint, types et tests, à lancer avant de pousser |
 | `npm run solvable` | vérifie que chaque niveau peut atteindre 3 étoiles, avec son seul inventaire |
 | `npm run bench` | performance et stabilité du moteur physique |
@@ -161,3 +166,7 @@ main et le velcro comme des énergies. Les câbles immobiles se mettent en
 veille pour que les grosses baies restent fluides. Le moteur tourne dans un
 Web Worker (`sim.worker.ts`, piloté par `threadedSim.ts`) : l'affichage
 n'attend jamais la physique.
+
+## Licence
+
+[MIT](LICENSE).
