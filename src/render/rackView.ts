@@ -480,7 +480,32 @@ function crateWall(w: number, h: number, t: number): THREE.BufferGeometry {
   const bev = 0.0018;
   const g = new THREE.ExtrudeGeometry(s, { depth: t - 2 * bev, bevelEnabled: true, bevelThickness: bev, bevelSize: bev, bevelOffset: -bev, bevelSegments: 2, curveSegments: 6 });
   g.translate(0, 0, -(t - 2 * bev) / 2);
-  return g;
+  return dropDegenerate(g);
+}
+
+/**
+ * Removes the triangles of no area from a non-indexed geometry. The bevel of an
+ * extrusion leaves some where a rounded end turns back on itself (the ends of
+ * the vent slots): their normal is zero, which the shader normalises into NaN,
+ * and the bloom spread that one pixel over the whole screen (the image went
+ * black at some distances).
+ */
+function dropDegenerate(g: THREE.BufferGeometry): THREE.BufferGeometry {
+  const n = g.attributes.normal, keep: number[] = [];
+  for (let t = 0; t < n.count; t += 3) {
+    let ok = true;
+    for (let v = t; v < t + 3; v++) if (!(Math.hypot(n.getX(v), n.getY(v), n.getZ(v)) > 1e-4)) ok = false;
+    if (ok) keep.push(t);
+  }
+  if (keep.length * 3 === n.count) return g;
+  const out = new THREE.BufferGeometry();
+  for (const [name, a] of Object.entries(g.attributes)) {
+    const arr = new (a.array.constructor as Float32ArrayConstructor)(keep.length * 3 * a.itemSize);
+    keep.forEach((t, k) => arr.set(a.array.subarray(t * a.itemSize, (t + 3) * a.itemSize) as Float32Array, k * 3 * a.itemSize));
+    out.setAttribute(name, new THREE.BufferAttribute(arr, a.itemSize));
+  }
+  g.dispose();
+  return out;
 }
 
 /** an abstract stage around the rack: a floor lit in a pool under it, fading into the backdrop */
