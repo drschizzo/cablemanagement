@@ -28,14 +28,17 @@ const mat = {
   ductBack: new THREE.MeshStandardMaterial({ color: '#2f2e31', roughness: 0.8 }),
   mgrPlate: new THREE.MeshStandardMaterial({ color: '#19181b', roughness: 0.55, metalness: 0.3 }),
   copperFace: new THREE.MeshStandardMaterial({ color: '#1e1d20', roughness: 0.5, metalness: 0.5 }),
-  keystone: new THREE.MeshStandardMaterial({ color: '#f1efea', roughness: 0.4 }),
+  // a shade off white and matt: under the lamp, a brighter one passed the threshold of the bloom
+  keystone: new THREE.MeshStandardMaterial({ color: '#dcd9d2', roughness: 0.65 }),
   firewall: new THREE.MeshStandardMaterial({ color: '#7a2020', roughness: 0.45, metalness: 0.5 }),
   router: new THREE.MeshStandardMaterial({ color: '#173c6e', roughness: 0.45, metalness: 0.5 }),
   ups: new THREE.MeshStandardMaterial({ color: '#2d2c30', roughness: 0.55, metalness: 0.4 }),
   crate: new THREE.MeshStandardMaterial({ color: '#2c2f32', roughness: 0.6, metalness: 0.0 }),
-  // the light strip passes the bloom threshold (see leds.ts); the screen, a large surface, stays
-  // just below it: it would have spread into a blot
-  strip: new THREE.MeshStandardMaterial({ color: '#fff1dc', emissive: '#ffd7a3', emissiveIntensity: 5 }),
+  // the core of the lamp passes the bloom threshold (see leds.ts); its lens and the screen, larger
+  // surfaces, stay just below it: they would have spread into a blot
+  core: new THREE.MeshStandardMaterial({ color: '#fff1dc', emissive: '#ffd7a3', emissiveIntensity: 5 }),
+  // the diffuser of the cabinet's lamp: bright, but under the threshold, like the screen
+  lens: new THREE.MeshStandardMaterial({ color: '#fff6ea', emissive: '#ffe2bd', emissiveIntensity: 1.8, roughness: 0.9 }),
   lcd: new THREE.MeshStandardMaterial({ color: '#0a1a14', emissive: '#3ff0a8', emissiveIntensity: 3 }),
 };
 
@@ -133,10 +136,18 @@ export class RackView {
     this.add(rbox(0.86, 0.035, 0.5 + FRONT_Z + 0.006, 0.008), mat.wall, 0, roofY + 0.0175, (FRONT_Z + 0.006 - 0.5) / 2);
     // front cross bar under the roof, carrying the name plate
     this.add(rbox(WALL_X * 2 - 0.02, 0.055, 0.032, 0.006), mat.frame, 0, roofY - 0.0275, FRONT_Z - 0.014);
-    // warm LED strip under the roof, behind the cross bar
-    this.add(rbox(0.6, 0.006, 0.012, 0.003), mat.strip, 0, roofY - 0.004, FRONT_Z - 0.05, false);
+    // the lamp is one spot, which lights a round pool in the middle: a round downlight under the
+    // middle of the cross bar, where it shines from (a bar the width of the cabinet promised an even light)
+    const lampY = roofY - 0.055 - 0.008, lampZ = FRONT_Z - 0.02;
+    this.add(new THREE.CylinderGeometry(0.03, 0.032, 0.008, 32), mat.frame, 0, lampY + 0.004, lampZ, false);
+    // its lens, a shallow dome: seen from the front it stays an oval a few pixels tall, and lit below
+    // the bloom (a thin lens over the threshold flashed from a line to a blot as the camera moved)
+    const lens = this.add(new THREE.SphereGeometry(0.024, 32, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), mat.lens, 0, lampY, lampZ, false);
+    lens.scale.y = 0.4;
+    // the bulb behind it, peeking out of its middle: the only part that glows, a little
+    this.add(new THREE.SphereGeometry(0.011, 24, 6, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), mat.core, 0, lampY, lampZ, false);
     const lamp = new THREE.SpotLight('#ffd2a1', 1.4, 0, 1.15, 1, 2);
-    lamp.position.set(0, roofY - 0.01, FRONT_Z - 0.06);
+    lamp.position.set(0, lampY - 0.006, lampZ);
     lamp.target.position.set(0, bot, 0.02);
     this.group.add(lamp, lamp.target);
     // low lip at the front of the floor (no front bar: it hid the floor)

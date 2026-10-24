@@ -76,7 +76,7 @@ export class Stage {
     // neutral key, cool fill: the cords carry the only strong colours
     this.scene.add(new THREE.HemisphereLight('#dde4ea', '#16191b', 0.75));
     this.key = new THREE.DirectionalLight('#f3f4f5', 2.6);
-    this.key.position.set(0.6, 2.2, 2.0);
+    this.key.position.set(0, 2.2, 2.0);
     this.key.castShadow = true;
     this.key.shadow.mapSize.set(2048, 2048);
     this.key.shadow.bias = -0.0004;
@@ -167,7 +167,8 @@ export class Stage {
     s.near = 0.5; s.far = 6;
     s.updateProjectionMatrix();
     this.key.target.position.set(0, cy, 0);
-    this.key.position.set(0.6, cy + 2.0, 2.0);
+    // straight above the cabinets, in front: their shadows fall under them, as from the lamp under their roof
+    this.key.position.set(0, cy + 2.0, 2.0);
   }
 
   resetView(): void {
