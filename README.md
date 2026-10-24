@@ -140,6 +140,10 @@ tourne dans le navigateur.
 le sens des dépendances entre ces dossiers et où intervenir pour ajouter un
 niveau, un outil ou un critère de score.
 
+[`docs/anatomie-d-une-frame.md`](docs/anatomie-d-une-frame.md) suit une frame
+de bout en bout, avec schémas et captures : la boucle de jeu, le moteur
+physique des câbles, la préparation de la scène et le pipeline de rendu.
+
 ### Commandes utiles
 
 | Commande | Rôle |
