@@ -20,6 +20,7 @@ export const SEG = 0.025; // cable segment length
 export const FRONT_Z = 0.25; // front edge of the cabinet
 export const ROOM_FLOOR = (r: { floorY: number }) => r.floorY - 0.03;
 export const CABLE_R = 0.0022; // 3 mm jacket, a bit thicker for legibility
+export const HMGR_TIP = 0.026; // upturned tips of the manager fingers: up to a cord's width under the top row
 
 export type UnitKind = 'panel' | 'switch' | 'hmgr' | 'blank' | 'server';
 
@@ -211,11 +212,17 @@ export class Rack {
       // rests on the bottom fingers, kept in by their upturned tips (which
       // the hand can push a cord through)
       const y0 = this.unitBottom(it.unit) + 0.004, y1 = this.unitBottom(it.unit) + U - 0.004;
-      for (const x of hmgrFingers()) {
+      const xs = hmgrFingers();
+      for (const x of xs) {
         S.push(cap(x, y0, 0.004, x, y0, RING_DEPTH, r, it.id));
-        S.push({ ...cap(x, y0, RING_DEPTH, x, y0 + 0.02, RING_DEPTH, r, it.id), gate: true });
+        S.push({ ...cap(x, y0, RING_DEPTH, x, y0 + HMGR_TIP, RING_DEPTH, r, it.id), gate: true });
         S.push(cap(x, y1, 0.004, x, y1, RING_DEPTH, r, it.id));
       }
+      // the slots between the bottom fingers are a gate: the hand threads a
+      // cord down through one, but a cord left in the channel does not slip
+      // through them on its own (its hanging tail used to drag it out), and
+      // one already passing through stays there
+      S.push({ kind: 'box', min: [xs[0], y0 - r, 0.004], max: [xs[xs.length - 1], y0 + r, RING_DEPTH], gate: true, hidden: true, owner: it.id });
     } else if (it.kind === 'vring') {
       const y = this.unitY(it.unit);
       const s = it.side;

@@ -41,6 +41,8 @@ export interface StaticBox {
   min: [number, number, number];
   max: [number, number, number];
   gate?: boolean;
+  /** collides but is not drawn (the slots of a manager) */
+  hidden?: boolean;
   owner?: number;
   mu?: number;
 }
@@ -255,7 +257,8 @@ export class CableSim {
     this.bendK = new Float64Array(N);
     this.radius = new Float64Array(N);
     this.gateFree = new Uint8Array(N);
-    this.gateHold = new Uint8Array(N);
+    // a cord laid across a gate from the start passes through it until clear
+    this.gateHold = new Uint8Array(N).fill(1);
     this.gateAcross = new Uint8Array(N);
     this.bundleOf = new Int32Array(N).fill(-1);
     this.adjStart = new Int32Array(N + 1);
