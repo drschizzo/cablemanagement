@@ -18,6 +18,7 @@ src/
     controller.ts   une partie en cours : boucle, saisie, outils (relie world, render et les événements de l'interface)
   render/    three.js : scène et post-traitement, baie, câbles (tubes lissés), connecteurs
     dispose.ts      libération des ressources GPU (shared() marque ce qui sert à tous les niveaux)
+    batch.ts        moins d'appels de dessin : pièces fixes fusionnées par matériau, pièces répétées instanciées
   ui/        interface HTML : HUD (plan, outils, menus), tutoriel, vitrine avant / après
   audio/     effets sonores synthétisés
   storage.ts données gardées dans le navigateur (clés, valeurs par défaut, validation)

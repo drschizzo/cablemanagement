@@ -3,6 +3,7 @@ import type { World } from '../game/world';
 import { CONNECTOR } from '../game/rack';
 import { SERVICES } from '../game/levels';
 import { shared } from './dispose';
+import { tintable } from './batch';
 
 const RADIAL = 8;
 const SUB = 2; // samples per segment (Catmull-Rom in between)
@@ -10,20 +11,13 @@ const SUB = 2; // samples per segment (Catmull-Rom in between)
 export const FIBRE_COLORS = { OS2: '#f2c12e', OM4: '#3cc9cf', CU: '#3d7fe0' } as const;
 
 interface CableMesh {
-  mesh: THREE.Mesh;
-  mat: THREE.MeshStandardMaterial;
-  pos: Float32Array;
-  nrm: Float32Array;
+  /** first vertex of the cord in the shared tube buffers */
+  v0: number;
   samples: number;
-  ends: EndMesh[];
   visible: boolean;
   lastSig: number;
-}
-
-interface EndMesh {
-  group: THREE.Group;
-  label: THREE.Mesh;
-  labelMat: THREE.MeshStandardMaterial;
+  /** linear colour of the cord (its boots too) */
+  color: THREE.Color;
 }
 
 /** connector meshes: an LC plug for fibre, a clear RJ45 plug for copper */
@@ -40,59 +34,113 @@ function connectorGeos(radius: number, copper: boolean) {
   return { housing, latch, boot, label };
 }
 
-const strapGeo = shared(new THREE.TorusGeometry(1, 0.22, 8, 20));
+/** the parts of one kind of connector, each instanced over every end of the cords (2c + e) */
+interface Plugs {
+  housing: THREE.InstancedMesh;
+  latch: THREE.InstancedMesh;
+  boot: THREE.InstancedMesh;
+  label: THREE.InstancedMesh;
+  /** glow of the boots, with their cord */
+  tint: THREE.InstancedBufferAttribute;
+}
 
+const strapGeo = shared(new THREE.TorusGeometry(1, 0.22, 8, 20));
+const Z = new THREE.Vector3(0, 0, 1);
+const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
+const HOUSING = { OS2: new THREE.Color('#2d6fd8'), OM4: new THREE.Color('#d9cfa3') };
+
+/**
+ * Every cord of a world drawn in one mesh (their tubes share one buffer, coloured
+ * per vertex), and their connectors in a handful of instanced meshes.
+ */
 export class CableView {
   group = new THREE.Group();
   cables: CableMesh[] = [];
-  straps = new THREE.Group();
-  private housingSM = new THREE.MeshStandardMaterial({ color: '#2d6fd8', roughness: 0.4 });
-  private housingMM = new THREE.MeshStandardMaterial({ color: '#d9cfa3', roughness: 0.4 });
-  private housingCU = new THREE.MeshPhysicalMaterial({ color: '#e8f0f4', roughness: 0.15, transmission: 0.6, thickness: 0.004, transparent: true, opacity: 0.85 });
+  private tube: THREE.Mesh;
+  private pos: Float32Array;
+  private nrm: Float32Array;
+  private tint: Float32Array;
+  private plugs: { fibre: Plugs; copper: Plugs };
+  private straps: THREE.InstancedMesh | null = null;
   private strapMat = new THREE.MeshStandardMaterial({ color: '#1b2a4a', roughness: 0.9 });
   private tmp = new THREE.Vector3();
+  private q = new THREE.Quaternion();
+  private m4 = new THREE.Matrix4();
+  private one = new THREE.Vector3(1, 1, 1);
+  private col = new THREE.Color();
+  private tubeDirty = false;
 
   constructor(private world: World) {
-    this.group.add(this.straps);
-    const geos = { fibre: connectorGeos(world.radius, false), copper: connectorGeos(world.radius, true) };
+    let verts = 0;
     world.cables.forEach((cb) => {
       const samples = (cb.count - 1) * SUB + 1;
-      const geo = new THREE.BufferGeometry();
-      const pos = new Float32Array(samples * RADIAL * 3);
-      const nrm = new Float32Array(samples * RADIAL * 3);
-      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage));
-      geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3).setUsage(THREE.DynamicDrawUsage));
-      const idx: number[] = [];
-      for (let s = 0; s < samples - 1; s++) {
+      this.cables.push({ v0: verts, samples, visible: true, lastSig: NaN, color: new THREE.Color(cb.color ?? FIBRE_COLORS[cb.type]) });
+      verts += samples * RADIAL;
+    });
+    this.pos = new Float32Array(verts * 3);
+    this.nrm = new Float32Array(verts * 3);
+    this.tint = new Float32Array(verts * 3);
+    const colors = new Float32Array(verts * 3);
+    const idx: number[] = [];
+    for (const cm of this.cables) {
+      for (let v = cm.v0; v < cm.v0 + cm.samples * RADIAL; v++) cm.color.toArray(colors, 3 * v);
+      for (let s = 0; s < cm.samples - 1; s++) {
         for (let r = 0; r < RADIAL; r++) {
-          const a = s * RADIAL + r, b = s * RADIAL + ((r + 1) % RADIAL);
+          const a = cm.v0 + s * RADIAL + r, b = cm.v0 + s * RADIAL + ((r + 1) % RADIAL);
           const c = a + RADIAL, d = b + RADIAL;
           idx.push(a, c, b, b, c, d);
         }
       }
-      geo.setIndex(idx);
-      const mat = new THREE.MeshStandardMaterial({ color: cb.color ?? FIBRE_COLORS[cb.type], roughness: 0.42, metalness: 0.0 });
-      const g = cb.type === 'CU' ? geos.copper : geos.fibre;
-      const hmat = cb.type === 'CU' ? this.housingCU : cb.type === 'OS2' ? this.housingSM : this.housingMM;
-      const mesh = new THREE.Mesh(geo, mat);
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      mesh.frustumCulled = false;
-      this.group.add(mesh);
-      const ends: EndMesh[] = [0, 1].map(() => {
-        const group = new THREE.Group();
-        const housing = new THREE.Mesh(g.housing, hmat);
-        const latch = new THREE.Mesh(g.latch, hmat);
-        const boot = new THREE.Mesh(g.boot, mat);
-        const labelMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.6 });
-        const label = new THREE.Mesh(g.label, labelMat);
-        label.visible = false;
-        for (const m of [housing, latch, boot, label]) { m.castShadow = true; group.add(m); }
-        this.group.add(group);
-        return { group, label, labelMat };
-      });
-      this.cables.push({ mesh, mat, pos, nrm, samples, ends, visible: true, lastSig: NaN });
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(this.pos, 3).setUsage(THREE.DynamicDrawUsage));
+    geo.setAttribute('normal', new THREE.BufferAttribute(this.nrm, 3).setUsage(THREE.DynamicDrawUsage));
+    geo.setAttribute('emissiveTint', new THREE.BufferAttribute(this.tint, 3).setUsage(THREE.DynamicDrawUsage));
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geo.setIndex(idx);
+    this.tube = new THREE.Mesh(geo, tintable(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, metalness: 0.0 })));
+    this.tube.castShadow = true;
+    this.tube.receiveShadow = true;
+    this.tube.frustumCulled = false;
+    this.group.add(this.tube);
+
+    const n = 2 * world.cables.length;
+    const make = (copper: boolean, housingMat: THREE.Material): Plugs => {
+      const g = connectorGeos(world.radius, copper);
+      const tint = new THREE.InstancedBufferAttribute(new Float32Array(3 * n), 3).setUsage(THREE.DynamicDrawUsage);
+      g.boot.setAttribute('emissiveTint', tint);
+      const inst = (geo: THREE.BufferGeometry, m: THREE.Material) => {
+        const im = new THREE.InstancedMesh(geo, m, n);
+        im.castShadow = true;
+        im.frustumCulled = false;
+        im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        for (let i = 0; i < n; i++) { im.setMatrixAt(i, ZERO); im.setColorAt(i, this.col.set('#ffffff')); }
+        this.group.add(im);
+        return im;
+      };
+      return {
+        housing: inst(g.housing, housingMat),
+        latch: inst(g.latch, housingMat),
+        boot: inst(g.boot, tintable(new THREE.MeshStandardMaterial({ roughness: 0.42 }))),
+        label: inst(g.label, new THREE.MeshStandardMaterial({ roughness: 0.6 })),
+        tint,
+      };
+    };
+    this.plugs = {
+      fibre: make(false, new THREE.MeshStandardMaterial({ roughness: 0.4 })),
+      copper: make(true, new THREE.MeshPhysicalMaterial({ color: '#e8f0f4', roughness: 0.15, transmission: 0.6, thickness: 0.004, transparent: true, opacity: 0.85 })),
+    };
+    world.cables.forEach((cb, c) => {
+      const p = this.plugOf(c);
+      for (const e of [0, 1]) {
+        p.boot.setColorAt(2 * c + e, this.cables[c].color);
+        if (cb.type !== 'CU') { p.housing.setColorAt(2 * c + e, HOUSING[cb.type]); p.latch.setColorAt(2 * c + e, HOUSING[cb.type]); }
+      }
     });
+  }
+
+  private plugOf(c: number): Plugs {
+    return this.world.cables[c].type === 'CU' ? this.plugs.copper : this.plugs.fibre;
   }
 
   /** `force`: rebuild every cord, or only those it picks (scripted motion) */
@@ -118,17 +166,25 @@ export class CableView {
       this.buildTube(c);
       this.updateEnds(c);
     });
-    // velcro straps
-    while (this.straps.children.length < this.world.straps.length) {
-      const m = new THREE.Mesh(strapGeo, this.strapMat);
-      m.castShadow = true;
-      this.straps.add(m);
+    this.flush();
+    this.updateStraps();
+  }
+
+  /** velcro straps */
+  private updateStraps(): void {
+    const sim = this.world.sim, x = sim.x;
+    const list = this.world.straps;
+    if (list.length > (this.straps?.instanceMatrix.count ?? 0)) {
+      if (this.straps) { this.group.remove(this.straps); this.straps.dispose(); }
+      this.straps = new THREE.InstancedMesh(strapGeo, this.strapMat, Math.max(16, 2 * list.length));
+      this.straps.castShadow = true;
+      this.straps.frustumCulled = false;
+      this.group.add(this.straps);
     }
-    while (this.straps.children.length > this.world.straps.length) this.straps.remove(this.straps.children[this.straps.children.length - 1]);
-    this.world.straps.forEach((s, k) => {
-      const m = this.straps.children[k] as THREE.Mesh;
+    if (!this.straps) return;
+    this.straps.count = list.length;
+    list.forEach((s, k) => {
       const [cx, cy, cz] = this.world.strapCentre(s);
-      m.position.set(cx, cy, cz);
       // orient the loop around the mean direction of the cords
       let dx = 0, dy = 0, dz = 0;
       for (const i of s.nodes) {
@@ -138,43 +194,81 @@ export class CableView {
         if (ex * dx + ey * dy + ez * dz < 0) { ex = -ex; ey = -ey; ez = -ez; }
         dx += ex; dy += ey; dz += ez;
       }
-      this.tmp.set(dx, dy, dz).normalize();
-      m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), this.tmp);
+      this.q.setFromUnitVectors(Z, this.tmp.set(dx, dy, dz).normalize());
       const r = sim.bundles[s.bundle].r + 0.0025;
-      m.scale.set(r, r, r * 1.8);
+      this.m4.compose(this.tmp.set(cx, cy, cz), this.q, new THREE.Vector3(r, r, r * 1.8));
+      this.straps!.setMatrixAt(k, this.m4);
     });
+    this.straps.instanceMatrix.needsUpdate = true;
   }
 
   /** shows or hides one cord with its connectors */
   setVisible(c: number, on: boolean): void {
     const cm = this.cables[c];
     cm.visible = on;
-    cm.mesh.visible = on;
-    for (const e of cm.ends) e.group.visible = on;
     if (on) { this.buildTube(c); this.updateEnds(c); }
+    else {
+      // every vertex of the tube on one point: nothing left to draw
+      this.pos.fill(0, 3 * cm.v0, 3 * (cm.v0 + cm.samples * RADIAL));
+      this.dirty(cm);
+      const p = this.plugOf(c);
+      for (const e of [0, 1]) for (const im of [p.housing, p.latch, p.boot, p.label]) im.setMatrixAt(2 * c + e, ZERO);
+    }
+    this.flush();
   }
 
   setHighlight(c: number, on: boolean, color = '#3a3a3a'): void {
     const cm = this.cables[c];
     if (!cm) return;
-    cm.mat.emissive.set(on ? color : '#000000');
+    this.col.set(on ? color : '#000000');
+    for (let v = cm.v0; v < cm.v0 + cm.samples * RADIAL; v++) this.col.toArray(this.tint, 3 * v);
+    const a = this.tube.geometry.attributes.emissiveTint as THREE.BufferAttribute;
+    a.addUpdateRange(3 * cm.v0, 3 * cm.samples * RADIAL);
+    a.needsUpdate = true;
+    const p = this.plugOf(c);
+    for (const e of [0, 1]) this.col.toArray(p.tint.array, 3 * (2 * c + e));
+    p.tint.needsUpdate = true;
+  }
+
+  private dirty(cm: CableMesh): void {
+    const geo = this.tube.geometry;
+    for (const n of ['position', 'normal']) (geo.attributes[n] as THREE.BufferAttribute).addUpdateRange(3 * cm.v0, 3 * cm.samples * RADIAL);
+    this.tubeDirty = true;
+  }
+
+  /** sends what changed this frame to the GPU */
+  private flush(): void {
+    if (this.tubeDirty) {
+      this.tube.geometry.attributes.position.needsUpdate = true;
+      this.tube.geometry.attributes.normal.needsUpdate = true;
+      this.tubeDirty = false;
+    }
+    for (const p of [this.plugs.fibre, this.plugs.copper]) {
+      for (const im of [p.housing, p.latch, p.boot, p.label]) {
+        im.instanceMatrix.needsUpdate = true;
+        im.instanceColor!.needsUpdate = true;
+      }
+    }
   }
 
   private updateEnds(c: number): void {
     const cb = this.world.cables[c];
-    const cm = this.cables[c];
     const x = this.world.sim.x;
+    const p = this.plugOf(c);
     for (const e of [0, 1]) {
       const [n0, n1] = this.world.endNodes(c, e);
-      const g = cm.ends[e].group;
-      g.position.set(x[3 * n0], x[3 * n0 + 1], x[3 * n0 + 2]);
       this.tmp.set(x[3 * n0] - x[3 * n1], x[3 * n0 + 1] - x[3 * n1 + 1], x[3 * n0 + 2] - x[3 * n1 + 2]).normalize();
       // plugged: the connector points straight into the port (−z)
       if (cb.ends[e].port) this.tmp.set(0, 0, -1);
-      g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), this.tmp);
+      this.q.setFromUnitVectors(Z, this.tmp);
+      this.m4.compose(this.tmp.set(x[3 * n0], x[3 * n0 + 1], x[3 * n0 + 2]), this.q, this.one);
+      const i = 2 * c + e;
+      p.housing.setMatrixAt(i, this.m4);
+      p.latch.setMatrixAt(i, this.m4);
+      p.boot.setMatrixAt(i, this.m4);
       const label = cb.ends[e].label;
-      cm.ends[e].label.visible = label !== null;
-      if (label !== null) cm.ends[e].labelMat.color.set(SERVICES[label].color);
+      if (label === null) p.label.setMatrixAt(i, ZERO);
+      else { p.label.setMatrixAt(i, this.m4); p.label.setColorAt(i, this.col.set(SERVICES[label].color)); }
     }
   }
 
@@ -184,6 +278,7 @@ export class CableView {
     const cm = this.cables[c];
     const x = this.world.sim.x;
     const n = cb.count;
+    const V = cm.v0;
     const S = cm.samples;
     const pts = sampleBuf.length >= S * 3 ? sampleBuf : (sampleBuf = new Float64Array(S * 3 * 2));
     let k = 0;
@@ -201,7 +296,7 @@ export class CableView {
     for (let d = 0; d < 3; d++) pts[k * 3 + d] = x[3 * (cb.start + n - 1) + d];
     // frames
     let nx = 0, ny = 0, nz = 0;
-    const pos = cm.pos, nrm = cm.nrm;
+    const pos = this.pos, nrm = this.nrm;
     const R = this.world.radius;
     for (let s = 0; s < S; s++) {
       const a = Math.max(0, s - 1), b = Math.min(S - 1, s + 1);
@@ -223,14 +318,12 @@ export class CableView {
         const ang = (r / RADIAL) * Math.PI * 2;
         const ca = Math.cos(ang), sa = Math.sin(ang);
         const ox = nx * ca + bx * sa, oy = ny * ca + by * sa, oz = nz * ca + bz * sa;
-        const o = (s * RADIAL + r) * 3;
+        const o = (V + s * RADIAL + r) * 3;
         pos[o] = pts[3 * s] + ox * R; pos[o + 1] = pts[3 * s + 1] + oy * R; pos[o + 2] = pts[3 * s + 2] + oz * R;
         nrm[o] = ox; nrm[o + 1] = oy; nrm[o + 2] = oz;
       }
     }
-    const geo = cm.mesh.geometry;
-    geo.attributes.position.needsUpdate = true;
-    geo.attributes.normal.needsUpdate = true;
+    this.dirty(cm);
   }
 }
 

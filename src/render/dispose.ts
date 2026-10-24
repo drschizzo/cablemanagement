@@ -26,6 +26,8 @@ export function disposeTree(root: THREE.Object3D): void {
   const done = new Set<Resource>();
   root.traverse((o) => {
     const m = o as THREE.Mesh;
+    // the per-instance buffers of an instanced mesh
+    if ((o as THREE.InstancedMesh).isInstancedMesh) (o as THREE.InstancedMesh).dispose();
     if (m.geometry) free(m.geometry, done);
     if (!m.material) return;
     for (const mat of Array.isArray(m.material) ? m.material : [m.material]) {

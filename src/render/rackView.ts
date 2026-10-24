@@ -4,6 +4,7 @@ import { COLUMN_X, FRONT_Z, Rack, SIDE_BACK, SIDE_IN, SIDE_OUT, U, WALL_X, type 
 import type { StaticShape } from '../physics/cableSim';
 import type { FibreType } from '../game/levels';
 import { disposeTree, shared } from './dispose';
+import { mergeStatic, tintable } from './batch';
 
 // warm graphite powder-coat rather than blue-grey steel
 const mat = {
@@ -30,6 +31,7 @@ const mat = {
   ups: new THREE.MeshStandardMaterial({ color: '#2d2c30', roughness: 0.55, metalness: 0.4 }),
   crate: new THREE.MeshStandardMaterial({ color: '#2c2f32', roughness: 0.6, metalness: 0.0 }),
   strip: new THREE.MeshStandardMaterial({ color: '#fff1dc', emissive: '#ffd7a3', emissiveIntensity: 2.2 }),
+  lcd: new THREE.MeshStandardMaterial({ color: '#0a1a14', emissive: '#3ff0a8', emissiveIntensity: 0.9 }),
 };
 
 // made once, used by every level
@@ -41,14 +43,32 @@ export const ghostBadMat = shared(new THREE.MeshStandardMaterial({ color: '#ff6f
 export class RackView {
   group = new THREE.Group();
   itemsGroup = new THREE.Group();
-  leds = new Map<string, THREE.MeshStandardMaterial>();
   portMarkers = new Map<string, THREE.Mesh>();
+  /** every port LED, one instance each */
+  private leds: THREE.InstancedMesh;
+  private ledOf = new Map<string, number>();
+  private ledTint: THREE.InstancedBufferAttribute;
   private builtVersion = -1;
 
   constructor(private rack: Rack, panelTypes: Map<number, FibreType>, private opts: { roomFloor?: boolean } = {}) {
     this.group.add(this.itemsGroup);
     this.buildCabinet();
     rack.units.forEach((u, k) => this.buildUnit(k, panelTypes.get(k) ?? 'OS2'));
+    // the cabinet and its equipment never move: one mesh per material
+    mergeStatic(this.group, (m) => m.parent === this.group && !m.userData.reflective);
+    const ports = rack.ports.filter((p) => this.ledOf.has(p.id));
+    const geo = new THREE.BoxGeometry(0.003, 0.0018, 0.001);
+    this.ledTint = new THREE.InstancedBufferAttribute(new Float32Array(3 * ports.length), 3);
+    geo.setAttribute('emissiveTint', this.ledTint);
+    this.leds = new THREE.InstancedMesh(geo, tintable(new THREE.MeshStandardMaterial({ roughness: 0.3 })), ports.length);
+    this.leds.receiveShadow = true;
+    const m4 = new THREE.Matrix4();
+    for (const p of ports) {
+      const i = this.ledOf.get(p.id)!;
+      this.leds.setMatrixAt(i, m4.makeTranslation(p.x, p.y + 0.0078, 0.0006));
+      this.setLed(p, 'off');
+    }
+    this.group.add(this.leds);
   }
 
   private add(geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, shadow = true): THREE.Mesh {
@@ -187,9 +207,7 @@ export class RackView {
         this.add(new THREE.BoxGeometry(0.011, 0.0115, 0.004), mat.cage, p.x, p.y - 0.002, 0.002);
         this.add(new THREE.BoxGeometry(0.0085, 0.008, 0.002), mat.hole, p.x, p.y - 0.002, 0.0042);
       }
-      const led = new THREE.MeshStandardMaterial({ color: '#202020', emissive: '#000000', roughness: 0.3 });
-      this.add(new THREE.BoxGeometry(0.003, 0.0018, 0.001), led, p.x, p.y + 0.0078, 0.0006);
-      this.leds.set(p.id, led);
+      this.ledOf.set(p.id, this.ledOf.size);
       // invisible marker used to highlight a port
       const marker = new THREE.Mesh(new THREE.RingGeometry(0.0085, 0.0105, 24), new THREE.MeshBasicMaterial({ color: '#7ee0ff', transparent: true, opacity: 0.9, depthTest: false }));
       marker.position.set(p.x, p.y - 0.002, 0.008);
@@ -206,23 +224,17 @@ export class RackView {
     // drive bays on the left, network ports in the middle, vents on the right
     for (let i = 0; i < 6; i++) {
       this.add(rbox(0.03, U * 0.55, 0.003, 0.001), mat.blank, -0.2 + i * 0.033, y, 0.0015);
-      const led = new THREE.MeshStandardMaterial({ color: '#1a1a1a', emissive: i % 3 === 2 ? '#ffae1f' : '#39c8ff', emissiveIntensity: 1.6 + (i % 2) });
-      this.add(new THREE.BoxGeometry(0.0025, 0.0025, 0.001), led, -0.188 + i * 0.033, y - U * 0.18, 0.0035);
+      this.add(new THREE.BoxGeometry(0.0025, 0.0025, 0.001), serverLed(i), -0.188 + i * 0.033, y - U * 0.18, 0.0035);
     }
-    const grille = new THREE.Mesh(new THREE.PlaneGeometry(0.1, U * 0.62), new THREE.MeshStandardMaterial({ map: grilleTexture(), roughness: 0.6, metalness: 0.6, transparent: true }));
-    grille.position.set(0.17, y, 0.0005);
-    this.group.add(grille);
+    this.add(new THREE.PlaneGeometry(0.1, U * 0.62), grilleMaterial(), 0.17, y, 0.0005, false);
   }
 
   /** a 1U UPS: lit status display and a row of buttons */
   private buildUps(y: number, w: number): void {
     this.add(rbox(w, U - 0.0012, 0.014, 0.0018), mat.ups, 0, y, -0.007);
-    const lcd = new THREE.MeshStandardMaterial({ color: '#0a1a14', emissive: '#3ff0a8', emissiveIntensity: 0.9 });
-    this.add(rbox(0.06, 0.018, 0.002, 0.0008), lcd, -0.12, y, 0.001);
+    this.add(rbox(0.06, 0.018, 0.002, 0.0008), mat.lcd, -0.12, y, 0.001);
     for (let i = 0; i < 4; i++) this.add(new THREE.CylinderGeometry(0.003, 0.003, 0.003, 12).rotateX(Math.PI / 2), mat.cage, -0.07 + i * 0.012, y, 0.0015);
-    const vent = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.45, U * 0.6), new THREE.MeshStandardMaterial({ map: grilleTexture(), roughness: 0.6, metalness: 0.6, transparent: true }));
-    vent.position.set(w * 0.2, y, 0.0005);
-    this.group.add(vent);
+    this.add(new THREE.PlaneGeometry(w * 0.45, U * 0.6), grilleMaterial(), w * 0.2, y, 0.0005, false);
   }
 
   /** the name plate on top of the cabinet */
@@ -247,12 +259,14 @@ export class RackView {
   }
 
   setLed(port: Port, state: 'off' | 'ok' | 'wrong'): void {
-    const m = this.leds.get(port.id);
-    if (!m) return;
+    const i = this.ledOf.get(port.id);
+    if (i === undefined) return;
     const c = state === 'ok' ? '#39ff6a' : state === 'wrong' ? '#ffae1f' : '#000000';
-    m.emissive.set(c);
-    m.emissiveIntensity = state === 'off' ? 0 : 2.2;
-    m.color.set(state === 'off' ? '#202020' : c);
+    const col = new THREE.Color(c).multiplyScalar(state === 'off' ? 0 : 2.2);
+    col.toArray(this.ledTint.array, 3 * i);
+    this.ledTint.needsUpdate = true;
+    this.leds.setColorAt(i, col.set(state === 'off' ? '#202020' : c));
+    this.leds.instanceColor!.needsUpdate = true;
   }
 
   /** rebuilds the managers, ducts and rings when the rack items change */
@@ -265,6 +279,7 @@ export class RackView {
     }
     const statics = this.rack.statics();
     for (const it of this.rack.items) this.itemsGroup.add(buildItem(this.rack, it, statics, null));
+    mergeStatic(this.itemsGroup);
   }
 }
 
@@ -329,6 +344,20 @@ function itemShapes(rack: Rack, it: Item): StaticShape[] {
 }
 
 let grille: THREE.CanvasTexture | null = null;
+let grilleMat: THREE.MeshStandardMaterial | null = null;
+function grilleMaterial(): THREE.MeshStandardMaterial {
+  return (grilleMat ??= shared(new THREE.MeshStandardMaterial({ map: grilleTexture(), roughness: 0.6, metalness: 0.6, transparent: true })));
+}
+
+/** the six lights of a server front, blue and amber */
+const serverLeds = new Map<number, THREE.MeshStandardMaterial>();
+function serverLed(i: number): THREE.MeshStandardMaterial {
+  const key = (i % 3 === 2 ? 2 : 0) + (i % 2);
+  let m = serverLeds.get(key);
+  if (!m) serverLeds.set(key, (m = shared(new THREE.MeshStandardMaterial({ color: '#1a1a1a', emissive: key >= 2 ? '#ffae1f' : '#39c8ff', emissiveIntensity: 1.6 + (i % 2) }))));
+  return m;
+}
+
 function grilleTexture(): THREE.CanvasTexture {
   if (grille) return grille;
   const c = document.createElement('canvas');
