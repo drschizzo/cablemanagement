@@ -51,6 +51,8 @@ export class Controller {
     node: number; cable: number; plane: THREE.Plane; depth: number; target: THREE.Vector3; end: number;
     /** Shift held: the mouse moves the cord in depth (up = away) instead of in height */
     depthMode: boolean; anchor: { mx: number; my: number; t: THREE.Vector3 };
+    /** hand minus pointer-on-plane: keeps the cord where it is when Shift is released */
+    offset: THREE.Vector3;
   } | null = null;
   /** plumb line from the held point to the floor: the depth cue */
   private guide: THREE.Group;
@@ -205,7 +207,7 @@ export class Controller {
       goal = d.anchor.t.clone()
         .addScaledVector(right, (this.mousePx.x - d.anchor.mx) * m)
         .addScaledVector(toward, (this.mousePx.y - d.anchor.my) * m);
-    } else goal = this.pointerOnPlane(d.plane, d.depth);
+    } else goal = this.pointerOnPlane(d.plane, d.depth)?.add(d.offset) ?? null;
     if (!goal) return;
     const t = d.target;
     const step = goal.clone().sub(t);
@@ -459,7 +461,7 @@ export class Controller {
     const at = new THREE.Vector3(w.sim.x[3 * node], w.sim.x[3 * node + 1], w.sim.x[3 * node + 2]);
     // the hand moves on a plane facing the camera, through the grabbed point
     const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(dir.clone().negate(), at);
-    this.drag = { node, cable: p.cable, plane, depth: 0, target: at.clone(), end, depthMode: false, anchor: { mx: this.mousePx.x, my: this.mousePx.y, t: at.clone() } };
+    this.drag = { node, cable: p.cable, plane, depth: 0, target: at.clone(), end, depthMode: false, anchor: { mx: this.mousePx.x, my: this.mousePx.y, t: at.clone() }, offset: new THREE.Vector3() };
     this.events.onHint('Maintenez <b>Maj</b> pour pousser le câble vers le fond (souris vers le haut) ou le ramener vers vous (vers le bas).');
     this.stage.controls.enableZoom = false;
     this.stage.renderer.domElement.style.cursor = 'grabbing';
@@ -522,6 +524,9 @@ export class Controller {
       this.stage.camera.getWorldDirection(dir);
       d.plane.setFromNormalAndCoplanarPoint(dir.negate(), d.target);
       d.depth = 0;
+      // the pointer is no longer over the cord: carry on from where it is, without a jump
+      const hit = this.pointerOnPlane(d.plane, 0);
+      d.offset = hit ? d.target.clone().sub(hit) : new THREE.Vector3();
     }
     this.events.onHint(on
       ? '<b>Profondeur</b> : souris vers le haut = vers le fond, vers le bas = vers vous. Relâchez Maj pour revenir.'
