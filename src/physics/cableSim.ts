@@ -13,9 +13,12 @@
 //   5. v = (x − x_start) / h.
 //
 // Hard constraints (λ + rising k): stretch (inextensible cable), contacts
-// (cable–cable segment capsules and cable–rack geometry, one-sided).
-// Soft energies: bending (second difference), friction (clamped to the
-// Coulomb cone), the hand that drags a cable and the velcro straps.
+// (cable–cable segment capsules and cable–rack geometry, one-sided) and their
+// friction (a tangential λ clamped to the Coulomb cone, §3.3 of the paper).
+// The multipliers are carried from substep to substep, so that a loaded
+// contact or a taut cord keeps its force instead of rebuilding it by sinking.
+// Soft energies: bending (second difference), the hand that drags a cable
+// and the velcro straps.
 //
 // Cables at rest fall asleep (their nodes are frozen and act as static
 // geometry for the others) and wake when something awake touches them.
@@ -72,6 +75,8 @@ export interface SimParams {
   alphaS: number;
   /** contact multipliers carried to the next substep (×) */
   lamWarm: number;
+  /** stretch multipliers carried to the next substep (×) */
+  lamWarmS: number;
   /** remove the separating velocity left by contact push-outs */
   contactVelocity: boolean;
   /** fraction of the sliding velocity of a pushing contact removed per substep */
@@ -86,6 +91,8 @@ export interface SimParams {
   /** speculative contact margin (m), plus a speed-dependent part */
   margin: number;
   marginCap: number;
+  /** same ceiling against the rack, whose contacts are few and cheap */
+  marginStatic: number;
   /** clamp of one block solve's displacement (m) */
   maxMove: number;
   /** stiffness of the hand (× M/h²) */
@@ -106,6 +113,12 @@ export interface SimParams {
   anchoredFriction: boolean;
   /** stiffness of the friction anchors (× M/h²) */
   frictionK: number;
+  /**
+   * Friction as a hard constraint (AVBD §3.3): a tangential multiplier holds
+   * the contact on its anchor, clamped to the cone μ·λn; the anchor only
+   * moves when the contact slides. Otherwise a spring of stiffness frictionK.
+   */
+  hardFriction: boolean;
   /** the most an overlap is undone per substep (m): a soft way out instead of a kick */
   maxDepen: number;
   /** nodes of the held cable on each side of the hand that ignore gates (−1: all of it) */
@@ -119,10 +132,10 @@ export interface SimParams {
 export function defaultSimParams(p: Partial<SimParams> = {}): SimParams {
   return {
     dt: 1 / 60, substeps: 3, iterations: 6, gravity: -9.81,
-    stretch: 10, kMin: 0.05, kCap: 2, beta: 2000, gamma: 0.99, alpha: 0.25, alphaS: 0.3, lamWarm: 0.5, contactVelocity: true, contactDamping: 0.3, restFriction: 0.012,
+    stretch: 10, kMin: 0.05, kCap: 2, beta: 2000, gamma: 0.99, alpha: 0.25, alphaS: 0.3, lamWarm: 0.8, lamWarmS: 0.8, contactVelocity: true, contactDamping: 0.3, restFriction: 0.012,
     muCable: 0.3, muStatic: 0.4, drag: 2.5,
-    margin: 0.0015, marginCap: 0.008, maxMove: 0.012,
-    grabK: 0.4, grabLead: 0.06, pbdPasses: 4, maxDepen: 0.001, gateSpan: -1, anchoredFriction: true, frictionK: 0.3,
+    margin: 0.0015, marginCap: 0.008, marginStatic: 0.03, maxMove: 0.012,
+    grabK: 0.4, grabLead: 0.06, pbdPasses: 4, maxDepen: 0.001, gateSpan: -1, anchoredFriction: true, frictionK: 0.3, hardFriction: true,
     sleepDist: 0.006, sleepTime: 0.5, wakeSpeed: 0.1,
     ...p,
   };
@@ -177,10 +190,15 @@ export class CableSim {
   ckey = new Float64Array(0);
   /** friction anchor of each contact: pA − pB (or pA against the rack) where it last stuck */
   canc = new Float64Array(0);
+  /** tangential multiplier of each contact (hard friction) */
+  clt = new Float64Array(0);
   // the previous frame's contacts, for warm starts and friction anchors
   private prevK = new Float64Array(0);
   private prevLam = new Float64Array(0);
   private prevAnc = new Float64Array(0);
+  private prevLt = new Float64Array(0);
+  private prevS = new Float64Array(0);
+  private prevT = new Float64Array(0);
   /** contact key → its index in the previous frame's arrays */
   private warm = new Map<number, number>();
 
@@ -287,7 +305,7 @@ export class CableSim {
   setStatics(shapes: StaticShape[]): void {
     this.statics = shapes;
     this.staticGrid.clear();
-    const pad = 0.035;
+    const pad = 0.05; // half a segment, a radius and the static margin
     const C = this.SCELL;
     shapes.forEach((s, id) => {
       let x0: number, y0: number, z0: number, x1: number, y1: number, z1: number;
@@ -442,6 +460,7 @@ export class CableSim {
     const x = this.x, x0 = this.x0, xt = this.xt, v = this.v;
     // contacts: separation at the start of the substep (α stabilisation), λ rebuilt
     for (let c = 0; c < this.nc; c++) { this.cc0[c] = this.contactC(c); this.clam[c] *= P.lamWarm; if (!P.anchoredFriction) this.ckt[c] = FRICTION_K.start; }
+    if (P.hardFriction) for (let k = 0; k < 3 * this.nc; k++) this.clt[k] *= P.lamWarm;
     // bundles hold on to the centre of their nodes at the start of the substep
     for (const b of this.bundles) {
       if (!b.alive || b.nodes.length === 0) continue;
@@ -466,7 +485,7 @@ export class CableSim {
     for (let s = 0; s < N; s++) {
       if (!this.segOK[s]) continue;
       const m = Math.max(this.mass[s], this.mass[s + 1]) * mh;
-      this.lam[s] *= P.alphaS * P.gamma;
+      this.lam[s] *= P.lamWarmS * P.gamma;
       this.segK[s] = Math.min(P.stretch * m, Math.max(P.kMin * m, this.segK[s] * P.gamma));
       const dx = x0[3 * s] - x0[3 * s + 3], dy = x0[3 * s + 1] - x0[3 * s + 4], dz = x0[3 * s + 2] - x0[3 * s + 5];
       this.segC0[s] = Math.sqrt(dx * dx + dy * dy + dz * dz) - this.rest[s];
@@ -477,7 +496,7 @@ export class CableSim {
       else for (let i = N - 1; i >= 0; i--) { if (!this.fixed[i]) this.solveNode(i, h); }
       this.dualUpdate(h);
     }
-    if (P.anchoredFriction) this.updateAnchors(h);
+    if (P.anchoredFriction && !P.hardFriction) this.updateAnchors(h);
     for (let k = 0; k < P.pbdPasses; k++) this.inextensible(k % 2 === 0);
     const damp = 1 / (1 + P.drag * h);
     const ih = 1 / h;
@@ -636,14 +655,27 @@ export class CableSim {
       const dn = dx * nx + dy * ny + dz * nz;
       dx -= dn * nx; dy -= dn * ny; dz -= dn * nz;
       const dl = Math.sqrt(dx * dx + dy * dy + dz * dz);
-      const kt = this.ckt[c] * ih2 * m;
       const lim = mu * -f;
-      let ft = kt * dl;
-      let ke = kt;
-      if (ft > lim) { ft = lim; ke = dl > 1e-12 ? lim / dl : 0; }
-      if (dl > 1e-12) {
-        const sc = (ft / dl) * w;
-        gx += sc * dx; gy += sc * dy; gz += sc * dz;
+      let ke: number;
+      if (P.hardFriction) {
+        // λt + kt·d, clamped to the cone (stiffness rescaled for the Hessian)
+        const kt = this.ckt[c] * this.ckmax[c] / P.kCap;
+        const lx = this.clt[3 * c], ly = this.clt[3 * c + 1], lz = this.clt[3 * c + 2];
+        const ln = lx * nx + ly * ny + lz * nz;
+        let Fx = kt * dx + lx - ln * nx, Fy = kt * dy + ly - ln * ny, Fz = kt * dz + lz - ln * nz;
+        const F = Math.sqrt(Fx * Fx + Fy * Fy + Fz * Fz);
+        ke = kt;
+        if (F > lim) { const sc = lim / F; Fx *= sc; Fy *= sc; Fz *= sc; ke = kt * sc; }
+        gx += Fx * w; gy += Fy * w; gz += Fz * w;
+      } else {
+        const kt = this.ckt[c] * ih2 * m;
+        let ft = kt * dl;
+        ke = kt;
+        if (ft > lim) { ft = lim; ke = dl > 1e-12 ? lim / dl : 0; }
+        if (dl > 1e-12) {
+          const sc = (ft / dl) * w;
+          gx += sc * dx; gy += sc * dy; gz += sc * dz;
+        }
       }
       const kt2 = ke * w * w;
       h00 += kt2 * (1 - nx * nx); h11 += kt2 * (1 - ny * ny); h22 += kt2 * (1 - nz * nz);
@@ -732,6 +764,41 @@ export class CableSim {
       this.clam[c] = lam;
       if (lam < 0) this.ck[c] = Math.min(this.ckmax[c], this.ck[c] + P.beta * Math.abs(C) * this.ckmax[c] / P.kCap);
       if (!P.anchoredFriction) this.ckt[c] = Math.min(FRICTION_K.max, this.ckt[c] * FRICTION_K.growth);
+    }
+    if (P.hardFriction) this.frictionDual();
+  }
+
+  /**
+   * Dual update of the friction (AVBD §3.3): the tangential multiplier takes
+   * over the force of the anchor spring; past the cone μ·λn it is clamped and
+   * the contact slides — its anchor follows it. A contact that does not press
+   * lets go of both.
+   */
+  private frictionDual(): void {
+    for (let c = 0; c < this.nc; c++) {
+      this.contactRel(c);
+      const lam = this.clam[c], mu = this.cmu[c];
+      if (lam >= 0 || mu <= 0) {
+        this.canc[3 * c] = drift.x; this.canc[3 * c + 1] = drift.y; this.canc[3 * c + 2] = drift.z;
+        this.clt[3 * c] = 0; this.clt[3 * c + 1] = 0; this.clt[3 * c + 2] = 0;
+        continue;
+      }
+      const nx = this.cn[3 * c], ny = this.cn[3 * c + 1], nz = this.cn[3 * c + 2];
+      let dx = drift.x - this.canc[3 * c], dy = drift.y - this.canc[3 * c + 1], dz = drift.z - this.canc[3 * c + 2];
+      const dn = dx * nx + dy * ny + dz * nz;
+      dx -= dn * nx; dy -= dn * ny; dz -= dn * nz;
+      const kt = this.ckt[c] * this.ckmax[c] / this.P.kCap;
+      const lx = this.clt[3 * c], ly = this.clt[3 * c + 1], lz = this.clt[3 * c + 2];
+      const ln = lx * nx + ly * ny + lz * nz;
+      let Fx = kt * dx + lx - ln * nx, Fy = kt * dy + ly - ln * ny, Fz = kt * dz + lz - ln * nz;
+      const F = Math.sqrt(Fx * Fx + Fy * Fy + Fz * Fz);
+      const lim = mu * -lam;
+      if (F > lim) {
+        const sc = lim / F;
+        Fx *= sc; Fy *= sc; Fz *= sc;
+        this.canc[3 * c] = drift.x; this.canc[3 * c + 1] = drift.y; this.canc[3 * c + 2] = drift.z;
+      }
+      this.clt[3 * c] = Fx; this.clt[3 * c + 1] = Fy; this.clt[3 * c + 2] = Fz;
     }
   }
 
@@ -851,6 +918,7 @@ export class CableSim {
     this.crs = gf(this.crs); this.cc0 = gf(this.cc0); this.ck = gf(this.ck); this.clam = gf(this.clam);
     this.ckt = gf(this.ckt); this.cmu = gf(this.cmu); this.ckmax = gf(this.ckmax); this.ckey = gf(this.ckey);
     this.canc = gf(this.canc, 3);
+    this.clt = gf(this.clt, 3);
     this.cap = cap;
   }
 
@@ -860,6 +928,7 @@ export class CableSim {
   ): void {
     const c = this.nc++;
     this.ensureCap(this.nc);
+    const old = this.warm.get(key);
     this.ca0[c] = a0; this.ca1[c] = a1; this.cs[c] = s;
     this.cb0[c] = b0; this.cb1[c] = b1; this.ct[c] = t;
     this.cn[3 * c] = nx; this.cn[3 * c + 1] = ny; this.cn[3 * c + 2] = nz;
@@ -870,7 +939,6 @@ export class CableSim {
     const mh2 = m / (h * h);
     const kmax = this.P.kCap * mh2;
     this.ckmax[c] = kmax;
-    const old = this.warm.get(key);
     const kmin = this.P.kMin * mh2;
     this.ck[c] = old !== undefined ? Math.max(kmin, Math.min(kmax, this.prevK[old] * this.P.gamma)) : kmin;
     this.clam[c] = old !== undefined ? this.prevLam[old] : 0;
@@ -878,7 +946,19 @@ export class CableSim {
     this.ckey[c] = key;
     if (old !== undefined) {
       this.canc[3 * c] = this.prevAnc[3 * old]; this.canc[3 * c + 1] = this.prevAnc[3 * old + 1]; this.canc[3 * c + 2] = this.prevAnc[3 * old + 2];
+      this.clt[3 * c] = this.prevLt[3 * old]; this.clt[3 * c + 1] = this.prevLt[3 * old + 1]; this.clt[3 * c + 2] = this.prevLt[3 * old + 2];
+      // the closest points moved along the segments since last frame: the
+      // anchor follows, so that it still marks the same spots of the cords
+      // (a sticking contact would otherwise be dragged by the re-detection)
+      const ds = s - this.prevS[old], dt = t - this.prevT[old];
+      const x = this.x, j0 = 3 * a0, j1 = 3 * a1;
+      for (let d = 0; d < 3; d++) {
+        let shift = (x[j1 + d] - x[j0 + d]) * ds;
+        if (b0 >= 0) shift -= (x[3 * b1 + d] - x[3 * b0 + d]) * dt;
+        this.canc[3 * c + d] += shift;
+      }
     } else {
+      this.clt[3 * c] = 0; this.clt[3 * c + 1] = 0; this.clt[3 * c + 2] = 0;
       this.contactRel(c);
       this.canc[3 * c] = drift.x; this.canc[3 * c + 1] = drift.y; this.canc[3 * c + 2] = drift.z;
     }
@@ -890,12 +970,16 @@ export class CableSim {
     this.warm.clear();
     if (this.prevK.length < this.nc) {
       this.prevK = new Float64Array(this.cap); this.prevLam = new Float64Array(this.cap); this.prevAnc = new Float64Array(3 * this.cap);
+      this.prevLt = new Float64Array(3 * this.cap);
+      this.prevS = new Float64Array(this.cap); this.prevT = new Float64Array(this.cap);
     }
     for (let c = 0; c < this.nc; c++) {
       this.warm.set(this.ckey[c], c);
       this.prevK[c] = this.ck[c];
       this.prevLam[c] = Math.min(0, this.clam[c]);
       this.prevAnc[3 * c] = this.canc[3 * c]; this.prevAnc[3 * c + 1] = this.canc[3 * c + 1]; this.prevAnc[3 * c + 2] = this.canc[3 * c + 2];
+      this.prevLt[3 * c] = this.clt[3 * c]; this.prevLt[3 * c + 1] = this.clt[3 * c + 1]; this.prevLt[3 * c + 2] = this.clt[3 * c + 2];
+      this.prevS[c] = this.cs[c]; this.prevT[c] = this.ct[c];
     }
     this.nc = 0;
     const x = this.x, v = this.v;
@@ -980,9 +1064,16 @@ export class CableSim {
                   this.wakeCable(sleeper);
                 }
               }
+              // always in the same order (lower segment first): the normal and
+              // the friction anchor carried to the next frame depend on it
+              const lo = a < b ? a : b, hi = a < b ? b : a;
+              if (lo !== a) segSeg(
+                x[3 * lo], x[3 * lo + 1], x[3 * lo + 2], x[3 * lo + 3], x[3 * lo + 4], x[3 * lo + 5],
+                x[3 * hi], x[3 * hi + 1], x[3 * hi + 2], x[3 * hi + 3], x[3 * hi + 4], x[3 * hi + 5],
+              );
               this.pairContacts(
-                a < b ? a * 16384 + b : b * 16384 + a, a, b,
-                x[3 * b], x[3 * b + 1], x[3 * b + 2], x[3 * b + 3], x[3 * b + 4], x[3 * b + 5],
+                lo * 16384 + hi, lo, hi,
+                x[3 * hi], x[3 * hi + 1], x[3 * hi + 2], x[3 * hi + 3], x[3 * hi + 4], x[3 * hi + 5],
                 rs, lim, P.muCable, h,
               );
             }
@@ -1001,7 +1092,7 @@ export class CableSim {
       if (!list) continue;
       const r = this.radius[a];
       const va = segSpeed[a];
-      const margin = Math.min(P.marginCap, P.margin + va * frame * 1.2);
+      const margin = Math.min(P.marginStatic, P.margin + va * frame * 1.2);
       const free = this.gateFree[a] || this.gateFree[a + 1];
       const held = !free && (this.gateHold[a] || this.gateHold[a + 1]);
       for (const sid of list) {
@@ -1020,13 +1111,31 @@ export class CableSim {
           if (closest.d2 > lim * lim) continue;
           this.pairContacts(key, a, -1, sh.ax, sh.ay, sh.az, sh.bx, sh.by, sh.bz, rs, lim, mu, h);
         } else {
+          // Every node gets its own contact (the first node of each segment,
+          // and the last of the cord): the closest point of a segment lying
+          // nearly flat on a face lands anywhere along it, and a node at the
+          // bottom of a slight V sank into the floor between two of them.
+          // The segment's own closest point is kept for an edge it straddles.
+          const lim = r + margin;
+          const last = !this.segOK[a + 1];
+          let dEnds = Infinity;
+          for (let e = 0; e < 2; e++) {
+            const j = 3 * (a + e);
+            segBox(x[j], x[j + 1], x[j + 2], x[j], x[j + 1], x[j + 2], sh.min[0], sh.min[1], sh.min[2], sh.max[0], sh.max[1], sh.max[2]);
+            if (boxHit.dist < dEnds) dEnds = boxHit.dist;
+            if ((e === 1 && !last) || boxHit.dist > lim) continue;
+            this.pushContact(
+              key + e * 0.25, a, a + 1, e, -1, -1, 0, boxHit.nx, boxHit.ny, boxHit.nz,
+              boxHit.qx, boxHit.qy, boxHit.qz, r, boxHit.dist - r, mu, h,
+            );
+          }
           segBox(
             x[3 * a], x[3 * a + 1], x[3 * a + 2], x[3 * a + 3], x[3 * a + 4], x[3 * a + 5],
             sh.min[0], sh.min[1], sh.min[2], sh.max[0], sh.max[1], sh.max[2],
           );
-          if (boxHit.dist > r + margin) continue;
+          if (boxHit.dist > lim || boxHit.s < 0.05 || boxHit.s > 0.95 || boxHit.dist > dEnds - 5e-4) continue;
           this.pushContact(
-            key, a, a + 1, boxHit.s, -1, -1, 0, boxHit.nx, boxHit.ny, boxHit.nz,
+            key + 0.5, a, a + 1, boxHit.s, -1, -1, 0, boxHit.nx, boxHit.ny, boxHit.nz,
             boxHit.qx, boxHit.qy, boxHit.qz, r, boxHit.dist - r, mu, h,
           );
         }
@@ -1064,10 +1173,16 @@ export class CableSim {
       const s0 = ((q0x - p0x) * ux + (q0y - p0y) * uy + (q0z - p0z) * uz) / uu;
       const s1 = ((q1x - p0x) * ux + (q1y - p0y) * uy + (q1z - p0z) * uz) / uu;
       const lo = Math.max(0, Math.min(s0, s1)), hi = Math.min(1, Math.max(s0, s1));
-      if (hi - lo > 0.05) {
+      // Not when they cross at a shallow angle within the overlap: the two
+      // ends lie on opposite sides, and the crossing in between was left
+      // unguarded (cords slipped through one another there)
+      if (hi - lo > 0.05 && this.endsAgree(a, lo, hi, q0x, q0y, q0z, wx, wy, wz, ww)) {
+        const dc = Math.sqrt(closest.d2);
         this.emitAt(key, a, b, lo, q0x, q0y, q0z, wx, wy, wz, ww, rs, lim, mu, h);
         this.emitAt(key + 0.5, a, b, hi, q0x, q0y, q0z, wx, wy, wz, ww, rs, lim, mu, h);
-        return;
+        // and the closest point, when it dips well below both ends
+        if (dc > Math.min(this.endGap[0], this.endGap[1]) - 5e-4 || closest.s <= lo || closest.s >= hi) return;
+        key += 0.25;
       }
     }
     const s = closest.s;
@@ -1084,6 +1199,27 @@ export class CableSim {
     } else { nx /= d; ny /= d; nz /= d; }
     if (b >= 0) this.pushContact(key, a, a + 1, s, b, b + 1, t, nx, ny, nz, 0, 0, 0, rs, d - rs, mu, h);
     else this.pushContact(key, a, a + 1, s, -1, -1, 0, nx, ny, nz, qx, qy, qz, rs, d - rs, mu, h);
+  }
+
+  /** gaps between the two segments at the ends of their overlap (set by endsAgree) */
+  private endGap = [0, 0];
+
+  /** do the ends lo and hi of segment a lie on the same side of segment B? */
+  private endsAgree(a: number, lo: number, hi: number, q0x: number, q0y: number, q0z: number, wx: number, wy: number, wz: number, ww: number): boolean {
+    const x = this.x;
+    let ox = 0, oy = 0, oz = 0, dot = 0;
+    for (let k = 0; k < 2; k++) {
+      const s = k === 0 ? lo : hi;
+      const pax = x[3 * a] + (x[3 * a + 3] - x[3 * a]) * s;
+      const pay = x[3 * a + 1] + (x[3 * a + 4] - x[3 * a + 1]) * s;
+      const paz = x[3 * a + 2] + (x[3 * a + 5] - x[3 * a + 2]) * s;
+      let t = ((pax - q0x) * wx + (pay - q0y) * wy + (paz - q0z) * wz) / ww;
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      const dx = pax - q0x - wx * t, dy = pay - q0y - wy * t, dz = paz - q0z - wz * t;
+      this.endGap[k] = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      if (k === 0) { ox = dx; oy = dy; oz = dz; } else dot = dx * ox + dy * oy + dz * oz;
+    }
+    return dot > 0;
   }
 
   private emitAt(

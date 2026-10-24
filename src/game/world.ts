@@ -75,7 +75,7 @@ export class World {
 
   /** patch cords are springy: copper about twice as stiff as a fibre jumper */
   stiffness(type: FibreType): number {
-    return this.bend || (type === 'CU' ? 8 : 4);
+    return this.bend || (type === 'CU' ? 12 : 6);
   }
 
   constructor(level: LevelDef) {
