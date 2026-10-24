@@ -22,7 +22,7 @@ src/
     cableView.ts    les câbles, leurs connecteurs et étiquettes
     jacket.ts       la gaine vue de près (paires torsadées, grain, marquage), estompée de loin
     leds.ts         voyants d'état et d'activité, clignotants sur le GPU (horloge partagée ledClock)
-    ledGlow.ts      la lumière des voyants sur les câbles, par une petite carte de la façade de chaque baie
+    ledGlow.ts      la lumière des voyants sur les câbles et la baie, par une carte de la façade de chaque baie
     bevel.ts        boîte biseautée légère, pour les milliers de petites pièces
     cinema.ts       dernière passe : vignettage, grain, virage des couleurs, aberration chromatique
     dispose.ts      libération des ressources GPU (shared() marque ce qui sert à tous les niveaux)
@@ -95,7 +95,7 @@ par niveau) et tutoriel terminé. Les clés sont celles des versions précédent
 | un message du contrôleur à l'interface | `ControllerEvents` (`game/controller.ts`), relié dans `main.ts` |
 | une donnée gardée | une entrée dans `storage.ts` |
 | une ressource three.js partagée par tous les niveaux | l'envelopper dans `shared()` (`render/dispose.ts`) |
-| un voyant qui clignote | une `LedSpec` (`render/leds.ts`), posée dans `render/rackView.ts` ; `ledGlow.ts` la reprend sur les câbles |
+| un voyant qui clignote | une `LedSpec` (`render/leds.ts`), posée dans `render/rackView.ts` ; `ledGlow.ts` la reprend sur les câbles et la baie |
 | une passe de post-traitement | le `composer` de `Stage` (`render/stage.ts`) |
 
 ## Vérifications

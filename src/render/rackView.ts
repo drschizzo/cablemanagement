@@ -87,6 +87,7 @@ export class RackView {
     this.group.add(this.leds, lights);
     this.glow = new LedGlow(this.group, [this.leds, lights], [-COLUMN_X - 0.05, rack.floorY, COLUMN_X + 0.05, rack.topY + 0.15]);
     ledGlows.add(this.glow);
+    this.glow.light(this.group);
   }
 
   private light(x: number, y: number, color: THREE.ColorRepresentation, blink = STEADY, w = 0.0022, h = 0.0016, z = 0.0035): void {
@@ -321,6 +322,7 @@ export class RackView {
     const statics = this.rack.statics();
     for (const it of this.rack.items) this.itemsGroup.add(buildItem(this.rack, it, statics, null));
     mergeStatic(this.itemsGroup);
+    this.glow.light(this.itemsGroup);
   }
 }
 

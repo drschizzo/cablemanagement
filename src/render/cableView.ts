@@ -166,11 +166,12 @@ export class CableView {
     });
   }
 
-  /** the cords take the light of these LEDs (those of the cabinet they hang in front of); once */
+  /** the cords and their plugs take the light of these LEDs (those of the cabinet they hang in front of); once */
   lightBy(glow: LedGlow): void {
     if (this.litBy) return;
     this.litBy = glow;
-    ledLit(this.tube.material as THREE.MeshStandardMaterial, glow);
+    const mats = new Set([this.tube.material, ...Object.values(this.plugs).flatMap((p) => [p.housing.material, p.latch.material, p.boot.material, p.label.material])]);
+    for (const m of mats) ledLit(m as THREE.MeshStandardMaterial, glow);
   }
 
   private litBy: LedGlow | null = null;

@@ -430,7 +430,7 @@ Pour ajouter un comportement sans réécrire ce shader, le projet utilise `onBef
 | `tintable` | `batch.ts` | une lueur par sommet ou par instance (surbrillance d'un câble, d'un manchon) |
 | `blinkable` | `leds.ts` | le clignotement des voyants à partir de l'horloge partagée ; une taille minimale de 3 pixels à l'écran |
 | `jacketed` | `jacket.ts` | la gaine des câbles vue de près (voir ci-dessous) |
-| `ledLit` | `ledGlow.ts` | la lumière des voyants sur les câbles (voir plus bas) |
+| `ledLit` | `ledGlow.ts` | la lumière des voyants sur les câbles, leurs connecteurs et les pièces de la baie (voir plus bas) |
 
 Voici la partie fragment de `tintable`, raccourcie. Elle ajoute une ligne juste après le bloc qui calcule la lueur du matériau :
 
@@ -478,15 +478,17 @@ Le GPU ne sait pas, pour un pixel, si un objet se trouve entre lui et la lumièr
 
 Les ombres des câbles sur le fond de la baie et sur le sol donnent la profondeur : sans elles, on ne voit pas à quelle distance de la façade passe un câble. Le rendu de cette texture est une passe complète de la scène, avec ses propres appels de dessin.
 
-### La lumière des voyants sur les câbles
+### La lumière des voyants sur les câbles et la baie
 
-Calculer la lumière de centaines de voyants comme de vraies sources serait trop coûteux. `ledGlow.ts` utilise un raccourci. Avant chaque frame, les voyants d'une baie sont dessinés comme des taches de couleur floues dans une petite texture de la façade, vue de face, à raison d'un pixel par centimètre (60 × 80 pixels pour une baie). Cette texture est un *render target* : une image que le GPU dessine au lieu de l'écran, et qu'un autre shader peut lire ensuite.
+Calculer la lumière de centaines de voyants comme de vraies sources serait trop coûteux. `ledGlow.ts` utilise un raccourci. Avant chaque frame, les voyants d'une baie sont dessinés comme des taches de couleur floues dans une petite texture de la façade, vue de face, à raison d'un pixel pour 2,5 mm (240 × 300 pixels pour une baie), assez fin pour séparer deux voyants de ports voisins. Cette texture est un *render target* : une image que le GPU dessine au lieu de l'écran, et qu'un autre shader peut lire ensuite.
 
 ![Carte de lumière des voyants](frame/carte-leds.jpg)
 
 La carte de la façade pour la baie capturée, agrandie 8 fois. Chaque tache est un voyant allumé, avec son clignotement.
 
-Le shader des câbles lit cette carte à l'endroit où passe le câble. Il atténue la valeur selon la distance du câble à la façade et selon l'orientation de sa surface, puis l'ajoute à sa lueur. Un câble blanc qui passe devant une rangée de voyants verts prend leur teinte et clignote avec eux, pour le prix d'un appel de dessin par baie et d'une lecture de texture par pixel de câble.
+Les taches sont étroites (quelques millimètres) : c'est la distance qui les étale. Après chaque dessin, le GPU calcule les *mipmaps* de la carte, des copies de plus en plus réduites où chaque pixel fait la moyenne de quatre pixels du niveau précédent. Une surface lit la carte à l'endroit où elle se trouve, dans le niveau dont le flou correspond à sa distance à la façade : nette contre les voyants, de plus en plus diffuse et faible en s'éloignant, comme la lumière d'une lampe. L'étalement est plafonné à 1,5 cm, au-delà la lumière ne fait que s'éteindre : plus large, un câble à une main de la façade prenait la lumière de dizaines de voyants et clignotait avec eux sur une grande partie de sa longueur.
+
+Quatre lectures de plus, de part et d'autre, donnent la pente de la carte, donc le côté d'où vient la lumière. Avec la distance à la façade, elles fixent une direction de lumière, et seule la face de la surface tournée vers elle est éclairée. Le résultat est ajouté à la lueur du matériau, saturé à une luminance de 1 : une pièce blanche collée à un voyant reste sous le seuil du halo des lumières, sinon elle brillait comme un voyant. Un câble blanc qui passe devant une rangée de voyants verts prend leur teinte et clignote avec eux ; le flanc d'un connecteur, d'un keystone ou d'un anneau tourné vers un voyant prend sa couleur, l'autre flanc non. Les matériaux de la baie sont copiés pour chaque baie (chacune a sa carte), une fois, au moment de la construire. Le tout coûte un appel de dessin par baie et cinq lectures de texture par pixel éclairé.
 
 ### À retenir
 
@@ -578,7 +580,7 @@ Le tableau suit une frame de bout en bout, dans l'ordre d'exécution. La colonne
 | 9 | Mise à jour de la baie si un élément a changé | principal | `rackView.ts`, `syncItems` | si changement | — |
 | 10 | Score, voyants des ports, plan du HUD | principal | `world.ts`, `evaluate` | toutes les 0,4 s | — |
 | 11 | Amortissement de la caméra, horloges des voyants et du grain | principal | `stage.ts`, `render` | chaque frame | quelques nombres |
-| 12 | Carte de lumière des voyants | GPU | `ledGlow.ts`, `render` | chaque frame, par baie visible | 1 appel, 60 × 80 pixels |
+| 12 | Carte de lumière des voyants | GPU | `ledGlow.ts`, `render` | chaque frame, par baie visible | 1 appel, 240 × 300 pixels et ses mipmaps |
 | 13 | Carte d'ombre de la lumière principale | GPU | three.js | chaque frame | 2048 × 2048 pixels |
 | 14 | Scène + images auxiliaires + reflets du sol | GPU | `SSRPass` | chaque frame | environ 200 des 272 appels, carte d'ombre comprise |
 | 15 | Occlusion ambiante | GPU | `GTAOPass` | chaque frame | 58 appels (passe de normales comprise) |
