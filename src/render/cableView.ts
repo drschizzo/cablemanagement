@@ -5,6 +5,7 @@ import { SERVICES } from '../game/levels';
 import { shared } from './dispose';
 import { tintable } from './batch';
 import { ledLit, type LedGlow } from './ledGlow';
+import { JACKET_KIND, jacketed } from './jacket';
 
 const RADIAL = 8;
 const SUB = 2; // samples per segment (Catmull-Rom in between)
@@ -91,9 +92,21 @@ export class CableView {
     this.nrm = new Float32Array(verts * 3);
     this.tint = new Float32Array(verts * 3);
     const colors = new Float32Array(verts * 3);
+    // length along the cord at rest, angle around it, kind: what the jacket shader draws with
+    const jacket = new Float32Array(verts * 4);
     const idx: number[] = [];
-    for (const cm of this.cables) {
+    this.cables.forEach((cm, k) => {
       for (let v = cm.v0; v < cm.v0 + cm.samples * RADIAL; v++) cm.color.toArray(colors, 3 * v);
+      const kind = JACKET_KIND[world.cables[k].type];
+      for (let s = 0; s < cm.samples; s++) {
+        for (let r = 0; r < RADIAL; r++) {
+          const o = 4 * (cm.v0 + s * RADIAL + r);
+          jacket[o] = (s / SUB) * world.seg + k * 0.37;
+          jacket[o + 1] = RING_COS[r];
+          jacket[o + 2] = RING_SIN[r];
+          jacket[o + 3] = kind;
+        }
+      }
       for (let s = 0; s < cm.samples - 1; s++) {
         for (let r = 0; r < RADIAL; r++) {
           const a = cm.v0 + s * RADIAL + r, b = cm.v0 + s * RADIAL + ((r + 1) % RADIAL);
@@ -101,14 +114,15 @@ export class CableView {
           idx.push(a, c, b, b, c, d);
         }
       }
-    }
+    });
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(this.pos, 3).setUsage(THREE.DynamicDrawUsage));
     geo.setAttribute('normal', new THREE.BufferAttribute(this.nrm, 3).setUsage(THREE.DynamicDrawUsage));
     geo.setAttribute('emissiveTint', new THREE.BufferAttribute(this.tint, 3).setUsage(THREE.DynamicDrawUsage));
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geo.setAttribute('jacket', new THREE.BufferAttribute(jacket, 4));
     geo.setIndex(idx);
-    this.tube = new THREE.Mesh(geo, tintable(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, metalness: 0.0 })));
+    this.tube = new THREE.Mesh(geo, jacketed(tintable(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, metalness: 0.0 }))));
     this.tube.castShadow = true;
     this.tube.receiveShadow = true;
     this.tube.frustumCulled = false;

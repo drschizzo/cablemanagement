@@ -106,6 +106,7 @@ export const ledLight = { value: 0.2 };
  */
 export function ledLit<T extends THREE.MeshStandardMaterial>(m: T, glow: LedGlow): T {
   const prev = m.onBeforeCompile.bind(m);
+  const prevKey = m.customProgramCacheKey();
   m.onBeforeCompile = (s, r) => {
     prev(s, r);
     s.uniforms.ledGlowMap = { value: glow.map.texture };
@@ -133,7 +134,7 @@ vLedN = mat3(ledM) * objectNormal;`);
   }
 }`);
   };
-  m.customProgramCacheKey = () => 'tint-ledlit';
+  m.customProgramCacheKey = () => `${prevKey}-ledlit`;
   m.needsUpdate = true;
   return m;
 }
