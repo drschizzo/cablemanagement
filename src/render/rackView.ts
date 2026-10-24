@@ -5,6 +5,7 @@ import type { StaticShape } from '../physics/cableSim';
 import type { FibreType } from '../game/levels';
 import { disposeTree, shared } from './dispose';
 import { mergeStatic } from './batch';
+import { LedGlow, ledGlows } from './ledGlow';
 import { STEADY, activity, blinkable, ledGlow, ledMesh, pulse, type LedSpec } from './leds';
 
 // warm graphite powder-coat rather than blue-grey steel
@@ -57,6 +58,8 @@ export class RackView {
   /** so that two cabinets side by side do not blink in step */
   private seed = Math.random() * 1000;
   private builtVersion = -1;
+  /** the light of its LEDs, for the cords in front of it */
+  readonly glow: LedGlow;
 
   constructor(private rack: Rack, panelTypes: Map<number, FibreType>, private opts: { roomFloor?: boolean } = {}) {
     this.group.add(this.itemsGroup);
@@ -79,7 +82,10 @@ export class RackView {
       this.leds.setMatrixAt(i, m4.makeScale(0.003, 0.0018, 1).setPosition(p.x, p.y + 0.0078, 0.0006));
       this.setLed(p, 'off');
     }
-    this.group.add(this.leds, ledMesh(this.lights));
+    const lights = ledMesh(this.lights);
+    this.group.add(this.leds, lights);
+    this.glow = new LedGlow(this.group, [this.leds, lights], [-COLUMN_X - 0.05, rack.floorY, COLUMN_X + 0.05, rack.topY + 0.15]);
+    ledGlows.add(this.glow);
   }
 
   private light(x: number, y: number, color: THREE.ColorRepresentation, blink = STEADY, w = 0.0022, h = 0.0016, z = 0.0035): void {
@@ -205,13 +211,12 @@ export class RackView {
     const style = u.style ?? (u.kind === 'panel' ? 'fibre' : 'switch');
     const face = style === 'fibre' ? mat.panel : style === 'copper' ? mat.copperFace : style === 'firewall' ? mat.firewall : style === 'router' ? mat.router : mat.switchFace;
     if (u.kind !== 'server') this.add(rbox(w, U - 0.0012, 0.01, 0.0015), face, 0, y, -0.005);
-    // active equipment: a column of status lights at the right end of its face
+    // active equipment: power and a status light at the right end of its face
     if (u.kind === 'switch') {
       const s = this.seed + y * 1000, x = w / 2 - 0.016;
-      this.light(x, y + U * 0.28, '#39ff6a');
-      this.light(x, y + U * 0.08, '#39ff6a', pulse(1, 0.12, fractOf(s)));
-      if (style === 'firewall') this.light(x, y - U * 0.12, '#ff3b30', pulse(0.4, 0.5, fractOf(s * 1.7)));
-      else this.light(x, y - U * 0.12, style === 'router' ? '#3aa8ff' : '#ffae1f', activity(s, 0.45));
+      this.light(x, y + U * 0.22, '#39ff6a');
+      if (style === 'firewall') this.light(x, y, '#ff3b30', pulse(0.4, 0.5, fractOf(s * 1.7)));
+      else this.light(x, y, style === 'router' ? '#3aa8ff' : '#ffae1f', activity(s, 0.45));
     }
     // ears with the name of the equipment
     const label = labelTexture(r, k, style === 'fibre');
@@ -245,16 +250,14 @@ export class RackView {
   private buildServer(y: number, w: number): void {
     this.add(rbox(w, U - 0.0012, 0.012, 0.0018), mat.switchFace, 0, y, -0.006);
     // drive bays on the left, network ports in the middle, vents on the right
-    // each drive: a blue light when present, a green one flickering with its reads and writes
+    // every other drive busy: a green light flickering with its reads and writes
     const s = this.seed + y * 1000;
     for (let i = 0; i < 6; i++) {
       this.add(rbox(0.03, U * 0.55, 0.003, 0.001), mat.blank, -0.2 + i * 0.033, y, 0.0015);
-      this.light(-0.194 + i * 0.033, y - U * 0.18, '#3aa8ff');
-      this.light(-0.188 + i * 0.033, y - U * 0.18, '#39ff6a', activity(s + i, 0.55));
+      if (i % 2 === 0) this.light(-0.188 + i * 0.033, y - U * 0.18, '#39ff6a', activity(s + i, 0.55));
     }
-    // power, and a health light beating slowly (now and then a drive in amber)
-    this.light(0.105, y + U * 0.2, '#3aa8ff', STEADY, 0.0028, 0.0028);
-    this.light(0.105, y - U * 0.2, fractOf(s) < 0.2 ? '#ffae1f' : '#39ff6a', pulse(0.5, 0.15, fractOf(s * 3.1)), 0.0028, 0.0028);
+    // power
+    this.light(0.105, y, '#3aa8ff', STEADY, 0.0028, 0.0028);
     this.add(new THREE.PlaneGeometry(0.1, U * 0.62), grilleMaterial(), 0.17, y, 0.0005, false);
   }
 
@@ -263,10 +266,8 @@ export class RackView {
     this.add(rbox(w, U - 0.0012, 0.014, 0.0018), mat.ups, 0, y, -0.007);
     this.add(rbox(0.06, 0.018, 0.002, 0.0008), mat.lcd, -0.12, y, 0.001);
     for (let i = 0; i < 4; i++) this.add(new THREE.CylinderGeometry(0.003, 0.003, 0.003, 12).rotateX(Math.PI / 2), mat.cage, -0.07 + i * 0.012, y, 0.0015);
-    // on line, battery charging, load
+    // on line
     this.light(-0.07, y + U * 0.3, '#39ff6a');
-    this.light(-0.058, y + U * 0.3, '#39ff6a', pulse(0.6, 0.5, fractOf(this.seed + y)));
-    this.light(-0.046, y + U * 0.3, '#ffae1f');
     this.add(new THREE.PlaneGeometry(w * 0.45, U * 0.6), grilleMaterial(), w * 0.2, y, 0.0005, false);
   }
 

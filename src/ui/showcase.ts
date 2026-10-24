@@ -236,6 +236,9 @@ class Closet {
     // one rack on screen: the tidy bay draws it with its managers, the mess bay only its cords
     this.mess.rackView.group.visible = false;
     this.tidy.rackView.itemsGroup.visible = false;
+    // so both sets of cords take the light of the rack on screen
+    this.mess.cableView.lightBy(this.tidy.rackView.glow);
+    this.tidy.cableView.lightBy(this.tidy.rackView.glow);
     // the tidy closet is shown exactly on its routes: a demonstration, perfect every time
     const tw = this.tidy.world;
     tw.sim.hold = true;

@@ -4,6 +4,7 @@ import { CONNECTOR } from '../game/rack';
 import { SERVICES } from '../game/levels';
 import { shared } from './dispose';
 import { tintable } from './batch';
+import { ledLit, type LedGlow } from './ledGlow';
 
 const RADIAL = 8;
 const SUB = 2; // samples per segment (Catmull-Rom in between)
@@ -149,6 +150,15 @@ export class CableView {
       }
     });
   }
+
+  /** the cords take the light of these LEDs (those of the cabinet they hang in front of); once */
+  lightBy(glow: LedGlow): void {
+    if (this.litBy) return;
+    this.litBy = glow;
+    ledLit(this.tube.material as THREE.MeshStandardMaterial, glow);
+  }
+
+  private litBy: LedGlow | null = null;
 
   private plugOf(c: number): Plugs {
     return this.world.cables[c].type === 'CU' ? this.plugs.copper : this.plugs.fibre;

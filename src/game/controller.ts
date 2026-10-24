@@ -114,6 +114,7 @@ export class Controller {
     this.guide = makeGuide();
     stage.scene.add(this.guide);
     this.cableView = new CableView(this.world);
+    this.cableView.lightBy(this.rackView.glow);
     stage.scene.add(this.rackView.group, this.cableView.group);
     const r = this.world.rack;
     // the cabinet and, at its right, the crate on the floor
@@ -550,6 +551,7 @@ export class Controller {
     this.stage.scene.remove(this.cableView.group);
     disposeTree(this.cableView.group);
     this.cableView = new CableView(this.world);
+    this.cableView.lightBy(this.rackView.glow);
     this.stage.scene.add(this.cableView.group);
     this.highlighted.clear();
     this.glows.clear();

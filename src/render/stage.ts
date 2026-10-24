@@ -8,6 +8,7 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { CinemaPass } from './cinema';
 import { ledClock, ledViewHeight } from './leds';
+import { ledGlows } from './ledGlow';
 
 /** colour of the backdrop where the floor fades out (also the fog) */
 const HORIZON = '#1a1e21';
@@ -241,6 +242,13 @@ export class Stage {
     this.cinema.frame(dt, window.innerWidth, window.innerHeight, this.insets);
     // (wrapped, so that the GPU's hash of it keeps its precision)
     ledClock.value = (ledClock.value + dt) % 600;
+    // the light of the LEDs on the cords; a cabinet taken off the scene lets go of its map
+    for (const g of ledGlows) {
+      let top: THREE.Object3D = g.root;
+      while (top.parent) top = top.parent;
+      if (top !== this.scene) { g.dispose(); ledGlows.delete(g); continue; }
+      g.render(this.renderer);
+    }
     this.lastRender = now;
     this.composer.render();
   }

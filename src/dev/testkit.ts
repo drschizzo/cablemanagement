@@ -3,13 +3,14 @@
 import * as THREE from 'three';
 import { insideBox, type SupportBox } from '../game/rack';
 import { ledClock, ledViewHeight } from '../render/leds';
+import { ledGlows, ledLight } from '../render/ledGlow';
 
 export function installTestkit(get: () => any, stage?: unknown): void {
   const w = window as any;
   /** the renderer and its passes, for measuring the cost of the image */
   w.__stage = stage;
   /** the clock and the screen height of the lights (to freeze their blinking, or their smallest size) */
-  w.__leds = { ledClock, ledViewHeight };
+  w.__leds = { ledClock, ledViewHeight, ledLight, ledGlows };
   const canvas = () => document.querySelector('#view canvas') as HTMLCanvasElement;
   // synchronous: timers are throttled when the page is in the background
   w.__pump = (ms: number) => { for (let t = 0; t < ms; t += 1000 / 60) get()?.tick(1 / 60, false); get()?.tick(0); };

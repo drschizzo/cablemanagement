@@ -63,6 +63,20 @@ function fract(x: number): number {
   return x - Math.floor(x);
 }
 
+/** `ledOn(blink)`: how lit a light is now (0.06 to 1), for any shader that has the `ledTime` uniform */
+export const LED_ON_GLSL = `
+uniform float ledTime;
+float ledHash(float n) { return fract(sin(n * 12.9898) * 43758.5453); }
+float ledOn(vec3 b) {
+  if (b.x > 0.0) {
+    // random flicker: a new draw every tick, mostly on (lit a little when off, as a real LED seems)
+    float tick = floor(ledTime * b.x + b.z);
+    return mix(0.06, 1.0, step(ledHash(tick + b.z * 7.13), b.y));
+  }
+  if (b.x < 0.0) return mix(0.06, 1.0, step(fract(ledTime * -b.x + b.z), b.y));
+  return 1.0;
+}`;
+
 /**
  * A standard material whose glow comes from two attributes, per vertex or per
  * instance: `emissiveTint` (linear RGB) and `blink` (rate, duty, phase).
@@ -75,19 +89,9 @@ export function blinkable<T extends THREE.MeshStandardMaterial>(m: T): T {
       .replace('#include <common>', `#include <common>
 attribute vec3 emissiveTint;
 attribute vec3 blink;
-uniform float ledTime;
 uniform float ledViewHeight;
 varying vec3 vEmissiveTint;
-float ledHash(float n) { return fract(sin(n * 12.9898) * 43758.5453); }
-float ledOn(vec3 b) {
-  if (b.x > 0.0) {
-    // random flicker: a new draw every tick, mostly on (lit a little when off, as a real LED seems)
-    float tick = floor(ledTime * b.x + b.z);
-    return mix(0.06, 1.0, step(ledHash(tick + b.z * 7.13), b.y));
-  }
-  if (b.x < 0.0) return mix(0.06, 1.0, step(fract(ledTime * -b.x + b.z), b.y));
-  return 1.0;
-}`)
+${LED_ON_GLSL}`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>
 vEmissiveTint = emissiveTint * ledOn(blink);
 #ifdef USE_INSTANCING
