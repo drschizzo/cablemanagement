@@ -320,32 +320,53 @@ body.booting #title-load { display: flex; }
 #title-play.primary { background: rgba(139, 227, 180, 0.12); color: var(--accent); border-color: var(--accent-line); }
 body[data-sc='after'] #title-play.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); animation: pulse 2s infinite; }
 
-/* the before/after bar sits under the racks, not over them */
+/* the before/after switch sits under the racks, not over them: no panel, just a switch and its gauges */
 #showcase {
-  position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 6; display: none;
-  flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: center; gap: 18px; text-align: left;
-  background: rgba(9, 10, 11, 0.88); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 18px;
-  max-width: calc(100% - 24px); backdrop-filter: blur(8px);
+  position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 6; display: none;
+  flex-direction: column; align-items: center; gap: 10px; text-align: center; max-width: calc(100% - 24px);
 }
 #showcase.on { display: flex; animation: rise 0.6s cubic-bezier(.2, .8, .2, 1); }
 @keyframes rise { from { opacity: 0; transform: translate(-50%, 12px); } }
-#showcase .state { padding-right: 18px; border-right: 1px solid var(--line); min-width: 210px; }
-#sc-title { font: 600 26px/1 var(--mono); letter-spacing: 0.18em; transition: color 0.4s; }
-#sc-title.before { color: var(--bad); }
-#sc-title.after { color: var(--accent); }
-#sc-title.moving { color: var(--dim); }
-#sc-caption { margin-top: 5px; font-size: 12px; color: var(--dim); font-style: italic; }
-#sc-stats {
-  display: flex; gap: 3px 14px; flex-wrap: wrap; justify-content: center; max-width: 300px;
-  font-size: 12px; color: var(--dim); min-height: 20px;
+#showcase .row { display: flex; align-items: center; gap: 8px; }
+/* two halves and a thumb that slides from one to the other: red while it is a mess, green once tidy */
+#sc-switch {
+  position: relative; display: grid; grid-template-columns: 1fr 1fr; padding: 3px;
+  background: rgba(9, 10, 11, 0.78); border: 1px solid var(--line-hi); border-radius: 999px; backdrop-filter: blur(8px);
 }
-#sc-stats b { color: var(--text); font: 500 12px var(--mono); }
-#sc-stats .st { color: var(--warn); letter-spacing: 2px; }
-#sc-stats:empty, #sc-stats:has(> :only-child:empty) { display: none; }
-#showcase .row { display: flex; gap: 8px; }
-#sc-new { font-size: 16px; padding: 0 12px; }
-button.big { font-size: 15px; padding: 11px 22px; }
-button.ghost.big { padding: 11px 18px; }
+#sc-switch .thumb {
+  position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 3px); border-radius: 999px;
+  background: rgba(255, 122, 104, 0.16); border: 1px solid rgba(255, 122, 104, 0.55); box-shadow: 0 0 18px rgba(255, 122, 104, 0.18);
+  transition: transform 0.9s cubic-bezier(.65, 0, .35, 1), background 0.6s, border-color 0.6s, box-shadow 0.6s;
+}
+#sc-switch.after .thumb, #sc-switch.to-after .thumb {
+  transform: translateX(100%);
+  background: rgba(139, 227, 180, 0.16); border-color: var(--accent-line); box-shadow: 0 0 18px rgba(139, 227, 180, 0.2);
+}
+#sc-switch[class^='to-'] .thumb { animation: busy 0.9s ease-in-out infinite alternate; }
+@keyframes busy { to { opacity: 0.55; } }
+#sc-switch button {
+  position: relative; z-index: 1; min-width: 116px; padding: 9px 22px; border: 0; background: none; border-radius: 999px;
+  font: 600 13px var(--mono); letter-spacing: 0.24em; text-transform: uppercase; color: var(--dim); transition: color 0.4s;
+}
+#sc-switch button:hover:not(:disabled) { color: var(--text); }
+#sc-switch button:disabled { cursor: default; }
+#sc-switch.before #sc-before { color: var(--bad); }
+#sc-switch.after #sc-after, #sc-switch.to-after #sc-after { color: var(--accent); }
+#sc-switch.to-before #sc-before { color: var(--bad); }
+#sc-new {
+  width: 38px; height: 38px; padding: 0; border-radius: 50%; font-size: 16px; color: var(--dim);
+  background: rgba(9, 10, 11, 0.78); border: 1px solid var(--line-hi); backdrop-filter: blur(8px);
+}
+#sc-new:hover { color: var(--text); }
+#sc-caption { margin: 0; font-size: 13px; color: #c6cbc7; font-style: italic; text-shadow: 0 1px 10px rgba(0, 0, 0, 0.95); }
+/* three gauges that fill up as the aisle is tidied */
+#sc-stats { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; font: 500 10.5px var(--mono); text-transform: uppercase; letter-spacing: 0.12em; color: var(--dim); }
+#sc-stats .g { display: grid; grid-template-columns: auto auto; gap: 5px 10px; align-items: baseline; min-width: 132px; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.95); }
+#sc-stats .g b { justify-self: end; color: var(--text); font-weight: 500; }
+#sc-stats .bar { grid-column: 1 / -1; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+#sc-stats .bar i { display: block; height: 100%; background: var(--bad); transition: width 1.2s cubic-bezier(.2, .8, .2, 1), background 1.2s; }
+#sc-stats .g.full .bar i { background: var(--accent); }
+#sc-stats .g.some .bar i { background: var(--warn); }
 
 #menu-close { position: absolute; top: 14px; right: 16px; font-size: 11px; }
 
@@ -355,9 +376,10 @@ button.ghost.big { padding: 11px 18px; }
   #title .leds { margin: 8px 0 6px; }
   #title .tagline { font-size: 13px; }
   #title .menu { margin-top: 10px; }
-  #showcase { gap: 10px 14px; padding: 10px 12px; }
-  #showcase .state { min-width: 0; }
-  #sc-title { font-size: 20px; }
+  #showcase { bottom: 12px; gap: 8px; }
+  #sc-switch button { min-width: 92px; padding: 8px 14px; }
+  #sc-stats { gap: 10px; }
+  #sc-stats .g { min-width: 96px; }
 }
 
 /* ---- tutorial */

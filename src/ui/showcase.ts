@@ -388,7 +388,8 @@ export class Showcase {
     this.stage.frame((r.topY + r.floorY) / 2 + 0.02, r.topY - r.floorY + 0.1, side + (n > 1 ? 0.15 : 0.6), n > 1 ? 0 : 0.03, side + 0.6, near);
     document.body.classList.add('demo');
     this.el.classList.add('on');
-    (this.el.querySelector('#sc-toggle') as HTMLElement).onclick = () => this.toggle();
+    (this.el.querySelector('#sc-before') as HTMLElement).onclick = () => { if (this.state === 'after') this.toggle(); };
+    (this.el.querySelector('#sc-after') as HTMLElement).onclick = () => { if (this.state === 'before') this.toggle(); };
     (this.el.querySelector('#sc-new') as HTMLElement).onclick = () => this.actions.another();
     this.stage.sway(true);
     this.stage.dragPans(true);
@@ -428,7 +429,7 @@ export class Showcase {
     if (this.state === 'moving') return;
     const tidy = this.state === 'before';
     this.state = 'moving';
-    this.render(null);
+    this.render(null, tidy ? 'after' : 'before');
     // a wave down the aisle: left to right to tidy up, back the other way to mess up
     const order = tidy ? this.closets : [...this.closets].reverse();
     let left = order.length;
@@ -453,26 +454,41 @@ export class Showcase {
     this.timers.push(window.setTimeout(() => { if (!this.disposed) f(); }, ms));
   }
 
-  private render(ev: Evaluation | null): void {
-    const title = this.el.querySelector('#sc-title') as HTMLElement;
+  /** the switch, its caption and the gauges; while it moves, the switch is already on its way to `to` */
+  private render(ev: Evaluation | null, to?: 'before' | 'after'): void {
+    const sw = this.el.querySelector('#sc-switch') as HTMLElement;
     const stats = this.el.querySelector('#sc-stats') as HTMLElement;
-    const btn = this.el.querySelector('#sc-toggle') as HTMLButtonElement;
     const many = this.closets.length > 1;
     // the title screen follows the state too (its LEDs, its play button)
     document.body.dataset.sc = this.state;
-    title.className = this.state;
-    title.textContent = this.state === 'before' ? 'AVANT' : this.state === 'after' ? 'APRÈS' : '…';
+    sw.className = this.state === 'moving' ? `to-${to}` : this.state;
+    for (const side of ['before', 'after'] as const) {
+      const b = this.el.querySelector(`#sc-${side}`) as HTMLButtonElement;
+      b.disabled = this.state !== (side === 'before' ? 'after' : 'before');
+      b.setAttribute('aria-pressed', String(this.state === side || to === side));
+    }
+    const what = many ? `${this.closets.length} baies` : 'Une baie';
     (this.el.querySelector('#sc-caption') as HTMLElement).textContent =
-      this.state === 'before' ? 'Le technicien précédent est passé par là.'
+      this.state === 'before' ? `${what}, et le technicien précédent est passé par là.`
       : this.state === 'after' ? 'Chaque cordon à sa longueur, rangé, étiqueté.'
-      : 'Rangement en cours…';
-    btn.disabled = this.state === 'moving';
-    btn.textContent = this.state === 'after' ? '↺ Remettre le désordre' : many ? 'Ranger les baies' : 'Ranger la baie';
-    btn.className = this.state === 'after' ? 'ghost big' : 'primary big';
-    stats.style.visibility = ev ? 'visible' : 'hidden';
+      : to === 'after' ? 'Rangement en cours…' : 'Retour au désordre…';
+    // the gauges keep their last values while it moves, and fill (or empty) once it is done
     if (!ev) return;
     const n = ev.total;
-    const bays = this.closets.length > 1 ? `<span><b>${this.closets.length}</b> baies</span>` : '';
-    stats.innerHTML = `${bays}<span><b>${n}</b> cordons</span><span>Rangés <b>${ev.routed}/${n}</b></span><span>Façade dégagée <b>${ev.clear}/${n}</b></span><span>Étiquetés <b>${ev.labelled}/${n}</b></span><span class="st">${'★'.repeat(ev.stars)}${'☆'.repeat(3 - ev.stars)}</span>`;
+    const gauge = (name: string, k: number) => {
+      const cls = k === n ? 'full' : k >= n / 2 ? 'some' : '';
+      return `<div class="g ${cls}"><span>${name}</span><b>${Math.round((100 * k) / n)} %</b><div class="bar"><i style="width:${(100 * k) / n}%"></i></div></div>`;
+    };
+    const html = gauge('Rangés', ev.routed) + gauge('Façade dégagée', ev.clear) + gauge('Étiquetés', ev.labelled);
+    if (!stats.children.length) { stats.innerHTML = html; return; }
+    // update in place, so the bars slide to their new length
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    [...tmp.children].forEach((g, k) => {
+      const old = stats.children[k] as HTMLElement;
+      old.className = g.className;
+      old.querySelector('b')!.textContent = g.querySelector('b')!.textContent;
+      (old.querySelector('.bar i') as HTMLElement).style.width = (g.querySelector('.bar i') as HTMLElement).style.width;
+    });
   }
 }

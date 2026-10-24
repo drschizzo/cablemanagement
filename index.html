@@ -115,15 +115,16 @@
     </div>
 
     <div id="showcase">
-      <div class="state">
-        <div id="sc-title" class="before">AVANT</div>
-        <div id="sc-caption"></div>
-      </div>
-      <div id="sc-stats"></div>
       <div class="row">
-        <button id="sc-toggle" class="primary big">Ranger la baie</button>
-        <button id="sc-new" class="ghost" title="Tirer d'autres baies au hasard">↻</button>
+        <div id="sc-switch" class="before" role="group" aria-label="Avant / après">
+          <i class="thumb"></i>
+          <button id="sc-before" aria-pressed="true">Avant</button>
+          <button id="sc-after" aria-pressed="false">Après</button>
+        </div>
+        <button id="sc-new" title="Tirer d'autres baies au hasard" aria-label="Tirer d'autres baies au hasard">↻</button>
       </div>
+      <p id="sc-caption"></p>
+      <div id="sc-stats"></div>
     </div>
 
     <div id="tuto">
