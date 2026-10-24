@@ -230,6 +230,20 @@ export class CableView {
     p.tint.needsUpdate = true;
   }
 
+  /** a glow per node of one cord (null: none), e.g. how each stretch is held */
+  setNodeTints(c: number, colors: (THREE.Color | null)[]): void {
+    const cm = this.cables[c];
+    if (!cm) return;
+    const black = new THREE.Color(0, 0, 0);
+    for (let s = 0; s < cm.samples; s++) {
+      const col = colors[Math.min(colors.length - 1, Math.round(s / SUB))] ?? black;
+      for (let r = 0; r < RADIAL; r++) col.toArray(this.tint, 3 * (cm.v0 + s * RADIAL + r));
+    }
+    const a = this.tube.geometry.attributes.emissiveTint as THREE.BufferAttribute;
+    a.addUpdateRange(3 * cm.v0, 3 * cm.samples * RADIAL);
+    a.needsUpdate = true;
+  }
+
   private dirty(cm: CableMesh): void {
     const geo = this.tube.geometry;
     for (const n of ['position', 'normal']) (geo.attributes[n] as THREE.BufferAttribute).addUpdateRange(3 * cm.v0, 3 * cm.samples * RADIAL);

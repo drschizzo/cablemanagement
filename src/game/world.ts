@@ -49,6 +49,18 @@ export interface Evaluation {
   /** production links cut now, and the most allowed at once */
   liveDown: number;
   maxCuts?: number;
+  /** velcro bundles (three cords or more, in the management), and how many three stars need */
+  bundles: number;
+  bundlesNeeded: number;
+}
+
+/** how a node of a cord is held (World.holdMap) */
+export const HOLD = { FREE: 0, HELD: 1, HANGING: 2, LOW: 3 } as const;
+
+export interface Snapshot {
+  version: number;
+  x: Float64Array;
+  ends: CableEnd[][];
 }
 
 export type Inventory = Record<ItemKind | 'velcro', number>;
@@ -215,6 +227,44 @@ export class World {
     }
     const fresh = pathToNodes(shape((lo + hi) / 2), this.seg);
     this.rebuild(new Map([[c, fresh]]));
+    return true;
+  }
+
+  /**
+   * The length a cord needs to run tidily between the two ports it is plugged
+   * into, through the managers and ducts of the cabinet as it is now, rounded
+   * up to 5 cm with a little play (null: it is not plugged at both ends).
+   */
+  tidyLength(c: number): number | null {
+    const [pa, pb] = this.cables[c].ends.map((e) => e.port);
+    if (!pa || !pb) return null;
+    // the route starts from the upper port
+    const [a, b] = this.rack.port(pa).unit <= this.rack.port(pb).unit ? [pa, pb] : [pb, pa];
+    const route = tidyRoutes(this.rack, [{ a, b, type: this.cables[c].type, service: 0 }], this.radius, this.seg)[0];
+    return Math.ceil((polyLength(route) + 0.03) / 0.05) * 0.05;
+  }
+
+  // ------------------------------------------------------- undo
+
+  /** what an undo puts back: every node, every plug, every label (null when the cords were rebuilt since) */
+  snapshot(): Snapshot {
+    return {
+      version: this.cablesVersion,
+      x: Float64Array.from(this.sim.x),
+      ends: this.cables.map((cb) => cb.ends.map((e) => ({ ...e }))),
+    };
+  }
+
+  /** puts a snapshot back; false when the cords have been rebuilt since (another length, a new cord) */
+  restore(s: Snapshot): boolean {
+    if (s.version !== this.cablesVersion || s.ends.length !== this.cables.length) return false;
+    this.cables.forEach((cb, c) => cb.ends.forEach((e, k) => { if (e.port !== s.ends[c][k].port) this.unplug(c, k); }));
+    this.sim.teleport(s.x);
+    this.cables.forEach((cb, c) => cb.ends.forEach((e, k) => {
+      const want = s.ends[c][k];
+      if (want.port && e.port !== want.port) this.plug(c, k, want.port);
+      e.label = want.label;
+    }));
     return true;
   }
 
@@ -456,34 +506,56 @@ export class World {
     return ok;
   }
 
+  /** height below which a cord lies on the floor of the cabinet rather than in it */
+  private floorLimit(): number {
+    const lowest = this.rack.units.reduce((m, u, k) => (u.kind === 'switch' || u.kind === 'panel' ? Math.max(m, k) : m), 0);
+    return this.rack.unitBottom(lowest) - 0.12;
+  }
+
+  /**
+   * How each node of a cord is held: HELD by the management or next to a
+   * plugged connector, FREE on a short stretch (20 cm at most) between two
+   * holds, HANGING on a longer one, LOW under the equipment (on the floor).
+   * The cord is routed when it has neither of the last two.
+   */
+  holdMap(c: number, supports = this.rack.supports(), floorLimit = this.floorLimit()): Uint8Array {
+    const cb = this.cables[c];
+    const x = this.sim.x;
+    const out = new Uint8Array(cb.count);
+    const reach = 6;
+    let run = 0;
+    const close = (k: number) => {
+      // the stretch that ends before node k
+      if (run > 0.2) for (let j = k - Math.round(run / this.seg); j < k; j++) if (out[j] === HOLD.FREE) out[j] = HOLD.HANGING;
+      run = 0;
+    };
+    for (let k = 0; k < cb.count; k++) {
+      const i = cb.start + k;
+      const px = x[3 * i], py = x[3 * i + 1], pz = x[3 * i + 2];
+      const nearEnd = (k < reach && cb.ends[0].port) || (k >= cb.count - reach && cb.ends[1].port);
+      let held = !!nearEnd;
+      if (!held) {
+        for (const s of supports) {
+          if (insideBox(s, px, py, pz)) { held = true; break; }
+        }
+      }
+      if (held) { close(k); out[k] = HOLD.HELD; } else { run += this.seg; out[k] = HOLD.FREE; }
+      if (py < floorLimit) out[k] = HOLD.LOW;
+    }
+    close(cb.count);
+    return out;
+  }
+
   evaluate(): Evaluation {
     const supports = this.rack.supports();
     const x = this.sim.x;
     const cableRouted: boolean[] = [];
     const cableObstructs: boolean[] = [];
-    const lowest = this.rack.units.reduce((m, u, k) => (u.kind === 'switch' || u.kind === 'panel' ? Math.max(m, k) : m), 0);
-    const floorLimit = this.rack.unitBottom(lowest) - 0.12;
+    const floorLimit = this.floorLimit();
     for (let c = 0; c < this.cables.length; c++) {
       const cb = this.cables[c];
-      // longest stretch of cord held by nothing (connectors' own reach excepted)
-      let run = 0, worst = 0, low = false;
-      const reach = 6;
-      for (let k = 0; k < cb.count; k++) {
-        const i = cb.start + k;
-        const px = x[3 * i], py = x[3 * i + 1], pz = x[3 * i + 2];
-        if (py < floorLimit) low = true;
-        const nearEnd = (k < reach && cb.ends[0].port) || (k >= cb.count - reach && cb.ends[1].port);
-        let held = !!nearEnd;
-        if (!held) {
-          for (const s of supports) {
-            if (insideBox(s, px, py, pz)) { held = true; break; }
-          }
-        }
-        if (held) { run = 0; continue; }
-        run += this.seg;
-        if (run > worst) worst = run;
-      }
-      cableRouted.push(!low && worst <= 0.2 && !!cb.ends[0].port && !!cb.ends[1].port);
+      const hold = this.holdMap(c, supports, floorLimit);
+      cableRouted.push(!hold.some((h) => h === HOLD.HANGING || h === HOLD.LOW) && !!cb.ends[0].port && !!cb.ends[1].port);
       // a cord hanging in front of somebody else's port
       let obstructs = false;
       for (const p of this.rack.ports) {
@@ -517,13 +589,24 @@ export class World {
     const routed = count((s) => s.routed);
     const clear = count((s) => s.clear);
     const labelled = this.level.labels ? count((s) => s.labelled) : n;
+    const bundles = this.bundleCount(supports);
+    const bundlesNeeded = this.level.bundles ?? 0;
     let stars = 0;
     if (connected === n) {
       stars = 1;
       if (routed >= 0.7 * n && clear >= 0.85 * n) stars = 2;
-      if (routed === n && clear === n && labelled === n) stars = 3;
+      if (routed === n && clear === n && labelled === n && bundles >= bundlesNeeded) stars = 3;
     }
-    return { circuits, connected, routed, clear, labelled, total: n, stars, cableRouted, cableObstructs, liveDown: this.liveDown(), maxCuts: this.level.maxCuts };
+    return { circuits, connected, routed, clear, labelled, total: n, stars, cableRouted, cableObstructs, liveDown: this.liveDown(), maxCuts: this.level.maxCuts, bundles, bundlesNeeded };
+  }
+
+  /** straps round three cords or more, lying in a manager or a duct */
+  bundleCount(supports = this.rack.supports()): number {
+    return this.straps.filter((st) => {
+      if (st.nodes.length < 3) return false;
+      const [x, y, z] = this.strapCentre(st);
+      return supports.some((s) => insideBox(s, x, y, z));
+    }).length;
   }
 }
 

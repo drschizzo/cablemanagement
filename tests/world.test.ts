@@ -1,10 +1,10 @@
 // The rules of a cabinet: plugging, the maintenance window, the score.
 import { describe, it, expect, beforeEach } from 'vitest';
-import { World } from '../src/game/world';
+import { HOLD, World } from '../src/game/world';
 import { LEVELS, type LevelDef } from '../src/game/levels';
 
-// level 1: four copper cords, all on their planned ports, at most one production link cut
-const L1 = LEVELS[0];
+// level 1, every cord on its planned ports: four copper cords, at most one production link cut
+const L1: LevelDef = { ...LEVELS[0], wrong: 0, loose: 0 };
 
 describe('a cabinet at the start', () => {
   const w = new World(L1);
@@ -122,5 +122,59 @@ describe('labels, straps and cord lengths', () => {
     // laid on a coil of random radius: its rest lengths are the chords of the arcs, a little shorter
     expect(Math.abs(w.cableLength(c) - 1)).toBeLessThan(0.01);
     expect(w.cables[c].ends.every((e) => e.port === null)).toBe(true);
+  });
+});
+
+describe('what the player sees while tidying', () => {
+  it('a cord hanging free shows its long stretches, and is not routed', () => {
+    const w = new World(L1);
+    w.preroll(30);
+    const ev = w.evaluate();
+    const c = ev.cableRouted.findIndex((r) => !r);
+    expect(c).toBeGreaterThanOrEqual(0);
+    const hold = w.holdMap(c);
+    expect(hold[0]).toBe(HOLD.HELD); // next to its plugged connector
+    expect([...hold].some((h) => h === HOLD.HANGING || h === HOLD.LOW)).toBe(true);
+  });
+
+  it('undo puts back the nodes, the plugs and the labels', () => {
+    const w = new World(L1);
+    const port = w.cables[0].ends[0].port!;
+    const s = w.snapshot();
+    w.unplug(0, 0);
+    w.cables[0].ends[1].label = 2;
+    w.sim.moveNodes(w.cables[0].start, [0.3, 0.3, 0.3]);
+    expect(w.restore(s)).toBe(true);
+    expect(w.cables[0].ends[0].port).toBe(port);
+    expect(w.cables[0].ends[1].label).toBeNull();
+    expect(w.circuitUp(0)).toBe(true);
+    expect(w.sim.x[3 * (w.cables[0].start + 3)]).toBeCloseTo(s.x[3 * (w.cables[0].start + 3)]);
+  });
+
+  it('undo gives up once the cords have been rebuilt', () => {
+    const w = new World(L1);
+    const s = w.snapshot();
+    w.setCableLength(0, w.cableLength(0) + 0.3);
+    expect(w.restore(s)).toBe(false);
+  });
+
+  it('the tidy length of a plugged cord reaches from one end to the other', () => {
+    const w = new World(L1);
+    const L = w.tidyLength(0)!;
+    expect(L).toBeGreaterThan(w.minCableLength(0));
+    expect(L).toBeLessThan(w.cableLength(0) + 0.5);
+    w.unplug(0, 1);
+    expect(w.tidyLength(0)).toBeNull();
+  });
+
+  it('a strap round two cords is not a bundle', () => {
+    const w = new World({ ...L1, bundles: 1 });
+    const [a] = w.endNodes(0, 0);
+    const i = a + 4, x = w.sim.x;
+    w.sim.moveNodes(w.cables[1].start + 4, [x[3 * i] + 0.002, x[3 * i + 1], x[3 * i + 2]]);
+    expect(w.addStrap(x[3 * i], x[3 * i + 1], x[3 * i + 2], 0.01)).not.toBeNull();
+    const ev = w.evaluate();
+    expect(ev.bundles).toBe(0);
+    expect(ev.bundlesNeeded).toBe(1);
   });
 });

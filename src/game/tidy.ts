@@ -8,8 +8,9 @@
 // the shortest run to the side rides in front, the others pass behind the
 // points where it drops in.
 
-import { CONNECTOR, DUCT_SPAN, Rack, SEG, SIDE_BACK, SIDE_IN, SIDE_OUT, type Port } from './rack';
-import type { Circuit } from './tangle';
+import { CONNECTOR, DUCT_SPAN, Rack, SEG, SIDE_BACK, SIDE_IN, SIDE_OUT, insideBox, type ItemKind, type Port } from './rack';
+import { makeSchedule, rng, type Circuit } from './tangle';
+import type { World } from './world';
 import type { LevelDef } from './levels';
 
 export type V3 = [number, number, number];
@@ -17,16 +18,26 @@ export type V3 = [number, number, number];
 const FINGER_R = 0.003;
 const LANES_Z = 6;
 
-export function tidyRoutes(rack: Rack, circuits: Circuit[], radius: number, seg = SEG): V3[][] {
+/**
+ * How each cord travels: out of its port into the `upper` manager, down the
+ * side duct of `side`, into the `lower` manager and up into its other port.
+ * `curl`: a panel right above its switch, port to port, no manager at all.
+ */
+export function routePlan(rack: Rack, circuits: Circuit[]) {
   const mgrs = rack.items.filter((it) => it.kind === 'hmgr').map((it) => it.unit);
-  const plan = circuits.map((c) => {
+  return circuits.map((c) => {
     const a = rack.port(c.a), b = rack.port(c.b);
     const upper = nearestManager(mgrs, a.unit, +1);
     // arrive from the manager right above the device, else right below it, else the nearest above
     const lower = mgrs.includes(b.unit - 1) ? b.unit - 1 : mgrs.includes(b.unit + 1) ? b.unit + 1 : nearestManager(mgrs, b.unit, -1);
     const side = a.x + b.x * 0.3 < 0 ? -1 : 1;
-    return { a, b, upper, lower, side, li: 0, lo: 0, duct: 0 };
+    const curl = b.unit === a.unit + 1 && Math.abs(a.x - b.x) < 0.012;
+    return { a, b, upper, lower, side, curl, li: 0, lo: 0, duct: 0 };
   });
+}
+
+export function tidyRoutes(rack: Rack, circuits: Circuit[], radius: number, seg = SEG): V3[][] {
+  const plan = routePlan(rack, circuits);
   // lanes, per side and per manager (a manager may serve cords leaving a panel
   // and cords arriving at a switch: they share its lanes); duct columns per side
   const ductCount = { [-1]: 0, [1]: 0 } as Record<number, number>;
@@ -51,7 +62,7 @@ export function tidyRoutes(rack: Rack, circuits: Circuit[], radius: number, seg 
   return plan.map((p) => {
     const s = p.side;
     // a panel right above its switch: a short cord curling down from one port to the other
-    if (p.b.unit === p.a.unit + 1 && Math.abs(p.a.x - p.b.x) < 0.012) {
+    if (p.curl) {
       // as tight as the bend radius allows, so that it cannot sag onto the unit below
       const zc = CONNECTOR + seg + 0.014;
       return smooth([
@@ -94,19 +105,58 @@ export function tidyRoutes(rack: Rack, circuits: Circuit[], radius: number, seg 
 }
 
 /**
- * A level as a careful technician would finish it: a finger manager in every
- * empty unit between the equipment, ducts all down both sides, and every cord
- * cut to its tidy route and plugged as planned. Its score says whether the
- * level can reach three stars (tools/solvable.ts, tests/levels.test.ts).
+ * A level as a careful technician would finish it, with the level's own
+ * stock and nothing more: its finger managers in the empty units next to the
+ * equipment in use, its ducts (then its rings) down the side channels the
+ * cords take, and every cord cut to its tidy route and plugged as planned.
+ * Its score says whether the level can reach three stars (tools/solvable.ts,
+ * tests/levels.test.ts).
  */
 export function tidyKit(level: LevelDef): LevelDef {
   const pre = [...level.preinstalled];
-  const last = level.units.reduce((m, u, k) => (u.kind !== 'blank' ? k : m), 0);
-  level.units.forEach((u, k) => {
-    if (u.kind === 'blank' && k > 0 && k < last && !pre.some((p) => p.kind === 'hmgr' && p.unit === k)) pre.push({ kind: 'hmgr', unit: k, side: 0 });
+  const stock = { hmgr: 0, duct: 0, vring: 0, ...level.inventory };
+  const rack = new Rack(level.units, { open: level.open });
+  for (const p of pre) rack.addItem(p.kind, p.unit, p.side, true);
+  const circuits = level.schedule ? level.schedule(rack) : makeSchedule(level, rack, rng(level.seed));
+  const place = (kind: ItemKind, unit: number, side: number): boolean => {
+    if (!rack.addItem(kind, unit, side, true)) return false;
+    pre.push({ kind, unit, side });
+    return true;
+  };
+  // managers: the empty units right next to the equipment the schedule uses come first
+  const used = new Set(circuits.flatMap((c) => [rack.port(c.a).unit, rack.port(c.b).unit]));
+  const near = (k: number) => Number(used.has(k - 1)) + Number(used.has(k + 1));
+  const blanks = level.units.map((_, k) => k).filter((k) => level.units[k].kind === 'blank' && rack.canPlace('hmgr', k, 0));
+  for (const k of blanks.sort((a, b) => near(b) - near(a) || a - b)) {
+    if (stock.hmgr <= 0 || near(k) === 0) break;
+    if (place('hmgr', k, 0)) stock.hmgr--;
+  }
+  // the stretch of each side channel the cords run down, between their two managers
+  const span: Record<number, [number, number]> = { [-1]: [Infinity, -Infinity], [1]: [Infinity, -Infinity] };
+  for (const p of routePlan(rack, circuits)) {
+    if (p.curl || p.upper === p.lower) continue;
+    const s = span[p.side];
+    s[0] = Math.min(s[0], p.upper, p.lower);
+    s[1] = Math.max(s[1], p.upper, p.lower);
+  }
+  // ducts down those stretches, a side at a time so that both get their top first; rings in what is left
+  const todo = [-1, 1].map((side) => {
+    const units: number[] = [];
+    for (let u = span[side][0]; u <= span[side][1]; u += DUCT_SPAN) units.push(u);
+    return { side, units };
   });
-  for (const side of [-1, 1]) {
-    for (let u = 1; u + DUCT_SPAN <= level.units.length + 1; u += DUCT_SPAN) pre.push({ kind: 'duct', unit: Math.min(u + 1, level.units.length - 1), side });
+  while (stock.duct > 0 && todo.some((t) => t.units.length)) {
+    for (const t of todo) {
+      const u = t.units.shift();
+      if (u === undefined || stock.duct <= 0) continue;
+      // a duct placed at u + 1 starts at u
+      if (place('duct', Math.min(u + 1, level.units.length - 1), t.side)) stock.duct--;
+    }
+  }
+  for (const t of todo) {
+    for (const u of t.units) {
+      for (let k = u; k < u + DUCT_SPAN && k <= span[t.side][1] && stock.vring > 0; k += 2) if (place('vring', k, t.side)) stock.vring--;
+    }
   }
   return { ...level, preinstalled: pre, showcase: 'tidy', wrong: 0, loose: 0 };
 }
@@ -188,4 +238,23 @@ export function pathToNodes(path: V3[], seg: number): number[] {
   const buf = new Float64Array(3 * (n + 1));
   resample(inner, arcs, buf, 0);
   return [...path[0], ...buf, ...path[path.length - 1]];
+}
+
+/**
+ * Straps a settled tidy cabinet into `n` bundles, as a technician would: where
+ * three cords or more run side by side in a manager or a duct (the checks of
+ * three stars, tools/solvable.ts and tests/levels.test.ts).
+ */
+export function strapBundles(w: World, n: number): void {
+  const supports = w.rack.supports();
+  const x = w.sim.x;
+  for (let c = 0; c < w.cables.length && w.bundleCount(supports) < n; c++) {
+    const cb = w.cables[c];
+    for (let i = cb.start + 4; i < cb.start + cb.count - 4 && w.bundleCount(supports) < n; i += 3) {
+      if (w.sim.bundleOf[i] >= 0 || !supports.some((s) => insideBox(s, x[3 * i], x[3 * i + 1], x[3 * i + 2]))) continue;
+      const before = w.bundleCount(supports);
+      const st = w.addStrap(x[3 * i], x[3 * i + 1], x[3 * i + 2]);
+      if (st && w.bundleCount(supports) === before) w.removeStrap(st);
+    }
+  }
 }

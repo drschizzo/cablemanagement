@@ -73,7 +73,7 @@ par niveau) et tutoriel terminé. Les clés sont celles des versions précédent
 
 | Évolution | Où |
 |---|---|
-| un niveau | une entrée dans `LEVELS` (`game/levels.ts`) ; `tests/levels.test.ts` vérifie son plan et qu'il peut atteindre 3 étoiles |
+| un niveau | une entrée dans `LEVELS` (`game/levels.ts`) ; `tests/levels.test.ts` vérifie son plan, qu'il ne se gagne pas sans rien faire et qu'il peut atteindre 3 étoiles avec son seul inventaire (`tidyKit`) |
 | un équipement de baie | `UnitSpec` et le constructeur de `Rack` (`game/rack.ts`), son rendu dans `render/rackView.ts` |
 | un élément de rangement | `ItemKind`, `canPlace`, `statics` et `supports` dans `game/rack.ts`, `buildItem` dans `render/rackView.ts`, un outil dans `TOOLS` (`ui/hud.ts`) |
 | un outil | `Tool` et `onDown` dans `game/controller.ts`, son bouton dans `TOOLS` (`ui/hud.ts`) |

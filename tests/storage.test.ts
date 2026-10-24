@@ -14,25 +14,26 @@ beforeEach(() => {
 
 describe('browser storage', () => {
   it('a missing entry reads as its default', () => {
-    expect(load('progress')).toEqual({ stars: {}, times: {} });
+    expect(load('progress')).toEqual({ stars: {}, times: {}, challenges: {} });
     expect(load('tutorialDone')).toBe(false);
   });
 
   it('keeps the progress, under the key of earlier versions', () => {
-    save('progress', { stars: { l1: 3 }, times: { l1: 42 } });
-    expect(JSON.parse(mem.get('cable.progress')!)).toEqual({ stars: { l1: 3 }, times: { l1: 42 } });
-    expect(load('progress')).toEqual({ stars: { l1: 3 }, times: { l1: 42 } });
+    const p = { stars: { l1: 3 }, times: { l1: 42 }, challenges: { l1: true } };
+    save('progress', p);
+    expect(JSON.parse(mem.get('cable.progress')!)).toEqual(p);
+    expect(load('progress')).toEqual(p);
   });
 
-  it('an old save without the times still reads', () => {
+  it('an old save without the times or the challenges still reads', () => {
     mem.set('cable.progress', '{"stars":{"l2":1}}');
-    expect(load('progress')).toEqual({ stars: { l2: 1 }, times: {} });
+    expect(load('progress')).toEqual({ stars: { l2: 1 }, times: {}, challenges: {} });
   });
 
   it('an unreadable value, or one of another shape, reads as the default', () => {
     for (const raw of ['{', 'null', '42', '{"stars":3}']) {
       mem.set('cable.progress', raw);
-      expect(load('progress')).toEqual({ stars: {}, times: {} });
+      expect(load('progress')).toEqual({ stars: {}, times: {}, challenges: {} });
     }
   });
 
@@ -47,7 +48,7 @@ describe('browser storage', () => {
   it('a blocked storage does not break the game', () => {
     const blocked = () => { throw new Error('blocked'); };
     vi.stubGlobal('localStorage', { getItem: blocked, setItem: blocked, removeItem: blocked });
-    expect(load('progress')).toEqual({ stars: {}, times: {} });
+    expect(load('progress')).toEqual({ stars: {}, times: {}, challenges: {} });
     expect(() => save('tutorialDone', true)).not.toThrow();
   });
 });

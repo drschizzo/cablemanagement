@@ -10,7 +10,7 @@ import { Controller } from './game/controller';
 import { Hud } from './ui/hud';
 import { Showcase } from './ui/showcase';
 import { Tutorial } from './ui/tutorial';
-import { LEVELS, TUTORIAL, freeLevel, type LevelDef } from './game/levels';
+import { LEVELS, TUTORIAL, UNLOCK_STARS, freeLevel, type LevelDef } from './game/levels';
 import { load } from './storage';
 
 const stage = new Stage(document.getElementById('view')!);
@@ -112,9 +112,9 @@ function startShowcase(): void {
   });
 }
 
-/** the first level without stars, or the menu once they all have some */
+/** the first level not yet tidy enough to open the next one, or the menu once they all are */
 function playNext(): void {
-  const next = LEVELS.find((l) => !hud.progress.stars[l.id]);
+  const next = LEVELS.find((l) => (hud.progress.stars[l.id] ?? 0) < UNLOCK_STARS);
   if (next) start(next);
   else hud.showMenu();
 }

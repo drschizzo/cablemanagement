@@ -73,6 +73,12 @@ export const sfx = {
   label() { burst(6000, 1, 0.05, 0.12); tone(1600, 0.05, 0.03); },
   /** a cord landing in its place (demo), pitched along the bundle */
   land(k: number) { burst(2600 + k * 40, 5, 0.025, 0.25); tone(660 * Math.pow(2, (k % 12) / 12), 0.09, 0.025); },
+  /** a cord just became tidy: a soft click and a note, one step higher for each in a row */
+  tidy(k: number) {
+    const steps = [0, 2, 4, 7, 9];
+    burst(4200, 5, 0.02, 0.18);
+    tone(784 * Math.pow(2, (steps[k % 5] + 12 * Math.floor(Math.min(k, 9) / 5)) / 12), 0.22, 0.045, 0.02, 'triangle');
+  },
   whoosh() { burst(700, 0.6, 0.5, 0.12); },
   error() { tone(220, 0.12, 0.06, 0, 'square'); },
   win() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.25, 0.07, i * 0.11, 'triangle')); },

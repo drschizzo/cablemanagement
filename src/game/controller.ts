@@ -6,7 +6,7 @@ import { Stage } from '../render/stage';
 import { RackView, buildItem, ghostBadMat, ghostMat } from '../render/rackView';
 import { CableView } from '../render/cableView';
 import { disposeTree } from '../render/dispose';
-import { World, type Evaluation, type Strap } from './world';
+import { HOLD, World, type Evaluation, type Snapshot, type Strap } from './world';
 import { COLUMN_X, FRONT_Z, ROOM_FLOOR, U, WALL_X, type Item, type ItemKind, type Port } from './rack';
 import { FIBRE_NAMES, type FibreType, type LevelDef } from './levels';
 import { sfx } from '../audio/sfx';
@@ -34,6 +34,10 @@ interface Pick {
 }
 
 const MAX_TARGET_STEP = 0.035; // m per frame the hand may move
+/** how far the hand pulls a plugged connector before it comes out (m) */
+const UNPLUG_PULL = 0.04;
+/** glow of a stretch of the carried cord: held by the management, hanging too long, on the floor */
+const HOLD_TINT = [null, new THREE.Color('#1f9a45'), new THREE.Color('#c06800'), new THREE.Color('#b01c1c')];
 const CORD_TOOLS = new Set<Tool>(['hand', 'label', 'velcro', 'length', 'trace', 'deposit']);
 
 export class Controller {
@@ -41,7 +45,8 @@ export class Controller {
   rackView: RackView;
   cableView: CableView;
   tool: Tool = 'hand';
-  labelColor = 0;
+  /** colour the label tool puts on (−1: the service of the cord's line, on both ends) */
+  labelColor = -1;
   elapsed = 0;
   running = true;
   lastEval: Evaluation;
@@ -53,7 +58,11 @@ export class Controller {
     depthMode: boolean; anchor: { mx: number; my: number; t: THREE.Vector3 };
     /** hand minus pointer-on-plane: keeps the cord where it is when Shift is released */
     offset: THREE.Vector3;
+    /** a plugged connector was taken: it stays in until the hand pulls it far enough */
+    pull: { end: number; from: THREE.Vector3; refused: boolean } | null;
   } | null = null;
+  /** the cord whose held and hanging stretches are shown (while carried, and a moment after) */
+  private holdView: { cable: number; until: number; next: number } | null = null;
   /** plumb line from the held point to the floor: the depth cue */
   private guide: THREE.Group;
   private pan: { mx: number; my: number } | null = null;
@@ -82,6 +91,16 @@ export class Controller {
   private cycleAt = { x: -1e9, y: -1e9 };
   /** undoes every subscription made by bind() */
   private unbind: (() => void)[] = [];
+  /** cords tidy as of the last evaluation (plugged as planned, routed, clear) */
+  private tidyCables = new Set<number>();
+  /** cords that just became tidy: they glow for a moment (clock time it ends) */
+  private glows = new Map<number, number>();
+  /** cords made tidy in a row, and when the last one was */
+  private streak = { n: 0, at: -1e9 };
+  /** states to go back to (Ctrl+Z), the latest last */
+  private history: Snapshot[] = [];
+  /** the cabinet as the player found it (image), taken on the first frame */
+  before: string | null = null;
 
   constructor(public stage: Stage, level: LevelDef, private events: ControllerEvents, threaded = true) {
     this.world = new World(level);
@@ -100,6 +119,7 @@ export class Controller {
     this.rackView.syncItems(this.world.itemsVersion);
     this.cableView.update(true);
     this.lastEval = this.world.evaluate();
+    this.tidyCables = this.tidySet(this.lastEval);
     this.refreshLeds();
     this.bind();
     requestAnimationFrame(this.frame);
@@ -189,7 +209,41 @@ export class Controller {
         this.events.onStats(`${this.world.sim.n} nœuds · ${s.contacts} contacts · ${s.awake}/${this.world.cables.length} câbles actifs · physique ${ms.toFixed(1)} ms${this.world.sim.threaded ? ' (worker)' : ''}`);
       }
     }
-    if (draw) this.stage.render();
+    this.updateGlows();
+    this.updateHoldView();
+    if (draw) {
+      this.stage.render();
+      if (!this.before) this.before = this.capture();
+    }
+  }
+
+  /**
+   * An image of the cabinet from the front, framed in the space the panels
+   * leave free (the before/after of the result screen).
+   */
+  capture(): string {
+    const cam = this.stage.camera, ctl = this.stage.controls;
+    const pos = cam.position.clone(), target = ctl.target.clone();
+    const guide = this.guide.visible;
+    this.guide.visible = false;
+    this.stage.resetView();
+    this.stage.render();
+    const src = this.stage.renderer.domElement;
+    const k = src.width / Math.max(1, src.clientWidth);
+    const ins = this.stage.insets;
+    const sx = ins.left * k, sy = ins.top * k;
+    const sw = Math.max(1, src.width - (ins.left + ins.right) * k), sh = Math.max(1, src.height - (ins.top + ins.bottom) * k);
+    const out = document.createElement('canvas');
+    const scale = Math.min(1, 420 / sh);
+    out.width = Math.round(sw * scale);
+    out.height = Math.round(sh * scale);
+    out.getContext('2d')!.drawImage(src, sx, sy, sw, sh, 0, 0, out.width, out.height);
+    cam.position.copy(pos);
+    ctl.target.copy(target);
+    ctl.update();
+    this.guide.visible = guide;
+    this.stage.render();
+    return out.toDataURL('image/jpeg', 0.85);
   }
 
   /** moves the hand target towards the pointer, at a bounded speed */
@@ -228,6 +282,30 @@ export class Controller {
     const g = this.world.sim.grabTarget;
     g[0] = t.x; g[1] = t.y; g[2] = t.z;
     this.placeGuide(t, d.depthMode);
+    if (d.pull && t.distanceTo(d.pull.from) > UNPLUG_PULL) this.pullOut(d);
+  }
+
+  /** the hand pulled a plugged connector far enough: it comes out, and the hand now holds it */
+  private pullOut(d: NonNullable<Controller['drag']>): void {
+    const w = this.world, p = d.pull!;
+    if (!w.canUnplug(d.cable)) {
+      if (!p.refused) this.refuseCut();
+      p.refused = true;
+      return;
+    }
+    d.pull = null;
+    w.unplug(d.cable, p.end);
+    this.counters.unplugged++;
+    sfx.unplug();
+    this.reevaluate();
+    const [n0] = w.endNodes(d.cable, p.end);
+    w.sim.release();
+    w.sim.grab(n0);
+    const g = w.sim.grabTarget;
+    g[0] = d.target.x; g[1] = d.target.y; g[2] = d.target.z;
+    d.node = n0;
+    d.end = p.end;
+    this.events.onHint('Relâchez le connecteur devant un port libre (surligné en jaune) pour le brancher.');
   }
 
   private pointerOnPlane(plane: THREE.Plane, depth: number): THREE.Vector3 | null {
@@ -257,6 +335,12 @@ export class Controller {
     this.unbind.push(() => this.stage.controls.removeEventListener('start', onOrbit));
     on(window, 'keydown', (e: KeyboardEvent) => { if (e.key === 'Shift' && this.drag && !this.drag.depthMode) this.setDepthMode(true); });
     on(window, 'keyup', (e: KeyboardEvent) => { if (e.key === 'Shift' && this.drag && this.drag.depthMode) this.setDepthMode(false); });
+    on(window, 'keydown', (e: KeyboardEvent) => {
+      if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey) && !document.querySelector('.overlay.on')) {
+        e.preventDefault();
+        this.undo();
+      }
+    });
     on(window, 'keydown', (e: KeyboardEvent) => {
       if (e.key !== 'Tab' || this.drag || document.querySelector('.overlay.on')) return;
       e.preventDefault();
@@ -308,6 +392,8 @@ export class Controller {
         this.stage.renderer.domElement.style.cursor = 'move';
         return;
       }
+      this.remember();
+      this.dragStartedAt = this.counters.dragged;
       this.startDrag(p);
       this.stage.renderer.domElement.setPointerCapture(e.pointerId);
     } else if (this.tool === 'label') {
@@ -325,6 +411,7 @@ export class Controller {
       const p = this.pick();
       if (p && !this.world.canUnplug(p.cable)) this.refuseCut();
       else if (p) {
+        this.remember();
         this.world.depositCable(p.cable);
         this.counters.deposited++;
         sfx.unplug();
@@ -333,6 +420,32 @@ export class Controller {
     } else {
       this.applyItem(this.tool);
     }
+  }
+
+  /** remembers the cabinet before a gesture, for Ctrl+Z */
+  private remember(): void {
+    this.history.push(this.world.snapshot());
+    if (this.history.length > 30) this.history.shift();
+  }
+
+  /** puts the cabinet back as it was before the last gesture */
+  undo(): void {
+    if (this.drag) return;
+    const s = this.history.pop();
+    if (!s) { this.events.onToast('Rien à annuler.'); return; }
+    if (!this.world.restore(s)) {
+      // cords rebuilt since (another length, a new cord): older states no longer fit
+      this.history = [];
+      this.events.onToast('Impossible d\'annuler au-delà d\'un changement de cordon.');
+      sfx.error();
+      return;
+    }
+    sfx.remove();
+    this.glows.clear();
+    this.cableView.update(true);
+    this.reevaluate();
+    this.tidyCables = this.tidySet(this.lastEval);
+    this.events.onToast('Annulé.');
   }
 
   /** the maintenance window is full: say so, and point at the cut links */
@@ -381,7 +494,46 @@ export class Controller {
   private reevaluate(): void {
     this.lastEval = this.world.evaluate();
     this.refreshLeds();
+    this.celebrate();
     this.events.onEval(this.lastEval);
+  }
+
+  /** cords plugged as planned, routed and leaving the front clear */
+  private tidySet(ev: Evaluation): Set<number> {
+    const out = new Set<number>();
+    for (const s of ev.circuits) if (s.connected && s.routed && s.clear) out.add(s.cable);
+    return out;
+  }
+
+  /** the cords that just became tidy: a glow and a note each, rising while they come in a row */
+  private celebrate(): void {
+    const now = this.tidySet(this.lastEval);
+    const fresh = [...now].filter((c) => !this.tidyCables.has(c));
+    this.tidyCables = now;
+    if (!fresh.length) return;
+    // the cord just let go of glows as a whole, not stretch by stretch
+    const hv = this.holdView;
+    if (hv && !this.drag && fresh.includes(hv.cable)) hv.until = this.clock;
+    if (this.clock - this.streak.at > 8) this.streak.n = 0;
+    this.streak.at = this.clock;
+    fresh.forEach((c, i) => {
+      this.glows.set(c, this.clock + 0.9 + i * 0.12);
+      window.setTimeout(() => sfx.tidy(this.streak.n++), i * 120);
+    });
+  }
+
+  private updateGlows(): void {
+    for (const [c, until] of this.glows) {
+      if (this.highlighted.has(c) || (this.tracing && this.tracing.cable === c)) continue;
+      const left = until - this.clock;
+      if (left <= 0) {
+        this.glows.delete(c);
+        this.cableView.setHighlight(c, false);
+        continue;
+      }
+      const a = Math.min(1, left / 0.6);
+      this.cableView.setHighlight(c, true, `rgb(${Math.round(30 * a)}, ${Math.round(150 * a)}, ${Math.round(70 * a)})`);
+    }
   }
 
   /** the cords were rebuilt (another length, a new one): a new view */
@@ -393,6 +545,7 @@ export class Controller {
     this.cableView = new CableView(this.world);
     this.stage.scene.add(this.cableView.group);
     this.highlighted.clear();
+    this.glows.clear();
     this.hover = null;
     this.refreshHighlights();
   }
@@ -402,22 +555,32 @@ export class Controller {
    * generator (copper), in the game a cord that blinks for a few seconds with
    * its two ports circled — to find where a cord in the heap really goes.
    */
+  /** cords traced at least once: an unmarked cord (blind level) then tells where it goes */
+  private traced = new Set<number>();
+
   private trace(c: number): void {
+    this.traced.add(c);
     this.tracing = { cable: c, until: this.clock + 4 };
     for (const m of this.rackView.portMarkers.values()) m.visible = false;
     for (const e of this.world.cables[c].ends) if (e.port) this.rackView.portMarkers.get(e.port)!.visible = true;
     sfx.label();
   }
 
+  /** how far the hand had travelled when the current drag began (a mere click is not worth an undo) */
+  private dragStartedAt = 0;
+
   private onUp(_e: PointerEvent): void {
     if (this.pan) { this.pan = null; this.stage.renderer.domElement.style.cursor = 'default'; return; }
     if (!this.drag) return;
+    if (this.counters.dragged - this.dragStartedAt < 0.002 && !this.portHint && !(this.drag.end >= 0)) this.history.pop();
     this.guide.visible = false;
     this.events.onHint(null);
     const d = this.drag;
     this.drag = null;
     this.stage.controls.enableZoom = true;
     this.world.sim.release();
+    // the cord settles: its held and hanging stretches stay in view a little longer
+    if (this.holdView) this.holdView.until = this.clock + 1.6;
     if (d.end >= 0) {
       const port = this.portHint;
       if (port) {
@@ -443,30 +606,54 @@ export class Controller {
     const w = this.world;
     let node = p.node;
     let end = -1;
+    let pull: { end: number; from: THREE.Vector3; refused: boolean } | null = null;
     const eo = w.endOfNode(node);
     if (eo) {
-      end = eo.end;
-      node = w.endNodes(eo.cable, eo.end)[0];
+      const [n0, n1] = w.endNodes(eo.cable, eo.end);
       if (w.cables[eo.cable].ends[eo.end].port) {
-        if (!w.canUnplug(eo.cable)) { this.refuseCut(); return; }
-        w.unplug(eo.cable, eo.end);
-        this.counters.unplugged++;
-        sfx.unplug();
-        this.reevaluate();
+        // a plugged connector stays in until it is pulled: the hand takes the cord just behind its boot
+        node = n1 + (eo.end === 0 ? 1 : -1);
+        pull = { end: eo.end, from: new THREE.Vector3(), refused: false };
+        sfx.grab();
+      } else {
+        end = eo.end;
+        node = n0;
       }
     } else sfx.grab();
     w.sim.grab(node);
     const dir = new THREE.Vector3();
     this.stage.camera.getWorldDirection(dir);
     const at = new THREE.Vector3(w.sim.x[3 * node], w.sim.x[3 * node + 1], w.sim.x[3 * node + 2]);
+    if (pull) pull.from.copy(at);
     // the hand moves on a plane facing the camera, through the grabbed point
     const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(dir.clone().negate(), at);
-    this.drag = { node, cable: p.cable, plane, depth: 0, target: at.clone(), end, depthMode: false, anchor: { mx: this.mousePx.x, my: this.mousePx.y, t: at.clone() }, offset: new THREE.Vector3() };
-    this.events.onHint('Maintenez <b>Maj</b> pour pousser le câble vers le fond (souris vers le haut) ou le ramener vers vous (vers le bas).');
+    this.drag = { node, cable: p.cable, plane, depth: 0, target: at.clone(), end, depthMode: false, anchor: { mx: this.mousePx.x, my: this.mousePx.y, t: at.clone() }, offset: new THREE.Vector3(), pull };
+    this.holdView = { cable: p.cable, until: Infinity, next: 0 };
+    this.events.onHint(pull
+      ? '<b>Tirez</b> le connecteur de quelques centimètres pour le débrancher ; sinon vous rangez simplement le câble.'
+      : 'Maintenez <b>Maj</b> pour pousser le câble vers le fond (souris vers le haut) ou le ramener vers vous (vers le bas). <span class="ok">Vert</span> : tenu, <span class="warn">orange</span> : pend trop.');
     this.stage.controls.enableZoom = false;
     this.stage.renderer.domElement.style.cursor = 'grabbing';
     this.events.onHover(null, 0, 0);
     this.refreshHighlights();
+  }
+
+  /** the carried cord, a stretch at a time: held (green), hanging too long (orange), on the floor (red) */
+  private updateHoldView(): void {
+    const h = this.holdView;
+    if (!h) return;
+    if (this.clock >= h.until || h.cable >= this.world.cables.length) {
+      this.holdView = null;
+      this.cableView.setHighlight(h.cable, false);
+      this.refreshHighlights();
+      return;
+    }
+    if (this.clock < h.next) return;
+    h.next = this.clock + 0.1;
+    const map = this.world.holdMap(h.cable);
+    const fade = Number.isFinite(h.until) ? Math.min(1, (h.until - this.clock) / 0.5) : 1;
+    const hl = new THREE.Color('#5a4a10').multiplyScalar(fade);
+    this.cableView.setNodeTints(h.cable, Array.from(map, (m) => m === HOLD.FREE ? hl : HOLD_TINT[m]!.clone().multiplyScalar(fade)));
   }
 
   /** while carrying a connector: the free port it would plug into */
@@ -652,7 +839,9 @@ export class Controller {
       if (d > tol) return;
       // distance to the camera, then to the pointer; a connector counts as
       // 4 cm closer, 12 cm when the pointer is right on it
-      const score = w + d * 0.0006 - (end >= 0 ? (d < 8 ? 0.12 : 0.04) : 0);
+      // a plugged one only when the pointer is right on it: a cord passing by is what the player wants
+      const plugged = end >= 0 && !!this.world.cables[cable].ends[end].port;
+      const score = w + d * 0.0006 - (end >= 0 ? (d < 8 ? 0.12 : plugged ? 0 : 0.04) : 0);
       const old = best.get(cable);
       if (old && old.score <= score) return;
       const pa = new THREE.Vector3(x[3 * nodeA], x[3 * nodeA + 1], x[3 * nodeA + 2]);
@@ -697,19 +886,28 @@ export class Controller {
     }
     const h = this.drag ? this.drag.cable : this.hover?.cable ?? -1;
     if (h >= 0) want.set(h, '#5a4a10');
-    for (const c of this.highlighted) if (!want.has(c)) this.cableView.setHighlight(c, false);
+    // the cord shown stretch by stretch keeps its own glow
+    const shown = this.holdView?.cable ?? -1;
+    want.delete(shown);
+    for (const c of this.highlighted) if (!want.has(c) && c !== shown) this.cableView.setHighlight(c, false);
     for (const [c, col] of want) this.cableView.setHighlight(c, true, col);
     this.highlighted = new Set(want.keys());
+    if (shown >= 0) this.highlighted.add(shown);
   }
 
   private describe(p: Pick): string {
     const w = this.world;
     const cb = w.cables[p.cable];
-    const ends = cb.ends.map((e) => e.port ?? '—').join(' ↔ ') + ` · ${this.world.cableLength(p.cable).toFixed(2).replace('.', ',')} m`;
-    let what = `<b>${FIBRE_NAMES[cb.type]}</b> · ${ends}`;
     const ci = this.lastEval.circuits.findIndex((s) => s.cable === p.cable);
+    // an unmarked cord says where it goes once traced, or once it makes its line
+    const known = !w.level.blind || this.traced.has(p.cable) || (ci >= 0 && this.lastEval.circuits[ci].connected);
+    const ends = (known ? cb.ends.map((e) => e.port ?? '—').join(' ↔ ') : 'sans marque — Traceur (8) pour le suivre') + ` · ${this.world.cableLength(p.cable).toFixed(2).replace('.', ',')} m`;
+    let what = `<b>${FIBRE_NAMES[cb.type]}</b> · ${ends}`;
     if (ci >= 0) what += ` · <span class="ok">liaison ${ci + 1} ✓</span>`;
-    if (this.tool === 'hand' && (p.end >= 0 || w.endOfNode(p.node))) what += '<br><i>connecteur : saisir pour débrancher</i>';
+    if (this.tool === 'hand' && (p.end >= 0 || w.endOfNode(p.node))) {
+      const plugged = cb.ends[p.end >= 0 ? p.end : w.endOfNode(p.node)!.end].port;
+      what += plugged ? '<br><i>connecteur : saisir et tirer pour débrancher</i>' : '<br><i>connecteur : relâchez-le devant un port pour le brancher</i>';
+    }
     return what;
   }
 
@@ -717,10 +915,24 @@ export class Controller {
 
   private applyLabel(p: Pick): void {
     const cb = this.world.cables[p.cable];
-    const k = p.node - cb.start;
-    const e = k < cb.count / 2 ? 0 : 1;
-    const end = cb.ends[e];
-    end.label = end.label === this.labelColor ? null : this.labelColor;
+    if (this.labelColor < 0) {
+      // the service of the line this cord makes, on both ends at once
+      const line = this.lastEval.circuits.find((s) => s.connected && s.cable === p.cable);
+      if (!line) {
+        this.events.onToast('Étiquette auto : branchez d\'abord ce cordon sur les deux ports de sa liaison, ou choisissez une couleur.');
+        sfx.error();
+        return;
+      }
+      this.remember();
+      const svc = this.world.circuits[this.lastEval.circuits.indexOf(line)].service;
+      const done = cb.ends.every((e) => e.label === svc);
+      for (const e of cb.ends) e.label = done ? null : svc;
+    } else {
+      this.remember();
+      const k = p.node - cb.start;
+      const end = cb.ends[k < cb.count / 2 ? 0 : 1];
+      end.label = end.label === this.labelColor ? null : this.labelColor;
+    }
     sfx.label();
     this.lastEval = this.world.evaluate();
     this.events.onEval(this.lastEval);

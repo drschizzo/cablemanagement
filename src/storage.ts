@@ -4,10 +4,11 @@
 // browsing, storage full or blocked): the game then simply forgets. Keys and
 // formats are those of earlier versions, so players keep their progress.
 
-/** best result per level id: stars (1..3) and time (s) */
+/** best result per level id: stars (1..3) and time (s), and the time challenges won */
 export interface Progress {
   stars: Record<string, number>;
   times: Record<string, number>;
+  challenges: Record<string, boolean>;
 }
 
 interface Entry<T> {
@@ -23,11 +24,11 @@ const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'obj
 const ENTRIES = {
   progress: {
     key: 'cable.progress',
-    fallback: (): Progress => ({ stars: {}, times: {} }),
-    // older saves may lack the times
-    parse: (raw: string): Progress => ({ times: {}, ...JSON.parse(raw) }),
+    fallback: (): Progress => ({ stars: {}, times: {}, challenges: {} }),
+    // older saves may lack the times and the challenges
+    parse: (raw: string): Progress => ({ times: {}, challenges: {}, ...JSON.parse(raw) }),
     format: (v: Progress) => JSON.stringify(v),
-    valid: (v: Progress) => isRecord(v.stars) && isRecord(v.times),
+    valid: (v: Progress) => isRecord(v.stars) && isRecord(v.times) && isRecord(v.challenges),
   } satisfies Entry<Progress>,
   /** the tutorial was finished or skipped once */
   tutorialDone: {

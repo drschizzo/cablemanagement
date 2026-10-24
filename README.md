@@ -38,13 +38,21 @@ Chaque niveau fournit un **plan de brassage** : la liste des liaisons à établi
    guide-câbles, d'une goulotte ou d'un anneau ;
 3. dégager la façade : aucun câble ne doit passer devant le port d'un autre ;
 4. quand le niveau le demande, étiqueter les deux bouts de chaque câble à la
-   couleur de son service (Données, Voix, Vidéo…).
+   couleur de son service (Données, Voix, Vidéo…) ;
+5. quand le niveau le demande, serrer les câbles en faisceaux : des velcros qui
+   tiennent chacun au moins trois câbles, dans un guide-câbles ou une goulotte.
 
 | Étoiles | Condition |
 |---|---|
 | ★ | toutes les liaisons du plan sont branchées |
 | ★★ | et au moins 70 % des câbles rangés, 85 % de la façade dégagée |
-| ★★★ | tout est rangé, dégagé et étiqueté |
+| ★★★ | tout est rangé, dégagé, étiqueté (et serré en faisceaux si demandé) |
+
+Il faut **★★** pour ouvrir le niveau suivant : brancher ne suffit pas, il faut
+ranger. La jauge **Propreté** résume les quatre critères, chaque câble qui
+devient propre s'allume en vert avec une note, et l'écran de fin montre la baie
+avant et après. Chaque niveau propose aussi un **défi chrono** (★★★ en moins
+d'un temps donné).
 
 ### Fenêtre de maintenance
 
@@ -56,16 +64,16 @@ recâble une liaison à la fois.
 
 ### Niveaux
 
-| # | Niveau | Câbles |
+| # | Niveau | Câbles · particularité |
 |---|---|---|
 | 1 | Premier brassage | 4 |
 | 2 | Le mou | 6 |
 | 3 | Erreurs de brassage | 8 |
 | 4 | Étiquetage | 10 |
 | 5 | Fibre et cuivre | 12 |
-| 6 | Salle serveurs | 20 |
-| 7 | Migration | 30 |
-| 8 | Le plat de spaghettis | 40 |
+| 6 | Salle serveurs | 20 · faisceaux, goulottes comptées |
+| 7 | Migration | 24 · une seule coupure à la fois |
+| 8 | Le plat de spaghettis | 28 · cordons sans marque, à tracer |
 
 La **partie libre** génère une baie au hasard, de 4 à 48 câbles.
 
@@ -75,9 +83,10 @@ La **partie libre** génère une baie au hasard, de 4 à 48 câbles.
 |---|---|
 | Saisir et tirer un câble | clic gauche + glisser |
 | Pousser vers le fond / ramener vers soi | **Maj** + souris vers le haut / le bas pendant qu'on tire (ou la molette) |
-| Débrancher | saisir un connecteur |
+| Débrancher | saisir un connecteur et tirer de quelques centimètres |
 | Brancher | relâcher un connecteur devant un port libre (surligné en jaune) |
 | Attraper le câble du dessous | **Tab** |
+| Annuler le dernier geste | **Ctrl+Z** (⌘Z) |
 | Tourner la vue | clic droit + glisser |
 | Déplacer la vue | glisser dans le vide, ou flèches du clavier |
 | Zoomer / revenir de face | molette / **R** |
@@ -92,17 +101,19 @@ vraie remise en ordre de baie.
 |---|---|---|
 | 1 | Main | saisir, tirer, brancher, débrancher |
 | 8 | Traceur | fait clignoter un câble et montre ses deux ports, pour l'identifier |
-| 6 | Étiquette | marque un bout de câble à la couleur d'un service |
+| 6 | Étiquette | en mode A (auto), étiquette les deux bouts d'un cordon bien branché à la couleur de son service ; sinon un bout à la couleur choisie |
 | 9 | Déposer | débranche un câble, l'enroule et le jette dans le bac au pied de la baie |
 | 2 | Guide-câbles 1U | barre horizontale à doigts, entre deux équipements |
 | 3 | Goulotte | conduit vertical sur le côté de la baie |
 | 4 | Anneau | petit passe-câble |
-| 7 | Longueur | remplace un câble par un cordon plus court ou plus long, sans le débrancher |
+| 7 | Longueur | remplace un câble par un cordon plus court ou plus long, sans le débrancher ; « Ajuster au rangement » propose la longueur de sa route rangée |
 | 0 | Stock | prend un cordon neuf (type, couleur, longueur), livré dans le bac |
 | 5 | Velcro | attache ensemble les câbles d'un faisceau |
 
 Pour faire entrer un câble dans un guide-câbles ou une goulotte, on le tient à
-la main et on le pousse dedans : il y reste une fois lâché.
+la main et on le pousse dedans : il y reste une fois lâché. Pendant qu'on le
+tient, le câble se colore par portion : vert là où il est tenu, orange là où il
+pend de plus de 20 cm, rouge là où il traîne au sol.
 
 ## Développement
 
@@ -130,7 +141,7 @@ niveau, un outil ou un critère de score.
 | `npm run dev` | serveur de développement |
 | `npm run build` | version de production dans `dist/` |
 | `npm run check` | lint, types et tests, à lancer avant de pousser |
-| `npm run solvable` | vérifie que chaque niveau peut atteindre 3 étoiles |
+| `npm run solvable` | vérifie que chaque niveau peut atteindre 3 étoiles, avec son seul inventaire |
 | `npm run bench` | performance et stabilité du moteur physique |
 | `npm run precision` | gestes délicats : entrer dans une goulotte, coucher un câble dans un guide-câbles… |
 | `npm run levels` | coût et mise au repos de chaque niveau |

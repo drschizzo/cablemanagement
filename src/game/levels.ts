@@ -22,6 +22,9 @@ export const SERVICES: Service[] = [
   { name: 'Invités', color: '#f2f2f2' },
 ];
 
+/** stars a level needs before the next one opens: connected is not enough, it must be tidy */
+export const UNLOCK_STARS = 2;
+
 export interface LevelDef {
   id: string;
   title: string;
@@ -74,6 +77,12 @@ export interface LevelDef {
   schedule?: (rack: Rack) => Circuit[];
   /** guided tutorial */
   tutorial?: boolean;
+  /** three stars need this many velcro bundles: a strap round three cords or more, in a manager or a duct */
+  bundles?: number;
+  /** old unmarked cords: where one goes only shows once it is traced, or plugged as planned */
+  blind?: boolean;
+  /** the time challenge: three stars in less than this (s) */
+  par?: number;
 }
 
 const P = (name: string, ports: number): UnitSpec => ({ kind: 'panel', name, ports, label: `Tiroir optique ${name}` });
@@ -96,17 +105,19 @@ export const LEVELS: LevelDef[] = [
   {
     id: 'l1',
     title: 'Premier brassage',
-    brief: 'Quatre cordons pendent devant le switch. Couchez-les dans le guide-câbles pour dégager la façade.',
+    brief: 'Quatre cordons pendent devant le switch, et l\'un d\'eux n\'est même plus branché. Rebranchez-le, puis couchez-les dans le guide-câbles pour dégager la façade.',
     // 0 B, 1 panel, 2 manager, 3 switch
     units: [B, CP('A', 12), B, SW('S', 12), B, B],
-    cables: 4, wrong: 0, loose: 0, slack: [0.12, 0.2], mess: 1,
+    cables: 4, wrong: 0, loose: 1, slack: [0.12, 0.2], mess: 1,
     maxCuts: 1,
     labels: false, services: 1, types: ['CU'], colorByService: true,
     inventory: { velcro: 2 },
     preinstalled: [M(2)],
     seed: 11,
+    par: 120,
     tips: [
       'Glissez un câble avec le clic gauche pour le déplacer. Maj en tirant : le pousser vers le fond ou le ramener vers vous.',
+      'Le bout qui pend : saisissez son connecteur et relâchez-le devant le port entouré du plan (survolez sa ligne).',
       'Amenez un câble dans le guide-câbles et glissez-le le long des doigts : il reste posé dessus.',
       'Clic droit + glisser pour tourner la vue, glisser dans le vide pour la déplacer, molette pour zoomer.',
     ],
@@ -114,15 +125,16 @@ export const LEVELS: LevelDef[] = [
   {
     id: 'l2',
     title: 'Le mou',
-    brief: 'Les cordons sont beaucoup trop longs. Remplacez-les par des cordons à la bonne longueur, ou rangez le surplus dans une goulotte.',
+    brief: 'Les cordons sont beaucoup trop longs, et l\'un d\'eux est sur le mauvais port. Corrigez-le, puis remplacez les cordons par d\'autres à la bonne longueur, ou rangez le surplus dans une goulotte.',
     // 1 panel, 2 manager, 6 manager (to place), 7 switch
     units: [B, CP('A', 12), B, B, B, B, B, SW('S', 12), B, B],
-    cables: 6, wrong: 0, loose: 0, slack: [0.6, 1.0], mess: 2,
+    cables: 6, wrong: 1, loose: 0, slack: [0.6, 1.0], mess: 2,
     maxCuts: 1,
     labels: false, services: 2, types: ['CU'], colorByService: true,
     inventory: { hmgr: 1, duct: 2, vring: 2, velcro: 3 },
     preinstalled: [M(2)],
     seed: 23,
+    par: 240,
     tips: [
       LENGTH_TIP,
       'Le guide-câbles se pose dans une unité vide ; la goulotte dans un couloir latéral.',
@@ -141,8 +153,9 @@ export const LEVELS: LevelDef[] = [
     inventory: { hmgr: 1, duct: 2, vring: 3, velcro: 4 },
     preinstalled: [M(2), M(5)],
     seed: 37,
+    par: 300,
     tips: [
-      'Saisissez un connecteur pour le débrancher, relâchez-le devant un port libre pour le brancher.',
+      'Saisissez un connecteur et tirez pour le débrancher, relâchez-le devant un port libre pour le brancher. Ctrl+Z annule le dernier geste.',
       'Outil Traceur (8) : cliquez un câble, il clignote et ses deux ports s\'entourent.',
       'Survolez une ligne du plan pour voir ses deux ports.',
     ],
@@ -160,6 +173,7 @@ export const LEVELS: LevelDef[] = [
     inventory: { hmgr: 1, duct: 2, vring: 3, velcro: 5 },
     preinstalled: [M(2), M(5), M(7)],
     seed: 41,
+    par: 420,
     tips: ['Outil Étiquette : choisissez une couleur, puis cliquez près d\'un connecteur.', LENGTH_TIP],
   },
   {
@@ -175,11 +189,12 @@ export const LEVELS: LevelDef[] = [
     inventory: { hmgr: 2, duct: 4, vring: 4, velcro: 6 },
     preinstalled: [M(2), M(4), M(8), M(10)],
     seed: 53,
+    par: 540,
   },
   {
     id: 'l6',
     title: 'Salle serveurs',
-    brief: 'Deux panneaux, deux switchs, le cœur de réseau et les serveurs : 25 liaisons. Déposez ce qui gêne dans le bac, puis rebrassez proprement.',
+    brief: 'Deux panneaux, deux switchs, le cœur de réseau et les serveurs : 25 liaisons. Déposez ce qui gêne dans le bac, rebrassez proprement, et serrez les câbles en faisceaux.',
     // 1 A, 2 S, 3 mgr, 4 B, 5 T, 6 mgr, 8 firewall, 9 mgr, 10 router, 11 mgr, 12-13 servers
     units: [B, CP('A', 24), SW('S', 24), B, CP('B', 24), SW('T', 24), B, B, FW, B, RT, B, SV('X', 0.03), SV('Y', 0.09), SVd, UPS, B],
     cables: 20, wrong: 3, loose: 2, slack: [0.3, 0.8], mess: 3,
@@ -190,47 +205,60 @@ export const LEVELS: LevelDef[] = [
     pairing: true,
     maxCuts: 3,
     labels: true, services: 5, types: ['CU'], colorByService: true,
-    inventory: { hmgr: 1, duct: 6, vring: 4, velcro: 8 },
+    inventory: { hmgr: 1, duct: 4, vring: 2, velcro: 8 },
     preinstalled: [M(3), M(6), M(9), M(11)],
     seed: 67,
-    tips: ['Outil Déposer (9) : le câble est débranché et jeté dans le bac. Le Stock (0) fournit des cordons neufs.'],
+    bundles: 3,
+    par: 900,
+    tips: [
+      'Outil Déposer (9) : le câble est débranché et jeté dans le bac. Le Stock (0) fournit des cordons neufs.',
+      '<b>Faisceaux</b> : pour ★★★, au moins 3 velcros qui serrent chacun 3 câbles ou plus, dans un guide-câbles ou une goulotte.',
+      'Seulement 4 goulottes : choisissez les couloirs où elles servent le plus.',
+    ],
   },
   {
     id: 'l7',
     title: 'Migration',
-    brief: 'Trois panneaux et trois switchs, une fibre vers l\'opérateur, beaucoup de ports à corriger. Prenez votre temps.',
+    brief: 'Trois panneaux et trois switchs, une fibre vers l\'opérateur, beaucoup de ports à corriger. La migration se fait en production : une seule liaison coupée à la fois.',
     // 1 fibre, 2 mgr, 3 free (the fibres lying in the drawer's manager would hang in front of A's ports),
     // 4 A, 5 S, 6 mgr, 7 B, 8 T, 9 mgr, 10 C, 11 U, 12 mgr, 13 firewall, 14 mgr, 15 router
     units: [B, P('O', 12), B, B, CP('A', 24), SW('S', 24), B, CP('B', 24), SW('T', 24), B, CP('C', 24), SW('U', 24), B, FW, B, RT, B, SVd, SVd, UPS, B],
-    cables: 30, wrong: 5, loose: 4, slack: [0.3, 0.8], mess: 4,
+    cables: 24, wrong: 5, loose: 4, slack: [0.3, 0.8], mess: 4,
     links: [
       { a: 'S24', b: 'F1' }, { a: 'T24', b: 'F2' }, { a: 'U24', b: 'F3' },
       { a: 'S23', b: 'R1', service: 2 }, { a: 'T23', b: 'R2', service: 2 }, { a: 'F8', b: 'R8', service: 2 },
     ],
     pairing: true,
-    maxCuts: 3,
+    maxCuts: 1,
     labels: true, services: 5, types: ['OS2', 'CU'], colorByService: true,
     inventory: { hmgr: 2, duct: 8, vring: 4, velcro: 10 },
     preinstalled: [M(6), M(9), M(12), M(14)],
     seed: 79,
+    bundles: 3,
+    par: 1200,
+    tips: ['Une seule coupure à la fois : rangez d\'abord les liaisons en production sans les débrancher, puis corrigez les erreurs une par une.'],
   },
   {
     id: 'l8',
     title: 'Le plat de spaghettis',
-    brief: 'Le local technique que personne n\'ose ouvrir : quatre panneaux, quatre switchs, le pare-feu, le routeur, les serveurs. 48 cordons. Bonne chance.',
+    brief: 'Le local technique que personne n\'ose ouvrir : quatre panneaux, quatre switchs, le pare-feu, le routeur, les serveurs. Les vieux cordons ne portent aucune marque : tracez-les pour savoir où ils vont. Bonne chance.',
     // 1 A, 2 S, 3 mgr, 4 B, 5 T, 6 mgr, 7 C, 8 U, 9 mgr, 10 D, 11 V, 12 mgr, 13 firewall, 14 mgr, 15 router, 16 mgr, 17-18 servers
     units: [B, CP('A', 24), SW('S', 24), B, CP('B', 24), SW('T', 24), B, CP('C', 24), SW('U', 24), B, CP('D', 24), SW('V', 24), B, FW, B, RT, B, SV('X', 0.03), SV('Y', 0.09), SVd, SVd, B, UPS, UPS],
-    cables: 40, wrong: 8, loose: 6, slack: [0.4, 1.0], mess: 5,
+    cables: 28, wrong: 8, loose: 6, slack: [0.4, 1.0], mess: 5,
     links: [
       { a: 'S24', b: 'F1' }, { a: 'T24', b: 'F2' }, { a: 'U24', b: 'F3' }, { a: 'V24', b: 'F4' },
       { a: 'F8', b: 'R1', service: 2 }, { a: 'R7', b: 'X1', service: 4 }, { a: 'R8', b: 'Y1', service: 4 }, { a: 'S23', b: 'X2', service: 4 },
     ],
     pairing: true,
-    maxCuts: 4,
+    maxCuts: 2,
     labels: true, services: 6, types: ['CU'], colorByService: true,
-    inventory: { hmgr: 2, duct: 10, vring: 6, velcro: 14 },
+    inventory: { hmgr: 2, duct: 6, vring: 4, velcro: 12 },
     preinstalled: [M(3), M(6), M(9), M(12)],
     seed: 97,
+    bundles: 4,
+    blind: true,
+    par: 1500,
+    tips: ['Cordons sans marque : survolés, ils ne disent pas où ils vont. Le Traceur (8) le révèle, et un cordon branché comme prévu se reconnaît tout seul.'],
   },
 ];
 

@@ -94,7 +94,7 @@ const STEPS: Step[] = [
   },
   {
     title: 'Débrancher, rebrancher',
-    text: 'Une liaison est sur le mauvais port : son voyant est orange et ses deux bons ports sont entourés. Saisissez le <b>connecteur</b> pour le débrancher, puis relâchez-le devant le port entouré : il s\'y enfiche (surligné en jaune quand il est à portée).',
+    text: 'Une liaison est sur le mauvais port : son voyant est orange et ses deux bons ports sont entourés. Saisissez le <b>connecteur</b> et <b>tirez</b> de quelques centimètres pour le débrancher (un petit geste range le câble sans le débrancher), puis relâchez-le devant le port entouré : il s\'y enfiche (surligné en jaune quand il est à portée). Une erreur ? <b>Ctrl+Z</b> annule le dernier geste.',
     task: 'Branchez toutes les liaisons du plan',
     tool: 'hand',
     enter: (c) => {
@@ -105,7 +105,7 @@ const STEPS: Step[] = [
   },
   {
     title: 'Le guide-câbles',
-    text: 'Ce panneau <b>1U à doigts</b> se pose sous le tiroir. Les câbles passent entre les doigts et courent à l\'horizontale jusqu\'aux côtés de la baie, au lieu de pendre devant les ports. Amenez un câble dedans, puis <b>glissez-le le long des doigts</b> : il reste posé dessus.',
+    text: 'Ce panneau <b>1U à doigts</b> se pose sous le tiroir. Les câbles passent entre les doigts et courent à l\'horizontale jusqu\'aux côtés de la baie, au lieu de pendre devant les ports. Amenez un câble dedans, puis <b>glissez-le le long des doigts</b> : il reste posé dessus. Pendant que vous le tenez, il se colore : <span class="ok">vert</span> là où il est tenu, orange là où il pend trop.',
     task: 'Couchez un câble dans le guide-câbles',
     spot: mgrBox,
     tool: 'hand',
@@ -139,7 +139,7 @@ const STEPS: Step[] = [
   },
   {
     title: 'Le bon cordon',
-    text: 'Un rangement parfait passe par des cordons <b>à la bonne longueur</b> : trop longs, ils font du mou partout. Outil Longueur (touche 7) : cliquez un cordon et choisissez une longueur du catalogue (15 cm à 5 m), ou ajustez de 5 cm. Il est remplacé sans être débranché.',
+    text: 'Un rangement parfait passe par des cordons <b>à la bonne longueur</b> : trop longs, ils font du mou partout. Outil Longueur (touche 7) : cliquez un cordon et choisissez une longueur du catalogue (15 cm à 5 m), ou ajustez de 5 cm. <b>Ajuster au rangement</b> propose la longueur de sa route par les guide-câbles et goulottes. Il est remplacé sans être débranché.',
     task: 'Changez la longueur d\'un cordon',
     tool: 'length',
     done: (c) => c.world.cablesVersion > 0,
@@ -154,14 +154,14 @@ const STEPS: Step[] = [
   },
   {
     title: 'Les étiquettes',
-    text: 'Chaque liaison appartient à un <b>service</b> (sa couleur dans le plan). Outil Étiquette (touche 6) : choisissez la couleur sous l\'outil, puis cliquez près d\'un connecteur. Une liaison bien étiquetée porte sa couleur aux <b>deux bouts</b>.',
+    text: 'Chaque liaison appartient à un <b>service</b> (sa couleur dans le plan). Outil Étiquette (touche 6) : en mode <b>A</b> (auto), un clic sur un cordon bien branché étiquette ses <b>deux bouts</b> à la couleur de son service. Ou choisissez une couleur et cliquez près d\'un connecteur.',
     task: 'Posez une étiquette',
     tool: 'label',
     done: (c) => c.world.cables.some((cb) => cb.ends.some((e) => e.label !== null)),
   },
   {
     title: 'Le score',
-    text: 'Quatre critères, dans le panneau de droite : les <b>connexions</b> conformes au plan (obligatoires pour valider), le <b>rangement</b> (aucune portion de câble de plus de 20 cm qui pend), la <b>façade dégagée</b> (aucun câble devant le port d\'un autre) et les <b>étiquettes</b>. De une à trois étoiles. À vous !',
+    text: 'Quatre critères, dans le panneau de droite : les <b>connexions</b> conformes au plan (obligatoires pour valider), le <b>rangement</b> (aucune portion de câble de plus de 20 cm qui pend), la <b>façade dégagée</b> (aucun câble devant le port d\'un autre) et les <b>étiquettes</b>. De une à trois étoiles ; il en faut <b>deux</b> pour ouvrir le niveau suivant. À vous !',
   },
 ];
 

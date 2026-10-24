@@ -1,5 +1,5 @@
 import type { Controller, Tool } from '../game/controller';
-import { FIBRE_NAMES, LEVELS, SERVICES, type LevelDef } from '../game/levels';
+import { FIBRE_NAMES, LEVELS, SERVICES, UNLOCK_STARS, type LevelDef } from '../game/levels';
 import type { Evaluation } from '../game/world';
 import { FIBRE_COLORS } from '../render/cableView';
 import { isMuted, setMuted, sfx } from '../audio/sfx';
@@ -13,7 +13,7 @@ const TOOLS: { tool: Tool; key: string; name: string; icon: string; stock?: 'hmg
   { tool: 'duct', key: '3', name: 'Goulotte', icon: iconDuct(), stock: 'duct', help: 'Goulotte verticale de 4U dans un couloir latéral. Cliquez à nouveau pour la retirer.' },
   { tool: 'vring', key: '4', name: 'Anneau', icon: iconRing(), stock: 'vring', help: 'Anneau de passage vertical dans un couloir latéral.' },
   { tool: 'velcro', key: '5', name: 'Velcro', icon: iconVelcro(), stock: 'velcro', help: 'Cliquez sur des câbles qui se touchent pour les attacher en faisceau. Cliquez sur un velcro pour l\'enlever.' },
-  { tool: 'label', key: '6', name: 'Étiquette', icon: iconLabel(), help: 'Cliquez près d\'un connecteur pour poser l\'étiquette de la couleur choisie (re-cliquez pour l\'enlever).' },
+  { tool: 'label', key: '6', name: 'Étiquette', icon: iconLabel(), help: 'Auto : cliquez un cordon branché sur sa liaison, ses deux bouts prennent la couleur de son service. Ou choisissez une couleur et cliquez près d\'un connecteur (re-cliquez pour l\'enlever).' },
   { tool: 'length', key: '7', name: 'Longueur', icon: iconRuler(), help: 'Cliquez sur un cordon pour le remplacer par un cordon d\'une autre longueur, sans le débrancher.' },
   { tool: 'trace', key: '8', name: 'Traceur', icon: iconTrace(), help: 'Cliquez sur un câble : il clignote en rouge et ses deux ports s\'entourent, pour savoir où il va vraiment.' },
   { tool: 'deposit', key: '9', name: 'Déposer', icon: iconBin(), help: 'Cliquez sur un câble : il est débranché, enroulé et jeté dans le bac au sol. Reprenez-le à la main quand vous voulez.' },
@@ -47,14 +47,15 @@ export class Hud {
     const box = $('#menu-levels');
     box.innerHTML = '';
     LEVELS.forEach((lv, i) => {
-      const unlocked = i === 0 || (this.progress.stars[LEVELS[i - 1].id] ?? 0) > 0 || (this.progress.stars[lv.id] ?? 0) > 0;
+      const unlocked = i === 0 || (this.progress.stars[LEVELS[i - 1].id] ?? 0) >= UNLOCK_STARS || (this.progress.stars[lv.id] ?? 0) > 0;
       const stars = this.progress.stars[lv.id] ?? 0;
       const card = document.createElement('button');
       card.className = 'level-card' + (unlocked ? '' : ' locked');
       const best = this.progress.times[lv.id];
       card.innerHTML = `<div class="num">${i + 1}</div><div class="t">${lv.title}</div>
         <div class="meta">${lv.cables} câbles${lv.labels ? ' · étiquettes' : ''}</div>
-        <div class="stars">${starsHtml(stars)}</div>${best ? `<div class="best">${fmtTime(best)}</div>` : ''}`;
+        <div class="stars">${starsHtml(stars)}${this.progress.challenges[lv.id] ? '<span class="par" title="Défi chrono réussi">⏱</span>' : ''}</div>${best ? `<div class="best">${fmtTime(best)}</div>` : ''}
+        ${unlocked ? '' : `<div class="lock">${'★'.repeat(UNLOCK_STARS)} au niveau ${i} pour l'ouvrir</div>`}`;
       if (unlocked) card.onclick = () => { this.hide('#menu'); this.start(lv); };
       box.appendChild(card);
     });
@@ -65,7 +66,8 @@ export class Hud {
     $('#brief-title').textContent = level.title;
     $('#brief-text').textContent = level.brief;
     const tips = [...(level.tips ?? [])];
-    if (level.labels) tips.push('Étiquettes obligatoires : la couleur du service, aux deux extrémités de chaque liaison.');
+    if (level.labels) tips.push('Étiquettes obligatoires : la couleur du service, aux deux extrémités de chaque liaison (l\'étiquette Auto le fait en un clic sur un cordon bien branché).');
+    if (level.par) tips.push(`<b>Défi chrono</b> : ★★★ en moins de ${fmtTime(level.par)}.`);
     if (level.maxCuts !== undefined) tips.unshift(`<b>Fenêtre de maintenance</b> : les liaisons ⚡ sont en production. Au plus ${level.maxCuts} coupée${level.maxCuts > 1 ? 's' : ''} en même temps : recâblez-les une par une.`);
     tips.push('Les voyants des ports : vert = liaison conforme au plan, orange = mauvais port.');
     $('#brief-tips').innerHTML = tips.map((t) => `<li>${t}</li>`).join('');
@@ -86,6 +88,7 @@ export class Hud {
     this.level = level;
     $('#level-title').textContent = level.title;
     this.hide('#result');
+    this.clean = -1;
     this.buildPlan();
     this.buildSwatches();
     this.refreshInventory();
@@ -129,8 +132,10 @@ export class Hud {
     const ctl = this.ctl;
     if (!ctl) return;
     const cur = ctl.world.cableLength(c), min = ctl.world.minCableLength(c);
+    const fit = ctl.world.tidyLength(c);
     const m = $('#length-menu');
     m.innerHTML = `<div class="h">Cordon actuel : <b>${fmtLen(cur)}</b><span>minimum pour relier ses deux bouts : ${fmtLen(min)}</span></div>
+      ${fit !== null && fit >= min ? `<button class="fit" data-l="${fit}" title="La longueur de sa route rangée, par les guide-câbles et les goulottes posés">Ajuster au rangement : <b>${fmtLen(fit)}</b></button>` : ''}
       <div class="grid">${CATALOGUE.map((L) => `<button data-l="${L}" ${L < min ? 'disabled' : ''} class="${Math.abs(L - cur) < 0.03 ? 'cur' : ''}">${fmtLen(L)}</button>`).join('')}</div>
       <div class="fine"><button data-d="-0.05">− 5 cm</button><button data-d="0.05">+ 5 cm</button></div>`;
     m.querySelectorAll<HTMLButtonElement>('button').forEach((b) => {
@@ -173,21 +178,29 @@ export class Hud {
   private buildSwatches(): void {
     const sw = $('#swatches');
     sw.innerHTML = '';
+    const pick = (i: number) => { this.ctl!.labelColor = i; this.selectTool('label'); this.markSwatch(); };
+    const auto = document.createElement('button');
+    auto.className = 'swatch auto';
+    auto.textContent = 'A';
+    auto.title = 'Auto : la couleur du service de la liaison, aux deux bouts';
+    auto.onclick = () => pick(-1);
+    sw.appendChild(auto);
     const n = Math.max(1, this.level!.services);
     for (let i = 0; i < n; i++) {
       const b = document.createElement('button');
       b.className = 'swatch';
       b.style.background = SERVICES[i].color;
       b.title = SERVICES[i].name;
-      b.onclick = () => { this.ctl!.labelColor = i; this.selectTool('label'); this.markSwatch(); };
+      b.onclick = () => pick(i);
       sw.appendChild(b);
     }
-    this.ctl!.labelColor = 0;
+    this.ctl!.labelColor = -1;
     this.markSwatch();
   }
 
   private markSwatch(): void {
-    [...$('#swatches').children].forEach((c, i) => c.classList.toggle('on', i === this.ctl!.labelColor));
+    // the first swatch is Auto (−1)
+    [...$('#swatches').children].forEach((c, i) => c.classList.toggle('on', i - 1 === this.ctl!.labelColor));
   }
 
   selectTool(t: Tool): void {
@@ -256,11 +269,31 @@ export class Hud {
     setBar('#bar-clear', ev.clear, n);
     setBar('#bar-label', ev.labelled, n);
     $('#bar-label').style.display = this.level?.labels ? '' : 'none';
+    setBar('#bar-bundle', Math.min(ev.bundles, ev.bundlesNeeded), ev.bundlesNeeded);
+    $('#bar-bundle').style.display = ev.bundlesNeeded ? '' : 'none';
+    this.showClean(cleanliness(ev, !!this.level?.labels));
     $('#live-stars').innerHTML = starsHtml(ev.stars);
     const v = $<HTMLButtonElement>('#btn-validate');
     v.disabled = ev.stars < 1;
     v.classList.toggle('ready', ev.stars >= 1);
-    v.textContent = ev.stars < 1 ? `Branchez les ${n} liaisons du plan` : 'Valider la baie';
+    v.textContent = ev.stars < 1 ? `Branchez les ${n} liaisons du plan` : ev.stars < UNLOCK_STARS ? 'Valider (rangez pour ★★)' : 'Valider la baie';
+  }
+
+  private clean = -1;
+  private cleanTimer = 0;
+
+  /** the overall gauge; it flashes when it goes up */
+  private showClean(v: number): void {
+    const el = $('#clean');
+    const pct = Math.round(v * 100);
+    el.querySelector('b')!.textContent = `${pct} %`;
+    (el.querySelector('.fill') as HTMLElement).style.width = `${pct}%`;
+    if (this.clean >= 0 && pct > this.clean) {
+      el.classList.add('bump');
+      clearTimeout(this.cleanTimer);
+      this.cleanTimer = window.setTimeout(() => el.classList.remove('bump'), 700);
+    }
+    this.clean = pct;
   }
 
   private validate(): void {
@@ -273,23 +306,33 @@ export class Hud {
     const prev = this.progress.stars[lv.id] ?? 0;
     this.progress.stars[lv.id] = Math.max(prev, ev.stars);
     if (!this.progress.times[lv.id] || t < this.progress.times[lv.id]) this.progress.times[lv.id] = t;
+    const parWon = !!lv.par && ev.stars === 3 && t <= lv.par;
+    if (parWon) this.progress.challenges[lv.id] = true;
     save('progress', this.progress);
     sfx.win();
     $('#result-stars').innerHTML = starsHtml(ev.stars, true);
     $('#result-time').textContent = `Temps : ${fmtTime(t)}`;
+    $<HTMLImageElement>('#ba-before').src = ctl.before ?? '';
+    $<HTMLImageElement>('#ba-after').src = ctl.capture();
     const lines = [
       `Liaisons branchées : ${ev.connected}/${ev.total}`,
       `Liaisons rangées : ${ev.routed}/${ev.total}`,
       `Façade dégagée : ${ev.clear}/${ev.total}`,
     ];
     if (lv.labels) lines.push(`Étiquetées : ${ev.labelled}/${ev.total}`);
-    if (ev.stars < 3) lines.push(ev.stars === 1 ? '★★ : rangez au moins 70 % des liaisons, façade dégagée à 85 %.' : '★★★ : tout rangé, façade entièrement dégagée' + (lv.labels ? ', tout étiqueté.' : '.'));
+    if (ev.bundlesNeeded) lines.push(`Faisceaux : ${Math.min(ev.bundles, ev.bundlesNeeded)}/${ev.bundlesNeeded}`);
+    if (ev.stars < 3) lines.push(ev.stars === 1 ? '★★ : rangez au moins 70 % des liaisons, façade dégagée à 85 %.' : '★★★ : tout rangé, façade entièrement dégagée' + (lv.labels ? ', tout étiqueté' : '') + (ev.bundlesNeeded ? `, ${ev.bundlesNeeded} faisceaux` : '') + '.');
+    if (lv.par) lines.push(parWon ? `⏱ Défi chrono réussi : ★★★ en moins de ${fmtTime(lv.par)} !` : `⏱ Défi chrono : ★★★ en moins de ${fmtTime(lv.par)}${this.progress.challenges[lv.id] ? ' (déjà réussi)' : ''}.`);
     $('#result-lines').innerHTML = lines.map((l) => `<li>${l}</li>`).join('');
     const idx = LEVELS.findIndex((l) => l.id === lv.id);
     const next = idx >= 0 && idx + 1 < LEVELS.length ? LEVELS[idx + 1] : null;
     const nb = $<HTMLButtonElement>('#result-next');
     nb.style.display = next ? '' : 'none';
-    if (next) nb.onclick = () => { this.hide('#result'); this.start(next); };
+    // the next level opens on a tidy cabinet, not on a merely connected one
+    const open = Math.max(prev, ev.stars) >= UNLOCK_STARS;
+    nb.disabled = !open;
+    nb.textContent = open ? 'Niveau suivant →' : `${'★'.repeat(UNLOCK_STARS)} pour le niveau suivant`;
+    if (next && open) nb.onclick = () => { this.hide('#result'); this.start(next); };
     $('#result-again').onclick = () => { this.hide('#result'); ctl.running = true; };
     $('#result-menu').onclick = () => { this.hide('#result'); this.showMenu(); };
     this.show('#result');
@@ -351,6 +394,14 @@ export class Hud {
 
   private show(sel: string): void { $(sel).classList.add('on'); }
   private hide(sel: string): void { $(sel).classList.remove('on'); }
+}
+
+/** how tidy the cabinet is overall (0..1): the four criteria, plugging counting double */
+export function cleanliness(ev: Evaluation, labels: boolean): number {
+  const n = Math.max(1, ev.total);
+  const bundles = ev.bundlesNeeded ? [n * Math.min(1, ev.bundles / ev.bundlesNeeded)] : [];
+  const parts = [ev.connected * 2, ev.routed, ev.clear, ...(labels ? [ev.labelled] : []), ...bundles];
+  return parts.reduce((a, b) => a + b, 0) / (n * (parts.length + 1));
 }
 
 function setBar(sel: string, v: number, n: number): void {

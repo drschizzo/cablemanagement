@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { World } from '../src/game/world';
 import { LEVELS, TUTORIAL, freeLevel, showcaseRack, type LevelDef } from '../src/game/levels';
-import { tidyKit } from '../src/game/tidy';
+import { strapBundles, tidyKit } from '../src/game/tidy';
 
 const ALL: LevelDef[] = [...LEVELS, TUTORIAL, freeLevel(30, 1), showcaseRack('mess', 1), showcaseRack('tidy', 1)];
 
@@ -43,13 +43,28 @@ describe('levels', () => {
 function finished(lv: LevelDef) {
   const w = new World(tidyKit(lv));
   for (let f = 0; f < 240; f++) w.sim.step();
+  strapBundles(w, lv.bundles ?? 0);
+  for (let f = 0; f < 60; f++) w.sim.step();
   w.circuits.forEach((ci, i) => { for (const e of w.cables[i].ends) e.label = ci.service; });
   return w.evaluate();
 }
 
-describe('three stars are possible', () => {
+describe('no level is won before the player does anything', () => {
   for (const lv of LEVELS) {
     it(`${lv.id} ${lv.title}`, () => {
+      const w = new World(lv);
+      w.preroll(60);
+      expect(w.evaluate().stars).toBe(0);
+    });
+  }
+});
+
+describe('three stars are possible, with the level\'s own stock', () => {
+  for (const lv of LEVELS) {
+    it(`${lv.id} ${lv.title}`, () => {
+      const kit = tidyKit(lv);
+      const added = kit.preinstalled.slice(lv.preinstalled.length);
+      for (const k of ['hmgr', 'duct', 'vring'] as const) expect(added.filter((p) => p.kind === k).length).toBeLessThanOrEqual(lv.inventory[k] ?? 0);
       expect(finished(lv).stars).toBe(3);
     });
   }
