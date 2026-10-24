@@ -4,6 +4,7 @@ import { CONNECTOR } from '../game/rack';
 import { SERVICES } from '../game/levels';
 import { shared } from './dispose';
 import { tintable } from './batch';
+import { bevelBox } from './bevel';
 import { ledLit, type LedGlow } from './ledGlow';
 import { JACKET_KIND, jacketed } from './jacket';
 
@@ -28,11 +29,11 @@ interface CableMesh {
 /** connector meshes: an LC plug for fibre, a clear RJ45 plug for copper */
 function connectorGeos(radius: number, copper: boolean) {
   const housing = copper
-    ? new THREE.BoxGeometry(0.0118, 0.0085, 0.022).translate(0, 0, CONNECTOR - 0.011)
-    : new THREE.BoxGeometry(0.0062, 0.0082, 0.022).translate(0, 0, CONNECTOR - 0.011);
+    ? bevelBox(0.0118, 0.0085, 0.022, 0.0008).translate(0, 0, CONNECTOR - 0.011)
+    : bevelBox(0.0062, 0.0082, 0.022, 0.0006).translate(0, 0, CONNECTOR - 0.011);
   const latch = copper
-    ? new THREE.BoxGeometry(0.005, 0.002, 0.014).translate(0, 0.0052, CONNECTOR - 0.016)
-    : new THREE.BoxGeometry(0.003, 0.002, 0.012).translate(0, 0.005, CONNECTOR - 0.012);
+    ? bevelBox(0.005, 0.002, 0.014, 0.0004).translate(0, 0.0052, CONNECTOR - 0.016)
+    : bevelBox(0.003, 0.002, 0.012, 0.0004).translate(0, 0.005, CONNECTOR - 0.012);
   const bootR = copper ? 0.0058 : 0.0036;
   const boot = new THREE.CylinderGeometry(bootR, radius * 1.15, 0.03, 12).rotateX(Math.PI / 2).translate(0, 0, CONNECTOR - 0.022 - 0.015 + 0.004);
   const label = new THREE.CylinderGeometry(radius * 1.7, radius * 1.7, 0.016, 14).rotateX(Math.PI / 2).translate(0, 0, -0.022);

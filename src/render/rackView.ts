@@ -5,6 +5,7 @@ import type { StaticShape } from '../physics/cableSim';
 import type { FibreType } from '../game/levels';
 import { disposeTree, shared } from './dispose';
 import { mergeStatic } from './batch';
+import { bevelBox } from './bevel';
 import { LedGlow, ledGlows } from './ledGlow';
 import { STEADY, activity, blinkable, ledGlow, ledMesh, pulse, type LedSpec } from './leds';
 
@@ -116,9 +117,9 @@ export class RackView {
     // walls, back of the side channels, floor, roof
     for (const s of [-1, 1]) {
       this.add(rbox(0.02, h, 0.5 + FRONT_Z - 0.004, 0.004), mat.wall, s * (WALL_X + 0.01), cy, (FRONT_Z - 0.004 - 0.5) / 2);
-      this.add(new THREE.BoxGeometry(WALL_X - COLUMN_X, h, 0.02), mat.back, s * (COLUMN_X + WALL_X) / 2, cy, SIDE_BACK - 0.01);
+      this.add(bevelBox(WALL_X - COLUMN_X, h, 0.02, 0.003), mat.back, s * (COLUMN_X + WALL_X) / 2, cy, SIDE_BACK - 0.01);
       // rails with their square holes
-      const rail = this.add(new THREE.BoxGeometry(0.018, top + 0.06, 0.012), mat.frame, s * (COLUMN_X - 0.004), top / 2, -0.004);
+      const rail = this.add(bevelBox(0.018, top + 0.06, 0.012, 0.0015), mat.frame, s * (COLUMN_X - 0.004), top / 2, -0.004);
       rail.material = railMaterial(top + 0.06);
       // front posts of the cabinet
       this.add(rbox(0.034, h, 0.032, 0.006), mat.frame, s * (WALL_X + 0.006), cy, FRONT_Z - 0.014);
@@ -142,7 +143,7 @@ export class RackView {
     lip.rotation.z = Math.PI / 2;
     lip.castShadow = true;
     // plinth below the first unit
-    this.add(new THREE.BoxGeometry(COLUMN_X * 2 - 0.02, -0.02 - bot, 0.02), mat.back, 0, (bot - 0.02) / 2, -0.01);
+    this.add(bevelBox(COLUMN_X * 2 - 0.02, -0.02 - bot, 0.02, 0.003), mat.back, 0, (bot - 0.02) / 2, -0.01);
     this.buildCrate();
     if (this.opts.roomFloor !== false) {
       this.group.add(buildRoom(bot - 0.03));
@@ -181,13 +182,13 @@ export class RackView {
     const r = this.rack;
     const top = r.topY + 0.03, bot = r.floorY;
     for (const s of [-1, 1]) {
-      const rail = this.add(new THREE.BoxGeometry(0.022, top - bot, 0.03), mat.frame, s * (COLUMN_X - 0.002), (top + bot) / 2, -0.012);
+      const rail = this.add(bevelBox(0.022, top - bot, 0.03, 0.002), mat.frame, s * (COLUMN_X - 0.002), (top + bot) / 2, -0.012);
       rail.material = railMaterial(top - bot);
       rail.castShadow = true;
       this.add(rbox(0.06, 0.012, 0.42, 0.004), mat.frame, s * (COLUMN_X - 0.002), bot + 0.006, -0.1).castShadow = true;
     }
     this.add(rbox(COLUMN_X * 2 + 0.02, 0.03, 0.03, 0.005), mat.frame, 0, top + 0.015, -0.012);
-    this.add(new THREE.BoxGeometry(COLUMN_X * 2 - 0.02, -0.02 - bot, 0.02), mat.back, 0, (bot - 0.02) / 2, -0.01);
+    this.add(bevelBox(COLUMN_X * 2 - 0.02, -0.02 - bot, 0.02, 0.003), mat.back, 0, (bot - 0.02) / 2, -0.01);
     if (this.opts.roomFloor !== false) this.group.add(buildRoom(bot));
   }
 
@@ -197,7 +198,7 @@ export class RackView {
     const y = r.unitY(k);
     const w = COLUMN_X * 2 - 0.036;
     // the body of the equipment behind its face: seen from the side, and it gives the rack a solid shadow
-    if (u.kind !== 'hmgr' && u.kind !== 'blank') this.add(new THREE.BoxGeometry(w - 0.01, U - 0.003, 0.3), mat.body, 0, y, -0.16).castShadow = true;
+    if (u.kind !== 'hmgr' && u.kind !== 'blank') this.add(bevelBox(w - 0.01, U - 0.003, 0.3, 0.002), mat.body, 0, y, -0.16).castShadow = true;
     if (u.kind === 'blank') {
       this.add(rbox(w, U - 0.001, 0.01, 0.0015), mat.blank, 0, y, -0.005).castShadow = true;
       return;
@@ -226,14 +227,14 @@ export class RackView {
     for (const p of r.ports.filter((q) => q.unit === k)) {
       if (style === 'copper') {
         // white keystone jack with its RJ45 opening
-        this.add(new THREE.BoxGeometry(0.0135, 0.0135, 0.005), mat.keystone, p.x, p.y - 0.002, 0.0025);
-        this.add(new THREE.BoxGeometry(0.0115, 0.0085, 0.002), mat.hole, p.x, p.y - 0.003, 0.0052);
+        this.add(bevelBox(0.0135, 0.0135, 0.005, 0.0008), mat.keystone, p.x, p.y - 0.002, 0.0025);
+        this.add(bevelBox(0.0115, 0.0085, 0.002, 0.0005), mat.hole, p.x, p.y - 0.003, 0.0052);
       } else if (u.kind === 'panel') {
-        this.add(new THREE.BoxGeometry(0.0095, 0.0105, 0.006), type === 'OS2' ? mat.adapterSM : mat.adapterMM, p.x, p.y - 0.002, 0.003);
-        this.add(new THREE.BoxGeometry(0.0055, 0.0065, 0.002), mat.hole, p.x, p.y - 0.002, 0.0062);
+        this.add(bevelBox(0.0095, 0.0105, 0.006, 0.0008), type === 'OS2' ? mat.adapterSM : mat.adapterMM, p.x, p.y - 0.002, 0.003);
+        this.add(bevelBox(0.0055, 0.0065, 0.002, 0.0005), mat.hole, p.x, p.y - 0.002, 0.0062);
       } else {
-        this.add(new THREE.BoxGeometry(0.011, 0.0115, 0.004), mat.cage, p.x, p.y - 0.002, 0.002);
-        this.add(new THREE.BoxGeometry(0.0085, 0.008, 0.002), mat.hole, p.x, p.y - 0.002, 0.0042);
+        this.add(bevelBox(0.011, 0.0115, 0.004, 0.0006), mat.cage, p.x, p.y - 0.002, 0.002);
+        this.add(bevelBox(0.0085, 0.008, 0.002, 0.0005), mat.hole, p.x, p.y - 0.002, 0.0042);
       }
       this.ledOf.set(p.id, this.ledOf.size);
       // invisible marker used to highlight a port
@@ -336,7 +337,7 @@ export function buildItem(rack: Rack, it: Item, statics: StaticShape[] | null, g
         // duct and manager fingers are flat plastic strips
         const dir = b.clone().sub(a);
         const t = 2 * s.r + 0.0008;
-        const strip = new THREE.Mesh(new THREE.BoxGeometry(Math.abs(dir.x) + t, Math.abs(dir.y) + t, Math.abs(dir.z) + t), ringMat);
+        const strip = new THREE.Mesh(bevelBox(Math.abs(dir.x) + t, Math.abs(dir.y) + t, Math.abs(dir.z) + t, 0.0012), ringMat);
         strip.position.copy(a).add(b).multiplyScalar(0.5);
         strip.castShadow = !ghost; strip.receiveShadow = true;
         g.add(strip);
@@ -354,7 +355,7 @@ export function buildItem(rack: Rack, it: Item, statics: StaticShape[] | null, g
       }
     } else {
       const sx = s.max[0] - s.min[0], sy = s.max[1] - s.min[1], sz = s.max[2] - s.min[2];
-      const box = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), ghost ?? mat.ductBack);
+      const box = new THREE.Mesh(bevelBox(sx, sy, sz, 0.0015), ghost ?? mat.ductBack);
       box.position.set((s.max[0] + s.min[0]) / 2, (s.max[1] + s.min[1]) / 2, (s.max[2] + s.min[2]) / 2);
       box.receiveShadow = true;
       g.add(box);
@@ -368,7 +369,7 @@ export function buildItem(rack: Rack, it: Item, statics: StaticShape[] | null, g
     g.add(plate);
   } else if (it.kind === 'duct') {
     const yTop = rack.topY - it.unit * U, yBot = rack.topY - (it.unit + it.span) * U;
-    const back = new THREE.Mesh(new THREE.BoxGeometry(SIDE_OUT - SIDE_IN, yTop - yBot, 0.004), ghost ?? mat.ductBack);
+    const back = new THREE.Mesh(bevelBox(SIDE_OUT - SIDE_IN, yTop - yBot, 0.004, 0.0015), ghost ?? mat.ductBack);
     back.position.set((it.side * (SIDE_IN + SIDE_OUT)) / 2, (yTop + yBot) / 2, SIDE_BACK + 0.002);
     back.receiveShadow = true;
     g.add(back);
