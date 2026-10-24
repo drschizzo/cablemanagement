@@ -6,7 +6,7 @@
 // of the equipment are at z = 0; everything lives at z > 0 in front of them,
 // and in the two side channels (x beyond ±0.25) which go 6 cm deeper.
 
-import type { StaticShape } from '../physics/cableSim';
+import type { StaticBox, StaticCapsule, StaticShape } from '../physics/cableSim';
 
 export const U = 0.04445;
 export const COLUMN_X = 0.25; // half width of the equipment column (with its ears)
@@ -20,7 +20,6 @@ export const SEG = 0.025; // cable segment length
 export const FRONT_Z = 0.25; // front edge of the cabinet
 export const ROOM_FLOOR = (r: { floorY: number }) => r.floorY - 0.03;
 export const CABLE_R = 0.0022; // 3 mm jacket, a bit thicker for legibility
-export const HMGR_TIP = 0.026; // upturned tips of the manager fingers: up to a cord's width under the top row
 
 export type UnitKind = 'panel' | 'switch' | 'hmgr' | 'blank' | 'server';
 
@@ -215,14 +214,13 @@ export class Rack {
       const xs = hmgrFingers();
       for (const x of xs) {
         S.push(cap(x, y0, 0.004, x, y0, RING_DEPTH, r, it.id));
-        S.push({ ...cap(x, y0, RING_DEPTH, x, y0 + HMGR_TIP, RING_DEPTH, r, it.id), gate: true });
+        S.push({ ...cap(x, y0, RING_DEPTH, x, y0 + 0.02, RING_DEPTH, r, it.id), gate: true });
         S.push(cap(x, y1, 0.004, x, y1, RING_DEPTH, r, it.id));
       }
-      // the slots between the bottom fingers are a gate: the hand threads a
-      // cord down through one, but a cord left in the channel does not slip
-      // through them on its own (its hanging tail used to drag it out), and
-      // one already passing through stays there
-      S.push({ kind: 'box', min: [xs[0], y0 - r, 0.004], max: [xs[xs.length - 1], y0 + r, RING_DEPTH], gate: true, hidden: true, owner: it.id });
+      // the trough between the finger rows keeps a cord let go in it: it no
+      // longer slips out through the slots or over the tips, dragged by its
+      // hanging tail
+      S.push({ kind: 'keeper', min: [xs[0] - r, y0 + r, 0.002], max: [xs[xs.length - 1] + r, y1 - r, RING_DEPTH - r], owner: it.id });
     } else if (it.kind === 'vring') {
       const y = this.unitY(it.unit);
       const s = it.side;
@@ -287,11 +285,11 @@ export function hmgrFingers(): number[] {
   return out;
 }
 
-function cap(ax: number, ay: number, az: number, bx: number, by: number, bz: number, r: number, owner: number): StaticShape {
+function cap(ax: number, ay: number, az: number, bx: number, by: number, bz: number, r: number, owner: number): StaticCapsule {
   return { kind: 'capsule', ax, ay, az, bx, by, bz, r, owner };
 }
 
-function box(side: number, x0: number, x1: number, y0: number, y1: number, z0: number, z1: number, owner = -1): StaticShape {
+function box(side: number, x0: number, x1: number, y0: number, y1: number, z0: number, z1: number, owner = -1): StaticBox {
   const a = side * x0, b = side * x1;
   return { kind: 'box', min: [Math.min(a, b), y0, z0], max: [Math.max(a, b), y1, z1], owner };
 }

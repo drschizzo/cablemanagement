@@ -271,7 +271,7 @@ export class RackView {
 /** meshes of an item, built from its own collision shapes so that what you see is what holds */
 export function buildItem(rack: Rack, it: Item, statics: StaticShape[] | null, ghost: THREE.Material | null): THREE.Group {
   const g = new THREE.Group();
-  const shapes = (statics ?? itemShapes(rack, it)).filter((s) => s.owner === it.id && !(s.kind === 'box' && s.hidden));
+  const shapes = (statics ?? itemShapes(rack, it)).filter((s) => s.owner === it.id && s.kind !== 'keeper');
   const ringMat = ghost ?? (it.kind === 'duct' ? mat.duct : mat.ring);
   for (const s of shapes) {
     if (s.kind === 'capsule') {
