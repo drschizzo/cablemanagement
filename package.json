@@ -18,7 +18,8 @@
     "precision": "vite-node tools/precision.ts",
     "levels": "vite-node tools/levels.ts",
     "solvable": "vite-node tools/solvable.ts",
-    "showcase": "vite-node tools/showcase.ts"
+    "showcase": "vite-node tools/showcase.ts",
+    "free": "vite-node tools/free.ts"
   },
   "dependencies": {
     "three": "^0.183.2"

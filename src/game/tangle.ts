@@ -195,8 +195,39 @@ function tangledPath(rack: Rack, ends: [string | null, string | null], length: n
     const p = fine[j - 1], q = fine[j];
     out.push(p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t, p[2] + (q[2] - p[2]) * t);
   }
+  evenOut(out, 1, nseg + 1, total / nseg);
   out.push(...Bf.pin[0]);
   return out;
+}
+
+/**
+ * Where the spline folds back on itself, points evenly spaced along it are
+ * only a few millimetres apart in a straight line, and the solver takes that
+ * chord as the rest length: segments ten times shorter than their neighbours,
+ * whose bending pulls against their length for ever (a cord that never
+ * settles, and shudders when touched). A few passes of length projection
+ * between the two fixed ends open those hairpins to segments of length L.
+ */
+function evenOut(pts: number[], first: number, last: number, L: number): void {
+  for (let pass = 0; pass < 200; pass++) {
+    const fwd = pass % 2 === 0;
+    let worst = 0;
+    for (let k = 0; k < last - first; k++) {
+      const a = fwd ? first + k : last - 1 - k, b = a + 1;
+      const dx = pts[3 * b] - pts[3 * a], dy = pts[3 * b + 1] - pts[3 * a + 1], dz = pts[3 * b + 2] - pts[3 * a + 2];
+      const d = Math.hypot(dx, dy, dz);
+      if (d < 1e-9) continue;
+      const e = (d - L) / d;
+      worst = Math.max(worst, Math.abs(d - L) / L);
+      // the two ends stay where they are (they continue into the connectors)
+      const wa = a === first ? 0 : 1, wb = b === last ? 0 : 1;
+      if (wa + wb === 0) continue;
+      const f = e / (wa + wb);
+      pts[3 * a] += dx * f * wa; pts[3 * a + 1] += dy * f * wa; pts[3 * a + 2] += dz * f * wa;
+      pts[3 * b] -= dx * f * wb; pts[3 * b + 1] -= dy * f * wb; pts[3 * b + 2] -= dz * f * wb;
+    }
+    if (worst < 0.02) break;
+  }
 }
 
 function dist(a: V3, b: V3): number {

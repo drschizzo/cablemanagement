@@ -84,6 +84,8 @@ export interface SimParams {
   /** contact stiffness: starting value and ceiling (× M/h²), growth (× M/h² per metre of violation) */
   kMin: number;
   kCap: number;
+  /** ceiling between two cables: stiffer, so that a cord dragged through others does not pass through them */
+  kCapCable: number;
   beta: number;
   gamma: number;
   /** fraction of an existing overlap forgiven per substep (gentle de-penetration) */
@@ -162,7 +164,7 @@ export interface SimParams {
 export function defaultSimParams(p: Partial<SimParams> = {}): SimParams {
   return {
     dt: 1 / 60, substeps: 3, iterations: 6, gravity: -9.81,
-    stretch: 10, kMin: 0.05, kCap: 2, beta: 2000, gamma: 0.99, alpha: 0.25, alphaS: 0.3, lamWarm: 0.8, lamWarmS: 0.8, contactVelocity: true, contactDamping: 0.3, restFriction: 0.012,
+    stretch: 10, kMin: 0.05, kCap: 2, kCapCable: 4, beta: 2000, gamma: 0.99, alpha: 0.25, alphaS: 0.3, lamWarm: 0.8, lamWarmS: 0.8, contactVelocity: true, contactDamping: 0.3, restFriction: 0.012,
     muCable: 0.3, muStatic: 0.4, drag: 2.5,
     margin: 0.0015, marginCap: 0.008, marginStatic: 0.03, maxMove: 0.012,
     grabK: 0.4, grabLead: 0.06, pbdPasses: 4, maxDepen: 0.001, gateSpan: -1, anchoredFriction: true, frictionK: 0.3, hardFriction: true,
@@ -218,6 +220,8 @@ export class CableSim {
   crs = new Float64Array(0); cc0 = new Float64Array(0);
   ck = new Float64Array(0); clam = new Float64Array(0);
   ckt = new Float64Array(0); cmu = new Float64Array(0); ckmax = new Float64Array(0);
+  /** M/h² of each contact (its heavier node), the unit of its stiffnesses */
+  cmh = new Float64Array(0);
   ckey = new Float64Array(0);
   /** friction anchor of each contact: pA − pB (or pA against the rack) where it last stuck */
   canc = new Float64Array(0);
@@ -246,6 +250,17 @@ export class CableSim {
    * pair, plus which contact of the pair (0, 1, 2) — see `pairKey`, `staticKey`.
    */
   private warm = new Map<number, number>();
+  /**
+   * Contacts of sleeping cables, as they were when they fell asleep: two
+   * sleepers (or a sleeper and the rack) have no contact between them, and a
+   * cable that woke rebuilt every force from nothing — it sank into what held
+   * it, fast enough to wake its neighbours, which did the same. Keyed like
+   * `warm`: k, λ, friction anchor (3), tangential λ (3), s, t, and the cables
+   * involved (b = −1 against the rack).
+   */
+  private dormant = new Map<number, Float64Array>();
+  /** which cables were asleep when the contacts were last searched */
+  private wasAsleep = new Uint8Array(0);
 
   // node → contacts adjacency (CSR)
   private adjStart = new Int32Array(0);
@@ -262,6 +277,13 @@ export class CableSim {
   /** fill cursor of each bucket, reused frame to frame */
   private hashFill = new Int32Array(0);
   private segSpeed = new Float64Array(0);
+  // the segments in bucket order: midpoint, cell, reach (half length + radius), both nodes fixed
+  private sMid = new Float64Array(0);
+  private sCell = new Int32Array(0);
+  private sReach = new Float64Array(0);
+  private sFixed = new Uint8Array(0);
+  /** where each segment sits in bucket order */
+  private slot = new Int32Array(0);
   protected statics: StaticShape[] = [];
   private keepers: StaticKeeper[] = [];
   /** the keeper holding each node, or −1 */
@@ -287,6 +309,12 @@ export class CableSim {
    * cable's nodes are all fixed, and those passes skip fixed nodes anyway).
    */
   private awake = new Int32Array(0);
+  /**
+   * Sleepers touched by something moving, woken at the end of the step: one
+   * woken during the contact search would miss its contacts with the segments
+   * already searched, and drop through them for a frame.
+   */
+  private wakeNext: number[] = [];
   private nAwake = 0;
 
   stats = { contacts: 0, awake: 0, ms: 0 };
@@ -330,6 +358,7 @@ export class CableSim {
     this.cables = [];
     this.bundles = [];
     this.warm.clear();
+    this.dormant.clear();
     const starts: number[] = [];
     let at = 0;
     defs.forEach((d, ci) => {
@@ -418,6 +447,7 @@ export class CableSim {
       if (i < this.n) { this.lam[i] = 0; this.keepOf[i] = -1; }
     }
     this.nc = 0;
+    this.dormant.clear();
     this.wakeAll();
   }
 
@@ -434,6 +464,7 @@ export class CableSim {
     this.lam.fill(0);
     this.keepOf.fill(-1);
     this.nc = 0;
+    this.dormant.clear();
     this.wakeAll();
   }
 
@@ -507,6 +538,8 @@ export class CableSim {
     this.listAwake();
     for (let s = 0; s < P.substeps; s++) this.substep(h);
     this.updateSleep();
+    for (const ci of this.wakeNext) this.wakeCable(ci);
+    this.wakeNext.length = 0;
     this.stats.ms = performance.now() - t0;
   }
 
@@ -642,11 +675,11 @@ export class CableSim {
     }
     // warm start of the stretch constraints (AVBD: λ ← αγλ, k ← γk) and
     // their error at the start of the substep, for the stabilisation
-    // (every cord, asleep or not: a cord that wakes finds its multipliers as
-    // if it had never stopped)
+    // (not those of a sleeping cord: it wakes with the tension it fell asleep
+    // with, rather than sagging while it rebuilds it)
     const mh = 1 / (h * h);
     for (let s = 0; s < this.n; s++) {
-      if (!this.segOK[s]) continue;
+      if (!this.segOK[s] || cables[this.cableOf[s]].asleep) continue;
       const m = Math.max(this.mass[s], this.mass[s + 1]) * mh;
       this.lam[s] *= P.lamWarmS * P.gamma;
       this.segK[s] = Math.min(P.stretch * m, Math.max(P.kMin * m, this.segK[s] * P.gamma));
@@ -846,7 +879,7 @@ export class CableSim {
       let ke: number;
       if (P.hardFriction) {
         // λt + kt·d, clamped to the cone (stiffness rescaled for the Hessian)
-        const kt = this.ckt[c] * this.ckmax[c] / P.kCap;
+        const kt = this.ckt[c] * this.cmh[c];
         const lx = this.clt[3 * c], ly = this.clt[3 * c + 1], lz = this.clt[3 * c + 2];
         const ln = lx * nx + ly * ny + lz * nz;
         let Fx = kt * dx + lx - ln * nx, Fy = kt * dy + ly - ln * ny, Fz = kt * dz + lz - ln * nz;
@@ -976,7 +1009,7 @@ export class CableSim {
       if (Math.abs(C) < 1e-7) continue;
       const lam = Math.min(0, this.clam[c] + this.ck[c] * C);
       this.clam[c] = lam;
-      if (lam < 0) this.ck[c] = Math.min(this.ckmax[c], this.ck[c] + P.beta * Math.abs(C) * this.ckmax[c] / P.kCap);
+      if (lam < 0) this.ck[c] = Math.min(this.ckmax[c], this.ck[c] + P.beta * Math.abs(C) * this.cmh[c]);
       if (!P.anchoredFriction) this.ckt[c] = Math.min(FRICTION_K.max, this.ckt[c] * FRICTION_K.growth);
     }
     if (P.hardFriction) this.frictionDual();
@@ -1001,7 +1034,7 @@ export class CableSim {
       let dx = drift.x - this.canc[3 * c], dy = drift.y - this.canc[3 * c + 1], dz = drift.z - this.canc[3 * c + 2];
       const dn = dx * nx + dy * ny + dz * nz;
       dx -= dn * nx; dy -= dn * ny; dz -= dn * nz;
-      const kt = this.ckt[c] * this.ckmax[c] / this.P.kCap;
+      const kt = this.ckt[c] * this.cmh[c];
       const lx = this.clt[3 * c], ly = this.clt[3 * c + 1], lz = this.clt[3 * c + 2];
       const ln = lx * nx + ly * ny + lz * nz;
       let Fx = kt * dx + lx - ln * nx, Fy = kt * dy + ly - ln * ny, Fz = kt * dz + lz - ln * nz;
@@ -1112,7 +1145,7 @@ export class CableSim {
     this.ca0 = gi(this.ca0); this.ca1 = gi(this.ca1); this.cb0 = gi(this.cb0); this.cb1 = gi(this.cb1);
     this.cs = gf(this.cs); this.ct = gf(this.ct); this.cn = gf(this.cn, 3); this.cq = gf(this.cq, 3);
     this.crs = gf(this.crs); this.cc0 = gf(this.cc0); this.ck = gf(this.ck); this.clam = gf(this.clam);
-    this.ckt = gf(this.ckt); this.cmu = gf(this.cmu); this.ckmax = gf(this.ckmax); this.ckey = gf(this.ckey);
+    this.ckt = gf(this.ckt); this.cmu = gf(this.cmu); this.ckmax = gf(this.ckmax); this.cmh = gf(this.cmh); this.ckey = gf(this.ckey);
     this.canc = gf(this.canc, 3);
     this.clt = gf(this.clt, 3);
     this.cC = gf(this.cC); this.cRel = gf(this.cRel, 3); this.cF = gf(this.cF);
@@ -1134,8 +1167,9 @@ export class CableSim {
     let m = Math.max(this.mass[a0], this.mass[a1]);
     if (b0 >= 0) m = Math.max(m, this.mass[b0], this.mass[b1]);
     const mh2 = m / (h * h);
-    const kmax = this.P.kCap * mh2;
+    const kmax = (b0 >= 0 ? this.P.kCapCable : this.P.kCap) * mh2;
     this.ckmax[c] = kmax;
+    this.cmh[c] = mh2;
     const kmin = this.P.kMin * mh2;
     this.ck[c] = old !== undefined ? Math.max(kmin, Math.min(kmax, this.prevK[old] * this.P.gamma)) : kmin;
     this.clam[c] = old !== undefined ? this.prevLam[old] : 0;
@@ -1173,12 +1207,18 @@ export class CableSim {
 
   private collide(h: number, frame: number): void {
     const P = this.P;
-    // remember the stiffness of last substep's contacts
+    // remember the stiffness of last substep's contacts, and those of the
+    // sleeping cables (see `dormant`)
     this.warm.clear();
-    if (this.prevK.length < this.nc) {
-      this.prevK = new Float64Array(this.cap); this.prevLam = new Float64Array(this.cap); this.prevAnc = new Float64Array(3 * this.cap);
-      this.prevLt = new Float64Array(3 * this.cap);
-      this.prevS = new Float64Array(this.cap); this.prevT = new Float64Array(this.cap);
+    const nCab = this.cables.length;
+    if (this.wasAsleep.length < nCab) this.wasAsleep = new Uint8Array(nCab);
+    for (let ci = 0; ci < nCab; ci++) this.wasAsleep[ci] = this.cables[ci].asleep ? 1 : 0;
+    const total = this.nc + this.dormant.size;
+    if (this.prevK.length < total) {
+      const cap = Math.max(this.cap, total);
+      this.prevK = new Float64Array(cap); this.prevLam = new Float64Array(cap); this.prevAnc = new Float64Array(3 * cap);
+      this.prevLt = new Float64Array(3 * cap);
+      this.prevS = new Float64Array(cap); this.prevT = new Float64Array(cap);
     }
     for (let c = 0; c < this.nc; c++) {
       this.warm.set(this.ckey[c], c);
@@ -1188,6 +1228,28 @@ export class CableSim {
       this.prevLt[3 * c] = this.clt[3 * c]; this.prevLt[3 * c + 1] = this.clt[3 * c + 1]; this.prevLt[3 * c + 2] = this.clt[3 * c + 2];
       this.prevS[c] = this.cs[c]; this.prevT[c] = this.ct[c];
     }
+    let at = this.nc;
+    for (const [key, d] of this.dormant) {
+      if (this.warm.has(key)) continue;
+      this.warm.set(key, at);
+      this.prevK[at] = d[0]; this.prevLam[at] = d[1];
+      this.prevAnc[3 * at] = d[2]; this.prevAnc[3 * at + 1] = d[3]; this.prevAnc[3 * at + 2] = d[4];
+      this.prevLt[3 * at] = d[5]; this.prevLt[3 * at + 1] = d[6]; this.prevLt[3 * at + 2] = d[7];
+      this.prevS[at] = d[8]; this.prevT[at] = d[9];
+      at++;
+    }
+    // last frame's contacts whose cables have all fallen asleep will not be
+    // found again: they wait for them to wake
+    for (let c = 0; c < this.nc; c++) {
+      const ca = this.cableOf[this.ca0[c]], cb = this.cb0[c] >= 0 ? this.cableOf[this.cb0[c]] : -1;
+      if (!this.wasAsleep[ca] || (cb >= 0 && !this.wasAsleep[cb])) continue;
+      this.dormant.set(this.ckey[c], Float64Array.of(
+        this.prevK[c], this.prevLam[c],
+        this.canc[3 * c], this.canc[3 * c + 1], this.canc[3 * c + 2],
+        this.clt[3 * c], this.clt[3 * c + 1], this.clt[3 * c + 2],
+        this.cs[c], this.ct[c], ca, cb,
+      ));
+    }
     this.nc = 0;
     const x = this.x, v = this.v;
     const N = this.n;
@@ -1196,7 +1258,9 @@ export class CableSim {
       if (this.radius[i] > rMax) rMax = this.radius[i];
       if (this.segOK[i] && this.rest[i] > lMax) lMax = this.rest[i];
     }
-    const cell = lMax + 2 * rMax + 2 * P.marginCap + 1e-4;
+    // two segments can touch only if their midpoints are within `reach` (see
+    // below), at most one cell apart
+    const cell = lMax + 2 * rMax + P.marginCap + 1e-4;
     const inv = 1 / cell;
     const HC = this.hashCells;
     const count = this.hashCount;
@@ -1214,10 +1278,25 @@ export class CableSim {
     if (this.hashFill.length < HC) this.hashFill = new Int32Array(HC);
     const fillAt = this.hashFill;
     fillAt.set(count.subarray(0, HC));
+    // what the pair test reads of each segment, copied in bucket order: the
+    // inner loop then walks memory in sequence instead of jumping around x
+    if (this.sMid.length < 3 * N) {
+      this.sMid = new Float64Array(3 * N); this.sCell = new Int32Array(3 * N);
+      this.sReach = new Float64Array(N); this.sFixed = new Uint8Array(N); this.slot = new Int32Array(N);
+    }
+    const sMid = this.sMid, sCell = this.sCell, sReach = this.sReach, sFixed = this.sFixed, items = this.hashItems;
     for (let i = 0; i < N; i++) {
       if (!this.segOK[i]) continue;
       const b = cellKey(this.segCell[3 * i], this.segCell[3 * i + 1], this.segCell[3 * i + 2]) & (HC - 1);
-      this.hashItems[fillAt[b]++] = i;
+      const e = fillAt[b]++;
+      items[e] = i;
+      this.slot[i] = e;
+      sMid[3 * e] = (x[3 * i] + x[3 * i + 3]) * 0.5;
+      sMid[3 * e + 1] = (x[3 * i + 1] + x[3 * i + 4]) * 0.5;
+      sMid[3 * e + 2] = (x[3 * i + 2] + x[3 * i + 5]) * 0.5;
+      sCell[3 * e] = this.segCell[3 * i]; sCell[3 * e + 1] = this.segCell[3 * i + 1]; sCell[3 * e + 2] = this.segCell[3 * i + 2];
+      sReach[e] = this.rest[i] * 0.5 + this.radius[i];
+      sFixed[e] = this.fixed[i] & this.fixed[i + 1];
     }
     // speed of every segment (its faster node), for the speculative margins
     if (this.segSpeed.length < N) this.segSpeed = new Float64Array(N);
@@ -1233,8 +1312,11 @@ export class CableSim {
       if (!this.segOK[a]) continue;
       const acx = this.segCell[3 * a], acy = this.segCell[3 * a + 1], acz = this.segCell[3 * a + 2];
       const ca = this.cableOf[a];
-      const aFixed = this.fixed[a] && this.fixed[a + 1];
+      const ea = this.slot[a];
+      const aFixed = sFixed[ea] === 1;
       const va = segSpeed[a];
+      const amx = sMid[3 * ea], amy = sMid[3 * ea + 1], amz = sMid[3 * ea + 2];
+      const aReach = sReach[ea] + P.marginCap;
       // each pair of cells once: this cell, and the 13 neighbours "after" it
       for (let ox = 0; ox <= 1; ox++)
         for (let oy = ox ? -1 : 0; oy <= 1; oy++)
@@ -1243,19 +1325,18 @@ export class CableSim {
             const ncx = acx + ox, ncy = acy + oy, ncz = acz + oz;
             const bucket = cellKey(ncx, ncy, ncz) & (HC - 1);
             for (let e = count[bucket]; e < count[bucket + 1]; e++) {
-              const b = this.hashItems[e];
-              if (home ? b <= a : b === a) continue;
-              if (this.segCell[3 * b] !== ncx || this.segCell[3 * b + 1] !== ncy || this.segCell[3 * b + 2] !== ncz) continue;
-              const cb = this.cableOf[b];
-              if (ca === cb && Math.abs(b - a) <= 2) continue;
-              const bFixed = this.fixed[b] && this.fixed[b + 1];
+              if (home ? e <= ea : e === ea) continue;
+              const bFixed = sFixed[e] === 1;
               if (aFixed && bFixed) continue;
               // cheap rejection on the distance of the midpoints
-              const mdx = (x[3 * a] + x[3 * a + 3] - x[3 * b] - x[3 * b + 3]) * 0.5;
-              const mdy = (x[3 * a + 1] + x[3 * a + 4] - x[3 * b + 1] - x[3 * b + 4]) * 0.5;
-              const mdz = (x[3 * a + 2] + x[3 * a + 5] - x[3 * b + 2] - x[3 * b + 5]) * 0.5;
-              const reach = (this.rest[a] + this.rest[b]) * 0.5 + this.radius[a] + this.radius[b] + P.marginCap;
+              const mdx = amx - sMid[3 * e], mdy = amy - sMid[3 * e + 1], mdz = amz - sMid[3 * e + 2];
+              const reach = aReach + sReach[e];
               if (mdx * mdx + mdy * mdy + mdz * mdz > reach * reach) continue;
+              // a segment of another cell sharing the bucket
+              if (sCell[3 * e] !== ncx || sCell[3 * e + 1] !== ncy || sCell[3 * e + 2] !== ncz) continue;
+              const b = items[e];
+              const cb = this.cableOf[b];
+              if (ca === cb && Math.abs(b - a) <= 2) continue;
               const vb = segSpeed[b];
               const rs = this.radius[a] + this.radius[b];
               const margin = Math.min(P.marginCap, P.margin + (va + vb) * frame * 1.2);
@@ -1265,12 +1346,14 @@ export class CableSim {
               );
               const lim = rs + margin;
               if (closest.d2 > lim * lim) continue;
-              // a sleeping cable wakes up when something moving touches it
+              // a sleeping cable wakes up when something moving touches it, or
+              // sinks into it (not for an overlap at rest: two cords wedged
+              // into one another would wake each other in turn for ever)
               if (aFixed !== bFixed) {
                 const mover = aFixed ? vb : va;
                 const sleeper = aFixed ? ca : cb;
-                if (this.cables[sleeper].asleep && (mover > P.wakeSpeed || Math.sqrt(closest.d2) < rs - 2e-3)) {
-                  this.wakeCable(sleeper);
+                if (this.cables[sleeper].asleep && (mover > P.wakeSpeed || (mover > 0.2 * P.wakeSpeed && Math.sqrt(closest.d2) < rs - 2e-3))) {
+                  this.wakeNext.push(sleeper);
                 }
               }
               // always in the same order (lower segment first): the normal and
@@ -1359,6 +1442,11 @@ export class CableSim {
       if (this.gateHold[a] && !this.gateFree[a] && !this.gateAcross[a] && !(this.fixed[a] && this.fixed[a + 1])) this.gateHold[a] = 0;
     }
     this.gateAcross.fill(0);
+    // a dormant contact of a cable that was awake for this search has been
+    // found again (and carries on), or is gone
+    for (const [key, d] of this.dormant) {
+      if (!this.wasAsleep[d[10]] || (d[11] >= 0 && !this.wasAsleep[d[11]])) this.dormant.delete(key);
+    }
     this.stats.contacts = this.nc;
   }
 

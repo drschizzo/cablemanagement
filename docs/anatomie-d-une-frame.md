@@ -222,6 +222,8 @@ Deux règles complètent ce mécanisme :
 - pour un contact, λ ne peut que pousser : deux câbles se repoussent mais ne s'attirent jamais ;
 - λ est conservé d'un pas à l'autre (*warm start*). Un câble tendu ou une pile au repos garde ainsi sa force, au lieu de la reconstruire en s'affaissant légèrement à chaque pas.
 
+La raideur d'un contact a un plafond, exprimé en multiples de M/h² (la masse du nœud divisée par le carré du sous-pas) : 2 contre la baie, 4 entre deux câbles. Plus bas entre câbles, un cordon tiré à travers un tas passait à travers les autres ; plus haut (16), les piles se mettent à trembler. Comme toutes les raideurs du moteur sont exprimées dans cette unité, changer le nombre de sous-pas change aussi la raideur physique de la main et des contacts : plus de sous-pas ne donne pas un meilleur résultat sans revoir ces réglages.
+
 ### Détail mathématique (facultatif)
 
 Cette partie fait le lien avec l'article d'origine. La suite du document ne s'en sert pas : elle peut être sautée.
@@ -252,7 +254,7 @@ Les contacts trouvés au début servent aux trois sous-pas. Dans chaque sous-pas
 
 Tester chaque segment contre tous les autres coûterait 667 × 666 / 2, soit environ 222 000 paires par pas. La détection se fait donc en deux phases.
 
-**Phase large (broadphase).** L'espace est découpé en cubes de même taille, un peu plus grands qu'un segment. Chaque segment est rangé dans le cube qui contient son milieu. Deux segments qui se touchent sont forcément dans le même cube ou dans deux cubes voisins : il suffit donc de comparer chaque segment à ceux de son cube et des cubes qui l'entourent, au lieu de le comparer à tous. Le code ne regarde que la moitié des voisins (13 sur 26) : la paire A–B est ainsi examinée une fois, et pas une seconde fois sous la forme B–A. Les cubes sont repérés par une table de hachage (`cellKey`) reconstruite à chaque pas dans deux tableaux d'entiers, sans créer d'objet. Un test rapide sur la distance entre les milieux des segments écarte encore la plupart des paires restantes.
+**Phase large (broadphase).** L'espace est découpé en cubes de même taille, un peu plus grands qu'un segment. Chaque segment est rangé dans le cube qui contient son milieu. Deux segments qui se touchent sont forcément dans le même cube ou dans deux cubes voisins : il suffit donc de comparer chaque segment à ceux de son cube et des cubes qui l'entourent, au lieu de le comparer à tous. Le code ne regarde que la moitié des voisins (13 sur 26) : la paire A–B est ainsi examinée une fois, et pas une seconde fois sous la forme B–A. Les cubes sont repérés par une table de hachage (`cellKey`) reconstruite à chaque pas dans deux tableaux d'entiers, sans créer d'objet. Un test rapide sur la distance entre les milieux des segments écarte encore la plupart des paires restantes. Ce test lit le milieu, la portée et le cube de chaque segment dans des tableaux recopiés dans l'ordre des cubes : la boucle, qui examine plus de 100 000 paires par pas dans une baie de 48 câbles en mouvement, lit ainsi la mémoire dans l'ordre.
 
 ![Phase large · vue en 2D de la grille](frame/schema-grille.png)
 
@@ -285,7 +287,15 @@ Quatre opérations terminent chaque sous-pas :
 
 ### Le sommeil
 
-La plupart du temps, la plupart des câbles ne bougent pas. Après chaque pas, `updateSleep()` vérifie pour chaque câble si tous ses nœuds sont restés à moins de 6 mm de leur position de référence pendant 0,5 s. Si c'est le cas, le câble **s'endort** : ses nœuds deviennent fixes, les sous-pas les sautent, et il sert d'obstacle immobile aux autres. Il se réveille si un segment en mouvement à plus de 0,1 m/s le touche, s'il est saisi ou si la baie change.
+La plupart du temps, la plupart des câbles ne bougent pas. Après chaque pas, `updateSleep()` vérifie pour chaque câble si tous ses nœuds sont restés à moins de 6 mm de leur position de référence pendant 0,5 s. Si c'est le cas, le câble **s'endort** : ses nœuds deviennent fixes, les sous-pas les sautent, et il sert d'obstacle immobile aux autres. Il se réveille si un segment en mouvement à plus de 0,1 m/s le touche (ou s'enfonce de plus de 2 mm en lui, à plus de 2 cm/s), s'il est saisi ou si la baie change.
+
+Un câble réveillé doit reprendre exactement là où il s'était arrêté. Sinon il s'affaisse, va assez vite pour réveiller ses voisins, qui s'affaissent à leur tour : dans une baie de 48 câbles, tous se réveillaient ainsi par vagues et la baie ne se posait jamais. Trois règles l'évitent :
+
+- la tension d'un câble endormi (les λ de ses segments) est gardée telle quelle ;
+- deux câbles endormis, ou un câble endormi et la baie, n'ont pas de contact entre eux. Les contacts d'un câble qui s'endort sont mis de côté (`dormant`) avec leur raideur, leur λ et leur point d'ancrage, et repris quand il se réveille ;
+- un câble touché pendant la recherche des contacts n'est réveillé qu'à la fin du pas. Réveillé au milieu, il aurait manqué ses contacts avec les segments déjà examinés, et serait tombé à travers eux pendant une frame.
+
+La règle de l'enfoncement exige un mouvement : deux câbles coincés l'un dans l'autre, immobiles, se réveillaient sinon chacun leur tour, sans fin.
 
 Le coût de la physique suit donc ce qui bouge. Au moment des captures, les 13 câbles dormaient : le pas complet prenait 0,2 à 0,5 ms. Le rendu utilise aussi cette information : un câble endormi n'est pas reconstruit (section suivante).
 
@@ -631,6 +641,7 @@ Trois points ressortent de ce tableau.
 - `?sync` dans l'URL : la physique tourne sur le fil principal, ce qui permet de la suivre au débogueur.
 - La console du navigateur expose `game.ctl` : `game.ctl.world.sim.x` contient les positions des nœuds, `game.ctl.stage.composer.passes` les passes, dont chacune a une propriété `enabled`. Les captures de ce document ont été faites ainsi.
 - `npm run bench` : le moteur sans navigateur, avec les mesures de précision et de temps.
+- `npm run free` : une partie libre de 48 câbles sans navigateur : temps de stabilisation, puis un cordon tiré à travers les autres (secousses, chevauchements, étirement).
 - [Spector.js](https://spector.babylonjs.com/), une extension de navigateur, enregistre une frame WebGL et liste chaque appel de dessin avec ses shaders et ses textures.
 
 ### Lectures

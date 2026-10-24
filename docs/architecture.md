@@ -106,7 +106,7 @@ par niveau) et tutoriel terminé. Les clés sont celles des versions précédent
 | `npm run typecheck` | types (TypeScript strict) |
 | `npm test` | géométrie, baie, stockage, règles d'une partie (branchement, fenêtre de maintenance, étiquettes, velcro, longueurs, bac), niveaux (plan, emmêlage stable, 3 étoiles possibles) |
 | `npm run check` | les trois à la suite |
-| `npm run bench` · `precision` · `levels` · `solvable` · `showcase` | bancs du moteur et des niveaux, sans navigateur (`tools/`) |
+| `npm run bench` · `precision` · `levels` · `solvable` · `showcase` · `free` | bancs du moteur et des niveaux, sans navigateur (`tools/`) ; `free` : partie libre de 48 câbles (stabilisation, cordon tiré à travers les autres) |
 
 Ces vérifications se lancent en local avant de pousser. La CI (`.github/workflows/ci.yml`) fait la même chose,
 plus la construction, mais seulement quand on la lance à la main (onglet *Actions* de GitHub).
