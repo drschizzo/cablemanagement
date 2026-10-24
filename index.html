@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Baie de brassage</title>
+    <title>Brassage</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
@@ -56,11 +56,12 @@
 
     <div id="menu" class="overlay">
       <div class="panel wide">
-        <h1>Baie de brassage</h1>
+        <button id="menu-close" class="link" title="Fermer">✕ Fermer</button>
+        <h1>Brassage</h1>
         <p class="sub">Démêlez, rebranchez et rangez les jarretières optiques d'une baie réseau.</p>
         <div class="menu-intro">
           <button id="menu-tuto" class="intro-card"><b>Tutoriel</b><span>Les équipements, les gestes, le score</span></button>
-          <button id="menu-show" class="intro-card"><b>Avant / Après</b><span>Une baie en désordre, puis parfaitement rangée</span></button>
+          <button id="menu-show" class="intro-card"><b>Écran titre</b><span>L'avant / après : une salle en désordre, puis parfaitement rangée</span></button>
         </div>
         <div id="menu-levels"></div>
         <div class="free">
@@ -100,16 +101,28 @@
       </div>
     </div>
 
+    <div id="title">
+      <div class="kicker">Un jeu de câblage réseau</div>
+      <h1 class="logo">Brassage</h1>
+      <div class="leds" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <p class="tagline">Démêlez, rebranchez, rangez.</p>
+      <div id="title-load"><div class="bar"><div class="fill"></div></div><span>Emmêlage des câbles…</span></div>
+      <nav class="menu">
+        <button id="title-play" class="primary">Jouer →</button>
+        <button id="title-tuto" class="ghost">Tutoriel</button>
+        <button id="title-levels" class="ghost">Niveaux</button>
+      </nav>
+    </div>
+
     <div id="showcase">
-      <div id="sc-title" class="before">AVANT</div>
+      <div class="state">
+        <div id="sc-title" class="before">AVANT</div>
+        <div id="sc-caption"></div>
+      </div>
       <div id="sc-stats"></div>
       <div class="row">
         <button id="sc-toggle" class="primary big">Ranger la baie</button>
-        <button id="sc-new" class="ghost" title="Tirer une autre baie au hasard">↻ Nouvelle baie</button>
-      </div>
-      <div class="row small">
-        <button id="sc-tuto" class="ghost">Tutoriel</button>
-        <button id="sc-play" class="ghost">Jouer →</button>
+        <button id="sc-new" class="ghost" title="Tirer d'autres baies au hasard">↻</button>
       </div>
     </div>
 

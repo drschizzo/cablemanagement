@@ -355,7 +355,7 @@ export class Showcase {
    * in its worker), reporting progress. Nothing shows until start(): the caller
    * may throw it away first.
    */
-  static async create(stage: Stage, threaded: boolean, actions: { play(): void; tutorial(): void; another(): void }, progress: (f: number) => void, seed = Math.floor(Math.random() * 1e9), bays = 1): Promise<Showcase> {
+  static async create(stage: Stage, threaded: boolean, actions: { another(): void }, progress: (f: number) => void, seed = Math.floor(Math.random() * 1e9), bays = 1): Promise<Showcase> {
     const sc = new Showcase(stage, actions);
     layout(bays, seed).forEach((at, k) => sc.closets.push(new Closet(stage, seed + k, at, threaded)));
     sc.floor.visible = false;
@@ -365,13 +365,13 @@ export class Showcase {
     return sc;
   }
 
-  private constructor(private stage: Stage, private actions: { play(): void; tutorial(): void; another(): void }) {
+  private constructor(private stage: Stage, private actions: { another(): void }) {
     this.el = document.getElementById('showcase')!;
     this.floor = buildRoom(0);
     stage.scene.add(this.floor);
   }
 
-  /** puts the aisle on screen: its title, its panel, the camera sway */
+  /** puts the aisle on screen: its panel, the camera sway (the title screen around it is the caller's) */
   start(): void {
     for (const c of this.closets) c.visible = true;
     this.floor.visible = true;
@@ -384,10 +384,7 @@ export class Showcase {
     const near = Math.max(...ends.map((p) => p.z));
     this.stage.frame((r.topY + r.floorY) / 2 + 0.02, r.topY - r.floorY + 0.1, side + (n > 1 ? 0.15 : 0.6), n > 1 ? 0 : 0.03, side + 0.6, near);
     document.body.classList.add('demo');
-    document.getElementById('level-title')!.textContent = 'Avant / Après';
     this.el.classList.add('on');
-    (this.el.querySelector('#sc-play') as HTMLElement).onclick = () => this.actions.play();
-    (this.el.querySelector('#sc-tuto') as HTMLElement).onclick = () => this.actions.tutorial();
     (this.el.querySelector('#sc-toggle') as HTMLElement).onclick = () => this.toggle();
     (this.el.querySelector('#sc-new') as HTMLElement).onclick = () => this.actions.another();
     this.stage.sway(true);
@@ -404,6 +401,7 @@ export class Showcase {
     disposeTree(this.floor);
     this.el.classList.remove('on');
     document.body.classList.remove('demo');
+    delete document.body.dataset.sc;
     this.stage.sway(false);
     this.stage.dragPans(false);
   }
@@ -456,12 +454,18 @@ export class Showcase {
     const title = this.el.querySelector('#sc-title') as HTMLElement;
     const stats = this.el.querySelector('#sc-stats') as HTMLElement;
     const btn = this.el.querySelector('#sc-toggle') as HTMLButtonElement;
+    const many = this.closets.length > 1;
+    // the title screen follows the state too (its LEDs, its play button)
+    document.body.dataset.sc = this.state;
     title.className = this.state;
     title.textContent = this.state === 'before' ? 'AVANT' : this.state === 'after' ? 'APRÈS' : '…';
+    (this.el.querySelector('#sc-caption') as HTMLElement).textContent =
+      this.state === 'before' ? 'Le technicien précédent est passé par là.'
+      : this.state === 'after' ? 'Chaque cordon à sa longueur, rangé, étiqueté.'
+      : 'Rangement en cours…';
     btn.disabled = this.state === 'moving';
-    const many = this.closets.length > 1;
     btn.textContent = this.state === 'after' ? '↺ Remettre le désordre' : many ? 'Ranger les baies' : 'Ranger la baie';
-    (this.el.querySelector('#sc-new') as HTMLElement).textContent = many ? '↻ Nouvelles baies' : '↻ Nouvelle baie';
+    btn.className = this.state === 'after' ? 'ghost big' : 'primary big';
     stats.style.visibility = ev ? 'visible' : 'hidden';
     if (!ev) return;
     const n = ev.total;

@@ -1,4 +1,4 @@
-# Baie de brassage
+# Brassage
 
 Un jeu de *cable management* en 3D, dans le navigateur. On se retrouve devant
 une baie réseau en désordre : des câbles emmêlés, certains mal branchés,
@@ -21,9 +21,10 @@ npm install
 npm run dev
 ```
 
-Le jeu s'ouvre sur http://localhost:5173. Au premier lancement, une
-démonstration **avant / après** montre une baie en désordre qui se range toute
-seule ; le **tutoriel** (dans le menu) explique ensuite chaque outil pas à pas.
+Le jeu s'ouvre sur http://localhost:5173, sur l'**écran titre** : une salle de
+baies en désordre (l'**avant**), qu'un bouton range toute seule (l'**après**).
+De là, **Commencer** lance le **tutoriel**, qui explique chaque outil pas à pas,
+puis le premier niveau ; ensuite, le même bouton reprend là où on s'était arrêté.
 
 ## Le jeu
 

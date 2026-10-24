@@ -47,9 +47,12 @@ physics  ←  game  ←  ui
 ## Une scène à la fois : `main.ts`
 
 Trois sortes de scènes : un niveau (un `Controller`), le tutoriel (un `Tutorial` par-dessus un niveau) et la
-vitrine avant / après (un `Showcase`, sans contrôleur). Chaque chargement passe par `loadScene()` :
+vitrine avant / après (un `Showcase`, sans contrôleur), qui sert d'écran titre : le jeu s'ouvre toujours dessus,
+avec son nom et son menu (`#title`) par-dessus. Chaque chargement passe par `loadScene()` :
 
-- le voile de chargement s'affiche et peint avant le calcul (bloquant) de l'emmêlage ;
+- le voile de chargement s'affiche et peint avant le calcul (bloquant) de l'emmêlage ; pour l'écran titre, pas
+  de voile : le nom du jeu reste seul au milieu de l'écran avec sa barre de progression (`body.booting`), puis
+  la salle apparaît en fondu et le nom remonte en haut ;
 - `sceneToken` s'incrémente : un chargement dépassé par un autre (deux clics rapides, une vitrine longue à
   calculer) ne fait rien, ou jette son résultat ;
 - `leaveScene()` libère la scène précédente — chaque scène a un `dispose()` qui arrête ses minuteries, retire

@@ -267,23 +267,68 @@ button:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
   #menu-levels { grid-template-columns: repeat(2, 1fr); }
 }
 
-/* ---- before / after */
-body.demo #toolbar, body.demo #side, body.demo #hint, body.demo #timer, body.demo #btn-restart, body.demo #btn-help, body.demo #cuts { display: none !important; }
-/* the before/after bar sits under the rack, not over it */
+/* ---- title screen: the before / after aisle, the name and the menu over it */
+:root { --title-top: 26px; }
+body.demo #toolbar, body.demo #side, body.demo #hint, body.demo #timer, body.demo #btn-restart, body.demo #btn-help, body.demo #cuts,
+body.demo #btn-menu, body.demo #level-title, body.demo #btn-view { display: none !important; }
+/* only the sound toggle stays, in the corner */
+body.demo #topbar { background: transparent; border-bottom: 0; backdrop-filter: none; pointer-events: none; }
+body.demo #topbar button { pointer-events: auto; }
+/* the title shows its own progress: no veil over it */
+body.demo #loading { display: none; }
+#view { transition: opacity 1.4s ease; }
+body.booting #view { opacity: 0; }
+
+#title {
+  position: fixed; top: var(--title-top); left: 50%; transform: translate(-50%, 0); z-index: 6; display: none;
+  flex-direction: column; align-items: center; text-align: center; pointer-events: none;
+  transition: top 0.9s cubic-bezier(.2, .8, .2, 1), transform 0.9s cubic-bezier(.2, .8, .2, 1);
+}
+body.demo #title { display: flex; }
+/* while the aisle falls, the name stands alone in the middle of the screen */
+body.booting #title { top: 50%; transform: translate(-50%, -60%); }
+#title > * { pointer-events: auto; }
+#title .kicker { font: 500 10.5px var(--mono); text-transform: uppercase; letter-spacing: 0.32em; color: var(--dim); }
+#title .logo {
+  margin: 6px 0 0; font: 600 54px/1 var(--mono); letter-spacing: 0.2em; text-transform: uppercase; margin-right: -0.2em;
+  color: var(--text); text-shadow: 0 2px 24px rgba(0, 0, 0, 0.8);
+}
+#title .logo::after { content: '▍'; color: var(--accent); margin-left: 0.04em; animation: blink 1.1s steps(1) infinite; letter-spacing: 0; }
+/* a row of port LEDs: mixed while the aisle is a mess, all green once it is tidy */
+#title .leds { display: flex; gap: 5px; margin: 12px 0 10px; }
+#title .leds i { width: 7px; height: 7px; border-radius: 1px; background: #262a27; transition: background 0.3s, box-shadow 0.3s; }
+#title .leds i:nth-child(3n + 1) { background: var(--warn); box-shadow: 0 0 6px rgba(233, 182, 92, 0.5); }
+#title .leds i:nth-child(5n + 2) { background: var(--bad); box-shadow: 0 0 6px rgba(255, 122, 104, 0.5); }
+body.booting #title .leds i { animation: ledwait 1.2s infinite; }
+#title .leds i:nth-child(odd) { animation-delay: 0.6s; }
+@keyframes ledwait { 50% { background: #262a27; box-shadow: none; } }
+body[data-sc='after'] #title .leds i { background: var(--accent); box-shadow: 0 0 6px rgba(139, 227, 180, 0.55); }
+#title .tagline { margin: 0; font-size: 15px; color: #c6cbc7; letter-spacing: 0.02em; text-shadow: 0 1px 10px rgba(0, 0, 0, 0.9); }
+#title-load { display: none; flex-direction: column; align-items: center; gap: 8px; margin-top: 22px; font: 12px var(--mono); color: var(--dim); }
+body.booting #title-load { display: flex; }
+#title-load .bar { width: 240px; height: 2px; background: rgba(255, 255, 255, 0.08); }
+#title-load .fill { height: 100%; width: 0; background: var(--accent); transition: width 0.3s; }
+#title .menu { display: flex; gap: 8px; margin-top: 16px; }
+#title .menu button { padding: 7px 16px; font-size: 13.5px; background: rgba(9, 10, 11, 0.7); backdrop-filter: blur(6px); }
+/* play is outlined while the demo waits to be played, filled once the aisle is tidy */
+#title-play.primary { background: rgba(139, 227, 180, 0.12); color: var(--accent); border-color: var(--accent-line); }
+body[data-sc='after'] #title-play.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); animation: pulse 2s infinite; }
+
+/* the before/after bar sits under the racks, not over them */
 #showcase {
   position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 6; display: none;
-  flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: center; gap: 18px; text-align: center;
+  flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: center; gap: 18px; text-align: left;
   background: rgba(9, 10, 11, 0.88); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 18px;
   max-width: calc(100% - 24px); backdrop-filter: blur(8px);
 }
-#showcase.on { display: flex; }
-#sc-title {
-  font: 600 30px/1 var(--mono); letter-spacing: 0.18em; min-width: 170px; transition: color 0.4s;
-  padding-right: 18px; border-right: 1px solid var(--line);
-}
+#showcase.on { display: flex; animation: rise 0.6s cubic-bezier(.2, .8, .2, 1); }
+@keyframes rise { from { opacity: 0; transform: translate(-50%, 12px); } }
+#showcase .state { padding-right: 18px; border-right: 1px solid var(--line); min-width: 210px; }
+#sc-title { font: 600 26px/1 var(--mono); letter-spacing: 0.18em; transition: color 0.4s; }
 #sc-title.before { color: var(--bad); }
 #sc-title.after { color: var(--accent); }
 #sc-title.moving { color: var(--dim); }
+#sc-caption { margin-top: 5px; font-size: 12px; color: var(--dim); font-style: italic; }
 #sc-stats {
   display: flex; gap: 3px 14px; flex-wrap: wrap; justify-content: center; max-width: 300px;
   font-size: 12px; color: var(--dim); min-height: 20px;
@@ -292,9 +337,22 @@ body.demo #toolbar, body.demo #side, body.demo #hint, body.demo #timer, body.dem
 #sc-stats .st { color: var(--warn); letter-spacing: 2px; }
 #sc-stats:empty, #sc-stats:has(> :only-child:empty) { display: none; }
 #showcase .row { display: flex; gap: 8px; }
-#showcase .row.small { flex-direction: column; gap: 4px; }
-#showcase .row.small button { font-size: 12px; padding: 4px 10px; }
+#sc-new { font-size: 16px; padding: 0 12px; }
 button.big { font-size: 15px; padding: 11px 22px; }
+button.ghost.big { padding: 11px 18px; }
+
+#menu-close { position: absolute; top: 14px; right: 16px; font-size: 11px; }
+
+@media (max-width: 760px), (max-height: 620px) {
+  :root { --title-top: 14px; }
+  #title .logo { font-size: 36px; }
+  #title .leds { margin: 8px 0 6px; }
+  #title .tagline { font-size: 13px; }
+  #title .menu { margin-top: 10px; }
+  #showcase { gap: 10px 14px; padding: 10px 12px; }
+  #showcase .state { min-width: 0; }
+  #sc-title { font-size: 20px; }
+}
 
 /* ---- tutorial */
 #tuto {
