@@ -275,7 +275,7 @@ export const LEVELS: LevelDef[] = [
  * How the mess of the demo is settled before it is shown: a short fall with a
  * cheap solver (it is frozen afterwards, nobody touches it).
  */
-export const SHOWCASE_SETTLE = { frames: 40, solver: { substeps: 1, iterations: 4 } };
+export const SHOWCASE_SETTLE = { frames: 40, solver: { substeps: 1, refSubsteps: 1, iterations: 4 } };
 
 export function showcaseRack(state: 'mess' | 'tidy', seed: number): LevelDef {
   // the closet is drawn from the seed: both worlds of the demo get the same one

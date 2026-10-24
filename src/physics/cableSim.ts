@@ -77,9 +77,17 @@ export interface CableInit {
 export interface SimParams {
   dt: number;
   substeps: number;
+  /**
+   * The substep count the settings below were tuned at. Their stiffnesses are
+   * multiples of M/h² for that reference substep h = dt / refSubsteps, which
+   * makes them plain stiffnesses (N/m), and what they do "per substep" is
+   * converted to the actual substep so that it does as much per second: more
+   * substeps solve the same cables more accurately, rather than stiffer ones.
+   */
+  refSubsteps: number;
   iterations: number;
   gravity: number;
-  /** stretch stiffness, in multiples of M/h² */
+  /** stretch stiffness, in multiples of M/h² (of the hard constraints: see `R`) */
   stretch: number;
   /** contact stiffness: starting value and ceiling (× M/h²), growth (× M/h² per metre of violation) */
   kMin: number;
@@ -98,9 +106,13 @@ export interface SimParams {
   lamWarmS: number;
   /** remove the separating velocity left by contact push-outs */
   contactVelocity: boolean;
-  /** fraction of the sliding velocity of a pushing contact removed per substep */
+  /**
+   * fraction of the sliding velocity of a pushing contact removed per substep,
+   * whatever the substep: like the separating velocity, it is taken from the
+   * velocity the substep has just made, not from one carried through the frame
+   */
   contactDamping: number;
-  /** speed (m/s) removed per substep from nodes resting on a contact */
+  /** speed (m/s) under which a node resting on a contact stops, and that it loses per substep otherwise */
   restFriction: number;
   /** cable–cable and cable–rack Coulomb friction */
   muCable: number;
@@ -163,7 +175,7 @@ export interface SimParams {
 
 export function defaultSimParams(p: Partial<SimParams> = {}): SimParams {
   return {
-    dt: 1 / 60, substeps: 3, iterations: 6, gravity: -9.81,
+    dt: 1 / 60, substeps: 3, refSubsteps: 3, iterations: 6, gravity: -9.81,
     stretch: 10, kMin: 0.05, kCap: 2, kCapCable: 4, beta: 2000, gamma: 0.99, alpha: 0.25, alphaS: 0.3, lamWarm: 0.8, lamWarmS: 0.8, contactVelocity: true, contactDamping: 0.3, restFriction: 0.012,
     muCable: 0.3, muStatic: 0.4, drag: 2.5,
     margin: 0.0015, marginCap: 0.008, marginStatic: 0.03, maxMove: 0.012,
@@ -220,7 +232,7 @@ export class CableSim {
   crs = new Float64Array(0); cc0 = new Float64Array(0);
   ck = new Float64Array(0); clam = new Float64Array(0);
   ckt = new Float64Array(0); cmu = new Float64Array(0); ckmax = new Float64Array(0);
-  /** M/h² of each contact (its heavier node), the unit of its stiffnesses */
+  /** M/(h·h_ref) of each contact (its heavier node), the unit of its stiffnesses (see `R`) */
   cmh = new Float64Array(0);
   ckey = new Float64Array(0);
   /** friction anchor of each contact: pA − pB (or pA against the rack) where it last stuck */
@@ -316,6 +328,26 @@ export class CableSim {
    */
   private wakeNext: number[] = [];
   private nAwake = 0;
+
+  /**
+   * The settings of this step's substep h, converted from those of the
+   * reference substep h_ref (see `refSubsteps`), r = h / h_ref:
+   * - the unit of the soft stiffnesses (hand, keepers, velcro), M/h_ref² =
+   *   M / h2: they are plain springs, the same whatever the substep;
+   * - the unit of the hard constraints' penalties (stretch, contacts and
+   *   their friction), M/(h·h_ref) = M / hk. Plain springs there make the
+   *   contacts soft at many substeps (they sink), and multiples of M/h² make
+   *   them stiffer as h shrinks, until the heap shakes (several thousand
+   *   reversals at 6 substeps in `npm run free`). In between, k·h stays the
+   *   same: a contact pushes back in proportion to the speed at which it is
+   *   violated, whatever the substep;
+   * - a fraction f kept per substep becomes f^r, an amount per substep r
+   *   times that amount, a count of passes per substep r times as many.
+   */
+  private R = {
+    h2: 0, mh: 0, hk: 0, mhk: 0, lamWarm: 0, lamWarmS: 0, gamma: 0, alpha: 0, alphaS: 0, maxDepen: 0,
+    restDecel: 0, keepStep: 0, keepPeel: 0, maxMove: 0, pbdPasses: 0,
+  };
 
   stats = { contacts: 0, awake: 0, ms: 0 };
   private flip = false;
@@ -527,12 +559,13 @@ export class CableSim {
     const t0 = performance.now();
     const P = this.P;
     const h = P.dt / P.substeps;
+    this.convert(h);
     this.markGateFree();
     this.markKept();
     // Contacts are found once per frame, with a speculative margin covering
     // the motion of the whole frame, then kept for all substeps.
     this.refreshFixed();
-    this.collide(h, P.dt);
+    this.collide(P.dt);
     this.refreshFixed();
     this.buildAdjacency();
     this.listAwake();
@@ -541,6 +574,29 @@ export class CableSim {
     for (const ci of this.wakeNext) this.wakeCable(ci);
     this.wakeNext.length = 0;
     this.stats.ms = performance.now() - t0;
+  }
+
+  /** fills `R` for substeps of length h */
+  private convert(h: number): void {
+    const P = this.P, R = this.R;
+    const hr = P.dt / P.refSubsteps;
+    const r = h / hr;
+    const kept = (f: number) => f ** r;
+    R.h2 = hr * hr;
+    R.mh = 1 / R.h2;
+    R.hk = h * hr;
+    R.mhk = 1 / R.hk;
+    R.lamWarm = kept(P.lamWarm);
+    R.lamWarmS = kept(P.lamWarmS);
+    R.gamma = kept(P.gamma);
+    R.alpha = kept(P.alpha);
+    R.alphaS = kept(P.alphaS);
+    R.maxDepen = P.maxDepen * r;
+    R.restDecel = P.restFriction * r;
+    R.keepStep = P.keepStep * r;
+    R.keepPeel = P.keepPeel * r;
+    R.maxMove = P.maxMove * r;
+    R.pbdPasses = Math.max(1, Math.round(P.pbdPasses * r));
   }
 
   /**
@@ -607,14 +663,14 @@ export class CableSim {
   }
 
   /**
-   * End of a substep: the kept nodes are put back within the height and depth
-   * of their keeper — at once when they were in it, a few millimetres per
-   * substep when they are being drawn in. One of the held cord pulled out
+   * End of a substep: the kept nodes that were in their keeper are put back
+   * within its height and depth (those being drawn in are moved by the
+   * solve, and count as in once they are). One of the held cord pulled out
    * further than `keepPeel` in a substep — the hand drawing it out, not its
    * own weight — comes free.
    */
   private keep(): void {
-    const x = this.x, P = this.P;
+    const x = this.x, R = this.R;
     const held = this.grabNode >= 0 ? this.cableOf[this.grabNode] : -1;
     for (let q = 0; q < this.nAwake; q++) {
       const cb = this.cables[this.awake[q]];
@@ -627,25 +683,21 @@ export class CableSim {
         const cz = Math.min(Math.max(z, b.min[2] + r), b.max[2] - r);
         if (cy === y && cz === z) { this.keepIn[i] = 1; continue; }
         const d = Math.hypot(cy - y, cz - z);
-        if (!this.keepIn[i]) {
-          const f = Math.min(1, P.keepStep / d);
-          x[3 * i + 1] = y + (cy - y) * f; x[3 * i + 2] = z + (cz - z) * f;
-          if (f === 1) this.keepIn[i] = 1;
-          continue;
-      }
-      if (this.cableOf[i] === held && d > P.keepPeel) { this.keepOf[i] = -1; continue; }
-      x[3 * i + 1] = cy; x[3 * i + 2] = cz;
+        // one being drawn in is moved by the solve
+        if (!this.keepIn[i]) continue;
+        if (this.cableOf[i] === held && d > R.keepPeel) { this.keepOf[i] = -1; continue; }
+        x[3 * i + 1] = cy; x[3 * i + 2] = cz;
       }
     }
   }
 
   private substep(h: number): void {
-    const P = this.P;
+    const P = this.P, R = this.R;
     const cables = this.cables, awake = this.awake, nAwake = this.nAwake;
     const x = this.x, x0 = this.x0, xt = this.xt, v = this.v;
     // contacts: separation at the start of the substep (α stabilisation), λ rebuilt
-    for (let c = 0; c < this.nc; c++) { this.cc0[c] = this.contactC(c); this.clam[c] *= P.lamWarm; if (!P.anchoredFriction) this.ckt[c] = FRICTION_K.start; }
-    if (P.hardFriction) for (let k = 0; k < 3 * this.nc; k++) this.clt[k] *= P.lamWarm;
+    for (let c = 0; c < this.nc; c++) { this.cc0[c] = this.contactC(c); this.clam[c] *= R.lamWarm; if (!P.anchoredFriction) this.ckt[c] = FRICTION_K.start; }
+    if (P.hardFriction) for (let k = 0; k < 3 * this.nc; k++) this.clt[k] *= R.lamWarm;
     // bundles hold on to the centre of their nodes at the start of the substep
     for (const b of this.bundles) {
       if (!b.alive || b.nodes.length === 0) continue;
@@ -677,12 +729,11 @@ export class CableSim {
     // their error at the start of the substep, for the stabilisation
     // (not those of a sleeping cord: it wakes with the tension it fell asleep
     // with, rather than sagging while it rebuilds it)
-    const mh = 1 / (h * h);
     for (let s = 0; s < this.n; s++) {
       if (!this.segOK[s] || cables[this.cableOf[s]].asleep) continue;
-      const m = Math.max(this.mass[s], this.mass[s + 1]) * mh;
-      this.lam[s] *= P.lamWarmS * P.gamma;
-      this.segK[s] = Math.min(P.stretch * m, Math.max(P.kMin * m, this.segK[s] * P.gamma));
+      const m = Math.max(this.mass[s], this.mass[s + 1]) * R.mhk;
+      this.lam[s] *= R.lamWarmS * R.gamma;
+      this.segK[s] = Math.min(P.stretch * m, Math.max(P.kMin * m, this.segK[s] * R.gamma));
       const dx = x0[3 * s] - x0[3 * s + 3], dy = x0[3 * s + 1] - x0[3 * s + 4], dz = x0[3 * s + 2] - x0[3 * s + 5];
       this.segC0[s] = Math.sqrt(dx * dx + dy * dy + dz * dz) - this.rest[s];
     }
@@ -699,13 +750,13 @@ export class CableSim {
           for (let i = cb.start + cb.count - 1; i >= cb.start; i--) if (!this.fixed[i]) this.solveNode(i, h);
         }
       }
-      this.dualUpdate(h);
+      this.dualUpdate();
     }
-    if (P.anchoredFriction && !P.hardFriction) this.updateAnchors(h);
+    if (P.anchoredFriction && !P.hardFriction) this.updateAnchors();
     // kept nodes go back in first, and stay put in the length passes: those
     // take the slack from the free part of the cord rather than stretch it
     if (this.keepers.length) this.keep();
-    for (let k = 0; k < P.pbdPasses; k++) this.inextensible(k % 2 === 0);
+    for (let k = 0; k < R.pbdPasses; k++) this.inextensible(k % 2 === 0);
     if (this.keepers.length) this.keep();
     const damp = 1 / (1 + P.drag * h);
     const ih = 1 / h;
@@ -722,9 +773,9 @@ export class CableSim {
     if (P.contactVelocity) this.contactVelocities();
     // rest friction: a node pressed against something and barely moving stops
     // (the static friction a few sweeps cannot resolve), anything faster only
-    // loses that much speed
+    // loses some speed — as much per second whatever the substep
     if (P.restFriction > 0) {
-      const vs = P.restFriction;
+      const vs = P.restFriction, dv = R.restDecel;
       for (let q = 0; q < nAwake; q++) {
         const cb = cables[awake[q]];
         for (let i = cb.start; i < cb.start + cb.count; i++) {
@@ -734,7 +785,7 @@ export class CableSim {
           if (!pressed) continue;
           const j = 3 * i;
           const sp = Math.sqrt(v[j] * v[j] + v[j + 1] * v[j + 1] + v[j + 2] * v[j + 2]);
-          const f = sp > vs ? 1 - vs / sp : 0;
+          const f = sp > vs ? 1 - dv / sp : 0;
           v[j] *= f; v[j + 1] *= f; v[j + 2] *= f;
         }
       }
@@ -805,13 +856,14 @@ export class CableSim {
   // ------------------------------------------------------------- solving
 
   private solveNode(i: number, h: number): void {
-    const P = this.P;
+    const P = this.P, R = this.R;
     const x = this.x;
     const j = 3 * i;
     const xi = x[j], yi = x[j + 1], zi = x[j + 2];
     const m = this.mass[i];
-    const ih2 = 1 / (h * h);
-    const a = m * ih2;
+    const a = m / (h * h);
+    // the unit of the soft stiffnesses, M/h² of the reference substep
+    const mh = m * R.mh;
     let gx = a * (xi - this.xt[j]);
     let gy = a * (yi - this.xt[j + 1]);
     let gz = a * (zi - this.xt[j + 2]);
@@ -827,7 +879,7 @@ export class CableSim {
       if (len < 1e-9) continue;
       const ux = dx / len, uy = dy / len, uz = dz / len;
       const k = this.segK[s];
-      const C = len - this.rest[s] - P.alphaS * this.segC0[s];
+      const C = len - this.rest[s] - R.alphaS * this.segC0[s];
       const f = k * C + this.lam[s];
       gx += f * ux; gy += f * uy; gz += f * uz;
       // Gauss-Newton term + |f|/len (I − uuᵀ): the geometric stiffness kept
@@ -888,7 +940,7 @@ export class CableSim {
         if (F > lim) { const sc = lim / F; Fx *= sc; Fy *= sc; Fz *= sc; ke = kt * sc; }
         gx += Fx * w; gy += Fy * w; gz += Fz * w;
       } else {
-        const kt = this.ckt[c] * ih2 * m;
+        const kt = this.ckt[c] * mh;
         let ft = kt * dl;
         ke = kt;
         if (ft > lim) { ft = lim; ke = dl > 1e-12 ? lim / dl : 0; }
@@ -904,7 +956,7 @@ export class CableSim {
 
     // --- hand
     if (i === this.grabNode) {
-      const kg = P.grabK * ih2 * m * 4;
+      const kg = P.grabK * mh * 4;
       let ex = xi - this.grabTarget[0], ey = yi - this.grabTarget[1], ez = zi - this.grabTarget[2];
       const el = Math.sqrt(ex * ex + ey * ey + ez * ez);
       if (el > P.grabLead) { const f = P.grabLead / el; ex *= f; ey *= f; ez *= f; }
@@ -914,16 +966,32 @@ export class CableSim {
       h00 += kg; h11 += kg; h22 += kg;
     }
 
-    // --- keeper: a stiff one-sided pull back within its height and depth,
-    // so that the solve itself carries the cord hanging from the kept part
-    // (not on the cord in hand: the hand must be able to draw it out)
+    // --- keeper, so that the solve itself carries the cord hanging from the
+    // kept part (rather than `keep` putting the nodes back after it, against
+    // the solve: the cord stretched, and sprang back when let go)
     const ki = this.keepOf[i];
-    if (ki >= 0 && (this.grabNode < 0 || this.cableOf[i] !== this.cableOf[this.grabNode])) {
+    if (ki >= 0) {
       const b = this.keepers[ki], r = this.radius[i];
-      const kk = P.keepK * ih2 * m;
+      const kk = P.keepK * mh;
       const ylo = b.min[1] + r, yhi = b.max[1] - r, zlo = b.min[2] + r, zhi = b.max[2] - r;
-      const ey = yi < ylo ? yi - ylo : yi > yhi ? yi - yhi : 0;
-      const ez = zi < zlo ? zi - zlo : zi > zhi ? zi - zhi : 0;
+      let ey = 0, ez = 0;
+      if (!this.keepIn[i]) {
+        // being drawn in: towards a point keepStep closer to the channel than
+        // where the node started the substep
+        const j0 = 3 * i, y0 = this.x0[j0 + 1], z0 = this.x0[j0 + 2];
+        const cy = Math.min(Math.max(y0, ylo), yhi), cz = Math.min(Math.max(z0, zlo), zhi);
+        const d = Math.hypot(cy - y0, cz - z0);
+        const f = d > this.R.keepStep ? this.R.keepStep / d : 1;
+        ey = yi - (y0 + (cy - y0) * f); ez = zi - (z0 + (cz - z0) * f);
+      } else if (this.grabNode < 0 || this.cableOf[i] !== this.cableOf[this.grabNode]) {
+        // in it: a stiff one-sided pull back within its height and depth
+        ey = yi < ylo ? yi - ylo : yi > yhi ? yi - yhi : 0;
+        ez = zi < zlo ? zi - zlo : zi > zhi ? zi - zhi : 0;
+      } else {
+        // in it, on the cord in hand: only held up, so that the hand can
+        // still draw it out (see `keep`)
+        ey = yi < ylo ? yi - ylo : 0;
+      }
       if (ey !== 0) { gy += kk * ey; h11 += kk; }
       if (ez !== 0) { gz += kk * ez; h22 += kk; }
     }
@@ -936,7 +1004,7 @@ export class CableSim {
       const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
       const C = len - b.r;
       if (C > 0 && len > 1e-9) {
-        const kb = 0.3 * ih2 * m;
+        const kb = 0.3 * mh;
         const ux = dx / len, uy = dy / len, uz = dz / len;
         gx += kb * C * ux; gy += kb * C * uy; gz += kb * C * uz;
         h00 += kb * ux * ux; h11 += kb * uy * uy; h22 += kb * uz * uz;
@@ -948,7 +1016,7 @@ export class CableSim {
     let dx = sol.x, dy = sol.y, dz = sol.z;
     const L = Math.sqrt(dx * dx + dy * dy + dz * dz);
     if (!(L < 1e9)) return; // NaN guard
-    if (L > P.maxMove) { const f = P.maxMove / L; dx *= f; dy *= f; dz *= f; }
+    if (L > R.maxMove) { const f = R.maxMove / L; dx *= f; dy *= f; dz *= f; }
     x[j] = xi + dx; x[j + 1] = yi + dy; x[j + 2] = zi + dz;
     for (let e = this.adjStart[i]; e < this.adjStart[i + 1]; e++) {
       const c = this.adjC[e], w = this.adjW[e];
@@ -988,19 +1056,18 @@ export class CableSim {
     }
   }
 
-  private dualUpdate(h: number): void {
-    const P = this.P;
+  private dualUpdate(): void {
+    const P = this.P, R = this.R;
     const x = this.x;
-    const ih2 = 1 / (h * h);
     for (let q = 0; q < this.nAwake; q++) {
       const cb = this.cables[this.awake[q]];
       for (let s = cb.start; s < cb.start + cb.count - 1; s++) {
         if (!this.segOK[s]) continue;
         if (this.fixed[s] && this.fixed[s + 1]) continue;
         const dx = x[3 * s] - x[3 * s + 3], dy = x[3 * s + 1] - x[3 * s + 4], dz = x[3 * s + 2] - x[3 * s + 5];
-        const C = Math.sqrt(dx * dx + dy * dy + dz * dz) - this.rest[s] - P.alphaS * this.segC0[s];
+        const C = Math.sqrt(dx * dx + dy * dy + dz * dz) - this.rest[s] - R.alphaS * this.segC0[s];
         this.lam[s] += this.segK[s] * C;
-        const kmax = P.stretch * Math.max(this.mass[s], this.mass[s + 1]) * ih2;
+        const kmax = P.stretch * Math.max(this.mass[s], this.mass[s + 1]) * R.mhk;
         this.segK[s] = Math.min(kmax, this.segK[s] + P.beta * Math.abs(C) * kmax / P.stretch);
       }
     }
@@ -1058,8 +1125,8 @@ export class CableSim {
   private forgive(c: number): number {
     const c0 = this.cc0[c];
     if (c0 >= 0) return 0;
-    const P = this.P;
-    return Math.min(P.alpha * c0, c0 + P.maxDepen);
+    const R = this.R;
+    return Math.min(R.alpha * c0, c0 + R.maxDepen);
   }
 
   /** does segment a overlap this gate (closer than the two radii)? */
@@ -1104,8 +1171,7 @@ export class CableSim {
    * End of a substep: a contact that slid drags its anchor along (to where the
    * friction force is exactly μ·N), a contact that let go forgets it.
    */
-  private updateAnchors(h: number): void {
-    const ih2 = 1 / (h * h);
+  private updateAnchors(): void {
     for (let c = 0; c < this.nc; c++) {
       this.contactRel(c);
       const ax = this.canc[3 * c], ay = this.canc[3 * c + 1], az = this.canc[3 * c + 2];
@@ -1118,7 +1184,7 @@ export class CableSim {
       const dl = Math.sqrt(dx * dx + dy * dy + dz * dz);
       let m = this.mass[this.ca0[c]];
       if (this.cb0[c] >= 0) m = Math.max(m, this.mass[this.cb0[c]]);
-      const kt = this.ckt[c] * ih2 * m;
+      const kt = this.ckt[c] * this.R.mh * m;
       const lim = this.cmu[c] * -f;
       if (kt * dl > lim && dl > 1e-12) {
         const k = 1 - lim / (kt * dl);
@@ -1154,7 +1220,7 @@ export class CableSim {
 
   private pushContact(
     key: number, a0: number, a1: number, s: number, b0: number, b1: number, t: number,
-    nx: number, ny: number, nz: number, qx: number, qy: number, qz: number, rs: number, C: number, mu: number, h: number,
+    nx: number, ny: number, nz: number, qx: number, qy: number, qz: number, rs: number, C: number, mu: number,
   ): void {
     const c = this.nc++;
     this.ensureCap(this.nc);
@@ -1166,7 +1232,7 @@ export class CableSim {
     this.crs[c] = rs; this.cc0[c] = C; this.cmu[c] = mu;
     let m = Math.max(this.mass[a0], this.mass[a1]);
     if (b0 >= 0) m = Math.max(m, this.mass[b0], this.mass[b1]);
-    const mh2 = m / (h * h);
+    const mh2 = m / this.R.hk;
     const kmax = (b0 >= 0 ? this.P.kCapCable : this.P.kCap) * mh2;
     this.ckmax[c] = kmax;
     this.cmh[c] = mh2;
@@ -1205,7 +1271,7 @@ export class CableSim {
     return 4 * (this.n * this.n + a * this.statics.length + sid);
   }
 
-  private collide(h: number, frame: number): void {
+  private collide(frame: number): void {
     const P = this.P;
     // remember the stiffness of last substep's contacts, and those of the
     // sleeping cables (see `dormant`)
@@ -1366,7 +1432,7 @@ export class CableSim {
               this.pairContacts(
                 this.pairKey(lo, hi), lo, hi,
                 x[3 * hi], x[3 * hi + 1], x[3 * hi + 2], x[3 * hi + 3], x[3 * hi + 4], x[3 * hi + 5],
-                rs, lim, P.muCable, h,
+                rs, lim, P.muCable,
               );
             }
           }
@@ -1405,7 +1471,7 @@ export class CableSim {
           const rs = r + sh.r;
           const lim = rs + margin;
           if (closest.d2 > lim * lim) continue;
-          this.pairContacts(key, a, -1, sh.ax, sh.ay, sh.az, sh.bx, sh.by, sh.bz, rs, lim, mu, h);
+          this.pairContacts(key, a, -1, sh.ax, sh.ay, sh.az, sh.bx, sh.by, sh.bz, rs, lim, mu);
         } else {
           // Every node gets its own contact (the first node of each segment,
           // and the last of the cord): the closest point of a segment lying
@@ -1422,7 +1488,7 @@ export class CableSim {
             if ((e === 1 && !last) || boxHit.dist > lim) continue;
             this.pushContact(
               key + e, a, a + 1, e, -1, -1, 0, boxHit.nx, boxHit.ny, boxHit.nz,
-              boxHit.qx, boxHit.qy, boxHit.qz, r, boxHit.dist - r, mu, h,
+              boxHit.qx, boxHit.qy, boxHit.qz, r, boxHit.dist - r, mu,
             );
           }
           segBox(
@@ -1432,7 +1498,7 @@ export class CableSim {
           if (boxHit.dist > lim || boxHit.s < 0.05 || boxHit.s > 0.95 || boxHit.dist > dEnds - 5e-4) continue;
           this.pushContact(
             key + 2, a, a + 1, boxHit.s, -1, -1, 0, boxHit.nx, boxHit.ny, boxHit.nz,
-            boxHit.qx, boxHit.qy, boxHit.qz, r, boxHit.dist - r, mu, h,
+            boxHit.qx, boxHit.qy, boxHit.qz, r, boxHit.dist - r, mu,
           );
         }
       }
@@ -1461,7 +1527,7 @@ export class CableSim {
   private pairContacts(
     key: number, a: number, b: number,
     q0x: number, q0y: number, q0z: number, q1x: number, q1y: number, q1z: number,
-    rs: number, lim: number, mu: number, h: number,
+    rs: number, lim: number, mu: number,
   ): void {
     const x = this.x;
     const p0x = x[3 * a], p0y = x[3 * a + 1], p0z = x[3 * a + 2];
@@ -1479,8 +1545,8 @@ export class CableSim {
       // unguarded (cords slipped through one another there)
       if (hi - lo > 0.05 && this.endsAgree(a, lo, hi, q0x, q0y, q0z, wx, wy, wz, ww)) {
         const dc = Math.sqrt(closest.d2);
-        this.emitAt(key, a, b, lo, q0x, q0y, q0z, wx, wy, wz, ww, rs, lim, mu, h);
-        this.emitAt(key + 2, a, b, hi, q0x, q0y, q0z, wx, wy, wz, ww, rs, lim, mu, h);
+        this.emitAt(key, a, b, lo, q0x, q0y, q0z, wx, wy, wz, ww, rs, lim, mu);
+        this.emitAt(key + 2, a, b, hi, q0x, q0y, q0z, wx, wy, wz, ww, rs, lim, mu);
         // and the closest point, when it dips well below both ends
         if (dc > Math.min(this.endGap[0], this.endGap[1]) - 5e-4 || closest.s <= lo || closest.s >= hi) return;
         key += 1;
@@ -1498,8 +1564,8 @@ export class CableSim {
       if (cl > 1e-12) { nx = cx / cl; ny = cy / cl; nz = cz / cl; } else { nx = 0; ny = 0; nz = 1; }
       d = 0;
     } else { nx /= d; ny /= d; nz /= d; }
-    if (b >= 0) this.pushContact(key, a, a + 1, s, b, b + 1, t, nx, ny, nz, 0, 0, 0, rs, d - rs, mu, h);
-    else this.pushContact(key, a, a + 1, s, -1, -1, 0, nx, ny, nz, qx, qy, qz, rs, d - rs, mu, h);
+    if (b >= 0) this.pushContact(key, a, a + 1, s, b, b + 1, t, nx, ny, nz, 0, 0, 0, rs, d - rs, mu);
+    else this.pushContact(key, a, a + 1, s, -1, -1, 0, nx, ny, nz, qx, qy, qz, rs, d - rs, mu);
   }
 
   /** gaps between the two segments at the ends of their overlap (set by endsAgree) */
@@ -1526,7 +1592,7 @@ export class CableSim {
   private emitAt(
     key: number, a: number, b: number, s: number,
     q0x: number, q0y: number, q0z: number, wx: number, wy: number, wz: number, ww: number,
-    rs: number, lim: number, mu: number, h: number,
+    rs: number, lim: number, mu: number,
   ): void {
     const x = this.x;
     const pax = x[3 * a] + (x[3 * a + 3] - x[3 * a]) * s;
@@ -1539,8 +1605,8 @@ export class CableSim {
     const d = Math.sqrt(nx * nx + ny * ny + nz * nz);
     if (d > lim) return;
     if (d < 1e-9) { nx = 0; ny = 1; nz = 0; } else { nx /= d; ny /= d; nz /= d; }
-    if (b >= 0) this.pushContact(key, a, a + 1, s, b, b + 1, t, nx, ny, nz, 0, 0, 0, rs, d - rs, mu, h);
-    else this.pushContact(key, a, a + 1, s, -1, -1, 0, nx, ny, nz, qx, qy, qz, rs, d - rs, mu, h);
+    if (b >= 0) this.pushContact(key, a, a + 1, s, b, b + 1, t, nx, ny, nz, 0, 0, 0, rs, d - rs, mu);
+    else this.pushContact(key, a, a + 1, s, -1, -1, 0, nx, ny, nz, qx, qy, qz, rs, d - rs, mu);
   }
 
   private buildAdjacency(): void {

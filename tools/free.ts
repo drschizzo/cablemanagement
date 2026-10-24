@@ -32,7 +32,7 @@ function worstPen(w: World): number {
   return m;
 }
 
-const tot = { settle: 0, ms: 0, kicks: 0, jerk: 0, rest: 0, shake: 0, pen: 0 };
+const tot = { shakeX: 0, settle: 0, ms: 0, kicks: 0, jerk: 0, rest: 0, shake: 0, pen: 0 };
 for (const seed of seeds) {
   const w = new World(freeLevel(NC, seed));
   Object.assign(w.sim.P, params);
@@ -59,6 +59,10 @@ for (const seed of seeds) {
   const path = [[-0.2, t[1], 0.08], [0.2, t[1] - 0.15, 0.03], [-0.15, t[1] + 0.1, 0.05], [0.15, t[1], 0.12], [0, t[1] - 0.05, 0.06]];
   let kicks = 0, jerk = 0, stretchPeak = 0, dragMs = 0, frames = 0, shake = 0, pen = 0;
   const vPrev = Float64Array.from(sim.v);
+  // the same from the positions of the last frames: what the player sees. The
+  // velocity is that of the last substep alone, which with more substeps
+  // also catches the jitter of the substeps within a frame
+  const xA = Float64Array.from(sim.x), xB = Float64Array.from(sim.x); let shakeX = 0;
   const measure = () => {
     for (let i = 0; i < sim.n; i++) {
       const near = sim.cableOf[i] === c && Math.abs(i - node) < 12;
@@ -72,6 +76,15 @@ for (const seed of seeds) {
       if (dot < 0 && speed(w, i) > 0.1 && Math.hypot(vPrev[3 * i], vPrev[3 * i + 1], vPrev[3 * i + 2]) > 0.1) shake++;
     }
     vPrev.set(sim.v);
+    for (let i = 0; i < sim.n; i++) {
+      if (sim.cableOf[i] === c && Math.abs(i - node) < 12) continue;
+      const j = 3 * i;
+      const ax = sim.x[j] - xA[j], ay = sim.x[j + 1] - xA[j + 1], az = sim.x[j + 2] - xA[j + 2];
+      const bx = xA[j] - xB[j], by = xA[j + 1] - xB[j + 1], bz = xA[j + 2] - xB[j + 2];
+      const lim = 0.1 / 60;
+      if (ax * bx + ay * by + az * bz < 0 && Math.hypot(ax, ay, az) > lim && Math.hypot(bx, by, bz) > lim) shakeX++;
+    }
+    xB.set(xA); xA.set(sim.x);
     stretchPeak = Math.max(stretchPeak, stretchMax(w));
     pen = Math.max(pen, worstPen(w));
   };
@@ -100,8 +113,8 @@ for (const seed of seeds) {
   let nan = 0;
   for (const v of sim.x) if (!Number.isFinite(v)) nan++;
   console.log(`seed ${seed}: ${sim.n} nodes, settle ${settle < 0 ? 'never' : (settle / 60).toFixed(1) + ' s'} (awake/s ${awake.join(',')}), fast at 15 s ${restFast}, ` +
-    `step avg ${(ms / 900).toFixed(2)} worst ${worst.toFixed(1)} ms | drag ${(dragMs / frames).toFixed(2)} ms, kicks ${kicks}, jerk ${jerk.toFixed(2)} m/s, shake ${shake}, pen ${(pen * 1000).toFixed(1)} mm, stretch ${(stretchPeak * 100).toFixed(1)} %, rest after ${after < 0 ? 'never' : (after / 60).toFixed(1) + ' s'}, NaN ${nan}`);
-  tot.settle += settle < 0 ? 15 : settle / 60; tot.ms += ms / 900; tot.kicks += kicks; tot.jerk = Math.max(tot.jerk, jerk); tot.rest += restFast; tot.shake += shake; tot.pen = Math.max(tot.pen, pen);
+    `step avg ${(ms / 900).toFixed(2)} worst ${worst.toFixed(1)} ms | drag ${(dragMs / frames).toFixed(2)} ms, kicks ${kicks}, jerk ${jerk.toFixed(2)} m/s, shake ${shake} (frames ${shakeX}), pen ${(pen * 1000).toFixed(1)} mm, stretch ${(stretchPeak * 100).toFixed(1)} %, rest after ${after < 0 ? 'never' : (after / 60).toFixed(1) + ' s'}, NaN ${nan}`);
+  tot.settle += settle < 0 ? 15 : settle / 60; tot.ms += ms / 900; tot.kicks += kicks; tot.jerk = Math.max(tot.jerk, jerk); tot.rest += restFast; tot.shake += shake; tot.shakeX += shakeX; tot.pen = Math.max(tot.pen, pen);
 }
 const n = seeds.length;
-console.log(`mean: settle ${(tot.settle / n).toFixed(1)} s, step ${(tot.ms / n).toFixed(2)} ms, kicks ${(tot.kicks / n).toFixed(0)}, worst jerk ${tot.jerk.toFixed(2)} m/s, shake ${(tot.shake / n).toFixed(0)}, worst pen ${(tot.pen * 1000).toFixed(1)} mm, fast at 15 s ${(tot.rest / n).toFixed(0)}`);
+console.log(`mean: settle ${(tot.settle / n).toFixed(1)} s, step ${(tot.ms / n).toFixed(2)} ms, kicks ${(tot.kicks / n).toFixed(0)}, worst jerk ${tot.jerk.toFixed(2)} m/s, shake ${(tot.shake / n).toFixed(0)} (frames ${(tot.shakeX / n).toFixed(0)}), worst pen ${(tot.pen * 1000).toFixed(1)} mm, fast at 15 s ${(tot.rest / n).toFixed(0)}`);

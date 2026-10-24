@@ -19,7 +19,8 @@
     "levels": "vite-node tools/levels.ts",
     "solvable": "vite-node tools/solvable.ts",
     "showcase": "vite-node tools/showcase.ts",
-    "free": "vite-node tools/free.ts"
+    "free": "vite-node tools/free.ts",
+    "release": "vite-node tools/release.ts"
   },
   "dependencies": {
     "three": "^0.183.2"

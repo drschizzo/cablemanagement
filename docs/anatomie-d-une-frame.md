@@ -222,7 +222,7 @@ Deux règles complètent ce mécanisme :
 - pour un contact, λ ne peut que pousser : deux câbles se repoussent mais ne s'attirent jamais ;
 - λ est conservé d'un pas à l'autre (*warm start*). Un câble tendu ou une pile au repos garde ainsi sa force, au lieu de la reconstruire en s'affaissant légèrement à chaque pas.
 
-La raideur d'un contact a un plafond, exprimé en multiples de M/h² (la masse du nœud divisée par le carré du sous-pas) : 2 contre la baie, 4 entre deux câbles. Plus bas entre câbles, un cordon tiré à travers un tas passait à travers les autres ; plus haut (16), les piles se mettent à trembler. Comme toutes les raideurs du moteur sont exprimées dans cette unité, changer le nombre de sous-pas change aussi la raideur physique de la main et des contacts : plus de sous-pas ne donne pas un meilleur résultat sans revoir ces réglages.
+La raideur d'un contact a un plafond, exprimé en multiples de M/h² (la masse du nœud divisée par le carré du sous-pas) : 2 contre la baie, 4 entre deux câbles. Plus bas entre câbles, un cordon tiré à travers un tas passait à travers les autres ; plus haut (16), les piles se mettent à trembler.
 
 ### Détail mathématique (facultatif)
 
@@ -241,6 +241,10 @@ H\,\Delta x = -g
 ```
 
 qui donne le déplacement Δx vers le minimum. C'est un système de 3 équations à 3 inconnues, résolu directement par `solveSym3` dans `geom.ts`. Traiter un nœud à la fois en réutilisant aussitôt les nouvelles positions s'appelle la méthode de Gauss-Seidel. Le déplacement est limité à 1,2 cm par résolution (`maxMove`), ce qui évite qu'un cas extrême projette un nœud loin de sa position.
+
+### Changer le nombre de sous-pas
+
+Les réglages sont donnés pour un sous-pas de référence (`refSubsteps`, égal au nombre de sous-pas choisi dans `world.ts`). Avec plus de sous-pas, `convert()` les adapte pour qu'ils agissent autant par seconde : les ressorts gardent leur raideur, ce qui se fait « par sous-pas » est réparti sur les sous-pas plus courts. Augmenter `substeps` rend alors la simulation plus précise sans changer sensiblement le comportement des câbles. Le commentaire de `R`, dans `cableSim.ts`, détaille la conversion de chaque réglage.
 
 ### Déroulé d'un pas
 
@@ -267,6 +271,8 @@ Le schéma est en deux dimensions pour la lisibilité ; le moteur fait la même 
 ![Phase fine · gélules, distance et marge](frame/schema-contact.png)
 
 **Contre la baie.** Les formes statiques sont rangées une fois pour toutes dans une grille de cellules de 5 cm, à chaque appel de `setStatics()`. Contre une boîte, chaque nœud reçoit son propre contact : sinon un câble posé à plat sur une étagère s'enfonçait entre deux points de contact. Certaines formes sont des **portes** (`gate`) : les doigts des guide-câbles laissent passer le câble tenu par la main, pour qu'on puisse l'y glisser, puis le retiennent.
+
+**Le creux d'un guide-câbles** (`keeper`) n'est pas un obstacle mais une aide de jeu : un cordon que le joueur y a posé y reste, libre de glisser dans sa longueur. Ses nœuds dans le creux y sont ramenés par un ressort raide pendant la résolution, si bien que le solveur porte aussi la partie qui pend hors du guide. Quand la main longe le guide, les nœuds du cordon qui pendent juste en dessous ou devant sont **aspirés** : à chaque sous-pas, un ressort les tire vers un point situé 2 mm plus près du creux que leur position de départ. Ce ressort agit lui aussi dans la résolution, pour que la partie qui pend suive sans s'étirer ni rebondir au lâcher.
 
 Chaque contact porte une clé calculée à partir des deux segments. Au pas suivant, un contact de même clé reprend la raideur, le multiplicateur et le point d'ancrage du frottement du pas précédent. Enfin, `buildAdjacency()` construit, pour chaque nœud, la liste des contacts qui le concernent, au même format compact que la grille : `solveNode` n'a ainsi qu'à parcourir les contacts de son nœud.
 

@@ -110,9 +110,10 @@ export class World {
       this.tidyPaths = tidyRoutes(this.rack, this.circuits, this.radius, this.seg);
       starts = starts.map((st, c) => ({ ...st, ends: [this.circuits[c].a, this.circuits[c].b], points: pathToNodes(this.tidyPaths[c], this.seg) }));
     }
-    // big cabinets trade a substep for frame rate (≈ 13 ms instead of 18 for 40 cords)
+    // big cabinets trade a substep for frame rate (≈ 13 ms instead of 18 for 40 cords);
+    // the solver settings were tuned at these substep counts (see `refSubsteps`)
     const big = level.cables >= 20;
-    this.sim = new ThreadedSim(big ? { substeps: 2, iterations: 5 } : { substeps: 3, iterations: 6 });
+    this.sim = new ThreadedSim(big ? { substeps: 2, refSubsteps: 2, iterations: 5 } : { substeps: 3, refSubsteps: 3, iterations: 6 });
     const at = this.sim.build(starts.map((s) => ({ points: s.points, radius: this.radius, bend: this.stiffness(s.type) })));
     starts.forEach((s, c) => {
       this.cables.push({
