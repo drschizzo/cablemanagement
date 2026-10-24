@@ -19,6 +19,8 @@ export class ThreadedSim extends CableSim {
   private owed = 0;
   /** bumps whenever new positions arrived */
   version = 0;
+  /** frames of physics given up because the worker was behind (read and reset by the game) */
+  dropped = 0;
   /** while set, nobody steps and the worker's answers are ignored (scripted motion) */
   hold = false;
   private gen = 0;
@@ -96,6 +98,7 @@ export class ThreadedSim extends CableSim {
       for (let i = 0; i < k; i++) this.step();
       return;
     }
+    this.dropped += Math.max(0, this.owed + k - 2);
     this.owed = Math.min(2, this.owed + k);
     this.flush();
   }

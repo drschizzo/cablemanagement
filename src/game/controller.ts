@@ -70,6 +70,8 @@ export class Controller {
   private mousePx = { x: 0, y: 0 };
   private ray = new THREE.Raycaster();
   private acc = 0;
+  /** physics steps dropped by the loop since the last report (see `tick`) */
+  private dropped = 0;
   private last = performance.now();
   private evalTimer = 0;
   private ghost: THREE.Group | null = null;
@@ -194,7 +196,7 @@ export class Controller {
       this.acc -= h;
       steps++;
     }
-    if (this.acc > h) this.acc = 0; // too slow: drop time rather than spiral
+    if (this.acc > h) { this.dropped += Math.floor(this.acc / h); this.acc = 0; } // too slow: drop time rather than spiral
     if (steps) this.world.sim.advance(steps);
     const ms = this.world.sim.stats.ms;
     this.syncCableView();
@@ -204,9 +206,14 @@ export class Controller {
     if (this.evalTimer > 0.4) {
       this.evalTimer = 0;
       this.reevaluate();
+      // frames of physics given up since the last report (the page or the worker too slow):
+      // the game then runs in slow motion rather than stutters, so it must be seen
+      const lost = this.dropped + this.world.sim.dropped;
+      this.dropped = 0;
+      this.world.sim.dropped = 0;
       if (this.debug) {
         const s = this.world.sim.stats;
-        this.events.onStats(`${this.world.sim.n} nœuds · ${s.contacts} contacts · ${s.awake}/${this.world.cables.length} câbles actifs · physique ${ms.toFixed(1)} ms${this.world.sim.threaded ? ' (worker)' : ''}`);
+        this.events.onStats(`${this.world.sim.n} nœuds · ${s.contacts} contacts · ${s.awake}/${this.world.cables.length} câbles actifs · physique ${ms.toFixed(1)} ms${this.world.sim.threaded ? ' (worker)' : ''}${lost ? ` · ${lost} pas perdus` : ''}`);
       }
     }
     this.updateGlows();

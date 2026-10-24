@@ -7,6 +7,9 @@ import { tintable } from './batch';
 
 const RADIAL = 8;
 const SUB = 2; // samples per segment (Catmull-Rom in between)
+/** cos and sin of the angle of each vertex around a ring */
+const RING_COS = Float64Array.from({ length: RADIAL }, (_, r) => Math.cos((r / RADIAL) * Math.PI * 2));
+const RING_SIN = Float64Array.from({ length: RADIAL }, (_, r) => Math.sin((r / RADIAL) * Math.PI * 2));
 
 export const FIBRE_COLORS = { OS2: '#f2c12e', OM4: '#3cc9cf', CU: '#3d7fe0' } as const;
 
@@ -68,7 +71,13 @@ export class CableView {
   private m4 = new THREE.Matrix4();
   private one = new THREE.Vector3(1, 1, 1);
   private col = new THREE.Color();
-  private tubeDirty = false;
+  private scale = new THREE.Vector3();
+  /** instanced meshes whose matrices or colours changed this frame: only those are sent to the GPU */
+  private moved = new Set<THREE.InstancedMesh>();
+  private recoloured = new Set<THREE.InstancedMesh>();
+  /** vertices of the tube rebuilt this frame: one range sent to the GPU, not one per cord */
+  private dirtyLo = Infinity;
+  private dirtyHi = -Infinity;
 
   constructor(private world: World) {
     let verts = 0;
@@ -115,6 +124,8 @@ export class CableView {
         im.frustumCulled = false;
         im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
         for (let i = 0; i < n; i++) { im.setMatrixAt(i, ZERO); im.setColorAt(i, this.col.set('#ffffff')); }
+        this.moved.add(im);
+        this.recoloured.add(im);
         this.group.add(im);
         return im;
       };
@@ -196,10 +207,25 @@ export class CableView {
       }
       this.q.setFromUnitVectors(Z, this.tmp.set(dx, dy, dz).normalize());
       const r = sim.bundles[s.bundle].r + 0.0025;
-      this.m4.compose(this.tmp.set(cx, cy, cz), this.q, new THREE.Vector3(r, r, r * 1.8));
-      this.straps!.setMatrixAt(k, this.m4);
+      this.m4.compose(this.tmp.set(cx, cy, cz), this.q, this.scale.set(r, r, r * 1.8));
+      this.putMatrix(this.straps!, k, this.m4);
     });
-    this.straps.instanceMatrix.needsUpdate = true;
+    if (this.moved.delete(this.straps)) this.straps.instanceMatrix.needsUpdate = true;
+  }
+
+  /** sets one instance's matrix, and remembers its mesh for the upload if it changed */
+  private putMatrix(im: THREE.InstancedMesh, i: number, m: THREE.Matrix4): void {
+    const a = im.instanceMatrix.array, e = m.elements, o = 16 * i;
+    for (let k = 0; k < 16; k++) {
+      if (a[o + k] !== Math.fround(e[k])) { im.setMatrixAt(i, m); this.moved.add(im); return; }
+    }
+  }
+
+  private putColor(im: THREE.InstancedMesh, i: number, c: THREE.Color): void {
+    const a = im.instanceColor!.array, o = 3 * i;
+    if (a[o] === Math.fround(c.r) && a[o + 1] === Math.fround(c.g) && a[o + 2] === Math.fround(c.b)) return;
+    im.setColorAt(i, c);
+    this.recoloured.add(im);
   }
 
   /** shows or hides one cord with its connectors */
@@ -212,7 +238,7 @@ export class CableView {
       this.pos.fill(0, 3 * cm.v0, 3 * (cm.v0 + cm.samples * RADIAL));
       this.dirty(cm);
       const p = this.plugOf(c);
-      for (const e of [0, 1]) for (const im of [p.housing, p.latch, p.boot, p.label]) im.setMatrixAt(2 * c + e, ZERO);
+      for (const e of [0, 1]) for (const im of [p.housing, p.latch, p.boot, p.label]) this.putMatrix(im, 2 * c + e, ZERO);
     }
     this.flush();
   }
@@ -245,24 +271,26 @@ export class CableView {
   }
 
   private dirty(cm: CableMesh): void {
-    const geo = this.tube.geometry;
-    for (const n of ['position', 'normal']) (geo.attributes[n] as THREE.BufferAttribute).addUpdateRange(3 * cm.v0, 3 * cm.samples * RADIAL);
-    this.tubeDirty = true;
+    this.dirtyLo = Math.min(this.dirtyLo, cm.v0);
+    this.dirtyHi = Math.max(this.dirtyHi, cm.v0 + cm.samples * RADIAL);
   }
 
   /** sends what changed this frame to the GPU */
   private flush(): void {
-    if (this.tubeDirty) {
-      this.tube.geometry.attributes.position.needsUpdate = true;
-      this.tube.geometry.attributes.normal.needsUpdate = true;
-      this.tubeDirty = false;
-    }
-    for (const p of [this.plugs.fibre, this.plugs.copper]) {
-      for (const im of [p.housing, p.latch, p.boot, p.label]) {
-        im.instanceMatrix.needsUpdate = true;
-        im.instanceColor!.needsUpdate = true;
+    if (this.dirtyHi > this.dirtyLo) {
+      const geo = this.tube.geometry;
+      for (const n of ['position', 'normal']) {
+        const a = geo.attributes[n] as THREE.BufferAttribute;
+        a.addUpdateRange(3 * this.dirtyLo, 3 * (this.dirtyHi - this.dirtyLo));
+        a.needsUpdate = true;
       }
+      this.dirtyLo = Infinity;
+      this.dirtyHi = -Infinity;
     }
+    for (const im of this.moved) im.instanceMatrix.needsUpdate = true;
+    for (const im of this.recoloured) im.instanceColor!.needsUpdate = true;
+    this.moved.clear();
+    this.recoloured.clear();
   }
 
   private updateEnds(c: number): void {
@@ -277,12 +305,12 @@ export class CableView {
       this.q.setFromUnitVectors(Z, this.tmp);
       this.m4.compose(this.tmp.set(x[3 * n0], x[3 * n0 + 1], x[3 * n0 + 2]), this.q, this.one);
       const i = 2 * c + e;
-      p.housing.setMatrixAt(i, this.m4);
-      p.latch.setMatrixAt(i, this.m4);
-      p.boot.setMatrixAt(i, this.m4);
+      this.putMatrix(p.housing, i, this.m4);
+      this.putMatrix(p.latch, i, this.m4);
+      this.putMatrix(p.boot, i, this.m4);
       const label = cb.ends[e].label;
-      if (label === null) p.label.setMatrixAt(i, ZERO);
-      else { p.label.setMatrixAt(i, this.m4); p.label.setColorAt(i, this.col.set(SERVICES[label].color)); }
+      if (label === null) this.putMatrix(p.label, i, ZERO);
+      else { this.putMatrix(p.label, i, this.m4); this.putColor(p.label, i, this.col.set(SERVICES[label].color)); }
     }
   }
 
@@ -329,8 +357,7 @@ export class CableView {
       nx /= nl; ny /= nl; nz /= nl;
       const bx = ty * nz - tz * ny, by = tz * nx - tx * nz, bz = tx * ny - ty * nx;
       for (let r = 0; r < RADIAL; r++) {
-        const ang = (r / RADIAL) * Math.PI * 2;
-        const ca = Math.cos(ang), sa = Math.sin(ang);
+        const ca = RING_COS[r], sa = RING_SIN[r];
         const ox = nx * ca + bx * sa, oy = ny * ca + by * sa, oz = nz * ca + bz * sa;
         const o = (V + s * RADIAL + r) * 3;
         pos[o] = pts[3 * s] + ox * R; pos[o + 1] = pts[3 * s + 1] + oy * R; pos[o + 2] = pts[3 * s + 2] + oz * R;

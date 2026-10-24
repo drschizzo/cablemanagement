@@ -48,6 +48,9 @@ export function clamp01(x: number): number {
   return x < 0 ? 0 : x > 1 ? 1 : x;
 }
 
+/** scratch: depth of a point under each face of a box */
+const faceGap = new Float64Array(6);
+
 export const boxHit = { s: 0, qx: 0, qy: 0, qz: 0, nx: 0, ny: 0, nz: 0, dist: 0 };
 
 /**
@@ -86,7 +89,8 @@ export function segBox(
     return;
   }
   // inside: leave through the nearest face
-  const cands = [px - minx, maxx - px, py - miny, maxy - py, pz - minz, maxz - pz];
+  const cands = faceGap;
+  cands[0] = px - minx; cands[1] = maxx - px; cands[2] = py - miny; cands[3] = maxy - py; cands[4] = pz - minz; cands[5] = maxz - pz;
   let best = 0;
   for (let i = 1; i < 6; i++) if (cands[i] < cands[best]) best = i;
   boxHit.nx = 0; boxHit.ny = 0; boxHit.nz = 0;
