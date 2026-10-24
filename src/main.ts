@@ -190,4 +190,4 @@ startShowcase();
 
 // dev handle
 (window as any).game = { get ctl() { return ctl; }, get showcase() { return showcase; }, hud, start, startShowcase, TUTORIAL };
-if (import.meta.env.DEV) void import('./dev/testkit').then((m) => m.installTestkit(() => ctl));
+if (import.meta.env.DEV) void import('./dev/testkit').then((m) => m.installTestkit(() => ctl, stage));

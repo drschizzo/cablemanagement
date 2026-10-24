@@ -5,6 +5,9 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { SSRPass } from 'three/examples/jsm/postprocessing/SSRPass.js';
 import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { CinemaPass } from './cinema';
+import { ledClock, ledViewHeight } from './leds';
 
 /** colour of the backdrop where the floor fades out (also the fog) */
 const HORIZON = '#1a1e21';
@@ -18,6 +21,11 @@ export class Stage {
   /** meshes flagged `userData.reflective`, gathered each frame for the reflections */
   private mirrors: THREE.Mesh[] = [];
   private ao: GTAOPass;
+  /** glow of what is brighter than white (LEDs, light strips, screens), before tone mapping */
+  private bloom: UnrealBloomPass;
+  /** vignette, grain, toning, after tone mapping */
+  private cinema: CinemaPass;
+  private lastRender = performance.now();
   scene = new THREE.Scene();
   camera: THREE.PerspectiveCamera;
   controls: OrbitControls;
@@ -34,7 +42,8 @@ export class Stage {
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // PCF in three r183 samples a rotated Vogel disk of `shadow.radius` (PCFSoft is deprecated into it)
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.15;
     host.appendChild(this.renderer.domElement);
@@ -104,11 +113,21 @@ export class Stage {
     this.ao = new GTAOPass(this.scene, this.camera, 1, 1);
     // metres: a short reach darkens the corners, the ports and under the cords;
     // longer, a tangle of cords goes muddy and loses its colours
-    this.ao.updateGtaoMaterial({ radius: 0.03, distanceExponent: 1.5, thickness: 0.3, scale: 1, samples: 16 });
-    this.ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 16 });
+    // 8 samples look the same as 16 once denoised, and save about 0.8 ms at 1800² px (what the bloom costs)
+    this.ao.updateGtaoMaterial({ radius: 0.03, distanceExponent: 1.5, thickness: 0.3, scale: 1, samples: 8 });
+    this.ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 8 });
     this.ao.blendIntensity = 0.6;
     this.composer.addPass(this.ao);
+    // the scene is still linear HDR here (half float): the threshold sits above any lit surface (lower,
+    // the white patch panels under the lamp washed out) and below the lights (LED_LUMA in leds.ts),
+    // so that only the LEDs, the light strips and the screens glow
+    // (its bright pass runs at half resolution, where one bilinear read averages each 2×2 block: at a
+    // quarter, it read 4 pixels of 16, and a light of a few pixels flashed in and out as the camera moved)
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), BLOOM.near.strength, BLOOM.near.radius, 3);
+    this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
+    this.cinema = new CinemaPass();
+    this.composer.addPass(this.cinema);
 
     window.addEventListener('resize', () => this.resize());
     this.resize();
@@ -161,6 +180,7 @@ export class Stage {
     this.renderer.setSize(w, h);
     this.composer.setPixelRatio(this.renderer.getPixelRatio());
     this.composer.setSize(w, h);
+    ledViewHeight.value = h * this.renderer.getPixelRatio();
     this.camera.aspect = w / h;
     // shift the image so that its centre is the centre of the free area
     const ox = (this.insets.right - this.insets.left) / 2;
@@ -189,6 +209,16 @@ export class Stage {
     if (!on) this.resetView();
   }
 
+  private fitBloom(): void {
+    const d = this.camera.position.distanceTo(this.controls.target);
+    const { near, far } = BLOOM;
+    const t = THREE.MathUtils.clamp(Math.log(d / near.at) / Math.log(far.at / near.at), 0, 1);
+    this.bloom.strength = THREE.MathUtils.lerp(near.strength, far.strength, t);
+    this.bloom.radius = THREE.MathUtils.lerp(near.radius, far.radius, t);
+    const mips = this.bloom.compositeMaterial.uniforms.bloomFactors.value as number[];
+    for (let i = 0; i < mips.length; i++) mips[i] = THREE.MathUtils.lerp(near.mips[i], far.mips[i], t);
+  }
+
   render(): void {
     if (this.swaying) {
       this.swayT += 1 / 60;
@@ -205,9 +235,29 @@ export class Stage {
     const u = this.ssr.ssrMaterial.uniforms;
     u.cameraProjectionMatrix.value.copy(this.camera.projectionMatrix);
     u.cameraInverseProjectionMatrix.value.copy(this.camera.projectionMatrixInverse);
+    this.fitBloom();
+    const now = performance.now();
+    const dt = Math.min(0.1, (now - this.lastRender) / 1000);
+    this.cinema.frame(dt, window.innerWidth, window.innerHeight, this.insets);
+    // (wrapped, so that the GPU's hash of it keeps its precision)
+    ledClock.value = (ledClock.value + dt) % 600;
+    this.lastRender = now;
     this.composer.render();
   }
 }
+
+/**
+ * The glow of the lights, close to the cabinet and from afar. The bloom spreads
+ * over a set number of pixels, while the lights shrink with the distance: the
+ * same halo that suits a light a few pixels wide drowned one seen from across
+ * the room. It tightens and dims as the camera backs away (distance to what it
+ * looks at, m, on a log scale between the two).
+ */
+const BLOOM = {
+  near: { at: 1.2, strength: 0.6, radius: 0.5, mips: [1, 0.8, 0.6, 0.4, 0.2] },
+  // even at radius 0 the wide levels of the blur kept most of their weight: their share falls too
+  far: { at: 5, strength: 0.3, radius: 0, mips: [1, 0.25, 0.05, 0, 0] },
+};
 
 /** vertical gradient, lighter at the horizon behind the rack, with a soft vignette */
 function backdropTexture(): THREE.CanvasTexture {

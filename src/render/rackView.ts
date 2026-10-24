@@ -4,7 +4,8 @@ import { COLUMN_X, FRONT_Z, Rack, SIDE_BACK, SIDE_IN, SIDE_OUT, U, WALL_X, type 
 import type { StaticShape } from '../physics/cableSim';
 import type { FibreType } from '../game/levels';
 import { disposeTree, shared } from './dispose';
-import { mergeStatic, tintable } from './batch';
+import { mergeStatic } from './batch';
+import { STEADY, activity, blinkable, ledGlow, ledMesh, pulse, type LedSpec } from './leds';
 
 // warm graphite powder-coat rather than blue-grey steel
 const mat = {
@@ -30,8 +31,10 @@ const mat = {
   router: new THREE.MeshStandardMaterial({ color: '#173c6e', roughness: 0.45, metalness: 0.5 }),
   ups: new THREE.MeshStandardMaterial({ color: '#2d2c30', roughness: 0.55, metalness: 0.4 }),
   crate: new THREE.MeshStandardMaterial({ color: '#2c2f32', roughness: 0.6, metalness: 0.0 }),
-  strip: new THREE.MeshStandardMaterial({ color: '#fff1dc', emissive: '#ffd7a3', emissiveIntensity: 2.2 }),
-  lcd: new THREE.MeshStandardMaterial({ color: '#0a1a14', emissive: '#3ff0a8', emissiveIntensity: 0.9 }),
+  // the light strip passes the bloom threshold (see leds.ts); the screen, a large surface, stays
+  // just below it: it would have spread into a blot
+  strip: new THREE.MeshStandardMaterial({ color: '#fff1dc', emissive: '#ffd7a3', emissiveIntensity: 5 }),
+  lcd: new THREE.MeshStandardMaterial({ color: '#0a1a14', emissive: '#3ff0a8', emissiveIntensity: 3 }),
 };
 
 // made once, used by every level
@@ -48,6 +51,11 @@ export class RackView {
   private leds: THREE.InstancedMesh;
   private ledOf = new Map<string, number>();
   private ledTint: THREE.InstancedBufferAttribute;
+  private ledBlink: THREE.InstancedBufferAttribute;
+  /** the status and activity lights of the equipment, gathered while it is built */
+  private lights: LedSpec[] = [];
+  /** so that two cabinets side by side do not blink in step */
+  private seed = Math.random() * 1000;
   private builtVersion = -1;
 
   constructor(private rack: Rack, panelTypes: Map<number, FibreType>, private opts: { roomFloor?: boolean } = {}) {
@@ -57,18 +65,25 @@ export class RackView {
     // the cabinet and its equipment never move: one mesh per material
     mergeStatic(this.group, (m) => m.parent === this.group && !m.userData.reflective);
     const ports = rack.ports.filter((p) => this.ledOf.has(p.id));
-    const geo = new THREE.BoxGeometry(0.003, 0.0018, 0.001);
+    // a unit lens, sized by its instance (blinkable() reads the size there)
+    const geo = new THREE.BoxGeometry(1, 1, 0.001);
     this.ledTint = new THREE.InstancedBufferAttribute(new Float32Array(3 * ports.length), 3);
+    this.ledBlink = new THREE.InstancedBufferAttribute(new Float32Array(3 * ports.length), 3);
     geo.setAttribute('emissiveTint', this.ledTint);
-    this.leds = new THREE.InstancedMesh(geo, tintable(new THREE.MeshStandardMaterial({ roughness: 0.3 })), ports.length);
+    geo.setAttribute('blink', this.ledBlink);
+    this.leds = new THREE.InstancedMesh(geo, blinkable(new THREE.MeshStandardMaterial({ roughness: 0.3 })), ports.length);
     this.leds.receiveShadow = true;
     const m4 = new THREE.Matrix4();
     for (const p of ports) {
       const i = this.ledOf.get(p.id)!;
-      this.leds.setMatrixAt(i, m4.makeTranslation(p.x, p.y + 0.0078, 0.0006));
+      this.leds.setMatrixAt(i, m4.makeScale(0.003, 0.0018, 1).setPosition(p.x, p.y + 0.0078, 0.0006));
       this.setLed(p, 'off');
     }
-    this.group.add(this.leds);
+    this.group.add(this.leds, ledMesh(this.lights));
+  }
+
+  private light(x: number, y: number, color: THREE.ColorRepresentation, blink = STEADY, w = 0.0022, h = 0.0016, z = 0.0035): void {
+    this.lights.push({ x, y, z, w, h, color, blink });
   }
 
   private add(geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, shadow = true): THREE.Mesh {
@@ -190,6 +205,14 @@ export class RackView {
     const style = u.style ?? (u.kind === 'panel' ? 'fibre' : 'switch');
     const face = style === 'fibre' ? mat.panel : style === 'copper' ? mat.copperFace : style === 'firewall' ? mat.firewall : style === 'router' ? mat.router : mat.switchFace;
     if (u.kind !== 'server') this.add(rbox(w, U - 0.0012, 0.01, 0.0015), face, 0, y, -0.005);
+    // active equipment: a column of status lights at the right end of its face
+    if (u.kind === 'switch') {
+      const s = this.seed + y * 1000, x = w / 2 - 0.016;
+      this.light(x, y + U * 0.28, '#39ff6a');
+      this.light(x, y + U * 0.08, '#39ff6a', pulse(1, 0.12, fractOf(s)));
+      if (style === 'firewall') this.light(x, y - U * 0.12, '#ff3b30', pulse(0.4, 0.5, fractOf(s * 1.7)));
+      else this.light(x, y - U * 0.12, style === 'router' ? '#3aa8ff' : '#ffae1f', activity(s, 0.45));
+    }
     // ears with the name of the equipment
     const label = labelTexture(r, k, style === 'fibre');
     const plane = new THREE.Mesh(new THREE.PlaneGeometry(w, U - 0.002), new THREE.MeshStandardMaterial({ map: label, transparent: true, roughness: 0.6 }));
@@ -222,10 +245,16 @@ export class RackView {
   private buildServer(y: number, w: number): void {
     this.add(rbox(w, U - 0.0012, 0.012, 0.0018), mat.switchFace, 0, y, -0.006);
     // drive bays on the left, network ports in the middle, vents on the right
+    // each drive: a blue light when present, a green one flickering with its reads and writes
+    const s = this.seed + y * 1000;
     for (let i = 0; i < 6; i++) {
       this.add(rbox(0.03, U * 0.55, 0.003, 0.001), mat.blank, -0.2 + i * 0.033, y, 0.0015);
-      this.add(new THREE.BoxGeometry(0.0025, 0.0025, 0.001), serverLed(i), -0.188 + i * 0.033, y - U * 0.18, 0.0035);
+      this.light(-0.194 + i * 0.033, y - U * 0.18, '#3aa8ff');
+      this.light(-0.188 + i * 0.033, y - U * 0.18, '#39ff6a', activity(s + i, 0.55));
     }
+    // power, and a health light beating slowly (now and then a drive in amber)
+    this.light(0.105, y + U * 0.2, '#3aa8ff', STEADY, 0.0028, 0.0028);
+    this.light(0.105, y - U * 0.2, fractOf(s) < 0.2 ? '#ffae1f' : '#39ff6a', pulse(0.5, 0.15, fractOf(s * 3.1)), 0.0028, 0.0028);
     this.add(new THREE.PlaneGeometry(0.1, U * 0.62), grilleMaterial(), 0.17, y, 0.0005, false);
   }
 
@@ -234,6 +263,10 @@ export class RackView {
     this.add(rbox(w, U - 0.0012, 0.014, 0.0018), mat.ups, 0, y, -0.007);
     this.add(rbox(0.06, 0.018, 0.002, 0.0008), mat.lcd, -0.12, y, 0.001);
     for (let i = 0; i < 4; i++) this.add(new THREE.CylinderGeometry(0.003, 0.003, 0.003, 12).rotateX(Math.PI / 2), mat.cage, -0.07 + i * 0.012, y, 0.0015);
+    // on line, battery charging, load
+    this.light(-0.07, y + U * 0.3, '#39ff6a');
+    this.light(-0.058, y + U * 0.3, '#39ff6a', pulse(0.6, 0.5, fractOf(this.seed + y)));
+    this.light(-0.046, y + U * 0.3, '#ffae1f');
     this.add(new THREE.PlaneGeometry(w * 0.45, U * 0.6), grilleMaterial(), w * 0.2, y, 0.0005, false);
   }
 
@@ -262,9 +295,15 @@ export class RackView {
     const i = this.ledOf.get(port.id);
     if (i === undefined) return;
     const c = state === 'ok' ? '#39ff6a' : state === 'wrong' ? '#ffae1f' : '#000000';
-    const col = new THREE.Color(c).multiplyScalar(state === 'off' ? 0 : 2.2);
+    const col = state === 'off' ? new THREE.Color(0, 0, 0) : ledGlow(new THREE.Color(c));
     col.toArray(this.ledTint.array, 3 * i);
     this.ledTint.needsUpdate = true;
+    // a good line carries traffic (only active equipment shows it: a patch panel is passive);
+    // a wrong one blinks slowly, as a fault does
+    const active = this.rack.units[port.unit].kind !== 'panel';
+    const b = state === 'wrong' ? pulse(1.2, 0.6) : state === 'ok' && active ? activity(this.seed + i, 0.8) : STEADY;
+    this.ledBlink.setXYZ(i, b.rate, b.duty, b.phase);
+    this.ledBlink.needsUpdate = true;
     this.leds.setColorAt(i, col.set(state === 'off' ? '#202020' : c));
     this.leds.instanceColor!.needsUpdate = true;
   }
@@ -349,13 +388,8 @@ function grilleMaterial(): THREE.MeshStandardMaterial {
   return (grilleMat ??= shared(new THREE.MeshStandardMaterial({ map: grilleTexture(), roughness: 0.6, metalness: 0.6, transparent: true })));
 }
 
-/** the six lights of a server front, blue and amber */
-const serverLeds = new Map<number, THREE.MeshStandardMaterial>();
-function serverLed(i: number): THREE.MeshStandardMaterial {
-  const key = (i % 3 === 2 ? 2 : 0) + (i % 2);
-  let m = serverLeds.get(key);
-  if (!m) serverLeds.set(key, (m = shared(new THREE.MeshStandardMaterial({ color: '#1a1a1a', emissive: key >= 2 ? '#ffae1f' : '#39c8ff', emissiveIntensity: 1.6 + (i % 2) }))));
-  return m;
+function fractOf(x: number): number {
+  return x - Math.floor(x);
 }
 
 function grilleTexture(): THREE.CanvasTexture {
