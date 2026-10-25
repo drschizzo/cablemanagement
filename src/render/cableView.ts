@@ -51,6 +51,9 @@ interface Plugs {
 }
 
 const strapGeo = shared(new THREE.TorusGeometry(1, 0.22, 8, 20));
+const pinchGeo = shared(new THREE.TorusGeometry(1, 0.22, 6, 14));
+/** the rings of a pinch: barely pinched, at its firmest, under the pointer (about to be let go) */
+const PINCH_SOFT = new THREE.Color('#2f5866'), PINCH_FIRM = new THREE.Color('#6fe3ff'), PINCH_HOVER = new THREE.Color('#ff8a4c');
 const Z = new THREE.Vector3(0, 0, 1);
 const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 const HOUSING = { OS2: new THREE.Color('#2d6fd8'), OM4: new THREE.Color('#d9cfa3') };
@@ -69,6 +72,13 @@ export class CableView {
   private plugs: { fibre: Plugs; copper: Plugs };
   private straps: THREE.InstancedMesh | null = null;
   private strapMat = new THREE.MeshStandardMaterial({ color: '#1b2a4a', roughness: 0.9 });
+  /** a ring round every pinched node */
+  private pinchMarks: THREE.InstancedMesh | null = null;
+  private pinchMat = new THREE.MeshBasicMaterial({ color: '#ffffff' });
+  /** the pinch under the pointer, or −1 */
+  pinchHover = -1;
+  /** the cord whose pinches are shown (under the pointer, or in hand), or −1: none */
+  pinchShown = -1;
   private tmp = new THREE.Vector3();
   private q = new THREE.Quaternion();
   private m4 = new THREE.Matrix4();
@@ -205,6 +215,44 @@ export class CableView {
     });
     this.flush();
     this.updateStraps();
+    this.updatePinches();
+  }
+
+  /** pinches of the cord shown: a ring round each of their nodes, brighter the firmer the pinch */
+  private updatePinches(): void {
+    const sim = this.world.sim, x = sim.x;
+    let total = 0;
+    for (const p of sim.pinches) total += p.n;
+    if (total > (this.pinchMarks?.instanceMatrix.count ?? 0)) {
+      if (this.pinchMarks) { this.group.remove(this.pinchMarks); this.pinchMarks.dispose(); }
+      const cap = Math.max(32, 2 * total);
+      this.pinchMarks = new THREE.InstancedMesh(pinchGeo, this.pinchMat, cap);
+      this.pinchMarks.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(3 * cap), 3);
+      this.pinchMarks.frustumCulled = false;
+      this.group.add(this.pinchMarks);
+    }
+    const im = this.pinchMarks;
+    if (!im) return;
+    im.count = total;
+    let k = 0;
+    sim.pinches.forEach((p, j) => {
+      const c = sim.cableOf[p.a];
+      const shown = c === this.pinchShown && this.cables[c].visible;
+      this.col.copy(PINCH_SOFT).lerp(PINCH_FIRM, p.s);
+      if (j === this.pinchHover) this.col.copy(PINCH_HOVER);
+      const r = sim.radius[p.a] * (1.35 + 0.35 * p.s);
+      for (let i = p.a; i < p.a + p.n; i++, k++) {
+        if (!shown) { this.putMatrix(im, k, ZERO); continue; }
+        const i0 = sim.segOK[i - 1] && sim.cableOf[i - 1] === sim.cableOf[i] ? i - 1 : i;
+        const i1 = sim.segOK[i] ? i + 1 : i;
+        this.q.setFromUnitVectors(Z, this.tmp.set(x[3 * i1] - x[3 * i0], x[3 * i1 + 1] - x[3 * i0 + 1], x[3 * i1 + 2] - x[3 * i0 + 2]).normalize());
+        this.m4.compose(this.tmp.set(x[3 * i], x[3 * i + 1], x[3 * i + 2]), this.q, this.scale.set(r, r, r));
+        this.putMatrix(im, k, this.m4);
+        this.putColor(im, k, this.col);
+      }
+    });
+    if (this.moved.delete(im)) im.instanceMatrix.needsUpdate = true;
+    if (this.recoloured.delete(im)) im.instanceColor!.needsUpdate = true;
   }
 
   /** velcro straps */

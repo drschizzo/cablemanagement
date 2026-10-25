@@ -69,6 +69,8 @@ export const sfx = {
   grab() { burst(1200, 1.5, 0.04, 0.06); },
   place() { burst(300, 2, 0.08, 0.5); burst(1800, 6, 0.03, 0.2, 0.02); },
   remove() { burst(500, 2, 0.06, 0.35); },
+  /** fingers pinching a cord into an elbow */
+  pinch() { burst(900, 2.5, 0.05, 0.22); burst(2300, 5, 0.03, 0.12, 0.035); },
   velcro() { burst(5000, 0.7, 0.22, 0.25); burst(3500, 0.8, 0.15, 0.2, 0.05); },
   label() { burst(6000, 1, 0.05, 0.12); tone(1600, 0.05, 0.03); },
   /** a cord landing in its place (demo), pitched along the bundle */

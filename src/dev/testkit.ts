@@ -7,6 +7,8 @@ import { ledGlows, ledLight, ledLightRack } from '../render/ledGlow';
 
 export function installTestkit(get: () => any, stage?: unknown): void {
   const w = window as any;
+  /** the scene being played (a Controller during a level) */
+  w.__ctl = get;
   /** the renderer and its passes, for measuring the cost of the image */
   w.__stage = stage;
   /** the clock and the screen height of the lights (to freeze their blinking, or their smallest size) */

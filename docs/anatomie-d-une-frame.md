@@ -183,9 +183,12 @@ Le moteur combine plusieurs contributions sur chaque nœud :
 | Flexion | énergie souple | le câble résiste à la courbure, plus fort près des connecteurs |
 | Contact câble–câble et câble–baie | contrainte dure, d'un seul côté | deux gélules ne s'interpénètrent pas ; un câble ne traverse pas la baie |
 | Frottement | contrainte dure, bornée | un câble posé ne glisse pas tant que la force tangentielle reste sous μ × la force normale |
-| Main | ressort | le nœud saisi est tiré vers la cible de la souris |
+| Main | ressort | le nœud saisi est tiré vers la cible de la souris ; l'autre main (touche E) tient un nœud là où le joueur l'a laissé |
 | Velcro | ressort d'un seul côté | les nœuds serrés restent à moins d'un rayon du centre du faisceau |
+| Coude pincé | ressort | les nœuds pincés gardent la forme qu'ils avaient ensemble |
 | Épingle | nœud fixe | un connecteur branché ne bouge plus |
+
+Un **coude pincé** (Espace ou clic droit maintenu pendant qu'on tient le câble) garde la forme qu'avaient ses nœuds quand le joueur a cessé de pincer. À chaque sous-pas, le moteur cherche la rotation et le déplacement de cette forme qui vont le mieux aux nœuds, et tire chaque nœud vers sa place dans la forme ainsi posée. Le coude peut donc tourner et voyager avec le câble sans se déformer. Comme la forme posée est celle qui rend la traction la plus faible, cette traction se comporte comme un vrai ressort et n'ajoute pas d'énergie. Plus le pincement a duré, plus le ressort est raide (voir `pinchGoals` dans `src/physics/cableSim.ts`).
 
 Une **contrainte dure** doit être respectée exactement (à la précision du calcul près). Une **énergie souple** est un ressort : elle tire dans une direction sans rien imposer. La baie, ses équipements et les guide-câbles forment des **formes statiques** (boîtes et gélules) décrites par `Rack.statics()` dans `src/game/rack.ts`.
 

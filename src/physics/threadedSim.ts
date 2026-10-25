@@ -4,7 +4,7 @@
 // never waits for the physics: one step request is in flight at a time, and
 // if the worker falls behind, time is dropped rather than queued.
 
-import { CableSim, type CableInit, type StaticShape } from './cableSim';
+import { CableSim, type CableInit, type Pinch, type StaticShape } from './cableSim';
 import type { FromWorker, ToWorker } from './sim.worker';
 
 export class ThreadedSim extends CableSim {
@@ -41,7 +41,7 @@ export class ThreadedSim extends CableSim {
     this.worker = w;
     const pins: number[] = [];
     for (let i = 0; i < this.n; i++) if (this.pinned[i]) pins.push(i);
-    this.post({ type: 'init', params: this.P, defs: this.defs, x: this.x, v: this.v, pins, statics: this.statics });
+    this.post({ type: 'init', params: this.P, defs: this.defs, x: this.x, v: this.v, pins, statics: this.statics, pinches: this.pinches });
     for (const b of this.bundles) if (b.alive) this.post({ type: 'addBundle', nodes: b.nodes, r: b.r });
     w.onmessage = (e: MessageEvent<FromWorker>) => this.receive(e.data);
     w.onerror = (e) => console.error('physics worker', e);
@@ -50,6 +50,8 @@ export class ThreadedSim extends CableSim {
   private receive(m: FromWorker): void {
     // answers computed before a teleport are stale
     const fresh = m.gen === this.gen;
+    // the worker sends the pinches once, when they change: kept even from a stale answer
+    if (m.pinches) this.adoptPinches(m.pinches, m.held ?? -1);
     const settled = this.settling.get(m.id);
     if (settled) {
       this.settling.delete(m.id);
@@ -61,6 +63,14 @@ export class ThreadedSim extends CableSim {
     // during scripted motion, nobody steps: the answer is ignored too
     if (fresh && !this.hold) this.apply(m);
     this.flush();
+  }
+
+  /** the worker's pinches, as they are (nothing to wake or forward) */
+  private adoptPinches(list: Pinch[], held: number): void {
+    this.pinches = list;
+    this.pinchHeld = held >= 0 ? list[held] : null;
+    this.pinchOf.fill(-1);
+    list.forEach((p, k) => { for (let i = p.a; i < p.a + p.n; i++) this.pinchOf[i] = k; });
   }
 
   private apply(m: FromWorker): void {
@@ -149,6 +159,37 @@ export class ThreadedSim extends CableSim {
   release(): void {
     super.release();
     this.post({ type: 'release' });
+  }
+
+  holdStill(i: number, x: number, y: number, z: number): void {
+    super.holdStill(i, x, y, z);
+    this.post({ type: 'holdStill', i, p: [x, y, z] });
+  }
+
+  letGoStill(): void {
+    super.letGoStill();
+    this.post({ type: 'letGoStill' });
+  }
+
+  pinch(on: boolean): void {
+    super.pinch(on);
+    this.post({ type: 'pinch', on });
+  }
+
+  firmPinch(s: number): void {
+    super.firmPinch(s);
+    this.post({ type: 'firmPinch', s });
+  }
+
+  unpinch(i: number): boolean {
+    const done = super.unpinch(i);
+    this.post({ type: 'unpinch', i });
+    return done;
+  }
+
+  loadPinches(list: Pinch[]): void {
+    super.loadPinches(list);
+    this.post({ type: 'pinches', list: this.pinches });
   }
 
   setStatics(shapes: StaticShape[]): void {

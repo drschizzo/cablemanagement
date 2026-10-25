@@ -3,6 +3,7 @@
 // evaluation of how tidy it all is.
 
 import { ThreadedSim } from '../physics/threadedSim';
+import type { Pinch } from '../physics/cableSim';
 import { CABLE_R, CONNECTOR, Rack, SEG, insideBox, type Item, type ItemKind } from './rack';
 import { SERVICES, type FibreType, type LevelDef } from './levels';
 import { makeCables, makeSchedule, rng, type Circuit } from './tangle';
@@ -60,6 +61,7 @@ export const HOLD = { FREE: 0, HELD: 1, HANGING: 2, LOW: 3 } as const;
 export interface Snapshot {
   version: number;
   x: Float64Array;
+  pinches: Pinch[];
   ends: CableEnd[][];
 }
 
@@ -252,6 +254,7 @@ export class World {
     return {
       version: this.cablesVersion,
       x: Float64Array.from(this.sim.x),
+      pinches: this.sim.pinches.map((p) => ({ ...p, rest: [...p.rest], q: [...p.q] })),
       ends: this.cables.map((cb) => cb.ends.map((e) => ({ ...e }))),
     };
   }
@@ -261,6 +264,7 @@ export class World {
     if (s.version !== this.cablesVersion || s.ends.length !== this.cables.length) return false;
     this.cables.forEach((cb, c) => cb.ends.forEach((e, k) => { if (e.port !== s.ends[c][k].port) this.unplug(c, k); }));
     this.sim.teleport(s.x);
+    this.sim.loadPinches(s.pinches);
     this.cables.forEach((cb, c) => cb.ends.forEach((e, k) => {
       const want = s.ends[c][k];
       if (want.port && e.port !== want.port) this.plug(c, k, want.port);
@@ -309,7 +313,7 @@ export class World {
     return this.cables.length - 1;
   }
 
-  /** rebuilds the physics with some cords replaced and others added, keeping every pin, strap and rest length */
+  /** rebuilds the physics with some cords replaced and others added, keeping every pin, strap, rest length and pinch */
   private rebuild(replace: Map<number, number[]>, append: { points: number[]; type: FibreType; color?: string }[] = []): void {
     const old = this.sim;
     const threaded = old.threaded;
@@ -324,6 +328,11 @@ export class World {
       return { k, f: (i - cb.start) / (cb.count - 1) };
     }));
     const ends = this.cables.map((cb) => cb.ends.map((e) => e.port));
+    // the pinches of the cords kept, by cord and place along it
+    const pinches = old.pinches.filter((p) => !replace.has(old.cableOf[p.a])).map((p) => {
+      const k = old.cableOf[p.a];
+      return { k, off: p.a - this.cables[k].start, p };
+    });
     old.dispose();
     for (const p of this.rack.ports) p.plug = -1;
     for (const a of append) {
@@ -340,6 +349,7 @@ export class World {
       ends[k].forEach((port, e) => { if (port) this.plug(k, e, port); });
     });
     this.sim.setStatics(this.rack.statics());
+    this.sim.loadPinches(pinches.map(({ k, off, p }) => ({ ...p, a: this.cables[k].start + off })));
     this.straps = straps.map((list) => {
       const nodes = list.map(({ k, f }) => {
         const cb = this.cables[k];

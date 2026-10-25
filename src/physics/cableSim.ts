@@ -18,7 +18,13 @@
 // The multipliers are carried from substep to substep, so that a loaded
 // contact or a taut cord keeps its force instead of rebuilding it by sinking.
 // Soft energies: bending (second difference), the hand that drags a cable
-// and the velcro straps.
+// and the other hand that holds one still, the velcro straps and the pinches.
+//
+// A pinch keeps the shape a few nodes had when the hand pinched them: each
+// node is pulled towards where it was in that shape, the shape turned and
+// moved to fit the nodes best (shape matching, Müller et al. 2005). The fit
+// is the one that makes this pull weakest, so taking it as fixed during a
+// substep leaves the pull an honest spring, which cannot feed energy in.
 //
 // Cables at rest fall asleep (their nodes are frozen and act as static
 // geometry for the others) and wake when something awake touches them.
@@ -63,6 +69,19 @@ export interface StaticKeeper {
 }
 
 export type StaticShape = StaticCapsule | StaticBox | StaticKeeper;
+
+/** A stretch of cord that keeps its shape (see the top of the file). */
+export interface Pinch {
+  /** its first node, and how many */
+  a: number;
+  n: number;
+  /** the shape: each node's position from their centre, as they were pinched (3 per node) */
+  rest: number[];
+  /** how firmly it holds, 0 to 1 (of `pinchK`): the longer the hand pinched, the firmer */
+  s: number;
+  /** rotation of the shape that fits the nodes best, as a quaternion (x, y, z, w), kept to start the next fit from */
+  q: number[];
+}
 
 export interface CableInit {
   /** node positions, xyz interleaved */
@@ -171,6 +190,13 @@ export interface SimParams {
   sleepDist: number;
   sleepTime: number;
   wakeSpeed: number;
+  /** nodes on each side of the hand that a pinch takes */
+  pinchSpan: number;
+  /** stiffness of a pinch held at its firmest (× M/h²) */
+  pinchK: number;
+  /** firmness of a pinch as it starts, and what it gains per second while the hand keeps pinching (see `firmPinch`) */
+  pinchStart: number;
+  pinchGrow: number;
 }
 
 export function defaultSimParams(p: Partial<SimParams> = {}): SimParams {
@@ -182,6 +208,7 @@ export function defaultSimParams(p: Partial<SimParams> = {}): SimParams {
     grabK: 0.4, grabLead: 0.06, pbdPasses: 4, maxDepen: 0.001, gateSpan: -1, anchoredFriction: true, frictionK: 0.3, hardFriction: true,
     keepHand: 2, keepZip: 10, keepBelow: 0.05, keepFront: 0.03, keepStep: 0.002, keepK: 16, keepPeel: 0.003,
     sleepDist: 0.006, sleepTime: 0.5, wakeSpeed: 0.1,
+    pinchSpan: 3, pinchK: 6, pinchStart: 0.15, pinchGrow: 0.6,
     ...p,
   };
 }
@@ -310,6 +337,19 @@ export class CableSim {
   // hand
   grabNode = -1;
   grabTarget = [0, 0, 0];
+  /** the other hand: holds a node still where it was left (−1: free) */
+  holdNode = -1;
+  holdTarget = [0, 0, 0];
+
+  // pinches
+  pinches: Pinch[] = [];
+  /** the pinch of each node, or −1 */
+  pinchOf = new Int32Array(0);
+  /** where each pinched node is pulled to, this substep */
+  private pinchGoal = new Float64Array(0);
+  /** the pinch the hand is making: it follows the cord, and firms up, until the hand stops */
+  pinchHeld: Pinch | null = null;
+  private pinchChanged = false;
 
   // velcro
   bundleOf = new Int32Array(0);
@@ -382,6 +422,10 @@ export class CableSim {
     this.gateHold = new Uint8Array(N);
     this.gateAcross = new Uint8Array(N);
     this.bundleOf = new Int32Array(N).fill(-1);
+    this.pinchOf = new Int32Array(N).fill(-1);
+    this.pinchGoal = new Float64Array(3 * N);
+    this.pinches = [];
+    this.pinchHeld = null;
     this.keepOf = new Int32Array(N).fill(-1);
     this.keepIn = new Uint8Array(N);
     this.handled = new Uint8Array(defs.length);
@@ -478,6 +522,10 @@ export class CableSim {
       this.sleepRef[3 * i] = 1e9; // "moved": it must not fall asleep mid-air
       if (i < this.n) { this.lam[i] = 0; this.keepOf[i] = -1; }
     }
+    if (this.holdNode >= start && this.holdNode < start + n) this.holdNode = -1;
+    // a cord put somewhere else (coiled in the crate) lets go of its pinches
+    const kept = this.pinches.filter((p) => p.a + p.n <= start || p.a >= start + n);
+    if (kept.length < this.pinches.length) this.setPinches(kept);
     this.nc = 0;
     this.dormant.clear();
     this.wakeAll();
@@ -535,6 +583,156 @@ export class CableSim {
   release(): void {
     if (this.grabNode >= 0) this.wakeCable(this.cableOf[this.grabNode]);
     this.grabNode = -1;
+    this.pinchHeld = null;
+  }
+
+  /** the other hand takes node i and holds it at (x, y, z) */
+  holdStill(i: number, x: number, y: number, z: number): void {
+    if (this.holdNode >= 0) this.wakeCable(this.cableOf[this.holdNode]);
+    this.holdNode = i;
+    this.holdTarget[0] = x; this.holdTarget[1] = y; this.holdTarget[2] = z;
+    this.handled[this.cableOf[i]] = 1;
+    this.wakeCable(this.cableOf[i]);
+  }
+
+  /** the other hand lets go */
+  letGoStill(): void {
+    if (this.holdNode >= 0) this.wakeCable(this.cableOf[this.holdNode]);
+    this.holdNode = -1;
+  }
+
+  /**
+   * The hand starts pinching the cord it holds (around the hand: it replaces
+   * the pinches there), or stops. While it pinches, the pinch takes the shape
+   * the cord has and firms up; when it stops, the shape stays.
+   */
+  pinch(on: boolean): void {
+    this.pinchHeld = null;
+    const g = this.grabNode;
+    if (on && g >= 0) {
+      const cb = this.cables[this.cableOf[g]];
+      const a = Math.max(cb.start, g - this.P.pinchSpan), b = Math.min(cb.start + cb.count - 1, g + this.P.pinchSpan);
+      const p: Pinch = { a, n: b - a + 1, rest: new Array(3 * (b - a + 1)).fill(0), s: this.P.pinchStart, q: [0, 0, 0, 1] };
+      this.shapeOf(p);
+      this.pinchHeld = p;
+      this.setPinches([...this.pinches.filter((o) => o.a > b || o.a + o.n - 1 < a), p]);
+    }
+    this.pinchChanged = true;
+  }
+
+  /**
+   * How firm the pinch the hand is making is now (0 to 1). The game sets it
+   * from how long the player has held the key, in real time: the physics may
+   * drop frames when it falls behind.
+   */
+  firmPinch(s: number): void {
+    if (!this.pinchHeld) return;
+    this.pinchHeld.s = Math.min(1, Math.max(0, s));
+    this.pinchChanged = true;
+  }
+
+  /** lets go of the pinch that holds node i; false if none does */
+  unpinch(i: number): boolean {
+    const k = this.pinchOf[i];
+    if (k < 0) return false;
+    if (this.pinches[k] === this.pinchHeld) this.pinchHeld = null;
+    this.setPinches(this.pinches.filter((_, j) => j !== k));
+    return true;
+  }
+
+  /** puts the given pinches in place of the current ones (copies them) */
+  setPinches(list: Pinch[]): void {
+    for (const p of this.pinches) this.wakeCable(this.cableOf[p.a]);
+    const held = this.pinchHeld;
+    this.pinches = list.map((p) => (p === held ? p : { a: p.a, n: p.n, rest: [...p.rest], s: p.s, q: [...p.q] }));
+    this.pinchOf.fill(-1);
+    this.pinches.forEach((p, k) => {
+      for (let i = p.a; i < p.a + p.n; i++) this.pinchOf[i] = k;
+      this.wakeCable(this.cableOf[p.a]);
+    });
+    this.pinchChanged = true;
+  }
+
+  /** puts back pinches kept aside (undo, a rebuilt cabinet) */
+  loadPinches(list: Pinch[]): void {
+    this.pinchHeld = null;
+    this.setPinches(list);
+  }
+
+  /** the pinches changed since the last call */
+  takePinchChange(): boolean {
+    const c = this.pinchChanged;
+    this.pinchChanged = false;
+    return c;
+  }
+
+  /** takes the current shape of the pinched nodes as the pinch's shape */
+  private shapeOf(p: Pinch): void {
+    const x = this.x;
+    let cx = 0, cy = 0, cz = 0;
+    for (let i = p.a; i < p.a + p.n; i++) { cx += x[3 * i]; cy += x[3 * i + 1]; cz += x[3 * i + 2]; }
+    cx /= p.n; cy /= p.n; cz /= p.n;
+    for (let k = 0; k < p.n; k++) {
+      const i = p.a + k;
+      p.rest[3 * k] = x[3 * i] - cx; p.rest[3 * k + 1] = x[3 * i + 1] - cy; p.rest[3 * k + 2] = x[3 * i + 2] - cz;
+    }
+    p.q[0] = 0; p.q[1] = 0; p.q[2] = 0; p.q[3] = 1;
+  }
+
+  /**
+   * Where the nodes of a pinch are pulled to: its shape, turned (R) and moved
+   * (centre c) to fit them best. R is the rotation of A = Σ (x − c) restᵵ,
+   * found by a few steps from the last one (Müller, Bender, Chentanez,
+   * Macklin 2016, "A robust method to extract the rotational part of
+   * deformations").
+   */
+  private pinchGoals(p: Pinch): void {
+    const x = this.x, r = p.rest, out = this.pinchGoal;
+    let cx = 0, cy = 0, cz = 0;
+    for (let i = p.a; i < p.a + p.n; i++) { cx += x[3 * i]; cy += x[3 * i + 1]; cz += x[3 * i + 2]; }
+    cx /= p.n; cy /= p.n; cz /= p.n;
+    // A, by columns: A[:, j] = Σ (x − c) r[j]
+    let a00 = 0, a10 = 0, a20 = 0, a01 = 0, a11 = 0, a21 = 0, a02 = 0, a12 = 0, a22 = 0;
+    for (let k = 0; k < p.n; k++) {
+      const i = p.a + k;
+      const px = x[3 * i] - cx, py = x[3 * i + 1] - cy, pz = x[3 * i + 2] - cz;
+      const rx = r[3 * k], ry = r[3 * k + 1], rz = r[3 * k + 2];
+      a00 += px * rx; a10 += py * rx; a20 += pz * rx;
+      a01 += px * ry; a11 += py * ry; a21 += pz * ry;
+      a02 += px * rz; a12 += py * rz; a22 += pz * rz;
+    }
+    const q = p.q;
+    let m00 = 1, m01 = 0, m02 = 0, m10 = 0, m11 = 1, m12 = 0, m20 = 0, m21 = 0, m22 = 1;
+    for (let it = 0; it < 8; it++) {
+      const [qx, qy, qz, qw] = q;
+      m00 = 1 - 2 * (qy * qy + qz * qz); m01 = 2 * (qx * qy - qz * qw); m02 = 2 * (qx * qz + qy * qw);
+      m10 = 2 * (qx * qy + qz * qw); m11 = 1 - 2 * (qx * qx + qz * qz); m12 = 2 * (qy * qz - qx * qw);
+      m20 = 2 * (qx * qz - qy * qw); m21 = 2 * (qy * qz + qx * qw); m22 = 1 - 2 * (qx * qx + qy * qy);
+      // ω = Σ_j R[:, j] × A[:, j] / |Σ_j R[:, j] · A[:, j]|
+      const wx = (m10 * a20 - m20 * a10) + (m11 * a21 - m21 * a11) + (m12 * a22 - m22 * a12);
+      const wy = (m20 * a00 - m00 * a20) + (m21 * a01 - m01 * a21) + (m22 * a02 - m02 * a22);
+      const wz = (m00 * a10 - m10 * a00) + (m01 * a11 - m11 * a01) + (m02 * a12 - m12 * a02);
+      const den = Math.abs(m00 * a00 + m10 * a10 + m20 * a20 + m01 * a01 + m11 * a11 + m21 * a21 + m02 * a02 + m12 * a12 + m22 * a22) + 1e-12;
+      const ox = wx / den, oy = wy / den, oz = wz / den;
+      const w = Math.sqrt(ox * ox + oy * oy + oz * oz);
+      if (w < 1e-9) break;
+      // q ← rotation of angle w about ω, times q
+      const sh = Math.sin(w / 2) / w, ch = Math.cos(w / 2);
+      const ux = ox * sh, uy = oy * sh, uz = oz * sh;
+      const nx = ch * qx + ux * qw + uy * qz - uz * qy;
+      const ny = ch * qy - ux * qz + uy * qw + uz * qx;
+      const nz = ch * qz + ux * qy - uy * qx + uz * qw;
+      const nw = ch * qw - ux * qx - uy * qy - uz * qz;
+      const ql = Math.sqrt(nx * nx + ny * ny + nz * nz + nw * nw);
+      q[0] = nx / ql; q[1] = ny / ql; q[2] = nz / ql; q[3] = nw / ql;
+    }
+    for (let k = 0; k < p.n; k++) {
+      const i = p.a + k;
+      const rx = r[3 * k], ry = r[3 * k + 1], rz = r[3 * k + 2];
+      out[3 * i] = cx + m00 * rx + m01 * ry + m02 * rz;
+      out[3 * i + 1] = cy + m10 * rx + m11 * ry + m12 * rz;
+      out[3 * i + 2] = cz + m20 * rx + m21 * ry + m22 * rz;
+    }
   }
 
   /** Straps the given nodes together (velcro): each stays within r of their centre. */
@@ -569,6 +767,12 @@ export class CableSim {
     this.refreshFixed();
     this.buildAdjacency();
     this.listAwake();
+    // the pinch the hand is making takes the shape of the cord
+    const ph = this.pinchHeld;
+    if (ph) {
+      if (this.grabNode < 0) this.pinchHeld = null;
+      else { this.shapeOf(ph); this.pinchChanged = true; }
+    }
     for (let s = 0; s < P.substeps; s++) this.substep(h);
     this.updateSleep();
     for (const ci of this.wakeNext) this.wakeCable(ci);
@@ -705,6 +909,8 @@ export class CableSim {
       for (const i of b.nodes) { cx += x[3 * i]; cy += x[3 * i + 1]; cz += x[3 * i + 2]; }
       b.cx = cx / b.nodes.length; b.cy = cy / b.nodes.length; b.cz = cz / b.nodes.length;
     }
+    // pinches: where their nodes are pulled to, from where they start the substep
+    for (const p of this.pinches) if (p !== this.pinchHeld && !cables[this.cableOf[p.a]].asleep) this.pinchGoals(p);
     // inertial prediction
     const gy = P.gravity * h * h;
     for (let q = 0; q < nAwake; q++) {
@@ -954,16 +1160,26 @@ export class CableSim {
       h01 -= kt2 * nx * ny; h02 -= kt2 * nx * nz; h12 -= kt2 * ny * nz;
     }
 
-    // --- hand
-    if (i === this.grabNode) {
+    // --- hands: the one that drags, the other that holds
+    if (i === this.grabNode || i === this.holdNode) {
       const kg = P.grabK * mh * 4;
-      let ex = xi - this.grabTarget[0], ey = yi - this.grabTarget[1], ez = zi - this.grabTarget[2];
+      const t = i === this.grabNode ? this.grabTarget : this.holdTarget;
+      let ex = xi - t[0], ey = yi - t[1], ez = zi - t[2];
       const el = Math.sqrt(ex * ex + ey * ey + ez * ez);
       if (el > P.grabLead) { const f = P.grabLead / el; ex *= f; ey *= f; ez *= f; }
       gx += kg * ex;
       gy += kg * ey;
       gz += kg * ez;
       h00 += kg; h11 += kg; h22 += kg;
+    }
+
+    // --- pinch: towards the node's place in the shape (not while the hand is still making it)
+    const pk = this.pinchOf[i];
+    if (pk >= 0 && this.pinches[pk] !== this.pinchHeld) {
+      const kp = P.pinchK * this.pinches[pk].s * mh;
+      const g = this.pinchGoal;
+      gx += kp * (xi - g[j]); gy += kp * (yi - g[j + 1]); gz += kp * (zi - g[j + 2]);
+      h00 += kp; h11 += kp; h22 += kp;
     }
 
     // --- keeper, so that the solve itself carries the cord hanging from the
@@ -1028,14 +1244,14 @@ export class CableSim {
   /**
    * Position projection of the segment lengths (PBD), one sweep along every
    * cord: what the block descent leaves of a stretch under load (a heap, the
-   * hand) is taken out here. Pins and sleeping nodes do not move; the hand's
-   * node is heavy, so the cord follows it rather than the opposite.
+   * hand) is taken out here. Pins and sleeping nodes do not move; the nodes
+   * of the hands are heavy, so the cord follows them rather than the opposite.
    */
   private inextensible(forward: boolean): void {
     const x = this.x;
-    // the hand's node is heavy; a node a keeper holds does not move for its
+    // the hands' nodes are heavy; a node a keeper holds does not move for its
     // free neighbour (between two kept nodes, both do)
-    const w = (i: number) => (this.fixed[i] ? 0 : i === this.grabNode ? 0.1 / this.mass[i] : 1 / this.mass[i]);
+    const w = (i: number) => (this.fixed[i] ? 0 : i === this.grabNode || i === this.holdNode ? 0.1 / this.mass[i] : 1 / this.mass[i]);
     const kept = this.keepOf;
     for (let q = 0; q < this.nAwake; q++) {
       const cb = this.cables[this.awake[forward ? q : this.nAwake - 1 - q]];
@@ -1658,7 +1874,7 @@ export class CableSim {
       const c = this.cables[ci];
       if (c.asleep) continue;
       awake++;
-      const held = this.grabNode >= c.start && this.grabNode < c.start + c.count;
+      const held = (this.grabNode >= c.start && this.grabNode < c.start + c.count) || (this.holdNode >= c.start && this.holdNode < c.start + c.count);
       let moved = held;
       if (!moved) {
         const lim = P.sleepDist * P.sleepDist;

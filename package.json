@@ -20,6 +20,7 @@
     "solvable": "vite-node tools/solvable.ts",
     "showcase": "vite-node tools/showcase.ts",
     "free": "vite-node tools/free.ts",
+    "pinch": "vite-node tools/pinch.ts",
     "release": "vite-node tools/release.ts"
   },
   "dependencies": {

@@ -151,6 +151,70 @@ describe('what the player sees while tidying', () => {
     expect(w.sim.x[3 * (w.cables[0].start + 3)]).toBeCloseTo(s.x[3 * (w.cables[0].start + 3)]);
   });
 
+  it('a pinch firms up while the hand pinches, survives a new cord from the stock, and goes with undo or Space', () => {
+    const w = new World(L1);
+    const s = w.snapshot();
+    const g = w.cables[1].start + Math.floor(w.cables[1].count / 2);
+    w.sim.grab(g);
+    w.sim.grabTarget[0] += 0.12; w.sim.grabTarget[1] += 0.1;
+    for (let f = 0; f < 40; f++) w.sim.step();
+    w.sim.pinch(true);
+    w.sim.step();
+    const soft = w.sim.pinches[0].s;
+    w.sim.firmPinch(0.8);
+    for (let f = 0; f < 30; f++) w.sim.step();
+    w.sim.pinch(false);
+    w.sim.firmPinch(1); // too late: the hand no longer pinches
+    w.sim.release();
+    expect(w.sim.pinches).toHaveLength(1);
+    expect(w.sim.pinches[0].s).toBeGreaterThan(soft);
+    expect(w.sim.pinches[0].s).toBeCloseTo(0.8);
+    expect(w.sim.pinchOf[g]).toBe(0);
+    // a new cord rebuilds the physics: the pinch stays on the same stretch of the same cord
+    const off = w.sim.pinches[0].a - w.cables[1].start;
+    w.addCable('CU', 1);
+    expect(w.sim.pinches[0].a - w.cables[1].start).toBe(off);
+    // pinching again over it replaces it
+    const g2 = w.cables[1].start + off + 2;
+    w.sim.grab(g2);
+    w.sim.pinch(true);
+    w.sim.pinch(false);
+    w.sim.release();
+    expect(w.sim.pinches).toHaveLength(1);
+    // Space over it lets go of it
+    expect(w.sim.unpinch(g2)).toBe(true);
+    expect(w.sim.pinches).toHaveLength(0);
+    expect(w.sim.pinchOf[g2]).toBe(-1);
+    // undo (before the new cord: in another cabinet) takes it away
+    const w2 = new World(L1);
+    const s2 = w2.snapshot();
+    w2.sim.grab(g);
+    w2.sim.pinch(true);
+    w2.sim.release();
+    expect(w2.sim.pinches).toHaveLength(1);
+    expect(w2.restore(s2)).toBe(true);
+    expect(w2.sim.pinches).toHaveLength(0);
+    expect(s.pinches).toHaveLength(0);
+  });
+
+  it('the other hand holds a cord still where the hand left it, and lets go', () => {
+    const w = new World(L1);
+    const cb = w.cables[1];
+    const g = cb.start + Math.floor(cb.count / 2);
+    w.sim.grab(g);
+    w.sim.grabTarget[0] += 0.1; w.sim.grabTarget[1] += 0.15;
+    for (let f = 0; f < 60; f++) w.sim.step();
+    const at = [...w.sim.grabTarget];
+    w.sim.holdStill(g, at[0], at[1], at[2]);
+    w.sim.release();
+    for (let f = 0; f < 90; f++) w.sim.step();
+    const d = () => Math.hypot(w.sim.x[3 * g] - at[0], w.sim.x[3 * g + 1] - at[1], w.sim.x[3 * g + 2] - at[2]);
+    expect(d()).toBeLessThan(0.07); // within the leash of a hand
+    w.sim.letGoStill();
+    for (let f = 0; f < 90; f++) w.sim.step();
+    expect(w.sim.x[3 * g + 1]).toBeLessThan(at[1] - 0.05);
+  });
+
   it('undo gives up once the cords have been rebuilt', () => {
     const w = new World(L1);
     const s = w.snapshot();

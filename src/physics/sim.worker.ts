@@ -1,15 +1,22 @@
 // The cable physics, off the main thread: the page sends the edits (pins,
-// hand, rack items, straps) and asks for steps; the worker answers each
-// request with the node positions and which cables are asleep.
+// hands, rack items, straps) and asks for steps; the worker answers each
+// request with the node positions, which cables are asleep and, when they
+// changed, the pinches.
 
-import { CableSim, type CableInit, type SimParams, type StaticShape } from './cableSim';
+import { CableSim, type CableInit, type Pinch, type SimParams, type StaticShape } from './cableSim';
 
 export type ToWorker =
-  | { type: 'init'; params: SimParams; defs: CableInit[]; x: Float64Array; v: Float64Array; pins: number[]; statics: StaticShape[] }
+  | { type: 'init'; params: SimParams; defs: CableInit[]; x: Float64Array; v: Float64Array; pins: number[]; statics: StaticShape[]; pinches: Pinch[] }
   | { type: 'pin'; i: number; p: [number, number, number] }
   | { type: 'unpin'; i: number }
   | { type: 'grab'; i: number }
   | { type: 'release' }
+  | { type: 'holdStill'; i: number; p: [number, number, number] }
+  | { type: 'letGoStill' }
+  | { type: 'pinch'; on: boolean }
+  | { type: 'unpinch'; i: number }
+  | { type: 'firmPinch'; s: number }
+  | { type: 'pinches'; list: Pinch[] }
   | { type: 'statics'; statics: StaticShape[] }
   | { type: 'addBundle'; nodes: number[]; r: number }
   | { type: 'removeBundle'; id: number }
@@ -23,6 +30,9 @@ export interface FromWorker {
   gen: number;
   x: Float64Array;
   asleep: Uint8Array;
+  /** the pinches, when they changed since the last answer, and which one the hand is making (−1: none) */
+  pinches?: Pinch[];
+  held?: number;
   stats: { contacts: number; awake: number; ms: number };
 }
 
@@ -38,6 +48,8 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
     sim.v.set(m.v);
     for (const i of m.pins) sim.pin(i, m.x[3 * i], m.x[3 * i + 1], m.x[3 * i + 2]);
     sim.setStatics(m.statics);
+    sim.loadPinches(m.pinches);
+    sim.takePinchChange();
     return;
   }
   if (!sim) return;
@@ -46,6 +58,12 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
     case 'unpin': sim.unpin(m.i); break;
     case 'grab': sim.grab(m.i); break;
     case 'release': sim.release(); break;
+    case 'holdStill': sim.holdStill(m.i, ...m.p); break;
+    case 'letGoStill': sim.letGoStill(); break;
+    case 'pinch': sim.pinch(m.on); break;
+    case 'unpinch': sim.unpinch(m.i); break;
+    case 'firmPinch': sim.firmPinch(m.s); break;
+    case 'pinches': sim.loadPinches(m.list); sim.takePinchChange(); break;
     case 'statics': sim.setStatics(m.statics); break;
     case 'addBundle': sim.addBundle(m.nodes, m.r); break;
     case 'removeBundle': sim.removeBundle(m.id); break;
@@ -60,6 +78,7 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
       const x = sim.x.slice();
       const asleep = Uint8Array.from(sim.cables, (c) => (c.asleep ? 1 : 0));
       const out: FromWorker = { id: m.id, gen: m.gen, x, asleep, stats: { ...sim.stats, ms: performance.now() - t0 } };
+      if (sim.takePinchChange()) { out.pinches = sim.pinches; out.held = sim.pinchHeld ? sim.pinches.indexOf(sim.pinchHeld) : -1; }
       (self as unknown as Worker).postMessage(out, [x.buffer, asleep.buffer]);
       break;
     }

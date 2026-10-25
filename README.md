@@ -90,6 +90,9 @@ La **partie libre** génère une baie au hasard, de 4 à 48 câbles.
 |---|---|
 | Saisir et tirer un câble | clic gauche + glisser |
 | Pousser vers le fond / ramener vers soi | **Maj** + souris vers le haut / le bas pendant qu'on tire (ou la molette) |
+| Pincer un coude, qui garde sa forme | maintenir **Espace** (ou le clic droit) pendant qu'on tient le câble : plus longtemps, plus ferme |
+| Relâcher un coude pincé (anneaux sur le câble survolé) | **Espace** en le survolant |
+| Passer le câble à l'autre main, qui le tient sur place | **E** pendant qu'on tire ; **E** main libre pour qu'elle le lâche |
 | Débrancher | saisir un connecteur et tirer de quelques centimètres |
 | Brancher | relâcher un connecteur devant un port libre (surligné en jaune) |
 | Attraper le câble du dessous | **Tab** |
@@ -166,7 +169,9 @@ que dans le Worker, ce qui rend les tests automatisés reproductibles.
 Diaz, Yuksel, SIGGRAPH 2025). Chaque câble est une chaîne de nœuds ; le
 solveur traite l'inextensibilité et les contacts (câble contre câble, câble
 contre baie) comme des contraintes dures, et la flexion, le frottement, la
-main et le velcro comme des énergies. Les câbles immobiles se mettent en
+main, le velcro et les coudes pincés comme des énergies. Un coude pincé garde
+sa forme par *shape matching* : ses nœuds sont tirés vers cette forme,
+tournée et déplacée pour leur aller au mieux. Les câbles immobiles se mettent en
 veille pour que les grosses baies restent fluides. Le moteur tourne dans un
 Web Worker (`sim.worker.ts`, piloté par `threadedSim.ts`) : l'affichage
 n'attend jamais la physique.

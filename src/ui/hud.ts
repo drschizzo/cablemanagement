@@ -8,7 +8,7 @@ import { load, save } from '../storage';
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector(sel) as T;
 
 const TOOLS: { tool: Tool; key: string; name: string; icon: string; stock?: 'hmgr' | 'duct' | 'vring' | 'velcro'; help: string }[] = [
-  { tool: 'hand', key: '1', name: 'Main', icon: iconHand(), help: 'Saisir, tirer, débrancher et brancher les câbles (Maj en tirant : profondeur). Glisser dans le vide : déplacer la vue.' },
+  { tool: 'hand', key: '1', name: 'Main', icon: iconHand(), help: 'Saisir, tirer, débrancher et brancher les câbles (Maj en tirant : profondeur ; Espace ou clic droit maintenu en tirant : pincer un coude, qui garde sa forme ; Espace sur un coude pincé : le relâcher ; E en tirant : l\'autre main tient le câble sur place, E pour qu\'elle le lâche). Glisser dans le vide : déplacer la vue.' },
   { tool: 'hmgr', key: '2', name: 'Guide-câbles 1U', icon: iconHmgr(), stock: 'hmgr', help: 'Panneau à anneaux, dans une unité vide de la baie. Cliquez à nouveau pour le retirer.' },
   { tool: 'duct', key: '3', name: 'Goulotte', icon: iconDuct(), stock: 'duct', help: 'Goulotte verticale de 4U dans un couloir latéral. Cliquez à nouveau pour la retirer.' },
   { tool: 'vring', key: '4', name: 'Anneau', icon: iconRing(), stock: 'vring', help: 'Anneau de passage vertical dans un couloir latéral.' },

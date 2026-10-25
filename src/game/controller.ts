@@ -60,11 +60,19 @@ export class Controller {
     offset: THREE.Vector3;
     /** a plugged connector was taken: it stays in until the hand pulls it far enough */
     pull: { end: number; from: THREE.Vector3; refused: boolean } | null;
+    /** what pinches the cord: Space, the right button (either will do) */
+    pinchBy: { space: boolean; right: boolean };
+    /** the hand pinched during this drag (worth an undo, even without moving) */
+    pinched: boolean;
+    /** when the current pinch began (clock), or −1 */
+    pinchSince: number;
   } | null = null;
   /** the cord whose held and hanging stretches are shown (while carried, and a moment after) */
   private holdView: { cable: number; until: number; next: number } | null = null;
   /** plumb line from the held point to the floor: the depth cue */
   private guide: THREE.Group;
+  /** where the other hand holds a cord still */
+  private otherHand: THREE.Group;
   private pan: { mx: number; my: number } | null = null;
   private mouse = new THREE.Vector2();
   private mousePx = { x: 0, y: 0 };
@@ -86,7 +94,7 @@ export class Controller {
   private clock = 0;
   private tracing: { cable: number; until: number } | null = null;
   /** what the player did, for the tutorial */
-  counters = { hovered: 0, dragged: 0, plugged: 0, unplugged: 0, orbited: 0, deposited: 0 };
+  counters = { hovered: 0, dragged: 0, plugged: 0, unplugged: 0, orbited: 0, deposited: 0, pinched: 0, handedOver: 0 };
   private lastHoverCable = -1;
   private spot: THREE.Group | null = null;
   private spotTime = 0;
@@ -113,6 +121,8 @@ export class Controller {
     this.rackView = new RackView(this.world.rack, types);
     this.guide = makeGuide();
     stage.scene.add(this.guide);
+    this.otherHand = makeOtherHand();
+    stage.scene.add(this.otherHand);
     this.cableView = new CableView(this.world);
     this.cableView.lightBy(this.rackView.glow);
     stage.scene.add(this.rackView.group, this.cableView.group);
@@ -133,7 +143,7 @@ export class Controller {
     this.world.dispose();
     for (const off of this.unbind) off();
     this.spotlight(null);
-    for (const g of [this.rackView.group, this.cableView.group, this.guide, this.ghost]) {
+    for (const g of [this.rackView.group, this.cableView.group, this.guide, this.otherHand, this.ghost]) {
       if (!g) continue;
       this.stage.scene.remove(g);
       disposeTree(g);
@@ -189,6 +199,7 @@ export class Controller {
         if (m && 'opacity' in m) m.opacity = o.userData.base * (0.5 + a);
       });
     }
+    this.firmPinch();
     const h = this.world.sim.P.dt;
     this.acc += dt;
     let steps = 0;
@@ -219,6 +230,10 @@ export class Controller {
     }
     this.updateGlows();
     this.updateHoldView();
+    // the other hand, where it holds (it lets go when the cords are rebuilt)
+    const sim = this.world.sim;
+    this.otherHand.visible = sim.holdNode >= 0;
+    if (sim.holdNode >= 0) this.otherHand.position.set(sim.holdTarget[0], sim.holdTarget[1], sim.holdTarget[2]);
     if (draw) {
       this.stage.render();
       if (!this.before) this.before = this.capture();
@@ -232,8 +247,9 @@ export class Controller {
   capture(): string {
     const cam = this.stage.camera, ctl = this.stage.controls;
     const pos = cam.position.clone(), target = ctl.target.clone();
-    const guide = this.guide.visible;
+    const guide = this.guide.visible, other = this.otherHand.visible;
     this.guide.visible = false;
+    this.otherHand.visible = false;
     this.stage.resetView();
     this.stage.render();
     const src = this.stage.renderer.domElement;
@@ -250,6 +266,7 @@ export class Controller {
     ctl.target.copy(target);
     ctl.update();
     this.guide.visible = guide;
+    this.otherHand.visible = other;
     this.stage.render();
     return out.toDataURL('image/jpeg', 0.85);
   }
@@ -344,6 +361,20 @@ export class Controller {
     on(window, 'keydown', (e: KeyboardEvent) => { if (e.key === 'Shift' && this.drag && !this.drag.depthMode) this.setDepthMode(true); });
     on(window, 'keyup', (e: KeyboardEvent) => { if (e.key === 'Shift' && this.drag && this.drag.depthMode) this.setDepthMode(false); });
     on(window, 'keydown', (e: KeyboardEvent) => {
+      if (e.code !== 'Space' || document.querySelector('.overlay.on')) return;
+      // not a click on whatever button has the focus
+      e.preventDefault();
+      if (e.repeat) return;
+      if (this.drag) this.setPinch('space', true);
+      else this.unpinchHovered();
+    });
+    on(window, 'keyup', (e: KeyboardEvent) => { if (e.code === 'Space' && this.drag) this.setPinch('space', false); });
+    on(window, 'keydown', (e: KeyboardEvent) => {
+      if (e.code !== 'KeyE' || e.repeat || e.ctrlKey || e.metaKey || document.querySelector('.overlay.on')) return;
+      if (this.drag) this.handOver();
+      else this.letGoOtherHand();
+    });
+    on(window, 'keydown', (e: KeyboardEvent) => {
       if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey) && !document.querySelector('.overlay.on')) {
         e.preventDefault();
         this.undo();
@@ -373,6 +404,9 @@ export class Controller {
     }
     if (this.drag && e.shiftKey !== this.drag.depthMode) this.setDepthMode(e.shiftKey);
     if (this.drag) {
+      // the right button pressed while the left one holds the cord: a chord,
+      // which comes as a move with the new buttons rather than a pointerdown
+      this.setPinch('right', (e.buttons & 2) !== 0);
       this.updatePortHint();
       return;
     }
@@ -380,7 +414,9 @@ export class Controller {
       const p = this.pick();
       this.setHover(p);
       const stacked = p ? this.pickAll().length : 0;
-      if (p) this.events.onHover(this.describe(p) + (stacked > 1 ? `<br><i>${stacked} câbles sous le curseur — Tab : suivant</i>` : ''), e.clientX, e.clientY);
+      let pinched = p && this.tool === 'hand' && this.pinchNear(p.node) >= 0 ? '<br><i>Coude pincé — Espace : le relâcher</i>' : '';
+      if (p && this.tool === 'hand' && this.otherHandAt(p.node)) pinched += '<br><i>Tenu par l\'autre main — E : la lâcher</i>';
+      if (p) this.events.onHover(this.describe(p) + pinched + (stacked > 1 ? `<br><i>${stacked} câbles sous le curseur — Tab : suivant</i>` : ''), e.clientX, e.clientY);
       else this.events.onHover(null, 0, 0);
     } else {
       this.setHover(null);
@@ -441,6 +477,7 @@ export class Controller {
     if (this.drag) return;
     const s = this.history.pop();
     if (!s) { this.events.onToast('Rien à annuler.'); return; }
+    this.world.sim.letGoStill();
     if (!this.world.restore(s)) {
       // cords rebuilt since (another length, a new cord): older states no longer fit
       this.history = [];
@@ -578,10 +615,10 @@ export class Controller {
   /** how far the hand had travelled when the current drag began (a mere click is not worth an undo) */
   private dragStartedAt = 0;
 
-  private onUp(_e: PointerEvent): void {
+  private onUp(_e: PointerEvent | null): void {
     if (this.pan) { this.pan = null; this.stage.renderer.domElement.style.cursor = 'default'; return; }
     if (!this.drag) return;
-    if (this.counters.dragged - this.dragStartedAt < 0.002 && !this.portHint && !(this.drag.end >= 0)) this.history.pop();
+    if (this.counters.dragged - this.dragStartedAt < 0.002 && !this.portHint && !(this.drag.end >= 0) && !this.drag.pinched) this.history.pop();
     this.guide.visible = false;
     this.events.onHint(null);
     const d = this.drag;
@@ -629,6 +666,8 @@ export class Controller {
         node = n0;
       }
     } else sfx.grab();
+    // taking the cord where the other hand holds it: it lets go
+    if (this.otherHandAt(node)) w.sim.letGoStill();
     w.sim.grab(node);
     const dir = new THREE.Vector3();
     this.stage.camera.getWorldDirection(dir);
@@ -636,15 +675,93 @@ export class Controller {
     if (pull) pull.from.copy(at);
     // the hand moves on a plane facing the camera, through the grabbed point
     const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(dir.clone().negate(), at);
-    this.drag = { node, cable: p.cable, plane, depth: 0, target: at.clone(), end, depthMode: false, anchor: { mx: this.mousePx.x, my: this.mousePx.y, t: at.clone() }, offset: new THREE.Vector3(), pull };
+    this.drag = { node, cable: p.cable, plane, depth: 0, target: at.clone(), end, depthMode: false, anchor: { mx: this.mousePx.x, my: this.mousePx.y, t: at.clone() }, offset: new THREE.Vector3(), pull, pinchBy: { space: false, right: false }, pinched: false, pinchSince: -1 };
     this.holdView = { cable: p.cable, until: Infinity, next: 0 };
+    this.cableView.pinchHover = -1;
+    this.cableView.pinchShown = p.cable;
     this.events.onHint(pull
       ? '<b>Tirez</b> le connecteur de quelques centimètres pour le débrancher ; sinon vous rangez simplement le câble.'
-      : 'Maintenez <b>Maj</b> pour pousser le câble vers le fond (souris vers le haut) ou le ramener vers vous (vers le bas). <span class="ok">Vert</span> : tenu, <span class="warn">orange</span> : pend trop.');
+      : 'Maintenez <b>Maj</b> pour pousser le câble vers le fond (souris vers le haut) ou le ramener vers vous (vers le bas). Maintenez <b>Espace</b> (ou le clic droit) pour pincer : le câble garde le coude qu\'il fait sous la main, d\'autant plus fermement que vous pincez longtemps. <b>E</b> : l\'autre main tient le câble ici, et la vôtre est libre. <span class="ok">Vert</span> : tenu, <span class="warn">orange</span> : pend trop.');
     this.stage.controls.enableZoom = false;
     this.stage.renderer.domElement.style.cursor = 'grabbing';
     this.events.onHover(null, 0, 0);
     this.refreshHighlights();
+  }
+
+  /**
+   * Space or the right button, pressed or released while the hand holds a
+   * cord. Either one pinches: the cord around the hand keeps the shape it has
+   * when the pinch ends, the more firmly the longer it lasted (rings show it).
+   */
+  private setPinch(by: 'space' | 'right', down: boolean): void {
+    const d = this.drag;
+    if (!d || d.pinchBy[by] === down) return;
+    const was = d.pinchBy.space || d.pinchBy.right;
+    d.pinchBy[by] = down;
+    const on = d.pinchBy.space || d.pinchBy.right;
+    if (on === was) return;
+    this.world.sim.pinch(on);
+    d.pinchSince = on ? this.clock : -1;
+    if (on) { this.counters.pinched++; d.pinched = true; sfx.pinch(); }
+  }
+
+  /** the pinch being made firms up with the time it has been held */
+  private firmPinch(): void {
+    const d = this.drag;
+    if (!d || d.pinchSince < 0) return;
+    const P = this.world.sim.P;
+    const s = Math.min(1, P.pinchStart + P.pinchGrow * (this.clock - d.pinchSince));
+    if (s > (this.world.sim.pinchHeld?.s ?? 1)) this.world.sim.firmPinch(s);
+  }
+
+  /**
+   * E while carrying a cord: the other hand takes it where it is and holds it
+   * still, and this one is free to take the cord further along (or another).
+   */
+  private handOver(): void {
+    const d = this.drag, sim = this.world.sim;
+    if (!d || sim.grabNode < 0) return;
+    const t = sim.grabTarget;
+    sim.holdStill(sim.grabNode, t[0], t[1], t[2]);
+    this.counters.handedOver++;
+    // no plugging on the way: the cord stays where the other hand holds it
+    this.setPortHint(null);
+    this.onUp(null);
+    sfx.grab();
+  }
+
+  /** E with the hand free: the other hand lets go */
+  private letGoOtherHand(): void {
+    const sim = this.world.sim;
+    if (sim.holdNode < 0) return;
+    sim.letGoStill();
+    sfx.remove();
+  }
+
+  /** does the other hand hold node i, or one next to it? */
+  private otherHandAt(i: number): boolean {
+    const sim = this.world.sim, h = sim.holdNode;
+    return h >= 0 && Math.abs(h - i) <= 1 && sim.cableOf[h] === sim.cableOf[i];
+  }
+
+  /** the pinch holding node i or one next to it, or −1 */
+  private pinchNear(i: number): number {
+    const sim = this.world.sim;
+    for (const j of [i, i - 1, i + 1]) if (j >= 0 && j < sim.n && sim.cableOf[j] === sim.cableOf[i] && sim.pinchOf[j] >= 0) return sim.pinchOf[j];
+    return -1;
+  }
+
+  /** Space over a pinch: the cord lets go of it */
+  private unpinchHovered(): void {
+    const p = this.hover;
+    if (!p || this.tool !== 'hand') return;
+    const k = this.pinchNear(p.node);
+    if (k < 0) return;
+    this.remember();
+    this.world.sim.unpinch(this.world.sim.pinches[k].a);
+    this.cableView.pinchHover = -1;
+    this.events.onHover(null, 0, 0);
+    sfx.remove();
   }
 
   /** the carried cord, a stretch at a time: held (green), hanging too long (orange), on the floor (red) */
@@ -877,6 +994,9 @@ export class Controller {
     const prev = this.hover?.cable ?? -1;
     if (p && p.cable !== this.lastHoverCable) { this.counters.hovered++; this.lastHoverCable = p.cable; }
     this.hover = p;
+    // the pinch under the pointer, which Space would let go of; the pinches of the cord under it
+    this.cableView.pinchHover = p && this.tool === 'hand' ? this.pinchNear(p.node) : -1;
+    this.cableView.pinchShown = p && this.tool === 'hand' ? p.cable : -1;
     if ((p?.cable ?? -1) !== prev) this.refreshHighlights();
     if (this.tool === 'hand') this.stage.renderer.domElement.style.cursor = p ? (p.end >= 0 || this.world.endOfNode(p.node) ? 'pointer' : 'grab') : 'default';
   }
@@ -1035,6 +1155,16 @@ export class Controller {
 }
 
 /** the depth cue while carrying a cord: plumb line, ring on the floor, tick on the rack */
+/** the other hand: a soft glow round the point it holds, seen through the cords */
+function makeOtherHand(): THREE.Group {
+  const g = new THREE.Group();
+  const glow = new THREE.Mesh(new THREE.SphereGeometry(0.011, 20, 14), new THREE.MeshBasicMaterial({ color: '#ffb347', transparent: true, opacity: 0.35, depthTest: false }));
+  const core = new THREE.Mesh(new THREE.SphereGeometry(0.004, 12, 8), new THREE.MeshBasicMaterial({ color: '#ffd28a', transparent: true, opacity: 0.9, depthTest: false }));
+  for (const o of [glow, core]) { o.renderOrder = 31; g.add(o); }
+  g.visible = false;
+  return g;
+}
+
 function makeGuide(): THREE.Group {
   const g = new THREE.Group();
   const lineGeo = new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
