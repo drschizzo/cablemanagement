@@ -162,6 +162,7 @@ physique des câbles, la préparation de la scène et le pipeline de rendu.
 | `npm run levels` | coût et mise au repos de chaque niveau |
 | `npm run free` | une partie libre de 48 câbles : mise au repos, puis un cordon tiré à travers les autres |
 | `npm run pinch` | un coude pincé garde-t-il sa forme une fois lâché |
+| `npm run fold` | un câble couché dans un guide-câbles : le guide prend-il une boucle lointaine du même câble |
 | `npm run showcase` | la démonstration avant / après sur quelques baies tirées au sort |
 
 Ajouter `?sync` à l'URL fait tourner la physique sur le fil principal plutôt

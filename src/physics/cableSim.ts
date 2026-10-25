@@ -331,6 +331,8 @@ export class CableSim {
   keepIn = new Uint8Array(0);
   /** cables the hand has taken: keepers only take those (not the starting mess) */
   handled = new Uint8Array(0);
+  /** the node of each cable the hand last took, or −1: a keeper takes a cord from there */
+  private lastHand = new Int32Array(0);
   private staticGrid = new Map<number, number[]>();
   private readonly SCELL = 0.05;
 
@@ -429,6 +431,7 @@ export class CableSim {
     this.keepOf = new Int32Array(N).fill(-1);
     this.keepIn = new Uint8Array(N);
     this.handled = new Uint8Array(defs.length);
+    this.lastHand = new Int32Array(defs.length).fill(-1);
     this.adjStart = new Int32Array(N + 1);
     this.segCell = new Int32Array(N * 3);
     this.cables = [];
@@ -574,6 +577,7 @@ export class CableSim {
   grab(i: number): void {
     this.grabNode = i;
     this.handled[this.cableOf[i]] = 1;
+    this.lastHand[this.cableOf[i]] = i;
     this.grabTarget[0] = this.x[3 * i];
     this.grabTarget[1] = this.x[3 * i + 1];
     this.grabTarget[2] = this.x[3 * i + 2];
@@ -826,8 +830,13 @@ export class CableSim {
    * already taken (a little tolerance: a cord resting on the fingers is on
    * the edge). With the hand in a keeper, they also take the nodes of its
    * cord around it that hang just below or in front: those are drawn in as
-   * the hand runs along (`keep`). They let go of nodes that slid out of an
-   * end, and of the few nodes around the hand.
+   * the hand runs along (`keep`). A keeper only takes the nodes near where
+   * the hand holds the cord (or last held it) and those next to ones it
+   * already holds: the kept stretch grows along the cord from the hand, and
+   * a loop further down the cord that lies across the channel or swings into
+   * it is not taken there, as if the channel had folded the cord in two.
+   * They let go of nodes that slid out of an end, and of the few nodes
+   * around the hand.
    */
   private markKept(): void {
     if (!this.keepers.length) return;
@@ -855,9 +864,12 @@ export class CableSim {
         continue;
       }
       const r = this.radius[i] - tol;
+      const ci = this.cableOf[i], cb = this.cables[ci];
+      const nearHand = Math.abs(i - this.lastHand[ci]) <= P.keepZip;
       for (let j = 0; j < this.keepers.length; j++) {
         const b = this.keepers[j];
         if (px < b.min[0] || px > b.max[0]) continue;
+        if (!nearHand && (i <= cb.start || this.keepOf[i - 1] !== j) && (i >= cb.start + cb.count - 1 || this.keepOf[i + 1] !== j)) continue;
         if (py >= b.min[1] + r && py <= b.max[1] - r && pz >= b.min[2] + r && pz <= b.max[2] - r) { this.keepOf[i] = j; this.keepIn[i] = 1; break; }
         if (j === handIn && fromHand <= P.keepZip && py >= b.min[1] - P.keepBelow && py <= b.max[1] && pz >= b.min[2] && pz <= b.max[2] + P.keepFront) {
           this.keepOf[i] = j; this.keepIn[i] = 0; break;
