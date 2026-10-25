@@ -34,6 +34,13 @@ const mgrBox = (c: Controller): Box | null => {
   return { min: [-COLUMN_X + 0.005, r.unitBottom(it.unit), -0.004], max: [COLUMN_X - 0.005, r.unitBottom(it.unit) + U, 0.08] };
 };
 
+/** the panel and the manager under it: where a cord leaves its port and turns down into the fingers */
+const portToMgrBox = (c: Controller): Box | null => {
+  const p = unitBox(c, 'panel'), m = mgrBox(c);
+  if (!p || !m) return p ?? m;
+  return { min: [p.min[0], Math.min(p.min[1], m.min[1]), p.min[2]], max: [p.max[0], Math.max(p.max[1], m.max[1]), 0.09] };
+};
+
 const sideBox = (c: Controller): Box => {
   const r = c.world.rack;
   return { min: [SIDE_IN, r.unitBottom(r.units.length - 2), SIDE_BACK], max: [SIDE_OUT, r.topY - U, 0.075] };
@@ -112,6 +119,21 @@ const STEPS: Step[] = [
     done: (c) => held(c, 'hmgr') >= 6,
   },
   {
+    title: 'Pincer un coude',
+    text: 'Un câble lâché tout seul sort de son port vers vous et pend en boucle devant les ports du dessous. Un technicien le <b>plie juste après le connecteur</b> pour qu\'il descende droit dans le guide-câbles. Saisissez un câble à quelques centimètres de son connecteur, amenez-le dans le guide-câbles, puis <b>maintenez Espace</b> (ou le clic droit) : la portion sous votre main se fige dans sa forme, <b>d\'autant plus fermement que vous pincez longtemps</b> (une seconde et demie pour un coude bien ferme). Relâchez Espace, puis le câble : le coude tient.',
+    task: 'Pincez un coude ferme à la sortie d\'un port',
+    spot: portToMgrBox,
+    tool: 'hand',
+    done: (c) => c.world.sim.pinches.some((p) => p.s >= 0.7 && p !== c.world.sim.pinchHeld),
+  },
+  {
+    title: 'Voir et défaire un coude',
+    text: 'Survolez un câble : ses coudes pincés apparaissent en <b>anneaux</b>, d\'autant plus vifs que le coude est ferme. Sous le curseur, un coude devient <span class="warn">orange</span> : <b>Espace</b> le défait. Pour le corriger, pincez simplement de nouveau au même endroit : le nouveau coude remplace l\'ancien.',
+    task: 'Survolez un coude pincé',
+    tool: 'hand',
+    done: (c) => c.cableView.pinchHover >= 0,
+  },
+  {
     title: 'La goulotte',
     text: 'La <b>goulotte</b> se fixe dans un couloir latéral. Elle descend les câbles le long des montants et cache le <b>mou</b> (la longueur en trop). Prenez l\'outil Goulotte (touche 3) et cliquez dans le couloir entouré.',
     task: 'Posez une goulotte',
@@ -125,6 +147,17 @@ const STEPS: Step[] = [
     task: 'Mettez un câble dans la goulotte',
     tool: 'hand',
     done: (c) => held(c, 'duct') >= 4,
+  },
+  {
+    title: 'La seconde main',
+    text: 'Pour former le virage entre le guide-câbles et la goulotte, il faut tenir le câble à deux endroits : sinon, en tirant le bout, on défait ce qu\'on vient de poser. Tenez le câble là où il doit rester et appuyez sur <b>E</b> : <b>l\'autre main</b> le tient sur place (une lueur ambrée), et la vôtre est libre. Saisissez-le plus loin, amenez-le dans la goulotte, pincez le virage avec <b>Espace</b>, puis <b>E</b>, la main libre, pour que l\'autre main lâche.',
+    task: 'Passez un câble à l\'autre main (E)',
+    spot: (c) => {
+      const m = mgrBox(c), s = sideBox(c);
+      return m ? { min: [Math.min(m.min[0], s.min[0]), Math.min(m.min[1], s.min[1]), Math.min(m.min[2], s.min[2])], max: [Math.max(m.max[0], s.max[0]), Math.max(m.max[1], s.max[1]), Math.max(m.max[2], s.max[2])] } : s;
+    },
+    tool: 'hand',
+    done: (c) => c.counters.handedOver >= 1,
   },
   {
     title: 'L\'anneau',
@@ -161,7 +194,7 @@ const STEPS: Step[] = [
   },
   {
     title: 'Le score',
-    text: 'Quatre critères, dans le panneau de droite : les <b>connexions</b> conformes au plan (obligatoires pour valider), le <b>rangement</b> (aucune portion de câble de plus de 20 cm qui pend), la <b>façade dégagée</b> (aucun câble devant le port d\'un autre) et les <b>étiquettes</b>. De une à trois étoiles ; il en faut <b>deux</b> pour ouvrir le niveau suivant. À vous !',
+    text: 'Quatre critères, dans le panneau de droite : les <b>connexions</b> conformes au plan (obligatoires pour valider), le <b>rangement</b> (aucune portion de câble de plus de 20 cm qui pend), la <b>façade dégagée</b> (aucun câble devant le port d\'un autre) et les <b>étiquettes</b>. De une à trois étoiles ; il en faut <b>deux</b> pour ouvrir le niveau suivant. Le secret d\'une baie soignée : un coude pincé à la sortie de chaque port, des câbles couchés dans les guides, le mou dans la goulotte. À vous !',
   },
 ];
 
