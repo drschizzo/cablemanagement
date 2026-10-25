@@ -8,8 +8,8 @@ import { bevelBox } from './bevel';
 import { ledLit, type LedGlow } from './ledGlow';
 import { JACKET_KIND, jacketed } from './jacket';
 
-const RADIAL = 8;
-const SUB = 2; // samples per segment (Catmull-Rom in between)
+export const RADIAL = 8;
+export const SUB = 2; // samples per segment (Catmull-Rom in between)
 /** cos and sin of the angle of each vertex around a ring */
 const RING_COS = Float64Array.from({ length: RADIAL }, (_, r) => Math.cos((r / RADIAL) * Math.PI * 2));
 const RING_SIN = Float64Array.from({ length: RADIAL }, (_, r) => Math.sin((r / RADIAL) * Math.PI * 2));
@@ -27,7 +27,7 @@ interface CableMesh {
 }
 
 /** connector meshes: an LC plug for fibre, a clear RJ45 plug for copper */
-function connectorGeos(radius: number, copper: boolean) {
+export function connectorGeos(radius: number, copper: boolean) {
   const housing = copper
     ? bevelBox(0.0118, 0.0085, 0.022, 0.0008).translate(0, 0, CONNECTOR - 0.011)
     : bevelBox(0.0062, 0.0082, 0.022, 0.0006).translate(0, 0, CONNECTOR - 0.011);
@@ -388,57 +388,60 @@ export class CableView {
     }
   }
 
-  /** tube around a Catmull-Rom curve through the nodes, with parallel-transported frames */
   private buildTube(c: number): void {
     const cb = this.world.cables[c];
-    const cm = this.cables[c];
-    const x = this.world.sim.x;
-    const n = cb.count;
-    const V = cm.v0;
-    const S = cm.samples;
-    const pts = sampleBuf.length >= S * 3 ? sampleBuf : (sampleBuf = new Float64Array(S * 3 * 2));
-    let k = 0;
-    for (let i = 0; i < n - 1; i++) {
-      const i0 = cb.start + Math.max(0, i - 1), i1 = cb.start + i, i2 = cb.start + i + 1, i3 = cb.start + Math.min(n - 1, i + 2);
-      for (let s = 0; s < SUB; s++) {
-        const u = s / SUB, u2 = u * u, u3 = u2 * u;
-        for (let d = 0; d < 3; d++) {
-          const p0 = x[3 * i0 + d], p1 = x[3 * i1 + d], p2 = x[3 * i2 + d], p3 = x[3 * i3 + d];
-          pts[k * 3 + d] = 0.5 * (2 * p1 + (-p0 + p2) * u + (2 * p0 - 5 * p1 + 4 * p2 - p3) * u2 + (-p0 + 3 * p1 - 3 * p2 + p3) * u3);
-        }
-        k++;
+    sweepTube(this.world.sim.x, cb.start, cb.count, this.world.radius, this.pos, this.nrm, this.cables[c].v0);
+    this.dirty(this.cables[c]);
+  }
+}
+
+/**
+ * Tube of radius R around a Catmull-Rom curve through the n nodes of `x` from
+ * `start`, with parallel-transported frames: (n − 1) · SUB + 1 rings of RADIAL
+ * vertices written into pos and nrm from vertex v0.
+ */
+export function sweepTube(x: ArrayLike<number>, start: number, n: number, R: number, pos: Float32Array, nrm: Float32Array, v0: number): void {
+  const V = v0;
+  const S = (n - 1) * SUB + 1;
+  const pts = sampleBuf.length >= S * 3 ? sampleBuf : (sampleBuf = new Float64Array(S * 3 * 2));
+  let k = 0;
+  for (let i = 0; i < n - 1; i++) {
+    const i0 = start + Math.max(0, i - 1), i1 = start + i, i2 = start + i + 1, i3 = start + Math.min(n - 1, i + 2);
+    for (let s = 0; s < SUB; s++) {
+      const u = s / SUB, u2 = u * u, u3 = u2 * u;
+      for (let d = 0; d < 3; d++) {
+        const p0 = x[3 * i0 + d], p1 = x[3 * i1 + d], p2 = x[3 * i2 + d], p3 = x[3 * i3 + d];
+        pts[k * 3 + d] = 0.5 * (2 * p1 + (-p0 + p2) * u + (2 * p0 - 5 * p1 + 4 * p2 - p3) * u2 + (-p0 + 3 * p1 - 3 * p2 + p3) * u3);
       }
+      k++;
     }
-    for (let d = 0; d < 3; d++) pts[k * 3 + d] = x[3 * (cb.start + n - 1) + d];
-    // frames
-    let nx = 0, ny = 0, nz = 0;
-    const pos = this.pos, nrm = this.nrm;
-    const R = this.world.radius;
-    for (let s = 0; s < S; s++) {
-      const a = Math.max(0, s - 1), b = Math.min(S - 1, s + 1);
-      let tx = pts[3 * b] - pts[3 * a], ty = pts[3 * b + 1] - pts[3 * a + 1], tz = pts[3 * b + 2] - pts[3 * a + 2];
-      const tl = Math.hypot(tx, ty, tz) || 1;
-      tx /= tl; ty /= tl; tz /= tl;
-      if (s === 0) {
-        // any vector not parallel to the tangent
-        if (Math.abs(ty) < 0.9) { nx = 0; ny = 1; nz = 0; } else { nx = 1; ny = 0; nz = 0; }
-      }
-      // project the previous normal on the plane of the new tangent
-      const dp = nx * tx + ny * ty + nz * tz;
-      nx -= dp * tx; ny -= dp * ty; nz -= dp * tz;
-      let nl = Math.hypot(nx, ny, nz);
-      if (nl < 1e-6) { if (Math.abs(ty) < 0.9) { nx = -tz; ny = 0; nz = tx; } else { nx = 0; ny = tz; nz = -ty; } nl = Math.hypot(nx, ny, nz); }
-      nx /= nl; ny /= nl; nz /= nl;
-      const bx = ty * nz - tz * ny, by = tz * nx - tx * nz, bz = tx * ny - ty * nx;
-      for (let r = 0; r < RADIAL; r++) {
-        const ca = RING_COS[r], sa = RING_SIN[r];
-        const ox = nx * ca + bx * sa, oy = ny * ca + by * sa, oz = nz * ca + bz * sa;
-        const o = (V + s * RADIAL + r) * 3;
-        pos[o] = pts[3 * s] + ox * R; pos[o + 1] = pts[3 * s + 1] + oy * R; pos[o + 2] = pts[3 * s + 2] + oz * R;
-        nrm[o] = ox; nrm[o + 1] = oy; nrm[o + 2] = oz;
-      }
+  }
+  for (let d = 0; d < 3; d++) pts[k * 3 + d] = x[3 * (start + n - 1) + d];
+  // frames
+  let nx = 0, ny = 0, nz = 0;
+  for (let s = 0; s < S; s++) {
+    const a = Math.max(0, s - 1), b = Math.min(S - 1, s + 1);
+    let tx = pts[3 * b] - pts[3 * a], ty = pts[3 * b + 1] - pts[3 * a + 1], tz = pts[3 * b + 2] - pts[3 * a + 2];
+    const tl = Math.hypot(tx, ty, tz) || 1;
+    tx /= tl; ty /= tl; tz /= tl;
+    if (s === 0) {
+      // any vector not parallel to the tangent
+      if (Math.abs(ty) < 0.9) { nx = 0; ny = 1; nz = 0; } else { nx = 1; ny = 0; nz = 0; }
     }
-    this.dirty(cm);
+    // project the previous normal on the plane of the new tangent
+    const dp = nx * tx + ny * ty + nz * tz;
+    nx -= dp * tx; ny -= dp * ty; nz -= dp * tz;
+    let nl = Math.hypot(nx, ny, nz);
+    if (nl < 1e-6) { if (Math.abs(ty) < 0.9) { nx = -tz; ny = 0; nz = tx; } else { nx = 0; ny = tz; nz = -ty; } nl = Math.hypot(nx, ny, nz); }
+    nx /= nl; ny /= nl; nz /= nl;
+    const bx = ty * nz - tz * ny, by = tz * nx - tx * nz, bz = tx * ny - ty * nx;
+    for (let r = 0; r < RADIAL; r++) {
+      const ca = RING_COS[r], sa = RING_SIN[r];
+      const ox = nx * ca + bx * sa, oy = ny * ca + by * sa, oz = nz * ca + bz * sa;
+      const o = (V + s * RADIAL + r) * 3;
+      pos[o] = pts[3 * s] + ox * R; pos[o + 1] = pts[3 * s + 1] + oy * R; pos[o + 2] = pts[3 * s + 2] + oz * R;
+      nrm[o] = ox; nrm[o + 1] = oy; nrm[o + 2] = oz;
+    }
   }
 }
 

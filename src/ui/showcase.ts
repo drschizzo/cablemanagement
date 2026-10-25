@@ -15,6 +15,7 @@ import type { Stage } from '../render/stage';
 import { RackView, buildRoom } from '../render/rackView';
 import { CableView } from '../render/cableView';
 import { disposeTree } from '../render/dispose';
+import { CableRain } from '../render/cableRain';
 import { World, type Evaluation } from '../game/world';
 import { SHOWCASE_SETTLE, showcaseRack, type FibreType } from '../game/levels';
 import { U } from '../game/rack';
@@ -352,6 +353,8 @@ export class Showcase {
   private disposed = false;
   private last = performance.now();
   private floor: THREE.Group;
+  /** before it is tidied, cords keep falling from above and pile up in the middle of the room */
+  private rain!: CableRain;
 
   /**
    * Builds an aisle of `bays` closets at random and lets their mess fall (each
@@ -360,11 +363,30 @@ export class Showcase {
    */
   static async create(stage: Stage, threaded: boolean, actions: { another(): void }, progress: (f: number) => void, seed = Math.floor(Math.random() * 1e9), bays = 1): Promise<Showcase> {
     const sc = new Showcase(stage, actions);
-    layout(bays, seed).forEach((at, k) => sc.closets.push(new Closet(stage, seed + k, at, threaded)));
+    const places = layout(bays, seed);
+    places.forEach((at, k) => sc.closets.push(new Closet(stage, seed + k, at, threaded)));
+    const rack = sc.closets[0].mess.world.rack;
+    // the heap in the middle of the half circle, a little ahead of the racks
+    sc.rain = new CableRain({
+      floorY: rack.floorY, topY: rack.topY, racks: places, seed,
+      centre: { x: 0, z: bays > 1 ? 0.75 : 0.45 }, spread: bays > 1 ? 0.2 : 0.12,
+    });
+    stage.scene.add(sc.rain.group);
     sc.floor.visible = false;
     const chunks = 5;
     let steps = 0;
     await Promise.all(sc.closets.map((c) => c.settle(chunks, () => progress(++steps / (chunks * bays)))));
+    // the cords fall on the mess spilt on the floor
+    const p = new THREE.Vector3();
+    for (const c of sc.closets) {
+      const x = Float64Array.from(c.messPos);
+      c.mess.group.updateMatrixWorld();
+      for (let i = 0; i < x.length; i += 3) {
+        p.set(x[i], x[i + 1], x[i + 2]).applyMatrix4(c.mess.group.matrixWorld);
+        x[i] = p.x; x[i + 1] = p.y; x[i + 2] = p.z;
+      }
+      sc.rain.support(x, c.mess.world.radius);
+    }
     return sc;
   }
 
@@ -394,6 +416,7 @@ export class Showcase {
     this.stage.sway(true);
     this.stage.dragPans(true);
     this.render(this.evaluate('mess'));
+    this.rain.start();
     requestAnimationFrame(this.frame);
   }
 
@@ -403,6 +426,8 @@ export class Showcase {
     for (const c of this.closets) c.dispose(this.stage);
     this.stage.scene.remove(this.floor);
     disposeTree(this.floor);
+    this.stage.scene.remove(this.rain.group);
+    this.rain.dispose();
     this.el.classList.remove('on');
     document.body.classList.remove('demo');
     delete document.body.dataset.sc;
@@ -413,6 +438,7 @@ export class Showcase {
   /** advances by dt and draws (also called by the automated checks) */
   tick(dt: number): void {
     for (const c of this.closets) c.tick(dt);
+    this.rain.tick(dt);
     this.stage.render();
   }
 
@@ -430,6 +456,8 @@ export class Showcase {
     const tidy = this.state === 'before';
     this.state = 'moving';
     this.render(null, tidy ? 'after' : 'before');
+    if (tidy) this.rain.stop();
+    else this.rain.start();
     // a wave down the aisle: left to right to tidy up, back the other way to mess up
     const order = tidy ? this.closets : [...this.closets].reverse();
     let left = order.length;
