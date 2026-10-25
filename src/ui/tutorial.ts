@@ -101,7 +101,7 @@ const STEPS: Step[] = [
   },
   {
     title: 'Débrancher, rebrancher',
-    text: 'Une liaison est sur le mauvais port : son voyant est orange et ses deux bons ports sont entourés. Saisissez le <b>connecteur</b> et <b>tirez</b> de quelques centimètres pour le débrancher (un petit geste range le câble sans le débrancher), puis relâchez-le devant le port entouré : il s\'y enfiche (surligné en jaune quand il est à portée). Une erreur ? <b>Ctrl+Z</b> annule le dernier geste.',
+    text: 'Une liaison est sur le mauvais port : son voyant est orange et ses deux bons ports sont entourés. Saisissez le <b>connecteur</b> et <b>tirez-le de quelques centimètres</b> : il se débranche (un geste plus court le déplace sans le débrancher). Amenez-le devant le port entouré : le port se surligne en jaune quand il est à portée, et le connecteur s\'y enfiche quand vous le relâchez. Une erreur ? <b>Ctrl+Z</b> annule le dernier geste.',
     task: 'Branchez toutes les liaisons du plan',
     tool: 'hand',
     enter: (c) => {
@@ -112,7 +112,7 @@ const STEPS: Step[] = [
   },
   {
     title: 'Le guide-câbles',
-    text: 'Ce panneau <b>1U à doigts</b> se pose sous le tiroir. Les câbles passent entre les doigts et courent à l\'horizontale jusqu\'aux côtés de la baie, au lieu de pendre devant les ports. Amenez un câble dedans, puis <b>glissez-le le long des doigts</b> : il reste posé dessus. Pendant que vous le tenez, il se colore : <span class="ok">vert</span> là où il est tenu, orange là où il pend trop.',
+    text: 'Ce panneau <b>1U à doigts</b> se pose sous le tiroir. Les câbles passent entre les doigts et courent à l\'horizontale jusqu\'aux côtés de la baie, au lieu de pendre devant les ports. Tenez un câble, poussez-le entre les doigts, puis <b>glissez-le le long du guide</b> : lâché, il reste couché dedans. Pendant que vous le tenez, il se colore par portion : <span class="ok">vert</span> là où un support le tient, <span class="warn">orange</span> là où il pend de plus de 20 cm, rouge là où il traîne au sol.',
     task: 'Couchez un câble dans le guide-câbles',
     spot: mgrBox,
     tool: 'hand',
@@ -120,7 +120,7 @@ const STEPS: Step[] = [
   },
   {
     title: 'Pincer un coude',
-    text: 'Un câble lâché tout seul sort de son port vers vous et pend en boucle devant les ports du dessous. Un technicien le <b>plie juste après le connecteur</b> pour qu\'il descende droit dans le guide-câbles. Saisissez un câble à quelques centimètres de son connecteur, amenez-le dans le guide-câbles, puis <b>maintenez Espace</b> (ou le clic droit) : la portion sous votre main se fige dans sa forme, <b>d\'autant plus fermement que vous pincez longtemps</b> (une seconde et demie pour un coude bien ferme). Relâchez Espace, puis le câble : le coude tient.',
+    text: 'Sans pli, un câble sort de son port droit vers vous et pend en boucle devant les ports du dessous. Il faut le <b>plier juste après le connecteur</b> pour qu\'il descende droit dans le guide-câbles. Saisissez le câble à quelques centimètres de son connecteur et amenez-le dans le guide-câbles. Puis, sans lâcher le câble, <b>maintenez Espace</b> (ou le clic droit) : la portion sous votre main garde la forme qu\'elle a. Plus vous maintenez, plus le coude est ferme (environ une seconde et demie pour un coude bien ferme). Relâchez Espace, puis le câble : le coude garde sa forme.',
     task: 'Pincez un coude ferme à la sortie d\'un port',
     spot: portToMgrBox,
     tool: 'hand',
@@ -128,7 +128,7 @@ const STEPS: Step[] = [
   },
   {
     title: 'Voir et défaire un coude',
-    text: 'Survolez un câble : ses coudes pincés apparaissent en <b>anneaux</b>, d\'autant plus vifs que le coude est ferme. Sous le curseur, un coude devient <span class="warn">orange</span> : <b>Espace</b> le défait. Pour le corriger, pincez simplement de nouveau au même endroit : le nouveau coude remplace l\'ancien.',
+    text: 'Survolez un câble : ses coudes pincés apparaissent en <b>anneaux</b>, plus vifs quand le coude est ferme. Le coude sous le curseur devient <span class="warn">orange</span> : <b>Espace</b> le défait. Pour changer la forme d\'un coude, pincez de nouveau au même endroit : le nouveau coude remplace l\'ancien.',
     task: 'Survolez un coude pincé',
     tool: 'hand',
     done: (c) => c.cableView.pinchHover >= 0,
@@ -143,14 +143,14 @@ const STEPS: Step[] = [
   },
   {
     title: 'Ranger dans la goulotte',
-    text: 'Poussez un câble à travers l\'avant de la goulotte : <b>tant que vous le tenez, il passe entre les doigts</b> ; lâché, il reste dedans. Faites-y descendre la longueur en trop.',
+    text: 'Poussez un câble à travers l\'avant de la goulotte : <b>le câble que vous tenez passe entre les doigts</b>, et une fois lâché il reste dedans. Faites-y descendre la longueur en trop.',
     task: 'Mettez un câble dans la goulotte',
     tool: 'hand',
     done: (c) => held(c, 'duct') >= 4,
   },
   {
     title: 'La seconde main',
-    text: 'Pour former le virage entre le guide-câbles et la goulotte, il faut tenir le câble à deux endroits : sinon, en tirant le bout, on défait ce qu\'on vient de poser. Tenez le câble là où il doit rester et appuyez sur <b>E</b> : <b>l\'autre main</b> le tient sur place (une lueur ambrée), et la vôtre est libre. Saisissez-le plus loin, amenez-le dans la goulotte, pincez le virage avec <b>Espace</b>, puis <b>E</b>, la main libre, pour que l\'autre main lâche.',
+    text: 'Pour former le virage entre le guide-câbles et la goulotte, il faut tenir le câble à deux endroits : avec une seule main, tirer le bout défait ce qu\'on vient de poser. Tenez le câble là où il doit rester et appuyez sur <b>E</b> : <b>l\'autre main</b> le tient sur place (une lueur ambrée la signale) et la vôtre est libre. Saisissez le câble plus loin, amenez-le dans la goulotte et pincez le virage avec <b>Espace</b>. Enfin, sans rien tenir, appuyez sur <b>E</b> : l\'autre main lâche le câble.',
     task: 'Passez un câble à l\'autre main (E)',
     spot: (c) => {
       const m = mgrBox(c), s = sideBox(c);
@@ -179,7 +179,7 @@ const STEPS: Step[] = [
   },
   {
     title: 'Le bac, le stock, le traceur',
-    text: 'Comme un vrai technicien, on peut tout <b>débrancher et déposer</b> dans le bac au sol (outil Déposer, 9), puis rebrasser proprement. Le <b>Stock</b> (0) fournit des cordons neufs, qui arrivent dans le bac. Le <b>Traceur</b> (8) fait clignoter un câble et ses deux ports, pour savoir où il va.',
+    text: 'Comme un vrai technicien, on peut tout <b>débrancher et déposer</b> dans le bac au sol (outil Déposer, 9), puis rebrasser proprement. Le <b>Stock</b> (0) fournit des cordons neufs, livrés dans le bac. Le <b>Traceur</b> (8) fait clignoter un câble et ses deux ports, pour savoir où il va.',
     spot: (c) => { const k = c.world.rack.crate(); return { min: k.min, max: k.max }; },
     task: 'Déposez un câble dans le bac',
     tool: 'deposit',
@@ -194,7 +194,7 @@ const STEPS: Step[] = [
   },
   {
     title: 'Le score',
-    text: 'Quatre critères, dans le panneau de droite : les <b>connexions</b> conformes au plan (obligatoires pour valider), le <b>rangement</b> (aucune portion de câble de plus de 20 cm qui pend), la <b>façade dégagée</b> (aucun câble devant le port d\'un autre) et les <b>étiquettes</b>. De une à trois étoiles ; il en faut <b>deux</b> pour ouvrir le niveau suivant. Le secret d\'une baie soignée : un coude pincé à la sortie de chaque port, des câbles couchés dans les guides, le mou dans la goulotte. À vous !',
+    text: 'Quatre critères, dans le panneau de droite : les <b>connexions</b> conformes au plan (obligatoires pour valider), le <b>rangement</b> (aucune portion de plus de 20 cm ne pend hors d\'un support), la <b>façade dégagée</b> (aucun câble devant le port d\'un autre) et les <b>étiquettes</b>. De une à trois étoiles ; il en faut <b>deux</b> pour ouvrir le niveau suivant. Le secret d\'une baie soignée : un coude pincé à la sortie de chaque port, des câbles couchés dans les guides, le mou dans la goulotte. À vous !',
   },
 ];
 

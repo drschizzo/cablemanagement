@@ -27,10 +27,12 @@ npm run dev
 ```
 
 Le jeu s'ouvre sur http://localhost:5173, sur l'**écran titre** : une salle de
-baies en désordre (l'**avant**), qu'un interrupteur **Avant / Après** range
-toute seule.
-De là, **Commencer** lance le **tutoriel**, qui explique chaque outil pas à pas,
-puis le premier niveau ; ensuite, le même bouton reprend là où on s'était arrêté.
+baies en désordre. L'interrupteur **Avant / Après** montre la même salle une
+fois rangée.
+
+Au premier lancement, **Commencer** ouvre le **tutoriel**, qui présente chaque
+outil pas à pas, puis le premier niveau. Par la suite, le même bouton reprend
+au premier niveau pas encore réussi.
 
 ## Le jeu
 
@@ -56,9 +58,9 @@ Chaque niveau fournit un **plan de brassage** : la liste des liaisons à établi
 | ★★★ | tout est rangé, dégagé, étiqueté (et serré en faisceaux si demandé) |
 
 Il faut **★★** pour ouvrir le niveau suivant : brancher ne suffit pas, il faut
-ranger. La jauge **Propreté** résume les quatre critères, chaque câble qui
-devient propre s'allume en vert avec une note, et l'écran de fin montre la baie
-avant et après. Chaque niveau propose aussi un **défi chrono** (★★★ en moins
+ranger. La jauge **Propreté** résume les critères ; un câble qui devient propre
+s'allume en vert avec une note, et l'écran de fin montre la baie avant et
+après. Chaque niveau propose aussi un **défi chrono** (★★★ en moins
 d'un temps donné).
 
 ### Fenêtre de maintenance
@@ -91,13 +93,13 @@ La **partie libre** génère une baie au hasard, de 4 à 48 câbles.
 | Saisir et tirer un câble | clic gauche + glisser |
 | Pousser vers le fond / ramener vers soi | **Maj** + souris vers le haut / le bas pendant qu'on tire (ou la molette) |
 | Pincer un coude, qui garde sa forme | maintenir **Espace** (ou le clic droit) pendant qu'on tient le câble : plus longtemps, plus ferme |
-| Relâcher un coude pincé (anneaux sur le câble survolé) | **Espace** en le survolant |
+| Défaire un coude pincé | survoler le câble (ses coudes apparaissent en anneaux), puis **Espace** sur le coude |
 | Passer le câble à l'autre main, qui le tient sur place | **E** pendant qu'on tire ; **E** main libre pour qu'elle le lâche |
 | Débrancher | saisir un connecteur et tirer de quelques centimètres |
 | Brancher | relâcher un connecteur devant un port libre (surligné en jaune) |
 | Attraper le câble du dessous | **Tab** |
 | Annuler le dernier geste | **Ctrl+Z** (⌘Z) |
-| Tourner la vue | clic droit + glisser |
+| Tourner la vue | clic droit + glisser, sans tenir de câble |
 | Déplacer la vue | glisser dans le vide, ou flèches du clavier |
 | Zoomer / revenir de face | molette / **R** |
 | Statistiques de la physique | **F3** |
@@ -121,8 +123,8 @@ On les choisit dans la barre d'outils ou au clavier.
 
 Pour faire entrer un câble dans un guide-câbles ou une goulotte, on le tient à
 la main et on le pousse dedans : il y reste une fois lâché. Pendant qu'on le
-tient, le câble se colore par portion : vert là où il est tenu, orange là où il
-pend de plus de 20 cm, rouge là où il traîne au sol.
+tient, le câble se colore par portion : vert là où un support le tient, orange
+là où il pend de plus de 20 cm, rouge là où il traîne au sol.
 
 ## Développement
 
@@ -158,6 +160,8 @@ physique des câbles, la préparation de la scène et le pipeline de rendu.
 | `npm run bench` | performance et stabilité du moteur physique |
 | `npm run precision` | gestes délicats : entrer dans une goulotte, coucher un câble dans un guide-câbles… |
 | `npm run levels` | coût et mise au repos de chaque niveau |
+| `npm run free` | une partie libre de 48 câbles : mise au repos, puis un cordon tiré à travers les autres |
+| `npm run pinch` | un coude pincé garde-t-il sa forme une fois lâché |
 | `npm run showcase` | la démonstration avant / après sur quelques baies tirées au sort |
 
 Ajouter `?sync` à l'URL fait tourner la physique sur le fil principal plutôt

@@ -1,7 +1,5 @@
 # Anatomie d'une frame : moteur physique et pipeline de rendu
 
-Octobre 2026
-
 ## Introduction
 
 Pour afficher une image, Brassage lit la souris, fait avancer la physique des câbles dans un Web Worker, reconstruit la géométrie des câbles qui ont bougé, puis demande à la carte graphique de dessiner la scène en plusieurs passes. Ce document décrit chacune de ces étapes, dans l'ordre où elles s'exécutent, avec les fichiers du dépôt qui les réalisent.
@@ -10,7 +8,7 @@ Brassage est un jeu de rangement de câbles dans une baie réseau. Le rendu util
 
 ![Image finale d'un niveau](frame/image-finale.jpg)
 
-Image finale du niveau 4 (« Étiquetage », 13 câbles), telle que la produit la boucle décrite ici. Toutes les captures de ce document viennent de ce niveau, rendu dans une fenêtre de 1280 × 800 pixels avec une densité de 2 pixels physiques par pixel CSS.
+Image finale du niveau 4 (« Étiquetage » : 10 câbles à brancher et 3 liaisons déjà en service, soit 13 câbles), telle que la produit la boucle décrite ici. Toutes les captures de ce document viennent de ce niveau, rendu dans une fenêtre de 1280 × 800 pixels avec une densité de 2 pixels physiques par pixel CSS.
 
 ### Ce qu'est une frame
 
@@ -225,7 +223,7 @@ Deux règles complètent ce mécanisme :
 - pour un contact, λ ne peut que pousser : deux câbles se repoussent mais ne s'attirent jamais ;
 - λ est conservé d'un pas à l'autre (*warm start*). Un câble tendu ou une pile au repos garde ainsi sa force, au lieu de la reconstruire en s'affaissant légèrement à chaque pas.
 
-La raideur d'un contact a un plafond, exprimé en multiples de M/h² (la masse du nœud divisée par le carré du sous-pas) : 2 contre la baie, 4 entre deux câbles. Plus bas entre câbles, un cordon tiré à travers un tas passait à travers les autres ; plus haut (16), les piles se mettent à trembler.
+La raideur d'un contact a un plafond, exprimé en multiples de M/h² (la masse du nœud divisée par le carré du sous-pas) : 2 contre la baie, 4 entre deux câbles. Ce plafond est un compromis : assez raide pour qu'un cordon tiré à travers un tas ne traverse pas les autres, assez souple pour que les piles de câbles ne tremblent pas.
 
 ### Détail mathématique (facultatif)
 
@@ -251,7 +249,7 @@ Les réglages sont donnés pour un sous-pas de référence (`refSubsteps`, égal
 
 ### Déroulé d'un pas
 
-Un appel à `step()` fait avancer la simulation de 1/60 s. Il détecte les contacts une fois, puis fait 3 sous-pas de 1/180 s, chacun avec 6 itérations sur les nœuds. Les niveaux les plus chargés passent à 2 sous-pas et 5 itérations (`world.ts`). Le schéma ci-dessous donne l'ordre exact des opérations.
+Un appel à `step()` fait avancer la simulation de 1/60 s. Il détecte les contacts une fois, puis fait 3 sous-pas de 1/180 s, chacun avec 6 itérations sur les nœuds. Les niveaux les plus chargés font 2 sous-pas de 1/120 s et 5 itérations (`world.ts`). Le schéma ci-dessous donne l'ordre exact des opérations.
 
 ![CableSim.step() · ordre des opérations](frame/schema-pas-physique.png)
 
@@ -267,13 +265,13 @@ Tester chaque segment contre tous les autres coûterait 667 × 666 / 2, soit env
 
 Le schéma est en deux dimensions pour la lisibilité ; le moteur fait la même chose avec des cubes. Sur les sept autres segments, trois seulement sont comparés à S.
 
-**Phase fine (narrowphase).** Pour les paires restantes, `segSeg()` calcule les deux points les plus proches entre les deux segments. Si leur distance est inférieure à la somme des rayons plus une marge, un contact est créé, avec sa normale (la direction de séparation). Deux segments presque parallèles (un câble couché le long d'un autre) reçoivent deux contacts, aux deux bouts de leur recouvrement : avec un seul, le câble oscillait en zigzag.
+**Phase fine (narrowphase).** Pour les paires restantes, `segSeg()` calcule les deux points les plus proches entre les deux segments. Si leur distance est inférieure à la somme des rayons plus une marge, un contact est créé, avec sa normale (la direction de séparation). Deux segments presque parallèles (un câble couché le long d'un autre) reçoivent deux contacts, aux deux bouts de leur recouvrement : un seul contact, au milieu, laisserait le câble basculer d'un côté puis de l'autre, en zigzag.
 
 **Marge spéculative.** Les contacts sont cherchés une seule fois par pas, avant les sous-pas. Un câble rapide pourrait traverser un autre câble pendant le pas sans qu'aucun contact n'ait été détecté (effet tunnel). La marge de détection grandit donc avec la vitesse du segment, jusqu'à 8 mm entre câbles et 3 cm contre la baie. Un contact détecté à distance ne pousse pas tant que les deux gélules ne se touchent pas.
 
 ![Phase fine · gélules, distance et marge](frame/schema-contact.png)
 
-**Contre la baie.** Les formes statiques sont rangées une fois pour toutes dans une grille de cellules de 5 cm, à chaque appel de `setStatics()`. Contre une boîte, chaque nœud reçoit son propre contact : sinon un câble posé à plat sur une étagère s'enfonçait entre deux points de contact. Certaines formes sont des **portes** (`gate`) : les doigts des guide-câbles laissent passer le câble tenu par la main, pour qu'on puisse l'y glisser, puis le retiennent.
+**Contre la baie.** Les formes statiques sont rangées une fois pour toutes dans une grille de cellules de 5 cm, à chaque appel de `setStatics()`. Contre une boîte, chaque nœud reçoit son propre contact, pour qu'un câble posé à plat sur une étagère ne s'enfonce pas entre deux points de contact. Certaines formes sont des **portes** (`gate`) : les doigts des guide-câbles laissent passer le câble tenu par la main, pour qu'on puisse l'y glisser, puis le retiennent.
 
 **Le creux d'un guide-câbles** (`keeper`) n'est pas un obstacle mais une aide de jeu : un cordon que le joueur y a posé y reste, libre de glisser dans sa longueur. Ses nœuds dans le creux y sont ramenés par un ressort raide pendant la résolution, si bien que le solveur porte aussi la partie qui pend hors du guide. Quand la main longe le guide, les nœuds du cordon qui pendent juste en dessous ou devant sont **aspirés** : à chaque sous-pas, un ressort les tire vers un point situé 2 mm plus près du creux que leur position de départ. Ce ressort agit lui aussi dans la résolution, pour que la partie qui pend suive sans s'étirer ni rebondir au lâcher.
 
@@ -283,7 +281,7 @@ Chaque contact porte une clé calculée à partir des deux segments. Au pas suiv
 
 Le frottement suit la loi de Coulomb : un câble posé reste immobile tant que la force qui tend à le faire glisser reste inférieure à μ fois la force avec laquelle il appuie sur son support. Au-delà, il glisse. μ vaut 0,3 entre deux câbles et 0,4 contre la baie.
 
-Concrètement, chaque contact retient l'endroit où il a commencé à coller, son *point d'ancrage*, et tire le câble vers ce point. Cette force est plafonnée à μ fois la force d'appui. Si le plafond est atteint, le contact glisse et le point d'ancrage se déplace avec lui. Le point d'ancrage est conservé d'un pas à l'autre : sans cela, un câble posé sur une pente descendait lentement sans jamais s'arrêter.
+Concrètement, chaque contact retient l'endroit où il a commencé à coller, son *point d'ancrage*, et tire le câble vers ce point. Cette force est plafonnée à μ fois la force d'appui. Si le plafond est atteint, le contact glisse et le point d'ancrage se déplace avec lui. Le point d'ancrage est conservé d'un pas à l'autre : c'est ce qui empêche un câble posé sur une pente de descendre lentement sans jamais s'arrêter.
 
 ### Après les itérations
 
@@ -298,13 +296,13 @@ Quatre opérations terminent chaque sous-pas :
 
 La plupart du temps, la plupart des câbles ne bougent pas. Après chaque pas, `updateSleep()` vérifie pour chaque câble si tous ses nœuds sont restés à moins de 6 mm de leur position de référence pendant 0,5 s. Si c'est le cas, le câble **s'endort** : ses nœuds deviennent fixes, les sous-pas les sautent, et il sert d'obstacle immobile aux autres. Il se réveille si un segment en mouvement à plus de 0,1 m/s le touche (ou s'enfonce de plus de 2 mm en lui, à plus de 2 cm/s), s'il est saisi ou si la baie change.
 
-Un câble réveillé doit reprendre exactement là où il s'était arrêté. Sinon il s'affaisse, va assez vite pour réveiller ses voisins, qui s'affaissent à leur tour : dans une baie de 48 câbles, tous se réveillaient ainsi par vagues et la baie ne se posait jamais. Trois règles l'évitent :
+Un câble réveillé doit reprendre exactement là où il s'était arrêté. Sinon il s'affaisse, va assez vite pour réveiller ses voisins, qui s'affaissent à leur tour, et une grande baie ne se poserait jamais. Trois règles l'évitent :
 
 - la tension d'un câble endormi (les λ de ses segments) est gardée telle quelle ;
 - deux câbles endormis, ou un câble endormi et la baie, n'ont pas de contact entre eux. Les contacts d'un câble qui s'endort sont mis de côté (`dormant`) avec leur raideur, leur λ et leur point d'ancrage, et repris quand il se réveille ;
 - un câble touché pendant la recherche des contacts n'est réveillé qu'à la fin du pas. Réveillé au milieu, il aurait manqué ses contacts avec les segments déjà examinés, et serait tombé à travers eux pendant une frame.
 
-La règle de l'enfoncement exige un mouvement : deux câbles coincés l'un dans l'autre, immobiles, se réveillaient sinon chacun leur tour, sans fin.
+La règle de l'enfoncement exige un mouvement : deux câbles coincés l'un dans l'autre, mais immobiles, restent endormis au lieu de se réveiller chacun leur tour.
 
 Le coût de la physique suit donc ce qui bouge. Au moment des captures, les 13 câbles dormaient : le pas complet prenait 0,2 à 0,5 ms. Le rendu utilise aussi cette information : un câble endormi n'est pas reconstruit (section suivante).
 
@@ -392,7 +390,7 @@ Pour les 13 câbles du niveau capturé, 26 extrémités × 4 pièces donneraient
 
 Une baie compte des milliers de petites pièces : ports, cadres, doigts de guide-câbles, vis. Deux techniques réduisent le nombre d'appels de dessin (`src/render/batch.ts`) :
 
-- **Fusion.** Les pièces qui ne bougent jamais et partagent un matériau sont fusionnées en une seule géométrie (`mergeStatic`). Introduite avec l'instanciation ci-dessous, elle a divisé par 25 le nombre d'appels de dessin par baie.
+- **Fusion.** Les pièces qui ne bougent jamais et partagent un matériau sont fusionnées en une seule géométrie (`mergeStatic`), dessinée en un seul appel.
 - **Instanciation.** Les pièces répétées dont l'aspect change (les voyants des ports) sont instanciées, avec une couleur par instance.
 
 Les pièces sont des boîtes légèrement biseautées (`bevel.ts`) : 44 triangles chacune, contre plusieurs centaines pour une boîte aux coins arrondis. Le biseau suffit à accrocher un filet de lumière sur chaque arête.
@@ -505,9 +503,9 @@ Calculer la lumière de centaines de voyants comme de vraies sources serait trop
 
 La carte de la façade pour la baie capturée, agrandie 8 fois. Chaque tache est un voyant allumé, avec son clignotement.
 
-Les taches sont étroites (quelques millimètres) : c'est la distance qui les étale. Après chaque dessin, le GPU calcule les *mipmaps* de la carte, des copies de plus en plus réduites où chaque pixel fait la moyenne de quatre pixels du niveau précédent. Une surface lit la carte à l'endroit où elle se trouve, dans le niveau dont le flou correspond à sa distance à la façade : nette contre les voyants, de plus en plus diffuse et faible en s'éloignant, comme la lumière d'une lampe. L'étalement est plafonné à 1,5 cm, au-delà la lumière ne fait que s'éteindre : plus large, un câble à une main de la façade prenait la lumière de dizaines de voyants et clignotait avec eux sur une grande partie de sa longueur.
+Les taches sont étroites (quelques millimètres) : c'est la distance qui les étale. Après chaque dessin, le GPU calcule les *mipmaps* de la carte, des copies de plus en plus réduites où chaque pixel fait la moyenne de quatre pixels du niveau précédent. Une surface lit la carte à l'endroit où elle se trouve, dans le niveau dont le flou correspond à sa distance à la façade : nette contre les voyants, de plus en plus diffuse et faible en s'éloignant, comme la lumière d'une lampe. L'étalement est plafonné à 1,5 cm ; au-delà, la lumière ne fait que s'atténuer. Ainsi, un câble qui passe à quelques centimètres de la façade ne prend que la lumière des voyants proches, et non celle de dizaines de voyants à la fois.
 
-Quatre lectures de plus, de part et d'autre, donnent la pente de la carte, donc le côté d'où vient la lumière. Avec la distance à la façade, elles fixent une direction de lumière, et seule la face de la surface tournée vers elle est éclairée. Le résultat est ajouté à la lueur du matériau, saturé à une luminance de 1 : une pièce blanche collée à un voyant reste sous le seuil du halo des lumières, sinon elle brillait comme un voyant. Un câble blanc qui passe devant une rangée de voyants verts prend leur teinte et clignote avec eux ; le flanc d'un connecteur, d'un keystone ou d'un anneau tourné vers un voyant prend sa couleur, l'autre flanc non. Les matériaux de la baie sont copiés pour chaque baie (chacune a sa carte), une fois, au moment de la construire. Le tout coûte un appel de dessin par baie et cinq lectures de texture par pixel éclairé.
+Quatre lectures de plus, de part et d'autre, donnent la pente de la carte, donc le côté d'où vient la lumière. Avec la distance à la façade, elles fixent une direction de lumière, et seule la face de la surface tournée vers elle est éclairée. Le résultat est ajouté à la lueur du matériau, saturé à une luminance de 1 : une pièce blanche collée à un voyant reste ainsi sous le seuil du halo des lumières et ne brille pas comme un voyant. Un câble blanc qui passe devant une rangée de voyants verts prend leur teinte et clignote avec eux ; le flanc d'un connecteur, d'un keystone ou d'un anneau tourné vers un voyant prend sa couleur, l'autre flanc non. Les matériaux de la baie sont copiés pour chaque baie (chacune a sa carte), une fois, au moment de la construire. Le tout coûte un appel de dessin par baie et cinq lectures de texture par pixel éclairé.
 
 ### À retenir
 
@@ -537,7 +535,7 @@ L'image est aussi multi-échantillonnée (4 échantillons par pixel, MSAA) : le 
 
 La même image, en ajoutant les passes une à une. Chaque étape est détaillée ci-dessous ; le schéma placé après la cinquième passe résume ce que chacune lit et écrit.
 
-**1. SSRPass : la scène et les reflets du sol.** Cette passe dessine la scène complète dans l'image HDR. Elle dessine aussi des images auxiliaires : la profondeur, les normales et un masque des surfaces réfléchissantes. Seul le sol est marqué réfléchissant (`userData.reflective`). Pour chacun de ses pixels, la passe suit le rayon réfléchi dans l'image de profondeur jusqu'à trouver ce qu'il touche : ce sont des reflets *en espace écran* (SSR, *screen-space reflections*), qui ne peuvent refléter que ce qui est visible à l'écran. Ils sont calculés à demi-résolution, portée 50 cm, opacité 0,2, puis floutés, pour donner l'aspect d'un vinyle ciré plutôt que d'un miroir. Le flou débordait sur les câbles : `stage.ts` modifie le shader de copie pour découper les reflets selon le masque à pleine résolution.
+**1. SSRPass : la scène et les reflets du sol.** Cette passe dessine la scène complète dans l'image HDR. Elle dessine aussi des images auxiliaires : la profondeur, les normales et un masque des surfaces réfléchissantes. Seul le sol est marqué réfléchissant (`userData.reflective`). Pour chacun de ses pixels, la passe suit le rayon réfléchi dans l'image de profondeur jusqu'à trouver ce qu'il touche : ce sont des reflets *en espace écran* (SSR, *screen-space reflections*), qui ne peuvent refléter que ce qui est visible à l'écran. Ils sont calculés à demi-résolution, portée 50 cm, opacité 0,2, puis floutés, pour donner l'aspect d'un vinyle ciré plutôt que d'un miroir. Pour que ce flou ne déborde pas sur les câbles posés au sol, `stage.ts` modifie le shader de copie : les reflets sont découpés selon le masque, à pleine résolution.
 
 **2. GTAOPass : l'occlusion ambiante.** Dans un coin, sous un câble ou au fond d'un port, une partie de la lumière ambiante ne peut pas arriver. Les lumières de la scène ne le calculent pas. Cette passe l'estime à partir des images de profondeur et de normales : pour chaque pixel, elle regarde si les pixels voisins (dans un rayon de 3 cm, 8 échantillons) forment un creux autour de lui. Le résultat est débrouillé (*denoise*), puis mélangé à l'image à 60 %. Un rayon plus grand assombrirait tout l'enchevêtrement de câbles et lui ferait perdre ses couleurs.
 
@@ -570,7 +568,7 @@ Seules les deux premières passes redessinent la géométrie de la scène (GTAOP
 
 ### Une erreur dans une passe touche toute l'image
 
-Les passes s'enchaînent : une valeur invalide produite au début se propage. Le dernier commit de rendu du projet (`3b561b2`) en donne un exemple. Des triangles sans surface, dans les fentes d'aération de la caisse, avaient une normale nulle. Le shader d'éclairage normalisait ce vecteur nul et produisait une valeur NaN (*not a number*) pour leurs pixels. Le flou du bloom, qui mélange chaque pixel avec ses voisins sur plusieurs niveaux, étendait ce NaN à tout l'écran : l'image devenait noire dès qu'un de ces pixels était visible, c'est-à-dire à certaines distances de la caméra seulement. Ces triangles sont maintenant retirés à la construction.
+Les passes s'enchaînent : une valeur invalide produite au début se propage. Un triangle sans surface, par exemple, a une normale nulle ; le shader d'éclairage, en normalisant ce vecteur nul, produit une valeur NaN (*not a number*) pour ses pixels. Le flou du bloom, qui mélange chaque pixel avec ses voisins sur plusieurs niveaux, étendrait ce NaN à tout l'écran, et l'image deviendrait noire. C'est pourquoi les parois du bac, dont l'extrusion biseautée laisse de tels triangles au bout des fentes d'aération, en sont débarrassées à la construction (`dropDegenerate`, dans `rackView.ts`).
 
 ### Le résultat
 
@@ -655,6 +653,6 @@ Trois points ressortent de ce tableau.
 
 ### Lectures
 
-- `docs/architecture.md` dans le dépôt : l'organisation du code et où ajouter une évolution.
+- `docs/architecture.md` dans le dépôt : l'organisation du code, et où intervenir pour ajouter un niveau, un outil ou un critère de score.
 - La documentation de [three.js](https://threejs.org/docs/), en particulier `WebGLRenderer`, `BufferGeometry`, `InstancedMesh` et `EffectComposer`.
 - L'article d'origine de la méthode : *Augmented Vertex Block Descent*, C. Giles, E. Diaz, C. Yuksel, ACM Transactions on Graphics (SIGGRAPH 2025).
