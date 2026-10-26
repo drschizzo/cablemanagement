@@ -3,8 +3,9 @@
 // manager below the panel, two rings (or a duct) down the side channel and
 // the manager above the switch, into its switch port. Then: whether it got
 // there and plugged in, how much of it lies in its guides once let go and
-// settled, how calm it is, and the worst it went into a part of the cabinet
-// (a cord must never pass through anything).
+// settled, how calm it is, the worst it went into a part of the cabinet
+// (a cord must never pass through it), and how far it carried the other
+// cords (it passes through them while laid).
 //   SEEDS=1,2 SLACK=0.5 ROWS=1 VIA=duct PARAMS='{"goalK":2}' npm run route
 declare const process: { env: Record<string, string | undefined> };
 import { World } from '../src/game/world';
@@ -58,7 +59,7 @@ function worstPen(w: World, c: number): number {
   return worst;
 }
 
-const tot = { penRest: 0, through: 0, guides: 0, runs: 0, planned: 0, plugged: 0, inGuides: 0, pen: 0, penMax: 0, calm: 0, ms: 0 };
+const tot = { moved: 0, movedMax: 0, penRest: 0, through: 0, guides: 0, runs: 0, planned: 0, plugged: 0, inGuides: 0, pen: 0, penMax: 0, calm: 0, ms: 0 };
 for (const seed of seeds) for (const c of [0, 1, 2, 3]) {
   const w = new World(bench(seed));
   Object.assign(w.sim.P, params);
@@ -80,6 +81,7 @@ for (const seed of seeds) for (const c of [0, 1, 2, 3]) {
     continue;
   }
   tot.planned++;
+  const before = Float64Array.from(sim.x);
   const run = new RouteRun(w, res.plan);
   let pen = 0, ms = 0;
   where = ''; deepest = 0;
@@ -95,6 +97,15 @@ for (const seed of seeds) for (const c of [0, 1, 2, 3]) {
   }
   for (let f = 0; f < 180; f++) { sim.step(); pen = Math.max(pen, worstPen(w, c)); }
   const penRest = worstPen(w, c);
+  // how far the other cords were carried: the mean of their nodes, and the furthest
+  let moved = 0, movedMax = 0, others = 0;
+  for (let i = 0; i < sim.n; i++) {
+    if (i >= cb.start && i < cb.start + cb.count) continue;
+    const d = Math.hypot(sim.x[3 * i] - before[3 * i], sim.x[3 * i + 1] - before[3 * i + 1], sim.x[3 * i + 2] - before[3 * i + 2]);
+    moved += d; movedMax = Math.max(movedMax, d); others++;
+  }
+  moved /= others || 1;
+  tot.moved += moved; tot.movedMax = Math.max(tot.movedMax, movedMax);
   tot.penRest = Math.max(tot.penRest, penRest);
   const plugged = cb.ends[1].port === pb.id;
   if (process.env.LAG && !plugged) { const [n0] = w.endNodes(c, 1); console.log('   connector', [0, 1, 2].map((d) => sim.x[3 * n0 + d].toFixed(3)).join(','), 'port', pb.x.toFixed(3), pb.y.toFixed(3), 'plug', pb.plug, 'run.plugged', run.plugged, 'goalW', sim.goalW[n0]); }
@@ -108,11 +119,11 @@ for (const seed of seeds) for (const c of [0, 1, 2, 3]) {
   const kept = nodesIn(w, c, order);
   const through = kept.filter((k) => k > 0).length;
   if (process.env.WHERE) console.log('   deepest:', where);
-  if (process.env.ROWS) console.log(`seed ${seed} cable ${c}: ${plugged ? 'plugged' : 'NOT PLUGGED'}, slack ${(res.plan.slack * 100).toFixed(0)} cm, through ${through}/${order.length} guides (nodes ${kept.join(' ')}), worst into a part ${(pen * 1000).toFixed(1)} mm, peak at rest ${peak.toFixed(3)} m/s, ${run.duration.toFixed(1)} s`);
+  if (process.env.ROWS) console.log(`seed ${seed} cable ${c}: ${plugged ? 'plugged' : 'NOT PLUGGED'}, slack ${(res.plan.slack * 100).toFixed(0)} cm, through ${through}/${order.length} guides (nodes ${kept.join(' ')}), worst into a part ${(pen * 1000).toFixed(1)} mm, peak at rest ${peak.toFixed(3)} m/s, others carried ${(moved * 1000).toFixed(1)} mm (furthest ${(movedMax * 100).toFixed(0)} cm), ${run.duration.toFixed(1)} s`);
   tot.plugged += plugged ? 1 : 0; tot.through += through; tot.guides += order.length; tot.inGuides += inG / cb.count; tot.pen += pen; tot.penMax = Math.max(tot.penMax, pen); tot.calm += peak; tot.ms += ms;
 }
 const n = tot.planned || 1;
-console.log(`${tot.runs} routes (${via}), ${tot.planned} planned: plugged ${tot.plugged}/${tot.planned}, through ${tot.through}/${tot.guides} guides, cord in them ${(100 * tot.inGuides / n).toFixed(0)} %, into a part mean ${(tot.pen / n * 1000).toFixed(1)} mm worst ${(tot.penMax * 1000).toFixed(1)} mm (at rest ${(tot.penRest * 1000).toFixed(1)} mm), peak at rest ${(tot.calm / n).toFixed(3)} m/s`);
+console.log(`${tot.runs} routes (${via}), ${tot.planned} planned: plugged ${tot.plugged}/${tot.planned}, through ${tot.through}/${tot.guides} guides, cord in them ${(100 * tot.inGuides / n).toFixed(0)} %, into a part mean ${(tot.pen / n * 1000).toFixed(1)} mm worst ${(tot.penMax * 1000).toFixed(1)} mm (at rest ${(tot.penRest * 1000).toFixed(1)} mm), peak at rest ${(tot.calm / n).toFixed(3)} m/s, others carried ${(tot.moved / n * 1000).toFixed(1)} mm (furthest ${(tot.movedMax * 100).toFixed(0)} cm)`);
 
 function settleFor(w: World, f: number): void { for (let k = 0; k < f; k++) w.sim.step(); }
 

@@ -112,7 +112,7 @@ const STEPS: Step[] = [
   },
   {
     title: 'Tracer un chemin',
-    text: 'Pour ranger un câble, on décide par où il passe. Outil <b>Chemin</b> (touche C) : appuyez sur un câble, puis <b>tracez un trait par-dessus les guides</b> qu\'il doit traverser, dans l\'ordre. Chaque guide retenu s\'encadre de vert. Si le trait se termine sur un port libre, le bout libre du câble s\'y branche. Au relâcher, le câble est posé le long du chemin : il entre dans chaque guide par son ouverture, sans rien traverser. Un cordon trop court pour le chemin est refusé, avec la longueur qui manque.',
+    text: 'Pour ranger un câble, on décide par où il passe. Outil <b>Chemin</b> (touche C) : appuyez sur un câble, puis <b>tracez un trait par-dessus les guides</b> qu\'il doit traverser, dans l\'ordre. Chaque guide retenu s\'encadre de vert. Si le trait se termine sur un port libre, le bout libre du câble s\'y branche. Au relâcher, le câble est posé le long du chemin : il passe où passe le trait et entre dans chaque guide par son ouverture, du côté d\'où vient le trait, sans traverser la baie. Un cordon trop court pour passer par les guides est refusé, avec la longueur qui manque.',
   },
   {
     title: 'Le guide-câbles',

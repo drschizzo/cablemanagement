@@ -68,8 +68,8 @@ export class Controller {
     /** when the current pinch began (clock), or −1 */
     pinchSince: number;
   } | null = null;
-  /** the way being drawn (route tool): its cord, the guides passed over in order, the port it ends on */
-  private stroke: { cable: number; guides: Guide[]; over: number; pts: THREE.Vector3[]; port: Port | null; last: { x: number; y: number } } | null = null;
+  /** the way being drawn (route tool): its cord, the guides passed over in order, the line outside them (one leg before each guide, one after the last), the port it ends on */
+  private stroke: { cable: number; guides: Guide[]; legs: [number, number, number][][]; over: number; pts: THREE.Vector3[]; port: Port | null; last: { x: number; y: number } } | null = null;
   /** the line drawn, and a frame round each guide it takes */
   private strokeView: THREE.Group;
   /** a cord being laid along its way */
@@ -672,7 +672,7 @@ export class Controller {
 
   /** the route tool takes a cord: the way starts there */
   private startStroke(cable: number): void {
-    this.stroke = { cable, guides: [], over: -1, pts: [], port: null, last: { x: -1e9, y: -1e9 } };
+    this.stroke = { cable, guides: [], legs: [[]], over: -1, pts: [], port: null, last: { x: -1e9, y: -1e9 } };
     this.cableView.setHighlight(cable, true, '#7ee0ff');
     this.events.onHover(null, 0, 0);
     this.events.onHint('Tracez le chemin du câble <b>par-dessus les guides</b>, dans l\'ordre où il doit les traverser (guide-câbles, anneaux, goulottes), et finissez sur un <b>port libre</b> pour l\'y brancher. Relâchez : le câble est posé le long du chemin.');
@@ -688,13 +688,23 @@ export class Controller {
     const p = this.pointerOnPlane(new THREE.Plane(new THREE.Vector3(0, 0, 1), -0.09), 0);
     if (p) st.pts.push(p);
     // a guide joins the way when the line enters it; entered again later,
-    // it moves to that later place (the line crossed it on the way)
+    // it moves to that later place (the line crossed it on the way), the
+    // legs either side of where it was joined
     const g = this.guideUnderPointer();
     if (g && g.item !== st.over) {
-      st.guides = st.guides.filter((q) => q.item !== g.item);
-      st.guides.push(g);
-      sfx.label();
+      const j = st.guides.findIndex((q) => q.item === g.item);
+      if (j >= 0 && j === st.guides.length - 1) st.legs[j + 1] = [];
+      else {
+        if (j >= 0) {
+          st.guides.splice(j, 1);
+          st.legs.splice(j, 2, [...st.legs[j], ...st.legs[j + 1]]);
+        }
+        st.guides.push(g);
+        st.legs.push([]);
+        sfx.label();
+      }
     }
+    if (!g && p) st.legs[st.legs.length - 1].push([p.x, p.y, p.z]);
     st.over = g?.item ?? -1;
     // a port only when the line ends on it, not on a guide next to it
     st.port = g ? null : this.portUnderPointer();
@@ -706,7 +716,7 @@ export class Controller {
   private endStroke(): void {
     const st = this.stroke!;
     this.clearStroke();
-    const res = planRoute(this.world, st.cable, st.guides, st.port);
+    const res = planRoute(this.world, st.cable, st.guides, st.port, st.legs);
     if ('error' in res) {
       this.events.onToast(res.error);
       sfx.error();

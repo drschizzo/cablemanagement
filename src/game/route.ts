@@ -11,7 +11,7 @@
 // contacts stay hard: a cord that meets something stops there.
 
 import {
-  CONNECTOR, COLUMN_X, DUCT_FRONT, DUCT_PITCH, DUCT_SLIT_X, FINGER_R, HMGR_TIP, RING_FRONT, RING_GAP, SIDE_IN, SIDE_OUT,
+  CONNECTOR, COLUMN_X, WALL_X, DUCT_FRONT, DUCT_PITCH, DUCT_SLIT_X, FINGER_R, HMGR_TIP, RING_FRONT, RING_GAP, SIDE_IN, SIDE_OUT,
   hmgrFingers, type Guide, type Port,
 } from './rack';
 import type { World } from './world';
@@ -75,9 +75,12 @@ function slotX(x: number): number {
  * The way for cable c through `guides` in that order, and into `portB` when
  * given. The route starts from the end that stays (plugged, nearest the first
  * guide) and ends at the other one's port; a free end with no port to go to
- * stays free after the last guide.
+ * stays free after the last guide. `legs` are the points of the line drawn
+ * outside the guides, one leg before each guide and one after the last: the
+ * cord passes there, and goes into each guide from the side the line came
+ * from (by an end of a manager rather than between its fingers, say).
  */
-export function planRoute(w: World, c: number, guides: Guide[], portB: Port | null): RouteResult {
+export function planRoute(w: World, c: number, guides: Guide[], portB: Port | null, legs: V3[][] = []): RouteResult {
   if (!guides.length && !portB) return { error: 'Tracez le chemin par-dessus les guides (ou jusqu\'à un port).' };
   const rack = w.rack, cb = w.cables[c], sim = w.sim, r = w.radius;
   const ports = cb.ends.map((e) => (e.port ? rack.port(e.port) : null));
@@ -109,7 +112,22 @@ export function planRoute(w: World, c: number, guides: Guide[], portB: Port | nu
   ];
   // the stretches along a guide, where the extra length can be laid
   const runs: Run[] = [];
-  const ref = (k: number): V3 | null => (k < 0 ? (pa ? at(pa) : null) : k < guides.length ? centre(guides[k]) : pb ? at(pb) : null);
+  // the line drawn between the guides, cleaned up: none by a port (the cord
+  // comes out of it and goes into it straight), none along the guide it
+  // comes out of or goes into (the line ran beside it: it was in it)
+  const floor = rack.floorY + r + 0.004, wall = WALL_X - r - 0.004;
+  const drawn = [...guides.map((_, k) => legs[k] ?? []), legs[guides.length] ?? []].map((leg, k) => {
+    const pts = leg.filter((p) => ![pa, pb].some((q) => q && Math.hypot(p[0] - q.x, p[1] - q.y) < 0.04));
+    let i = 0, j = pts.length;
+    if (k > 0) while (i < j && nearGuide(guides[k - 1], pts[i])) i++;
+    if (k < guides.length) while (j > i && nearGuide(guides[k], pts[j - 1])) j--;
+    return wayPoints(pts.slice(i, j), floor, wall);
+  });
+  const ref = (k: number): V3 | null => {
+    // what is next after guide k − 1: the line drawn, else the guide or the port
+    if (k >= 0 && drawn[k].length) return drawn[k][0];
+    return k < 0 ? (pa ? at(pa) : null) : k < guides.length ? centre(guides[k]) : pb ? at(pb) : null;
+  };
   // lanes: one per cord already lying in a guide
   const lane = (g: Guide) => {
     let n = 0;
@@ -126,6 +144,7 @@ export function planRoute(w: World, c: number, guides: Guide[], portB: Port | nu
     pts.push(...exit(pa, nx[1] < pa.y ? -1 : 1));
   }
   guides.forEach((g, k) => {
+    pts.push(...drawn[k]);
     const prev = pts.length ? pts[pts.length - 1] : null;
     const next = ref(k + 1);
     const i = lane(g);
@@ -176,15 +195,32 @@ export function planRoute(w: World, c: number, guides: Guide[], portB: Port | nu
       if (ins.length && outs.length) runs.push({ g, p: ins[ins.length - 1], q: outs[0], lane: [0, 0, -LANE] });
     }
   });
+  pts.push(...drawn[guides.length]);
   if (pb) pts.push(...exit(pb, pts.length && pts[pts.length - 1][1] < pb.y ? -1 : 1).reverse());
   // no repeated points
-  const route = pts.filter((p, k) => k === 0 || dist(p, pts[k - 1]) > 1e-4);
+  let route = pts.filter((p, k) => k === 0 || dist(p, pts[k - 1]) > 1e-4);
 
   // --- the cord along it, from end a
   const arcs: number[] = [0];
   const idx = (k: number) => (a === 0 ? cb.start + k : cb.start + cb.count - 1 - k);
   for (let k = 1; k < cb.count; k++) arcs.push(arcs[k - 1] + sim.rest[Math.min(idx(k), idx(k - 1))]);
   const L = arcs[cb.count - 1];
+  // the line drawn outside the guides is where the cord is laid, not where
+  // it must pass: nothing holds it there. A cord too short for all of it
+  // cuts the corners the line made, the one that saves the most first, as a
+  // cord pulled taut does; only the guides and the side each one is entered
+  // by make a cord too short
+  const free = new Set(drawn.flat());
+  while (pb && polyLength(route) > L) {
+    let best = -1, saves = 0;
+    for (let k = 1; k < route.length - 1; k++) {
+      if (!free.has(route[k])) continue;
+      const s = dist(route[k - 1], route[k]) + dist(route[k], route[k + 1]) - dist(route[k - 1], route[k + 1]);
+      if (s > saves) { saves = s; best = k; }
+    }
+    if (best < 0) break;
+    route = route.filter((_, k) => k !== best);
+  }
   let Lp = polyLength(route);
   let slack = 0;
   let path = route;
@@ -248,6 +284,40 @@ export function planRoute(w: World, c: number, guides: Guide[], portB: Port | nu
     ways.push({ out, inn });
   }
   return { plan: { cable: c, a, portB: pb && pb !== ports[b] ? pb.id : null, ways, slack } };
+}
+
+/** how near a guide (seen from the front) a line drawn may pass and still be taken as passing in it (m) */
+const BESIDE = 0.02;
+const nearGuide = (g: Guide, p: V3) => Math.hypot(Math.max(g.reach.min[0] - p[0], 0, p[0] - g.reach.max[0]), Math.max(g.reach.min[1] - p[1], 0, p[1] - g.reach.max[1])) < BESIDE;
+
+/**
+ * The points of a leg of the line drawn the cord can be laid along: in the
+ * cabinet (above its floor, between its walls), and only where the line
+ * turns (the hand's tremor smoothed out).
+ */
+function wayPoints(leg: V3[], floor: number, side: number): V3[] {
+  const pts = leg.map((p): V3 => [clamp(p[0], -side, side), Math.max(p[1], floor), p[2]]);
+  const keep = new Uint8Array(pts.length);
+  const simplify = (i: number, j: number) => {
+    let best = -1, bd = 0.015;
+    for (let k = i + 1; k < j; k++) {
+      const d = distToSegment(pts[k], pts[i], pts[j]);
+      if (d > bd) { bd = d; best = k; }
+    }
+    if (best < 0) return;
+    keep[best] = 1;
+    simplify(i, best);
+    simplify(best, j);
+  };
+  if (pts.length) { keep[0] = keep[pts.length - 1] = 1; simplify(0, pts.length - 1); }
+  return pts.filter((_, k) => keep[k]);
+}
+
+function distToSegment(p: V3, a: V3, b: V3): number {
+  const ab: V3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+  const L2 = ab[0] * ab[0] + ab[1] * ab[1] + ab[2] * ab[2];
+  const t = L2 > 0 ? clamp(((p[0] - a[0]) * ab[0] + (p[1] - a[1]) * ab[1] + (p[2] - a[2]) * ab[2]) / L2, 0, 1) : 0;
+  return dist(p, lerp(a, b, t));
 }
 
 interface Entry { dx: number; dy: number; z: number }

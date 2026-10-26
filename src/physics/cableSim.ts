@@ -20,6 +20,8 @@
 // Soft energies: bending (second difference), the hand that drags a cable
 // and the other hand that holds one still, the velcro straps, the pinches,
 // and the route goals that lead a cord along a drawn route (`setGoals`).
+// A cord led along a route passes through the other cords (not through the
+// cabinet), and becomes solid again where it is clear of them once let go.
 //
 // A pinch keeps the shape a few nodes had when the hand pinched them: each
 // node is pulled towards where it was in that shape, the shape turned and
@@ -31,8 +33,9 @@
 // geometry for the others) and wake when something awake touches them.
 //
 // One gameplay aid, outside the physics: the trough of a finger manager is a
-// keeper — a cord the player has handled stays in it once laid there (and the
-// hand running along it draws the cord in), until the hand pulls it out.
+// keeper — a cord the player has handled or laid along a route stays in it
+// once in it, until the hand pulls it out or a route leads it elsewhere. It
+// never draws a cord in: laying a cord in the guides is the route's job.
 
 import { boxHit, closest, segBox, segSeg, solveSym3, sol } from './geom';
 
@@ -176,13 +179,8 @@ export interface SimParams {
   gateSpan: number;
   /** nodes of the held cable on each side of the hand that keepers let go of */
   keepHand: number;
-  /** nodes of the held cable on each side of the hand that a keeper draws in when the hand is in it */
+  /** nodes of a cable on each side of where the hand last took it that a keeper may take (beyond, only next to nodes it holds) */
   keepZip: number;
-  /** how far around a keeper those are taken: below its floor, in front of it (m) */
-  keepBelow: number;
-  keepFront: number;
-  /** how fast they are drawn in (m per substep) */
-  keepStep: number;
   /** stiffness of a keeper's pull in the solve (× M/h²) */
   keepK: number;
   /** a kept node of the held cord pulled this far out of its keeper in one substep comes out (m) */
@@ -201,6 +199,8 @@ export interface SimParams {
   /** stiffness of a route goal at full weight (× M/h²), and its leash (m): see `setGoals` */
   goalK: number;
   goalLead: number;
+  /** frames a node let go by its route goal may still pass through the cords it lies in (then it pushes them out) */
+  ghostFrames: number;
 }
 
 export function defaultSimParams(p: Partial<SimParams> = {}): SimParams {
@@ -210,10 +210,10 @@ export function defaultSimParams(p: Partial<SimParams> = {}): SimParams {
     muCable: 0.3, muStatic: 0.4, drag: 2.5,
     margin: 0.0015, marginCap: 0.008, marginStatic: 0.03, maxMove: 0.012,
     grabK: 0.4, grabLead: 0.06, pbdPasses: 4, maxDepen: 0.001, gateSpan: -1, anchoredFriction: true, frictionK: 0.3, hardFriction: true,
-    keepHand: 2, keepZip: 10, keepBelow: 0.05, keepFront: 0.03, keepStep: 0.002, keepK: 16, keepPeel: 0.003,
+    keepHand: 2, keepZip: 10, keepK: 16, keepPeel: 0.003,
     sleepDist: 0.006, sleepTime: 0.5, wakeSpeed: 0.1,
     pinchSpan: 3, pinchK: 6, pinchStart: 0.15, pinchGrow: 0.6,
-    goalK: 6, goalLead: 0.05,
+    goalK: 6, goalLead: 0.05, ghostFrames: 90,
     ...p,
   };
 }
@@ -332,9 +332,7 @@ export class CableSim {
   private keepers: StaticKeeper[] = [];
   /** the keeper holding each node, or −1 */
   keepOf = new Int32Array(0);
-  /** the kept node is in its keeper (else it is still being drawn in) */
-  keepIn = new Uint8Array(0);
-  /** cables the hand has taken: keepers only take those (not the starting mess) */
+  /** cables the hand has taken or a route has laid: keepers only take those (not the starting mess) */
   handled = new Uint8Array(0);
   /** the node of each cable the hand last took, or −1: a keeper takes a cord from there */
   private lastHand = new Int32Array(0);
@@ -361,6 +359,10 @@ export class CableSim {
   // route goals: where each node is led to, and how firmly (0: not led)
   goal = new Float64Array(0);
   goalW = new Float64Array(0);
+  /** a node that passes through the other cords: −1 while led, then the frames left until it is solid again (0: solid) */
+  ghost = new Int16Array(0);
+  /** segments a ghost overlapped another cord at this frame */
+  private ghostTouch = new Uint8Array(0);
 
   // velcro
   bundleOf = new Int32Array(0);
@@ -397,7 +399,7 @@ export class CableSim {
    */
   private R = {
     h2: 0, mh: 0, hk: 0, mhk: 0, lamWarm: 0, lamWarmS: 0, gamma: 0, alpha: 0, alphaS: 0, maxDepen: 0,
-    restDecel: 0, keepStep: 0, keepPeel: 0, maxMove: 0, pbdPasses: 0,
+    restDecel: 0, keepPeel: 0, maxMove: 0, pbdPasses: 0,
   };
 
   stats = { contacts: 0, awake: 0, ms: 0 };
@@ -436,11 +438,12 @@ export class CableSim {
     this.pinchOf = new Int32Array(N).fill(-1);
     this.goal = new Float64Array(3 * N);
     this.goalW = new Float64Array(N);
+    this.ghost = new Int16Array(N);
+    this.ghostTouch = new Uint8Array(N);
     this.pinchGoal = new Float64Array(3 * N);
     this.pinches = [];
     this.pinchHeld = null;
     this.keepOf = new Int32Array(N).fill(-1);
-    this.keepIn = new Uint8Array(N);
     this.handled = new Uint8Array(defs.length);
     this.lastHand = new Int32Array(defs.length).fill(-1);
     this.adjStart = new Int32Array(N + 1);
@@ -538,6 +541,7 @@ export class CableSim {
     }
     if (this.holdNode >= start && this.holdNode < start + n) this.holdNode = -1;
     this.goalW.fill(0, start, Math.min(this.n, start + n));
+    for (let i = start; i < Math.min(this.n, start + n); i++) if (this.ghost[i] < 0) this.ghost[i] = this.P.ghostFrames;
     // a cord put somewhere else (coiled in the crate) lets go of its pinches
     const kept = this.pinches.filter((p) => p.a + p.n <= start || p.a >= start + n);
     if (kept.length < this.pinches.length) this.setPinches(kept);
@@ -770,9 +774,11 @@ export class CableSim {
   /**
    * Leads the nodes from `start` towards the given positions (3 per node),
    * each with its weight (0 to 1, 0: let go of it). A soft spring on a leash, like
-   * the hand's: the cord follows where it can, and is held back by whatever
-   * it meets (an animation that draws a cord along a route, never through
-   * anything).
+   * the hand's: the cord follows where it can, and is held back by the
+   * cabinet (an animation that draws a cord along a route, never through
+   * it). A led node passes through the other cords, rather than carrying
+   * them along; let go, it is solid again once clear of them (or after
+   * `ghostFrames`, when it pushes them out).
    */
   setGoals(start: number, pos: ArrayLike<number>, w: ArrayLike<number>): void {
     const n = w.length;
@@ -780,6 +786,8 @@ export class CableSim {
       const i = start + k;
       this.goal[3 * i] = pos[3 * k]; this.goal[3 * i + 1] = pos[3 * k + 1]; this.goal[3 * i + 2] = pos[3 * k + 2];
       this.goalW[i] = w[k];
+      if (w[k] > 0) { this.ghost[i] = -1; this.handled[this.cableOf[i]] = 1; }
+      else if (this.ghost[i] < 0) this.ghost[i] = this.P.ghostFrames;
     }
     if (n > 0) this.wakeCable(this.cableOf[start]);
   }
@@ -830,7 +838,6 @@ export class CableSim {
     R.alphaS = kept(P.alphaS);
     R.maxDepen = P.maxDepen * r;
     R.restDecel = P.restFriction * r;
-    R.keepStep = P.keepStep * r;
     R.keepPeel = P.keepPeel * r;
     R.maxMove = P.maxMove * r;
     R.pbdPasses = Math.max(1, Math.round(P.pbdPasses * r));
@@ -856,35 +863,25 @@ export class CableSim {
 
   /**
    * Keepers take the awake nodes inside them, of the cords the hand has
-   * already taken (a little tolerance: a cord resting on the fingers is on
-   * the edge). With the hand in a keeper, they also take the nodes of its
-   * cord around it that hang just below or in front: those are drawn in as
-   * the hand runs along (`keep`). A keeper only takes the nodes near where
-   * the hand holds the cord (or last held it) and those next to ones it
+   * already taken or a route has laid (a little tolerance: a cord resting on
+   * the fingers is on the edge). They draw nothing in: a node must be in.
+   * A keeper only takes the nodes near where the hand holds the cord (or
+   * last held it), those a route has just laid, and those next to ones it
    * already holds: the kept stretch grows along the cord from the hand, and
    * a loop further down the cord that lies across the channel or swings into
    * it is not taken there, as if the channel had folded the cord in two.
-   * They let go of nodes that slid out of an end, and of the few nodes
-   * around the hand.
+   * They let go of nodes that slid out of an end, of the few nodes around
+   * the hand, and of the nodes a route is leading.
    */
   private markKept(): void {
     if (!this.keepers.length) return;
     const P = this.P, x = this.x, g = this.grabNode;
     const tol = 0.002;
-    // the keeper the hand is in
-    let handIn = -1;
-    if (g >= 0) {
-      const tx = this.grabTarget[0], ty = this.grabTarget[1], tz = this.grabTarget[2];
-      for (let j = 0; j < this.keepers.length; j++) {
-        const b = this.keepers[j];
-        if (tx >= b.min[0] && tx <= b.max[0] && ty >= b.min[1] - 0.01 && ty <= b.max[1] + 0.01 && tz >= b.min[2] && tz <= b.max[2] + 0.01) { handIn = j; break; }
-      }
-    }
     const held = g >= 0 ? this.cableOf[g] : -1;
     for (let i = 0; i < this.n; i++) {
       if (this.fixed[i] || !this.handled[this.cableOf[i]]) continue;
       const fromHand = this.cableOf[i] === held ? Math.abs(i - g) : Infinity;
-      if (fromHand <= P.keepHand) { this.keepOf[i] = -1; continue; }
+      if (fromHand <= P.keepHand || this.goalW[i] > 0) { this.keepOf[i] = -1; continue; }
       const px = x[3 * i], py = x[3 * i + 1], pz = x[3 * i + 2];
       const k = this.keepOf[i];
       if (k >= 0) {
@@ -894,23 +891,19 @@ export class CableSim {
       }
       const r = this.radius[i] - tol;
       const ci = this.cableOf[i], cb = this.cables[ci];
-      const nearHand = Math.abs(i - this.lastHand[ci]) <= P.keepZip;
+      const nearHand = Math.abs(i - this.lastHand[ci]) <= P.keepZip || this.ghost[i] > 0;
       for (let j = 0; j < this.keepers.length; j++) {
         const b = this.keepers[j];
         if (px < b.min[0] || px > b.max[0]) continue;
         if (!nearHand && (i <= cb.start || this.keepOf[i - 1] !== j) && (i >= cb.start + cb.count - 1 || this.keepOf[i + 1] !== j)) continue;
-        if (py >= b.min[1] + r && py <= b.max[1] - r && pz >= b.min[2] + r && pz <= b.max[2] - r) { this.keepOf[i] = j; this.keepIn[i] = 1; break; }
-        if (j === handIn && fromHand <= P.keepZip && py >= b.min[1] - P.keepBelow && py <= b.max[1] && pz >= b.min[2] && pz <= b.max[2] + P.keepFront) {
-          this.keepOf[i] = j; this.keepIn[i] = 0; break;
-        }
+        if (py >= b.min[1] + r && py <= b.max[1] - r && pz >= b.min[2] + r && pz <= b.max[2] - r) { this.keepOf[i] = j; break; }
       }
     }
   }
 
   /**
-   * End of a substep: the kept nodes that were in their keeper are put back
-   * within its height and depth (those being drawn in are moved by the
-   * solve, and count as in once they are). One of the held cord pulled out
+   * End of a substep: the kept nodes are put back within the height and
+   * depth of their keeper. One of the held cord pulled out
    * further than `keepPeel` in a substep — the hand drawing it out, not its
    * own weight — comes free.
    */
@@ -926,10 +919,8 @@ export class CableSim {
         const y = x[3 * i + 1], z = x[3 * i + 2];
         const cy = Math.min(Math.max(y, b.min[1] + r), b.max[1] - r);
         const cz = Math.min(Math.max(z, b.min[2] + r), b.max[2] - r);
-        if (cy === y && cz === z) { this.keepIn[i] = 1; continue; }
+        if (cy === y && cz === z) continue;
         const d = Math.hypot(cy - y, cz - z);
-        // one being drawn in is moved by the solve
-        if (!this.keepIn[i]) continue;
         if (this.cableOf[i] === held && d > R.keepPeel) { this.keepOf[i] = -1; continue; }
         x[3 * i + 1] = cy; x[3 * i + 2] = cz;
       }
@@ -1243,15 +1234,7 @@ export class CableSim {
       const kk = P.keepK * mh;
       const ylo = b.min[1] + r, yhi = b.max[1] - r, zlo = b.min[2] + r, zhi = b.max[2] - r;
       let ey = 0, ez = 0;
-      if (!this.keepIn[i]) {
-        // being drawn in: towards a point keepStep closer to the channel than
-        // where the node started the substep
-        const j0 = 3 * i, y0 = this.x0[j0 + 1], z0 = this.x0[j0 + 2];
-        const cy = Math.min(Math.max(y0, ylo), yhi), cz = Math.min(Math.max(z0, zlo), zhi);
-        const d = Math.hypot(cy - y0, cz - z0);
-        const f = d > this.R.keepStep ? this.R.keepStep / d : 1;
-        ey = yi - (y0 + (cy - y0) * f); ez = zi - (z0 + (cz - z0) * f);
-      } else if (this.grabNode < 0 || this.cableOf[i] !== this.cableOf[this.grabNode]) {
+      if (this.grabNode < 0 || this.cableOf[i] !== this.cableOf[this.grabNode]) {
         // in it: a stiff one-sided pull back within its height and depth
         ey = yi < ylo ? yi - ylo : yi > yhi ? yi - yhi : 0;
         ez = zi < zlo ? zi - zlo : zi > zhi ? zi - zhi : 0;
@@ -1680,6 +1663,11 @@ export class CableSim {
               );
               const lim = rs + margin;
               if (closest.d2 > lim * lim) continue;
+              // a cord being laid along a route passes through the others
+              if (ca !== cb && (this.ghost[a] || this.ghost[a + 1] || this.ghost[b] || this.ghost[b + 1])) {
+                if (closest.d2 < rs * rs) { this.ghostTouch[a] = 1; this.ghostTouch[b] = 1; }
+                continue;
+              }
               // a sleeping cable wakes up when something moving touches it, or
               // sinks into it (not for an overlap at rest: two cords wedged
               // into one another would wake each other in turn for ever)
@@ -1707,6 +1695,7 @@ export class CableSim {
     }
 
     this.refreshFixed();
+    this.clearGhosts();
 
     // --- cable vs rack
     const SC = this.SCELL;
@@ -1721,12 +1710,8 @@ export class CableSim {
       const margin = Math.min(P.marginStatic, P.margin + va * frame * 1.2);
       const free = this.gateFree[a] || this.gateFree[a + 1];
       const held = !free && (this.gateHold[a] || this.gateHold[a + 1]);
-      // a node being drawn into a keeper passes through the parts around it
-      const ka = this.keepOf[a] >= 0 && !this.keepIn[a] ? this.keepers[this.keepOf[a]].owner : undefined;
-      const kb = this.keepOf[a + 1] >= 0 && !this.keepIn[a + 1] ? this.keepers[this.keepOf[a + 1]].owner : undefined;
       for (const sid of list) {
         const sh = this.statics[sid] as StaticCapsule | StaticBox; // keepers are not in the grid
-        if (sh.owner !== undefined && (sh.owner === ka || sh.owner === kb)) continue;
         if (sh.gate && free) continue;
         if (sh.gate && held && this.acrossGate(a, sh, r)) { this.gateAcross[a] = 1; continue; }
         const mu = sh.mu ?? P.muStatic;
@@ -1792,6 +1777,17 @@ export class CableSim {
    * closest point, which then sits on a segment end, every other node was left
    * unsupported and the cable shimmered in a zigzag.
    */
+  /** ghosts let go become solid where they overlap no other cord, or once their time is up */
+  private clearGhosts(): void {
+    const g = this.ghost, t = this.ghostTouch;
+    for (let i = 0; i < this.n; i++) {
+      if (g[i] <= 0) continue;
+      const touch = (i > 0 && this.cableOf[i - 1] === this.cableOf[i] && t[i - 1]) || t[i];
+      g[i] = touch ? g[i] - 1 : 0;
+    }
+    t.fill(0);
+  }
+
   private pairContacts(
     key: number, a: number, b: number,
     q0x: number, q0y: number, q0z: number, q1x: number, q1y: number, q1z: number,

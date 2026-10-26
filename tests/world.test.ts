@@ -271,6 +271,66 @@ describe('a cord laid along a drawn route', () => {
     expect(w.evaluate().cableRouted[c]).toBe(true);
   });
 
+  it('passes where the line was drawn, and goes into a manager by the end the line came in by', () => {
+    const w = new World(bench);
+    w.preroll(60);
+    const c = 0, cb = w.cables[c], port = w.circuits[c].b;
+    w.unplug(c, 1);
+    expect(w.setCableLength(c, 2.5)).toBe(true);
+    const [m2] = w.rack.guides();
+    const y = (m2.room.min[1] + m2.room.max[1]) / 2, fy = w.rack.floorY;
+    // down the left of the cabinet to its floor, back up the left side, and
+    // along the manager from its left end (a little under it, as a hand draws)
+    const leg: [number, number, number][] = [];
+    for (let t = 0; t <= 1; t += 0.05) leg.push([-0.33, fy + (y - fy) * t, 0.09]);
+    for (let x = -0.33; x < -0.1; x += 0.01) leg.push([x, m2.room.min[1] - 0.006, 0.09]);
+    const res = planRoute(w, c, [m2], w.rack.port(port), [leg, []]);
+    expect('plan' in res).toBe(true);
+    if (!('plan' in res)) return;
+    const run = new RouteRun(w, res.plan);
+    for (let f = 0; f < 600 && !run.step(1 / 60); f++) w.sim.step();
+    for (let f = 0; f < 120; f++) w.sim.step();
+    expect(w.cables[c].ends[1].port).toBe(port);
+    const x = w.sim.x;
+    let up = 0, leftEnd = 0;
+    for (let i = cb.start; i < cb.start + cb.count; i++) {
+      if (x[3 * i] < -0.24 && x[3 * i + 1] > fy + 0.1 && x[3 * i + 1] < m2.room.min[1]) up++;
+      if (x[3 * i] < -0.18 && Math.abs(x[3 * i + 1] - y) < 0.03) leftEnd++;
+    }
+    expect(up).toBeGreaterThan(3);
+    expect(leftEnd).toBeGreaterThan(0);
+  });
+
+  it('a cord too short for the whole line drawn cuts its corners, if it reaches the guides by the same sides', () => {
+    const w = new World(bench);
+    w.preroll(60);
+    const c = 0, cb = w.cables[c], port = w.rack.port(w.circuits[c].b);
+    w.unplug(c, 1);
+    expect(w.setCableLength(c, 2.5)).toBe(true);
+    const [m2] = w.rack.guides();
+    const y = (m2.room.min[1] + m2.room.max[1]) / 2, fy = w.rack.floorY;
+    const detour: [number, number, number][] = [];
+    for (let t = 0; t <= 1; t += 0.05) detour.push([-0.33, fy + (y - fy) * t, 0.09]);
+    // what each takes: straight into the manager by its left end, or by the floor
+    const need = (leg: [number, number, number][]) => {
+      const r = planRoute(w, c, [m2], port, [leg, []]);
+      return 'plan' in r ? 2.5 - r.plan.slack : Infinity;
+    };
+    const tight = need([[-0.33, y, 0.09]]), full = need(detour);
+    expect(full - tight).toBeGreaterThan(0.3);
+    expect(w.setCableLength(c, tight + 0.1)).toBe(true);
+    const res = planRoute(w, c, [m2], port, [detour, []]);
+    expect('plan' in res).toBe(true);
+    if (!('plan' in res)) return;
+    const run = new RouteRun(w, res.plan);
+    for (let f = 0; f < 600 && !run.step(1 / 60); f++) w.sim.step();
+    for (let f = 0; f < 120; f++) w.sim.step();
+    expect(w.cables[c].ends[1].port).toBe(port.id);
+    let leftEnd = 0;
+    for (let i = cb.start; i < cb.start + cb.count; i++) if (w.sim.x[3 * i] < -0.18 && Math.abs(w.sim.x[3 * i + 1] - y) < 0.03) leftEnd++;
+    expect(leftEnd).toBeGreaterThan(0);
+  });
+
   it('a cord too short for the route is refused, and says how much it lacks', () => {
     const w = new World(bench);
     const c = 0;

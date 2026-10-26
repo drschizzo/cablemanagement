@@ -130,12 +130,16 @@ On les choisit dans la barre d'outils ou au clavier.
 L'outil **Chemin** sert à ranger. On appuie sur un câble et on trace un trait
 par-dessus les guides qu'il doit traverser, dans l'ordre ; chaque guide retenu
 s'encadre de vert. Si le trait se termine sur un port libre, le bout libre du
-câble s'y branche. Au relâcher, le câble est posé le long du chemin.
+câble s'y branche. Au relâcher, le câble est posé le long du chemin : il passe
+où passe le trait entre les guides, et entre dans chacun du côté d'où vient le
+trait (par une extrémité du guide-câbles plutôt qu'entre ses doigts, par exemple).
 
 - Il entre dans chaque élément par son ouverture : par l'avant du guide-câbles,
   au-dessus des pointes des doigts ; par la fente avant de la goulotte ; par le
   coin ouvert de l'anneau, qui forme un crochet.
-- Un cordon trop court pour le chemin est refusé, avec la longueur qui manque.
+- Un cordon trop court pour tout le trait en coupe les détours hors des guides ;
+  il n'est refusé, avec la longueur qui manque, que s'il ne peut pas passer par
+  les guides.
 - La longueur en trop est rangée en boucle dans la goulotte, sinon repliée dans
   le guide-câbles ; ce qui ne tient pas pend. L'outil Longueur fournit alors
   un cordon plus court.
@@ -180,7 +184,7 @@ physique des câbles, la préparation de la scène et le pipeline de rendu.
 | `npm run levels` | coût et mise au repos de chaque niveau |
 | `npm run free` | une partie libre de 48 câbles : mise au repos, puis un cordon tiré à travers les autres |
 | `npm run pinch` | un coude pincé garde-t-il sa forme une fois lâché |
-| `npm run route` | des câbles posés le long d'un chemin tracé : branchés, dans leurs guides, au repos, sans rien traverser |
+| `npm run route` | des câbles posés le long d'un chemin tracé : branchés, dans leurs guides, au repos, sans traverser la baie, et ce qu'ils déplacent des autres câbles |
 | `npm run fold` | un câble couché dans un guide-câbles : le guide prend-il une boucle lointaine du même câble |
 | `npm run showcase` | la démonstration avant / après sur quelques baies tirées au sort |
 
