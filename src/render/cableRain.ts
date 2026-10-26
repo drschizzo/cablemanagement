@@ -265,8 +265,11 @@ export class CableRain {
       axis.applyAxisAngle(dir, (r() - 0.5) * 0.8);
       px += dir.x * seg; py += dir.y * seg; pz += dir.z * seg;
     }
-    // where it lands: around the middle of the heap, wider as the heap grows
-    const spread = this.o.spread * (1 + this.rested / 250);
+    // where it lands: around the middle of the heap, wider as the heap grows —
+    // up to the pool: past it the oldest cords make room, the heap no longer
+    // grows, and a spread that kept widening let cords fall right in front of
+    // the camera, across the whole screen
+    const spread = this.o.spread * (1 + Math.min(this.rested, POOL) / 250);
     const g = () => (r() + r() + r() - 1.5) * 1.15;
     const tx = this.o.centre.x + g() * spread, tz = this.o.centre.z + g() * spread * 0.8;
     const ty = this.o.topY + SKY + r() * 0.6;
