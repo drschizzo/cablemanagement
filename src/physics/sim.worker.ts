@@ -17,6 +17,7 @@ export type ToWorker =
   | { type: 'unpinch'; i: number }
   | { type: 'firmPinch'; s: number }
   | { type: 'pinches'; list: Pinch[] }
+  | { type: 'goals'; start: number; pos: Float64Array; w: Float64Array }
   | { type: 'statics'; statics: StaticShape[] }
   | { type: 'addBundle'; nodes: number[]; r: number }
   | { type: 'removeBundle'; id: number }
@@ -64,6 +65,7 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
     case 'unpinch': sim.unpinch(m.i); break;
     case 'firmPinch': sim.firmPinch(m.s); break;
     case 'pinches': sim.loadPinches(m.list); sim.takePinchChange(); break;
+    case 'goals': sim.setGoals(m.start, m.pos, m.w); break;
     case 'statics': sim.setStatics(m.statics); break;
     case 'addBundle': sim.addBundle(m.nodes, m.r); break;
     case 'removeBundle': sim.removeBundle(m.id); break;

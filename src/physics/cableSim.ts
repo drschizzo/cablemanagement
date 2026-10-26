@@ -18,7 +18,8 @@
 // The multipliers are carried from substep to substep, so that a loaded
 // contact or a taut cord keeps its force instead of rebuilding it by sinking.
 // Soft energies: bending (second difference), the hand that drags a cable
-// and the other hand that holds one still, the velcro straps and the pinches.
+// and the other hand that holds one still, the velcro straps, the pinches,
+// and the route goals that lead a cord along a drawn route (`setGoals`).
 //
 // A pinch keeps the shape a few nodes had when the hand pinched them: each
 // node is pulled towards where it was in that shape, the shape turned and
@@ -197,6 +198,9 @@ export interface SimParams {
   /** firmness of a pinch as it starts, and what it gains per second while the hand keeps pinching (see `firmPinch`) */
   pinchStart: number;
   pinchGrow: number;
+  /** stiffness of a route goal at full weight (× M/h²), and its leash (m): see `setGoals` */
+  goalK: number;
+  goalLead: number;
 }
 
 export function defaultSimParams(p: Partial<SimParams> = {}): SimParams {
@@ -209,6 +213,7 @@ export function defaultSimParams(p: Partial<SimParams> = {}): SimParams {
     keepHand: 2, keepZip: 10, keepBelow: 0.05, keepFront: 0.03, keepStep: 0.002, keepK: 16, keepPeel: 0.003,
     sleepDist: 0.006, sleepTime: 0.5, wakeSpeed: 0.1,
     pinchSpan: 3, pinchK: 6, pinchStart: 0.15, pinchGrow: 0.6,
+    goalK: 6, goalLead: 0.05,
     ...p,
   };
 }
@@ -353,6 +358,10 @@ export class CableSim {
   pinchHeld: Pinch | null = null;
   private pinchChanged = false;
 
+  // route goals: where each node is led to, and how firmly (0: not led)
+  goal = new Float64Array(0);
+  goalW = new Float64Array(0);
+
   // velcro
   bundleOf = new Int32Array(0);
   bundles: { nodes: number[]; r: number; cx: number; cy: number; cz: number; alive: boolean }[] = [];
@@ -425,6 +434,8 @@ export class CableSim {
     this.gateAcross = new Uint8Array(N);
     this.bundleOf = new Int32Array(N).fill(-1);
     this.pinchOf = new Int32Array(N).fill(-1);
+    this.goal = new Float64Array(3 * N);
+    this.goalW = new Float64Array(N);
     this.pinchGoal = new Float64Array(3 * N);
     this.pinches = [];
     this.pinchHeld = null;
@@ -526,6 +537,7 @@ export class CableSim {
       if (i < this.n) { this.lam[i] = 0; this.keepOf[i] = -1; }
     }
     if (this.holdNode >= start && this.holdNode < start + n) this.holdNode = -1;
+    this.goalW.fill(0, start, Math.min(this.n, start + n));
     // a cord put somewhere else (coiled in the crate) lets go of its pinches
     const kept = this.pinches.filter((p) => p.a + p.n <= start || p.a >= start + n);
     if (kept.length < this.pinches.length) this.setPinches(kept);
@@ -753,6 +765,23 @@ export class CableSim {
     if (!b || !b.alive) return;
     b.alive = false;
     for (const i of b.nodes) { this.bundleOf[i] = -1; this.wakeCable(this.cableOf[i]); }
+  }
+
+  /**
+   * Leads the nodes from `start` towards the given positions (3 per node),
+   * each with its weight (0 to 1, 0: let go of it). A soft spring on a leash, like
+   * the hand's: the cord follows where it can, and is held back by whatever
+   * it meets (an animation that draws a cord along a route, never through
+   * anything).
+   */
+  setGoals(start: number, pos: ArrayLike<number>, w: ArrayLike<number>): void {
+    const n = w.length;
+    for (let k = 0; k < n; k++) {
+      const i = start + k;
+      this.goal[3 * i] = pos[3 * k]; this.goal[3 * i + 1] = pos[3 * k + 1]; this.goal[3 * i + 2] = pos[3 * k + 2];
+      this.goalW[i] = w[k];
+    }
+    if (n > 0) this.wakeCable(this.cableOf[start]);
   }
 
   // ---------------------------------------------------------------- step
@@ -1182,6 +1211,17 @@ export class CableSim {
       gx += kg * ex;
       gy += kg * ey;
       gz += kg * ez;
+      h00 += kg; h11 += kg; h22 += kg;
+    }
+
+    // --- route goal (leashed, as the hand)
+    const gw = this.goalW[i];
+    if (gw > 0) {
+      const kg = P.goalK * gw * mh;
+      let ex = xi - this.goal[j], ey = yi - this.goal[j + 1], ez = zi - this.goal[j + 2];
+      const el = Math.sqrt(ex * ex + ey * ey + ez * ez);
+      if (el > P.goalLead) { const f = P.goalLead / el; ex *= f; ey *= f; ez *= f; }
+      gx += kg * ex; gy += kg * ey; gz += kg * ez;
       h00 += kg; h11 += kg; h22 += kg;
     }
 

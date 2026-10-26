@@ -7,11 +7,12 @@ import { RackView, buildItem, ghostBadMat, ghostMat } from '../render/rackView';
 import { CableView } from '../render/cableView';
 import { disposeTree } from '../render/dispose';
 import { HOLD, World, type Evaluation, type Snapshot, type Strap } from './world';
-import { COLUMN_X, FRONT_Z, ROOM_FLOOR, U, WALL_X, type Item, type ItemKind, type Port } from './rack';
+import { COLUMN_X, FRONT_Z, ROOM_FLOOR, U, WALL_X, type Guide, type Item, type ItemKind, type Port } from './rack';
+import { RouteRun, planRoute } from './route';
 import { FIBRE_NAMES, type FibreType, type LevelDef } from './levels';
 import { sfx } from '../audio/sfx';
 
-export type Tool = 'hand' | ItemKind | 'velcro' | 'label' | 'length' | 'trace' | 'deposit';
+export type Tool = 'hand' | 'route' | ItemKind | 'velcro' | 'label' | 'length' | 'trace' | 'deposit';
 
 export interface ControllerEvents {
   onEval(ev: Evaluation): void;
@@ -38,7 +39,7 @@ const MAX_TARGET_STEP = 0.035; // m per frame the hand may move
 const UNPLUG_PULL = 0.04;
 /** glow of a stretch of the carried cord: held by the management, hanging too long, on the floor */
 const HOLD_TINT = [null, new THREE.Color('#1f9a45'), new THREE.Color('#c06800'), new THREE.Color('#b01c1c')];
-const CORD_TOOLS = new Set<Tool>(['hand', 'label', 'velcro', 'length', 'trace', 'deposit']);
+const CORD_TOOLS = new Set<Tool>(['hand', 'route', 'label', 'velcro', 'length', 'trace', 'deposit']);
 
 export class Controller {
   world: World;
@@ -67,6 +68,12 @@ export class Controller {
     /** when the current pinch began (clock), or −1 */
     pinchSince: number;
   } | null = null;
+  /** the way being drawn (route tool): its cord, the guides passed over in order, the port it ends on */
+  private stroke: { cable: number; guides: Guide[]; over: number; pts: THREE.Vector3[]; port: Port | null; last: { x: number; y: number } } | null = null;
+  /** the line drawn, and a frame round each guide it takes */
+  private strokeView: THREE.Group;
+  /** a cord being laid along its way */
+  private routing: RouteRun | null = null;
   /** the cord whose held and hanging stretches are shown (while carried, and a moment after) */
   private holdView: { cable: number; until: number; next: number } | null = null;
   /** plumb line from the held point to the floor: the depth cue */
@@ -94,7 +101,7 @@ export class Controller {
   private clock = 0;
   private tracing: { cable: number; until: number } | null = null;
   /** what the player did, for the tutorial */
-  counters = { hovered: 0, dragged: 0, plugged: 0, unplugged: 0, orbited: 0, deposited: 0, pinched: 0, handedOver: 0 };
+  counters = { hovered: 0, dragged: 0, plugged: 0, unplugged: 0, orbited: 0, deposited: 0, pinched: 0, handedOver: 0, routed: 0 };
   private lastHoverCable = -1;
   private spot: THREE.Group | null = null;
   private spotTime = 0;
@@ -123,6 +130,8 @@ export class Controller {
     stage.scene.add(this.guide);
     this.otherHand = makeOtherHand();
     stage.scene.add(this.otherHand);
+    this.strokeView = new THREE.Group();
+    stage.scene.add(this.strokeView);
     this.cableView = new CableView(this.world);
     this.cableView.lightBy(this.rackView.glow);
     stage.scene.add(this.rackView.group, this.cableView.group);
@@ -143,7 +152,7 @@ export class Controller {
     this.world.dispose();
     for (const off of this.unbind) off();
     this.spotlight(null);
-    for (const g of [this.rackView.group, this.cableView.group, this.guide, this.otherHand, this.ghost]) {
+    for (const g of [this.rackView.group, this.cableView.group, this.guide, this.otherHand, this.strokeView, this.ghost]) {
       if (!g) continue;
       this.stage.scene.remove(g);
       disposeTree(g);
@@ -151,6 +160,7 @@ export class Controller {
   }
 
   setTool(t: Tool): void {
+    if (this.stroke) this.clearStroke();
     this.tool = t;
     this.updateGhost();
     this.stage.renderer.domElement.style.cursor = t === 'hand' ? 'grab' : 'crosshair';
@@ -205,6 +215,7 @@ export class Controller {
     let steps = 0;
     while (this.acc >= h && steps < 2) {
       this.stepHand();
+      this.stepRoute(h);
       this.acc -= h;
       steps++;
     }
@@ -402,6 +413,7 @@ export class Controller {
       this.pan = { mx: e.clientX, my: e.clientY };
       return;
     }
+    if (this.stroke) { this.extendStroke(); return; }
     if (this.drag && e.shiftKey !== this.drag.depthMode) this.setDepthMode(e.shiftKey);
     if (this.drag) {
       // the right button pressed while the left one holds the cord: a chord,
@@ -428,7 +440,18 @@ export class Controller {
   private onDown(e: PointerEvent): void {
     if (e.button !== 0) return;
     this.setMouse(e);
-    if (this.tool === 'hand') {
+    // any gesture stops a cord being laid where it is
+    this.stopRoute();
+    if (this.tool === 'route') {
+      const p = this.pick();
+      if (!p) {
+        this.pan = { mx: e.clientX, my: e.clientY };
+        this.stage.renderer.domElement.style.cursor = 'move';
+        return;
+      }
+      this.startStroke(p.cable);
+      this.stage.renderer.domElement.setPointerCapture(e.pointerId);
+    } else if (this.tool === 'hand') {
       const p = this.pick();
       if (!p) {
         // nothing under the pointer: drag the view
@@ -474,7 +497,8 @@ export class Controller {
 
   /** puts the cabinet back as it was before the last gesture */
   undo(): void {
-    if (this.drag) return;
+    if (this.drag || this.stroke) return;
+    this.stopRoute();
     const s = this.history.pop();
     if (!s) { this.events.onToast('Rien à annuler.'); return; }
     this.world.sim.letGoStill();
@@ -513,6 +537,7 @@ export class Controller {
 
   /** swaps a cord for one of another length; false when it would not reach */
   setLength(c: number, length: number): boolean {
+    this.stopRoute();
     if (!this.world.setCableLength(c, length)) {
       this.events.onToast('Trop court : ce cordon n\'irait pas d\'un bout à l\'autre.');
       sfx.error();
@@ -525,6 +550,7 @@ export class Controller {
 
   /** a new cord from the stock, in the crate */
   newCord(type: FibreType, length: number, color?: string): void {
+    this.stopRoute();
     this.world.addCable(type, length, color);
     sfx.place();
     this.afterRewire();
@@ -617,6 +643,7 @@ export class Controller {
 
   private onUp(_e: PointerEvent | null): void {
     if (this.pan) { this.pan = null; this.stage.renderer.domElement.style.cursor = 'default'; return; }
+    if (this.stroke) { this.endStroke(); return; }
     if (!this.drag) return;
     if (this.counters.dragged - this.dragStartedAt < 0.002 && !this.portHint && !(this.drag.end >= 0) && !this.drag.pinched) this.history.pop();
     this.guide.visible = false;
@@ -639,6 +666,145 @@ export class Controller {
     this.setPortHint(null);
     this.stage.renderer.domElement.style.cursor = 'grab';
     this.refreshHighlights();
+  }
+
+  // ------------------------------------------------------------ routes
+
+  /** the route tool takes a cord: the way starts there */
+  private startStroke(cable: number): void {
+    this.stroke = { cable, guides: [], over: -1, pts: [], port: null, last: { x: -1e9, y: -1e9 } };
+    this.cableView.setHighlight(cable, true, '#7ee0ff');
+    this.events.onHover(null, 0, 0);
+    this.events.onHint('Tracez le chemin du câble <b>par-dessus les guides</b>, dans l\'ordre où il doit les traverser (guide-câbles, anneaux, goulottes), et finissez sur un <b>port libre</b> pour l\'y brancher. Relâchez : le câble est posé le long du chemin.');
+    sfx.grab();
+    this.extendStroke();
+  }
+
+  /** the pointer moved while drawing: the line grows, the guides under it join the way in order */
+  private extendStroke(): void {
+    const st = this.stroke!;
+    if (Math.hypot(this.mousePx.x - st.last.x, this.mousePx.y - st.last.y) < 4) return;
+    st.last = { x: this.mousePx.x, y: this.mousePx.y };
+    const p = this.pointerOnPlane(new THREE.Plane(new THREE.Vector3(0, 0, 1), -0.09), 0);
+    if (p) st.pts.push(p);
+    // a guide joins the way when the line enters it; entered again later,
+    // it moves to that later place (the line crossed it on the way)
+    const g = this.guideUnderPointer();
+    if (g && g.item !== st.over) {
+      st.guides = st.guides.filter((q) => q.item !== g.item);
+      st.guides.push(g);
+      sfx.label();
+    }
+    st.over = g?.item ?? -1;
+    // a port only when the line ends on it, not on a guide next to it
+    st.port = g ? null : this.portUnderPointer();
+    this.setPortHint(st.port);
+    this.drawStroke();
+  }
+
+  /** let go: the way is planned, and the cord laid along it (or the player told why not) */
+  private endStroke(): void {
+    const st = this.stroke!;
+    this.clearStroke();
+    const res = planRoute(this.world, st.cable, st.guides, st.port);
+    if ('error' in res) {
+      this.events.onToast(res.error);
+      sfx.error();
+      return;
+    }
+    const b = 1 - res.plan.a, end = this.world.cables[st.cable].ends[b];
+    if (res.plan.portB && end.port && !this.world.canUnplug(st.cable)) { this.refuseCut(); return; }
+    this.remember();
+    this.routing = new RouteRun(this.world, res.plan);
+    this.counters.routed++;
+    if (res.plan.slack > 0.2) this.events.onToast(`Ce cordon a ${Math.round(res.plan.slack * 100)} cm de trop pour ce chemin : le mou est rangé dans les guides, ou pend (outil Longueur pour un cordon plus court).`);
+    sfx.whoosh();
+  }
+
+  private clearStroke(): void {
+    const st = this.stroke;
+    this.stroke = null;
+    if (st) this.cableView.setHighlight(st.cable, false);
+    this.setPortHint(null);
+    this.events.onHint(null);
+    for (const o of [...this.strokeView.children]) { this.strokeView.remove(o); disposeTree(o); }
+    this.refreshHighlights();
+  }
+
+  /** the line drawn so far, and a numbered frame round each guide it takes */
+  private drawStroke(): void {
+    const st = this.stroke!;
+    for (const o of [...this.strokeView.children]) { this.strokeView.remove(o); disposeTree(o); }
+    if (st.pts.length > 1) {
+      const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(st.pts), new THREE.LineBasicMaterial({ color: '#7ee0ff', transparent: true, opacity: 0.9, depthTest: false }));
+      line.renderOrder = 30;
+      this.strokeView.add(line);
+    }
+    for (const g of st.guides) {
+      const b = g.reach;
+      const size = new THREE.Vector3(b.max[0] - b.min[0], b.max[1] - b.min[1], b.max[2] - b.min[2]);
+      const geo = new THREE.BoxGeometry(size.x, size.y, size.z);
+      const box = new THREE.Group();
+      box.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: '#3fbf6a', transparent: true, opacity: 0.14, depthWrite: false })));
+      const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: '#7dff9a', transparent: true, opacity: 0.9, depthTest: false }));
+      edges.renderOrder = 25;
+      box.add(edges);
+      box.position.set((b.max[0] + b.min[0]) / 2, (b.max[1] + b.min[1]) / 2, (b.max[2] + b.min[2]) / 2);
+      this.strokeView.add(box);
+    }
+  }
+
+  /** the guide under the pointer (the nearest along the ray), or null */
+  private guideUnderPointer(): Guide | null {
+    this.ray.setFromCamera(this.mouse, this.stage.camera);
+    let best: Guide | null = null, bd = Infinity;
+    const box = new THREE.Box3(), hit = new THREE.Vector3();
+    for (const g of this.world.rack.guides()) {
+      box.min.fromArray(g.reach.min);
+      box.max.fromArray(g.reach.max);
+      if (!this.ray.ray.intersectBox(box, hit)) continue;
+      const d = hit.distanceTo(this.ray.ray.origin);
+      if (d < bd) { bd = d; best = g; }
+    }
+    return best;
+  }
+
+  /** the free port under the pointer, or null */
+  private portUnderPointer(): Port | null {
+    const cam = this.stage.camera, v = new THREE.Vector3();
+    const rect = this.stage.renderer.domElement.getBoundingClientRect();
+    let best: Port | null = null, bd = 18;
+    for (const p of this.world.rack.ports) {
+      if (p.plug >= 0) continue;
+      v.set(p.x, p.y, 0).project(cam);
+      const d = Math.hypot((v.x * 0.5 + 0.5) * rect.width - this.mousePx.x, (-v.y * 0.5 + 0.5) * rect.height - this.mousePx.y);
+      if (d < bd) { bd = d; best = p; }
+    }
+    return best;
+  }
+
+  /** a physics step of the cord being laid; once there, what came of it */
+  private stepRoute(h: number): void {
+    const r = this.routing;
+    if (!r || !r.step(h)) return;
+    this.routing = null;
+    const port = r.plan.portB;
+    if (port && r.plugged) {
+      this.counters.plugged++;
+      sfx.plug(this.circuitOkAt(this.world.rack.port(port)));
+    } else if (port) {
+      this.events.onToast('Le connecteur n\'a pas pu atteindre le port : quelque chose le retient.');
+      sfx.error();
+    }
+    this.reevaluate();
+    this.holdView = { cable: r.plan.cable, until: this.clock + 1.6, next: 0 };
+  }
+
+  /** a cord being laid stops where it is */
+  private stopRoute(): void {
+    if (!this.routing) return;
+    this.routing.cancel();
+    this.routing = null;
   }
 
   private onWheel(e: WheelEvent): void {

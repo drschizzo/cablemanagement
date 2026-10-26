@@ -111,16 +111,20 @@ const STEPS: Step[] = [
     done: (c) => c.world.evaluate().circuits.every((s) => s.connected),
   },
   {
+    title: 'Tracer un chemin',
+    text: 'Pour ranger un câble, on décide par où il passe. Outil <b>Chemin</b> (touche C) : appuyez sur un câble, puis <b>tracez un trait par-dessus les guides</b> qu\'il doit traverser, dans l\'ordre. Chaque guide retenu s\'encadre de vert. Si le trait se termine sur un port libre, le bout libre du câble s\'y branche. Au relâcher, le câble est posé le long du chemin : il entre dans chaque guide par son ouverture, sans rien traverser. Un cordon trop court pour le chemin est refusé, avec la longueur qui manque.',
+  },
+  {
     title: 'Le guide-câbles',
-    text: 'Ce panneau <b>1U à doigts</b> se pose sous le tiroir. Les câbles passent entre les doigts et courent à l\'horizontale jusqu\'aux côtés de la baie, au lieu de pendre devant les ports. Tenez un câble, poussez-le entre les doigts, puis <b>glissez-le le long du guide</b> : lâché, il reste couché dedans. Pendant que vous le tenez, il se colore par portion : <span class="ok">vert</span> là où un support le tient, <span class="warn">orange</span> là où il pend de plus de 20 cm, rouge là où il traîne au sol.',
-    task: 'Couchez un câble dans le guide-câbles',
+    text: 'Ce panneau <b>1U à doigts</b> se pose sous le tiroir. Les câbles passent entre les doigts et courent à l\'horizontale jusqu\'aux côtés de la baie, au lieu de pendre devant les ports. Un câble y entre par l\'avant, au-dessus des pointes des doigts. Tracez le chemin d\'un câble par-dessus le guide-câbles. Une fois posé, le câble se colore un moment par portion : <span class="ok">vert</span> là où un support le tient, <span class="warn">orange</span> là où il pend de plus de 20 cm, rouge là où il traîne au sol.',
+    task: 'Rangez un câble dans le guide-câbles',
     spot: mgrBox,
-    tool: 'hand',
+    tool: 'route',
     done: (c) => held(c, 'hmgr') >= 6,
   },
   {
     title: 'Pincer un coude',
-    text: 'Sans pli, un câble sort de son port droit vers vous et pend en boucle devant les ports du dessous. Il faut le <b>plier juste après le connecteur</b> pour qu\'il descende droit dans le guide-câbles. Saisissez le câble à quelques centimètres de son connecteur et amenez-le dans le guide-câbles. Puis, sans lâcher le câble, <b>maintenez Espace</b> (ou le clic droit) : la portion sous votre main garde la forme qu\'elle a. Plus vous maintenez, plus le coude est ferme (environ une seconde et demie pour un coude bien ferme). Relâchez Espace, puis le câble : le coude garde sa forme.',
+    text: 'À la main, on peut aussi donner sa forme à un câble. Sans pli, un câble sort de son port droit vers vous ; <b>plié juste après le connecteur</b>, il descend droit vers le guide-câbles. Saisissez le câble à quelques centimètres de son connecteur et amenez-le dans le guide-câbles. Puis, sans lâcher le câble, <b>maintenez Espace</b> (ou le clic droit) : la portion sous votre main garde la forme qu\'elle a. Plus vous maintenez, plus le coude est ferme (environ une seconde et demie pour un coude bien ferme). Relâchez Espace, puis le câble : le coude garde sa forme.',
     task: 'Pincez un coude ferme à la sortie d\'un port',
     spot: portToMgrBox,
     tool: 'hand',
@@ -143,14 +147,14 @@ const STEPS: Step[] = [
   },
   {
     title: 'Ranger dans la goulotte',
-    text: 'Poussez un câble à travers l\'avant de la goulotte : <b>le câble que vous tenez passe entre les doigts</b>, et une fois lâché il reste dedans. Faites-y descendre la longueur en trop.',
+    text: 'Avec l\'outil <b>Chemin</b>, tracez le chemin d\'un câble par le guide-câbles, puis le long de la goulotte, jusqu\'à son port. Le câble entre dans la goulotte par la <b>fente</b> de sa face avant, et sa longueur en trop y pend en boucle. Si le cordon est trop court, l\'outil Longueur en fournit un autre.',
     task: 'Mettez un câble dans la goulotte',
-    tool: 'hand',
+    tool: 'route',
     done: (c) => held(c, 'duct') >= 4,
   },
   {
     title: 'La seconde main',
-    text: 'Pour former le virage entre le guide-câbles et la goulotte, il faut tenir le câble à deux endroits : avec une seule main, tirer le bout défait ce qu\'on vient de poser. Tenez le câble là où il doit rester et appuyez sur <b>E</b> : <b>l\'autre main</b> le tient sur place (une lueur ambrée la signale) et la vôtre est libre. Saisissez le câble plus loin, amenez-le dans la goulotte et pincez le virage avec <b>Espace</b>. Enfin, sans rien tenir, appuyez sur <b>E</b> : l\'autre main lâche le câble.',
+    text: 'À la main, il faut parfois tenir un câble à deux endroits : avec une seule main, tirer le bout défait ce qu\'on vient de poser. Tenez le câble là où il doit rester et appuyez sur <b>E</b> : <b>l\'autre main</b> le tient sur place (une lueur ambrée la signale) et la vôtre est libre. Saisissez le câble plus loin, amenez-le dans la goulotte et pincez le virage avec <b>Espace</b>. Enfin, sans rien tenir, appuyez sur <b>E</b> : l\'autre main lâche le câble.',
     task: 'Passez un câble à l\'autre main (E)',
     spot: (c) => {
       const m = mgrBox(c), s = sideBox(c);
@@ -161,7 +165,7 @@ const STEPS: Step[] = [
   },
   {
     title: 'L\'anneau',
-    text: 'Plus léger qu\'une goulotte, l\'<b>anneau</b> (touche 4) guide un câble vertical dans un couloir latéral. Pratique pour quelques câbles ; au-delà, la goulotte tient mieux le mou.',
+    text: 'Plus léger qu\'une goulotte, l\'<b>anneau</b> (touche 4) guide un câble vertical dans un couloir latéral. C\'est un crochet ouvert à l\'avant, côté extérieur : le Chemin y fait entrer le câble par cette ouverture. Pratique pour quelques câbles ; au-delà, la goulotte tient mieux le mou.',
   },
   {
     title: 'Le velcro',
@@ -194,7 +198,7 @@ const STEPS: Step[] = [
   },
   {
     title: 'Le score',
-    text: 'Quatre critères, dans le panneau de droite : les <b>connexions</b> conformes au plan (obligatoires pour valider), le <b>rangement</b> (aucune portion de plus de 20 cm ne pend hors d\'un support), la <b>façade dégagée</b> (aucun câble devant le port d\'un autre) et les <b>étiquettes</b>. De une à trois étoiles ; il en faut <b>deux</b> pour ouvrir le niveau suivant. Le secret d\'une baie soignée : un coude pincé à la sortie de chaque port, des câbles couchés dans les guides, le mou dans la goulotte. À vous !',
+    text: 'Quatre critères, dans le panneau de droite : les <b>connexions</b> conformes au plan (obligatoires pour valider), le <b>rangement</b> (aucune portion de plus de 20 cm ne pend hors d\'un support), la <b>façade dégagée</b> (aucun câble devant le port d\'un autre) et les <b>étiquettes</b>. De une à trois étoiles ; il en faut <b>deux</b> pour ouvrir le niveau suivant. Le secret d\'une baie soignée : un chemin bien pensé pour chaque câble, à la bonne longueur, le mou dans la goulotte. À vous !',
   },
 ];
 

@@ -7,7 +7,9 @@ plan de brassage, puis ranger proprement les câbles, comme un technicien sur
 un vrai chantier.
 
 Les câbles sont simulés physiquement : ils ont un poids, frottent les uns sur
-les autres, s'empilent et se coincent dans les guide-câbles.
+les autres et s'empilent. Aucun câble ne traverse un équipement ni un élément
+de rangement. La difficulté tient à l'organisation de la baie : par quels
+guides faire passer chaque câble, avec quelle longueur, dans quel ordre.
 
 **[Jouer en ligne](https://drschizzo.github.io/cablemanagement/)**, sans rien
 installer (un navigateur récent avec WebGL 2 suffit).
@@ -90,6 +92,7 @@ La **partie libre** génère une baie au hasard, de 4 à 48 câbles.
 
 | Action | Geste |
 |---|---|
+| Tracer le chemin d'un câble | outil **Chemin** (C) : partir du câble, passer par-dessus les guides dans l'ordre, finir sur un port libre |
 | Saisir et tirer un câble | clic gauche + glisser |
 | Pousser vers le fond / ramener vers soi | **Maj** + souris vers le haut / le bas pendant qu'on tire (ou la molette) |
 | Pincer un coude, qui garde sa forme | maintenir **Espace** (ou le clic droit) pendant qu'on tient le câble : plus longtemps, plus ferme |
@@ -111,6 +114,7 @@ On les choisit dans la barre d'outils ou au clavier.
 | Touche | Outil | Usage |
 |---|---|---|
 | 1 | Main | saisir, tirer, brancher, débrancher |
+| C | Chemin | tracer le chemin d'un câble à travers les guides ; il y est posé, et branché au port où finit le trait |
 | 2 | Guide-câbles 1U | barre horizontale à doigts, entre deux équipements |
 | 3 | Goulotte | conduit vertical sur le côté de la baie |
 | 4 | Anneau | petit passe-câble |
@@ -121,10 +125,24 @@ On les choisit dans la barre d'outils ou au clavier.
 | 9 | Déposer | débranche un câble, l'enroule et le jette dans le bac au pied de la baie |
 | 0 | Stock | prend un cordon neuf (type, couleur, longueur), livré dans le bac |
 
-Pour faire entrer un câble dans un guide-câbles ou une goulotte, on le tient à
-la main et on le pousse dedans : il y reste une fois lâché. Pendant qu'on le
-tient, le câble se colore par portion : vert là où un support le tient, orange
-là où il pend de plus de 20 cm, rouge là où il traîne au sol.
+### Ranger un câble
+
+L'outil **Chemin** sert à ranger. On appuie sur un câble et on trace un trait
+par-dessus les guides qu'il doit traverser, dans l'ordre ; chaque guide retenu
+s'encadre de vert. Si le trait se termine sur un port libre, le bout libre du
+câble s'y branche. Au relâcher, le câble est posé le long du chemin.
+
+- Il entre dans chaque élément par son ouverture : par l'avant du guide-câbles,
+  au-dessus des pointes des doigts ; par la fente avant de la goulotte ; par le
+  coin ouvert de l'anneau, qui forme un crochet.
+- Un cordon trop court pour le chemin est refusé, avec la longueur qui manque.
+- La longueur en trop est rangée en boucle dans la goulotte, sinon repliée dans
+  le guide-câbles ; ce qui ne tient pas pend. L'outil Longueur fournit alors
+  un cordon plus court.
+
+Tout peut aussi se faire à la main, câble par câble. Après un geste, le câble
+se colore un moment par portion : vert là où un support le tient, orange là où
+il pend de plus de 20 cm, rouge là où il traîne au sol.
 
 ## Développement
 
@@ -162,6 +180,7 @@ physique des câbles, la préparation de la scène et le pipeline de rendu.
 | `npm run levels` | coût et mise au repos de chaque niveau |
 | `npm run free` | une partie libre de 48 câbles : mise au repos, puis un cordon tiré à travers les autres |
 | `npm run pinch` | un coude pincé garde-t-il sa forme une fois lâché |
+| `npm run route` | des câbles posés le long d'un chemin tracé : branchés, dans leurs guides, au repos, sans rien traverser |
 | `npm run fold` | un câble couché dans un guide-câbles : le guide prend-il une boucle lointaine du même câble |
 | `npm run showcase` | la démonstration avant / après sur quelques baies tirées au sort |
 

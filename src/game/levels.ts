@@ -118,7 +118,7 @@ export const LEVELS: LevelDef[] = [
     tips: [
       'Glissez un câble avec le clic gauche pour le déplacer. Maj en tirant : le pousser vers le fond ou le ramener vers vous.',
       'Le bout qui pend : saisissez son connecteur et relâchez-le devant le port entouré du plan (survolez sa ligne).',
-      'Amenez un câble dans le guide-câbles et glissez-le le long des doigts : il reste posé dessus.',
+      'Outil Chemin (C) : partez d\'un câble et tracez son chemin par-dessus le guide-câbles, jusqu\'à un port libre si besoin : il y est posé, et branché.',
       'Clic droit + glisser pour tourner la vue, glisser dans le vide pour la déplacer, molette pour zoomer.',
     ],
   },

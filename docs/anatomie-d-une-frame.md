@@ -133,6 +133,16 @@ Au clic, `startDrag` appelle `sim.grab(nœud)` : le nœud saisi devient la « ma
 
 Le solveur ne téléporte pas le nœud sur la cible : il le tire vers elle avec un ressort, d'au plus 6 cm (`grabLead`). Un câble coincé ne s'étire donc pas à l'infini, et il ne rebondit pas quand on le lâche.
 
+### Le chemin tracé
+
+Avec l'outil Chemin, le joueur part d'un câble et trace un trait à l'écran. Chaque guide que le trait traverse (un rayon par le pointeur, contre la zone du guide) rejoint le chemin, dans l'ordre du passage ; un guide traversé de nouveau prend sa place au dernier passage. Si le trait finit sur un port libre, le bout libre du câble y sera branché. Au relâcher, `planRoute` (`src/game/route.ts`) calcule le chemin :
+
+1. il part du bout qui reste en place (le bout branché, le plus proche du premier guide si les deux le sont) ;
+2. il traverse chaque guide dans son couloir : un couloir par câble déjà posé, entre les doigts du guide-câbles pour descendre d'un port ou y remonter, par une fente de la paroi intérieure pour entrer dans une goulotte ;
+3. il finit au port d'arrivée. Un cordon trop court pour le chemin est refusé, en disant combien il manque. La longueur en trop est rangée comme le ferait un technicien : en boucle pendante dans une goulotte, sinon repliée dans un guide-câbles ; ce qui reste fait un ventre.
+
+Le câble n'est pas téléporté. `RouteRun` mène chaque nœud par un ressort en laisse (`sim.setGoals`), comme la main, en trois temps partagés par tous les nœuds : sortir vers l'avant de la baie, traverser devant elle jusqu'à la forme du chemin, puis entrer par l'ouverture de chaque guide. Le décalage vers l'ouverture est étalé sur les nœuds voisins, pour que le câble garde une forme de câble. Les contacts restent des contraintes dures : un câble qui rencontre un obstacle s'y arrête, il ne le traverse pas. À la fin, le câble est tenu un instant puis relâché, et le bout libre se branche s'il est arrivé devant son port.
+
 ### Les autres outils et les règles
 
 Les autres outils modifient le monde physique par des appels ponctuels : brancher un connecteur l'épingle sur le port (`sim.pin`), un velcro relie des nœuds de plusieurs câbles (`sim.addBundle`), un guide-câbles ajoute des formes de collision (`sim.setStatics`). Chaque modification est appliquée localement puis transmise au Worker, dans l'ordre (section *Moteur physique*).
@@ -184,6 +194,7 @@ Le moteur combine plusieurs contributions sur chaque nœud :
 | Main | ressort | le nœud saisi est tiré vers la cible de la souris ; l'autre main (touche E) tient un nœud là où le joueur l'a laissé |
 | Velcro | ressort d'un seul côté | les nœuds serrés restent à moins d'un rayon du centre du faisceau |
 | Coude pincé | ressort | les nœuds pincés gardent la forme qu'ils avaient ensemble |
+| Chemin tracé | ressort, en laisse | pendant qu'un câble est posé le long de son chemin, chaque nœud est mené vers sa place |
 | Épingle | nœud fixe | un connecteur branché ne bouge plus |
 
 Un **coude pincé** (Espace ou clic droit maintenu pendant qu'on tient le câble) garde la forme qu'avaient ses nœuds quand le joueur a cessé de pincer. À chaque sous-pas, le moteur cherche la rotation et le déplacement de cette forme qui vont le mieux aux nœuds, et tire chaque nœud vers sa place dans la forme ainsi posée. Le coude peut donc tourner et voyager avec le câble sans se déformer. Comme la forme posée est celle qui rend la traction la plus faible, cette traction se comporte comme un vrai ressort et n'ajoute pas d'énergie. Plus le pincement a duré, plus le ressort est raide (voir `pinchGoals` dans `src/physics/cableSim.ts`).
@@ -271,7 +282,7 @@ Le schéma est en deux dimensions pour la lisibilité ; le moteur fait la même 
 
 ![Phase fine · gélules, distance et marge](frame/schema-contact.png)
 
-**Contre la baie.** Les formes statiques sont rangées une fois pour toutes dans une grille de cellules de 5 cm, à chaque appel de `setStatics()`. Contre une boîte, chaque nœud reçoit son propre contact, pour qu'un câble posé à plat sur une étagère ne s'enfonce pas entre deux points de contact. Certaines formes sont des **portes** (`gate`) : les doigts des guide-câbles laissent passer le câble tenu par la main, pour qu'on puisse l'y glisser, puis le retiennent.
+**Contre la baie.** Les formes statiques sont rangées une fois pour toutes dans une grille de cellules de 5 cm, à chaque appel de `setStatics()`. Contre une boîte, chaque nœud reçoit son propre contact, pour qu'un câble posé à plat sur une étagère ne s'enfonce pas entre deux points de contact. Aucune forme ne laisse passer un câble : chaque élément de rangement a une **ouverture** par où un câble branché à ses deux bouts peut entrer. Pour le guide-câbles, c'est l'avant, au-dessus des pointes de ses doigts ; pour la goulotte, la fente de sa face avant ; pour l'anneau, un crochet, le coin avant côté extérieur.
 
 **Le creux d'un guide-câbles** (`keeper`) n'est pas un obstacle mais une aide de jeu : un cordon que le joueur y a posé y reste, libre de glisser dans sa longueur. Ses nœuds dans le creux y sont ramenés par un ressort raide pendant la résolution, si bien que le solveur porte aussi la partie qui pend hors du guide. Quand la main longe le guide, les nœuds du cordon qui pendent juste en dessous ou devant sont **aspirés** : à chaque sous-pas, un ressort les tire vers un point situé 2 mm plus près du creux que leur position de départ. Ce ressort agit lui aussi dans la résolution, pour que la partie qui pend suive sans s'étirer ni rebondir au lâcher.
 

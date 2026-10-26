@@ -73,6 +73,28 @@ export function insideBox(b: { min: [number, number, number]; max: [number, numb
 }
 
 export const DUCT_SPAN = 4;
+/** finger radius of the guides */
+export const FINGER_R = 0.003;
+/** height of the upturned tips of a manager's bottom fingers */
+export const HMGR_TIP = 0.016;
+/** front bar of a ring, and the gap left open at its outer end (and above its outer post) */
+export const RING_FRONT = 0.065;
+export const RING_GAP = 0.024;
+/** front of a duct, the pitch of its fingers, the middle of its front slit (|x|) and half its width */
+export const DUCT_FRONT = 0.07;
+export const DUCT_PITCH = 0.022;
+export const DUCT_SLIT_X = (SIDE_IN + SIDE_OUT) / 2;
+export const DUCT_SLIT = 0.011;
+
+type Box3 = { min: [number, number, number]; max: [number, number, number] };
+
+/** a cable guide: the room a cord lies in inside it, and where the pointer counts as over it */
+export interface Guide {
+  item: number;
+  kind: ItemKind;
+  room: Box3;
+  reach: Box3;
+}
 
 export class Rack {
   units: UnitSpec[];
@@ -185,8 +207,8 @@ export class Rack {
     // floor of the cabinet and roof
     S.push({ kind: 'box', min: [-0.45, this.floorY - 0.05, -0.5], max: [0.45, this.floorY, FRONT_Z] });
     // a low lip at the front of the cabinet floor keeps fallen cords inside
-    // (the hand can still lift a cord over it, it is a gate)
-    S.push({ kind: 'capsule', ax: -WALL_X, ay: this.floorY + 0.012, az: FRONT_Z - 0.008, bx: WALL_X, by: this.floorY + 0.012, bz: FRONT_Z - 0.008, r: 0.007, gate: true });
+    // (the hand lifts a cord over it)
+    S.push({ kind: 'capsule', ax: -WALL_X, ay: this.floorY + 0.012, az: FRONT_Z - 0.008, bx: WALL_X, by: this.floorY + 0.012, bz: FRONT_Z - 0.008, r: 0.007 });
     // the room floor in front of the cabinet: whatever falls out lies there, in view
     S.push({ kind: 'box', min: [-0.8, ROOM_FLOOR(this) - 0.05, FRONT_Z], max: [0.8, ROOM_FLOOR(this), 0.85] });
     // the crate where unplugged cords are thrown (and the spares wait)
@@ -203,18 +225,20 @@ export class Rack {
     return S;
   }
 
+  // Nothing lets a cord through: each guide has an opening a cord plugged at
+  // both ends can be slid in by (see `guide`).
   private itemStatics(it: Item, S: StaticShape[]): void {
-    const r = 0.003;
+    const r = FINGER_R;
     if (it.kind === 'hmgr') {
       // finger manager: rows of fingers above and below the channel. Cords
       // from the equipment pass between them; a cord laid in the channel
-      // rests on the bottom fingers, kept in by their upturned tips (which
-      // the hand can push a cord through)
+      // rests on the bottom fingers, kept in by their upturned tips (a cord
+      // goes in over them, under the top row)
       const y0 = this.unitBottom(it.unit) + 0.004, y1 = this.unitBottom(it.unit) + U - 0.004;
       const xs = hmgrFingers();
       for (const x of xs) {
         S.push(cap(x, y0, 0.004, x, y0, RING_DEPTH, r, it.id));
-        S.push({ ...cap(x, y0, RING_DEPTH, x, y0 + 0.02, RING_DEPTH, r, it.id), gate: true });
+        S.push(cap(x, y0, RING_DEPTH, x, y0 + HMGR_TIP, RING_DEPTH, r, it.id));
         S.push(cap(x, y1, 0.004, x, y1, RING_DEPTH, r, it.id));
       }
       // the trough between the finger rows keeps a cord let go in it: it no
@@ -222,25 +246,67 @@ export class Rack {
       // hanging tail
       S.push({ kind: 'keeper', min: [xs[0] - r, y0 + r, 0.002], max: [xs[xs.length - 1] + r, y1 - r, RING_DEPTH - r], owner: it.id });
     } else if (it.kind === 'vring') {
+      // a hook: open at its front outer corner, where a cord slips in
       const y = this.unitY(it.unit);
       const s = it.side;
-      S.push(cap(s * (SIDE_IN + 0.004), y, SIDE_BACK, s * (SIDE_IN + 0.004), y, 0.065, r, it.id));
-      S.push({ ...cap(s * (SIDE_IN + 0.004), y, 0.065, s * (SIDE_OUT - 0.004), y, 0.065, r, it.id), gate: true });
-      S.push(cap(s * (SIDE_OUT - 0.004), y, 0.065, s * (SIDE_OUT - 0.004), y, SIDE_BACK, r, it.id));
+      const xi = s * (SIDE_IN + 0.004), xo = s * (SIDE_OUT - 0.004);
+      S.push(cap(xi, y, SIDE_BACK, xi, y, RING_FRONT, r, it.id));
+      S.push(cap(xi, y, RING_FRONT, xo - s * RING_GAP, y, RING_FRONT, r, it.id));
+      S.push(cap(xo, y, SIDE_BACK, xo, y, RING_FRONT - RING_GAP, r, it.id));
     } else {
       const yTop = this.topY - it.unit * U - 0.004;
       const yBot = this.topY - (it.unit + it.span) * U + 0.004;
       const s = it.side;
-      const zf = 0.07;
-      // slotted walls: fingers the hand can push a cable between
-      const n = Math.max(2, Math.round((yTop - yBot) / 0.022));
+      const xm = s * DUCT_SLIT_X;
+      // slotted inner wall (cords from the managers pass between its
+      // fingers), and two lips in front, either side of a slit a cord slips in by
+      const n = Math.max(2, Math.round((yTop - yBot) / DUCT_PITCH));
       for (let k = 0; k <= n; k++) {
         const y = yBot + ((yTop - yBot) * k) / n;
-        S.push({ ...cap(s * SIDE_IN, y, SIDE_BACK, s * SIDE_IN, y, zf, r, it.id), gate: true });
-        S.push({ ...cap(s * SIDE_IN, y, zf, s * SIDE_OUT, y, zf, r, it.id), gate: true });
+        S.push(cap(s * SIDE_IN, y, SIDE_BACK, s * SIDE_IN, y, DUCT_FRONT, r, it.id));
+        S.push(cap(s * SIDE_IN, y, DUCT_FRONT, xm - s * DUCT_SLIT, y, DUCT_FRONT, r, it.id));
+        S.push(cap(xm + s * DUCT_SLIT, y, DUCT_FRONT, s * SIDE_OUT, y, DUCT_FRONT, r, it.id));
       }
-      S.push(box(s, SIDE_OUT, SIDE_OUT + 0.006, yBot, yTop, SIDE_BACK, zf, it.id));
+      S.push(box(s, SIDE_OUT, SIDE_OUT + 0.006, yBot, yTop, SIDE_BACK, DUCT_FRONT, it.id));
     }
+  }
+
+  /** every guide of the cabinet */
+  guides(): Guide[] {
+    return this.items.map((it) => this.guide(it));
+  }
+
+  guide(it: Item): Guide {
+    const r = FINGER_R;
+    const side = (s: number, a: number, b: number): [number, number] => (s > 0 ? [a, b] : [-b, -a]);
+    if (it.kind === 'hmgr') {
+      const y0 = this.unitBottom(it.unit) + 0.004, y1 = this.unitBottom(it.unit) + U - 0.004;
+      const xs = hmgrFingers();
+      return {
+        item: it.id, kind: it.kind,
+        room: { min: [xs[0] - r, y0 + r, 0.004], max: [xs[xs.length - 1] + r, y1 - r, RING_DEPTH - r] },
+        reach: { min: [-COLUMN_X, y0 - 0.006, 0], max: [COLUMN_X, y1 + 0.006, RING_DEPTH + 0.012] },
+      };
+    }
+    const s = it.side;
+    const [rx0, rx1] = side(s, SIDE_IN - 0.006, SIDE_OUT + 0.006);
+    if (it.kind === 'vring') {
+      const y = this.unitY(it.unit);
+      const [x0, x1] = side(s, SIDE_IN + 0.004 + r, SIDE_OUT - 0.004 - r);
+      return {
+        item: it.id, kind: it.kind,
+        room: { min: [x0, y - 0.004, SIDE_BACK], max: [x1, y + 0.004, RING_FRONT - r] },
+        reach: { min: [rx0, y - 0.035, SIDE_BACK], max: [rx1, y + 0.035, 0.08] },
+      };
+    }
+    const yTop = this.topY - it.unit * U - 0.004;
+    const yBot = this.topY - (it.unit + it.span) * U + 0.004;
+    const [x0, x1] = side(s, SIDE_IN + r, SIDE_OUT);
+    return {
+      item: it.id, kind: it.kind,
+      room: { min: [x0, yBot, SIDE_BACK], max: [x1, yTop, DUCT_FRONT - r] },
+      reach: { min: [rx0, yBot, SIDE_BACK], max: [rx1, yTop, 0.08] },
+    };
   }
 
   /** the crate on the floor, right of the cabinet front (closed cabinets only) */

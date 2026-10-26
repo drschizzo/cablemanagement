@@ -1,0 +1,484 @@
+// Routes: the way the player draws for a cord, through guides in order, and
+// the animation that dresses the cord along it.
+//
+// The difficulty of the game is the plan (which guides, which length, which
+// order), not the hand: the player draws the way, and the cord is laid along
+// it as a technician would lay it. Nothing is teleported and nothing passes
+// through anything: every node is led by a soft spring on a leash (`setGoals`)
+// along its own way — out of where it is to the front of the cabinet, across,
+// and in through the opening of the guide it belongs in (over the tips of a
+// manager, through the slit of a duct, the open corner of a ring). The
+// contacts stay hard: a cord that meets something stops there.
+
+import {
+  CONNECTOR, COLUMN_X, DUCT_FRONT, DUCT_PITCH, DUCT_SLIT_X, FINGER_R, HMGR_TIP, RING_FRONT, RING_GAP, SIDE_IN, SIDE_OUT,
+  hmgrFingers, type Guide, type Port,
+} from './rack';
+import type { World } from './world';
+
+type V3 = [number, number, number];
+
+/** the plane in front of every guide where a cord is carried across (z) */
+export const FRONT = 0.12;
+/** how far apart the passes of a cord laid in a serpentine are (m) */
+const LANE = 0.007;
+/** extra length left free by the far end rather than laid in the guides (m) */
+const PLAY = 0.06;
+/** how far a node may be carried away from a plugged end, per metre of cord between them */
+const NEAR_PORT = 0.8;
+
+export interface RoutePlan {
+  cable: number;
+  /** the end the route starts from (it stays where it is) */
+  a: number;
+  /** the port the other end plugs into once there, or null */
+  portB: string | null;
+  /** each node's way (null: not led) */
+  ways: (NodeWay | null)[];
+  /** extra length of the cord over its route (m, the belly it makes) */
+  slack: number;
+}
+
+/**
+ * The way of a node: out of where it is to the front of the cabinet (`out`,
+ * from where it is), then from the front in to its place (`inn`, ending
+ * there). Every node goes out, across and in at the same time, so that the
+ * cord keeps a shape: as it is, then the route's seen from the front, then the route.
+ */
+export interface NodeWay { out: V3[]; inn: V3[] }
+
+export type RouteResult = { plan: RoutePlan } | { error: string };
+
+const dist = (a: V3, b: V3) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+const lerp = (a: V3, b: V3, t: number): V3 => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+const centre = (g: Guide): V3 => [0, 1, 2].map((d) => (g.room.min[d] + g.room.max[d]) / 2) as V3;
+const inBox = (b: Guide['reach'], p: V3) => p.every((v, d) => v >= b.min[d] && v <= b.max[d]);
+function polyLength(pts: V3[]): number {
+  let L = 0;
+  for (let i = 1; i < pts.length; i++) L += dist(pts[i - 1], pts[i]);
+  return L;
+}
+
+/** the middle of the slot between two fingers of a manager row nearest x */
+function slotX(x: number): number {
+  const xs = hmgrFingers();
+  let best = x, bd = Infinity;
+  for (let i = 0; i < xs.length - 1; i++) {
+    const m = (xs[i] + xs[i + 1]) / 2;
+    if (Math.abs(m - x) < bd) { bd = Math.abs(m - x); best = m; }
+  }
+  return best;
+}
+
+/**
+ * The way for cable c through `guides` in that order, and into `portB` when
+ * given. The route starts from the end that stays (plugged, nearest the first
+ * guide) and ends at the other one's port; a free end with no port to go to
+ * stays free after the last guide.
+ */
+export function planRoute(w: World, c: number, guides: Guide[], portB: Port | null): RouteResult {
+  if (!guides.length && !portB) return { error: 'Tracez le chemin par-dessus les guides (ou jusqu\'à un port).' };
+  const rack = w.rack, cb = w.cables[c], sim = w.sim, r = w.radius;
+  const ports = cb.ends.map((e) => (e.port ? rack.port(e.port) : null));
+  const first: V3 = guides.length ? centre(guides[0]) : [portB!.x, portB!.y, 0];
+  const at = (p: Port): V3 => [p.x, p.y, 0];
+  // the end that stays: the plugged one (the nearer the first guide if both are)
+  let a: number;
+  // both plugged, and a port to go to: the end plugged nearest it moves there
+  if (ports[0] && ports[1] && portB) a = dist(at(ports[0]), at(portB)) <= dist(at(ports[1]), at(portB)) ? 1 : 0;
+  else if (ports[0] && ports[1]) a = dist(at(ports[0]), first) <= dist(at(ports[1]), first) ? 0 : 1;
+  else if (ports[0] || ports[1]) a = ports[0] ? 0 : 1;
+  else {
+    const tip = (e: number): V3 => { const [n0] = w.endNodes(c, e); return [sim.x[3 * n0], sim.x[3 * n0 + 1], sim.x[3 * n0 + 2]]; };
+    a = dist(tip(0), first) <= dist(tip(1), first) ? 0 : 1;
+  }
+  const b = 1 - a;
+  const pa = ports[a];
+  // where the other end goes: the port the stroke ends on, else its own
+  let pb = portB ?? ports[b];
+  if (portB && portB.plug >= 0 && portB.plug !== c * 2 + b) return { error: `Le port ${portB.id} est déjà occupé.` };
+  if (pb && pb === pa) pb = null;
+
+  // --- the route, as points
+  const pts: V3[] = [];
+  const exit = (p: Port, dir: number): V3[] => [
+    [p.x, p.y, CONNECTOR],
+    [p.x, p.y, CONNECTOR + w.seg],
+    [p.x, p.y + dir * 0.006, CONNECTOR + w.seg + 0.012],
+  ];
+  // the stretches along a guide, where the extra length can be laid
+  const runs: Run[] = [];
+  const ref = (k: number): V3 | null => (k < 0 ? (pa ? at(pa) : null) : k < guides.length ? centre(guides[k]) : pb ? at(pb) : null);
+  // lanes: one per cord already lying in a guide
+  const lane = (g: Guide) => {
+    let n = 0;
+    w.cables.forEach((o, oc) => {
+      if (oc === c) return;
+      let k = 0;
+      for (let i = o.start; i < o.start + o.count && k < 2; i++) if (inBox(g.room, [sim.x[3 * i], sim.x[3 * i + 1], sim.x[3 * i + 2]])) k++;
+      if (k >= 2) n++;
+    });
+    return n;
+  };
+  if (pa) {
+    const nx = ref(0)!;
+    pts.push(...exit(pa, nx[1] < pa.y ? -1 : 1));
+  }
+  guides.forEach((g, k) => {
+    const prev = pts.length ? pts[pts.length - 1] : null;
+    const next = ref(k + 1);
+    const i = lane(g);
+    if (g.kind === 'hmgr') {
+      const y = g.room.min[1] + r + 0.001 + Math.floor(i / 6) * (2 * r + 0.0008);
+      const z = clamp(0.058 - (i % 6) * 0.009, g.room.min[2] + r, g.room.max[2] - r);
+      const rowAbove = g.room.max[1] + FINGER_R, rowBelow = g.room.min[1] - FINGER_R;
+      // in: down (or up) between two fingers from a port, or in at an end from a side channel
+      const into = (q: V3 | null): V3[] => {
+        if (!q) return [];
+        if (Math.abs(q[0]) > COLUMN_X) return [[Math.sign(q[0]) * 0.235, y, z]];
+        const sx = slotX(q[0]);
+        const row = q[1] > y ? rowAbove + 0.008 : rowBelow - 0.008;
+        return [[sx, row, z], [sx, y, z]];
+      };
+      const pin = into(prev), pout = into(next).reverse();
+      if (!pin.length && !pout.length) pin.push([-0.1, y, z]);
+      if (!pin.length) pin.push([clamp(pout[0][0] - Math.sign(pout[0][0] || 1) * 0.1, -0.2, 0.2), y, z]);
+      if (!pout.length) pout.push([clamp(pin[pin.length - 1][0] - Math.sign(pin[pin.length - 1][0] || 1) * 0.1, -0.2, 0.2), y, z]);
+      pts.push(...pin, ...pout);
+      // its lanes towards the deeper side of the trough, if there is more room there
+      runs.push({ g, p: pin[pin.length - 1], q: pout[0], lane: [0, 0, z - g.room.min[2] > g.room.max[2] - z ? -LANE : LANE] });
+    } else if (g.kind === 'vring') {
+      const s = Math.sign(g.room.min[0] + g.room.max[0]);
+      const xIn = s > 0 ? g.room.min[0] : g.room.max[0];
+      const x = xIn + s * (r + 0.004 + (i % 4) * 0.02);
+      const z = clamp(0.045 - Math.floor(i / 4) * 0.02, g.room.min[2] + r, g.room.max[2] - r);
+      pts.push([x, (g.room.min[1] + g.room.max[1]) / 2, z]);
+    } else {
+      const s = Math.sign(g.room.min[0] + g.room.max[0]);
+      const cols = 6;
+      const dx = s * (SIDE_OUT - 0.012 - (i % cols) * ((SIDE_OUT - SIDE_IN - 0.024) / (cols - 1)));
+      const dz = clamp(0.055 - Math.floor(i / cols) * 0.016, g.room.min[2] + r, g.room.max[2] - r);
+      const yb = g.room.min[1] + 0.006, yt = g.room.max[1] - 0.006;
+      // in and out: through a slot of the inner wall from the column, else by an end
+      const slotY = (y: number) => { const k = Math.round((y - g.room.min[1]) / DUCT_PITCH - 0.5); return clamp(g.room.min[1] + (k + 0.5) * DUCT_PITCH, yb, yt); };
+      const side = (q: V3 | null, out: boolean): V3[] => {
+        if (!q) return [];
+        if (Math.abs(q[0]) < SIDE_IN && q[1] > g.room.min[1] && q[1] < g.room.max[1]) {
+          const y = slotY(q[1]);
+          const p: V3[] = [[s * (SIDE_IN - 0.012), y, dz], [s * (SIDE_IN + 0.012), y, dz], [dx, y, dz]];
+          return out ? p.reverse() : p;
+        }
+        return [[dx, clamp(q[1], yb, yt), dz]];
+      };
+      const ins = side(prev, false), outs = side(next, true);
+      pts.push(...ins, ...outs);
+      if (ins.length && outs.length) runs.push({ g, p: ins[ins.length - 1], q: outs[0], lane: [0, 0, -LANE] });
+    }
+  });
+  if (pb) pts.push(...exit(pb, pts.length && pts[pts.length - 1][1] < pb.y ? -1 : 1).reverse());
+  // no repeated points
+  const route = pts.filter((p, k) => k === 0 || dist(p, pts[k - 1]) > 1e-4);
+
+  // --- the cord along it, from end a
+  const arcs: number[] = [0];
+  const idx = (k: number) => (a === 0 ? cb.start + k : cb.start + cb.count - 1 - k);
+  for (let k = 1; k < cb.count; k++) arcs.push(arcs[k - 1] + sim.rest[Math.min(idx(k), idx(k - 1))]);
+  const L = arcs[cb.count - 1];
+  let Lp = polyLength(route);
+  let slack = 0;
+  let path = route;
+  if (pb) {
+    if (Lp > L + 0.01) return { error: `Ce cordon est trop court pour ce chemin : il manque ${Math.ceil((Lp - L) * 100)} cm (outil Longueur).` };
+    slack = L - Lp;
+    // the extra length laid in the guides (hanging in a duct first), what is
+    // left past a little play as a belly; the play stays free, by the far end
+    const lay = slack - PLAY;
+    if (lay > 0.01) {
+      const r2 = withFolds(route, runs, lay);
+      path = r2.extra > 0.05 ? withBelly(r2.route, r2.extra, guides) : r2.route;
+    }
+    Lp = polyLength(path);
+  }
+  // the place of each node along the path: from end a, and the last few from
+  // the far end (its connector to its port), the play between them free
+  const tail = pb ? polyLength(path.slice(-4)) : 0;
+  const place: (V3 | null)[] = arcs.map((s) => {
+    if (s <= Lp - tail + 1e-6) return along(path, s);
+    if (pb && L - s <= tail + 1e-6) return along(path, Lp - (L - s));
+    return null;
+  });
+
+  // --- the way of each node
+  const all = rack.guides();
+  const fromEnd = (k: number) => Math.min(pa ? arcs[k] : Infinity, pb ? L - arcs[k] : Infinity);
+  // how far out a node may go: not far from a plugged end
+  const front = (z: number, k: number) => Math.min(FRONT, z + fromEnd(k) * NEAR_PORT);
+  // the way in through each guide's opening, as an offset from the place
+  // (spread over the neighbouring nodes: the cord goes in in one piece)
+  const ins = place.map((T) => (T ? entry(all, T) : null));
+  const off = ins.map((_, k) => {
+    let best: Entry | null = null, bn = 0;
+    for (let j = Math.max(0, k - 3); j <= Math.min(cb.count - 1, k + 3); j++) {
+      const e = ins[j], f = SPREAD[Math.abs(j - k)];
+      if (!e) continue;
+      const n = Math.hypot(e.dx, e.dy) * f;
+      if (n > bn) { bn = n; best = { dx: e.dx * f, dy: e.dy * f, z: e.z }; }
+    }
+    return best;
+  });
+  const ways: (NodeWay | null)[] = [];
+  for (let k = 0; k < cb.count; k++) {
+    const i = idx(k);
+    const T = place[k];
+    if (!T || (pa && k <= 1)) { ways.push(null); continue; }
+    const C: V3 = [sim.x[3 * i], sim.x[3 * i + 1], sim.x[3 * i + 2]];
+    const e = entry(all, C);
+    const out: V3[] = [C];
+    if (e) out.push([C[0] + e.dx, C[1] + e.dy, e.z]);
+    const o = out[out.length - 1];
+    out.push([o[0], o[1], Math.max(o[2], front(C[2], k))]);
+    const d = off[k], own = ins[k];
+    const inn: V3[] = [];
+    if (d) {
+      inn.push([T[0] + d.dx, T[1] + d.dy, Math.max(T[2], front(T[2], k))]);
+      inn.push([T[0] + d.dx, T[1] + d.dy, own ? own.z : T[2]]);
+    } else inn.push([T[0], T[1], Math.max(T[2], front(T[2], k))]);
+    inn.push(T);
+    ways.push({ out, inn });
+  }
+  return { plan: { cable: c, a, portB: pb && pb !== ports[b] ? pb.id : null, ways, slack } };
+}
+
+interface Entry { dx: number; dy: number; z: number }
+/** how much of an opening's offset a node passes on to its neighbours, by how far along the cord */
+const SPREAD = [1, 1, 0.6, 0.25];
+
+/**
+ * How point p is reached from the front of the cabinet: through the opening
+ * of the guide it lies in, as an offset from p and the depth where it is
+ * crossed (null: straight in).
+ */
+function entry(guides: Guide[], p: V3): Entry | null {
+  let g: Guide | null = null;
+  for (const q of guides) if (inBox(q.reach, p)) { g = q; break; }
+  if (g?.kind === 'hmgr' && p[1] <= g.room.max[1] && p[1] >= g.room.min[1] - 0.004) {
+    // over the tips, under the top row, then down onto the fingers
+    const gap = (g.room.min[1] + HMGR_TIP + g.room.max[1]) / 2;
+    return { dx: 0, dy: gap - p[1], z: p[2] };
+  }
+  if (g?.kind === 'vring') {
+    // by the open corner
+    const s = Math.sign(g.room.min[0] + g.room.max[0]);
+    return { dx: s * (SIDE_OUT - 0.004 - RING_GAP / 2) - p[0], dy: 0, z: RING_FRONT - RING_GAP / 2 };
+  }
+  if (g?.kind === 'duct' && Math.abs(p[0]) > SIDE_IN) {
+    // through the slit, then across behind the lips
+    return { dx: Math.sign(p[0]) * DUCT_SLIT_X - p[0], dy: 0, z: DUCT_FRONT - 0.012 };
+  }
+  return null;
+}
+
+/** the point at arc length s along a polyline */
+function along(pts: V3[], s: number): V3 {
+  let acc = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const d = dist(pts[i - 1], pts[i]);
+    if (acc + d >= s && d > 0) return lerp(pts[i - 1], pts[i], (s - acc) / d);
+    acc += d;
+  }
+  return pts[pts.length - 1];
+}
+
+interface Run { g: Guide; p: V3; q: V3; lane: V3 }
+
+/**
+ * The route with (some of) its extra length laid in the guides, as a
+ * technician lays a cord too long: its stretch along a guide made into a
+ * serpentine, from one end of the guide to the other and back, a lane further
+ * each time (ducts first, where it hangs). Returns what is left over.
+ */
+function withFolds(route: V3[], runs: Run[], extra: number): { route: V3[]; extra: number } {
+  let out = route;
+  const order = [...runs].sort((a, b) => Number(b.g.kind === 'duct') - Number(a.g.kind === 'duct'));
+  for (const run of order) {
+    if (extra <= 0.01) break;
+    const ip = out.indexOf(run.p), iq = out.indexOf(run.q);
+    if (ip < 0 || iq !== ip + 1) continue;
+    const s = serpentine(run, extra);
+    if (!s) continue;
+    const before = polyLength(out);
+    out = [...out.slice(0, ip), ...s, ...out.slice(iq + 1)];
+    extra -= polyLength(out) - before;
+  }
+  return { route: out, extra: Math.max(0, extra) };
+}
+
+/**
+ * The stretch p → q of a run made longer by about `extra`: turns past both
+ * ends in turn, each pass in the next lane, the last back to q. Null when the
+ * guide has no room for it.
+ */
+function serpentine(run: Run, extra: number): V3[] | null {
+  const { p, q, lane, g } = run;
+  const L = polyLength([p, q]);
+  // the axis the cord runs along: x in a manager, y in a duct
+  const ax = g.kind === 'duct' ? 1 : 0;
+  const lo = g.room.min[ax] + 0.012, hi = g.room.max[ax] - 0.012;
+  const ap = clamp(p[ax], lo, hi), aq = clamp(q[ax], lo, hi);
+  const dir = aq >= ap ? 1 : -1;
+  // the ends of the guide, past p (turned at first) and past q
+  const endP = dir > 0 ? lo : hi, endQ = dir > 0 ? hi : lo;
+  // lanes the guide has room for
+  let lanes = 0;
+  for (let k = 1; k <= 10; k++) {
+    const ok = [p, q].every((e) => [0, 1, 2].every((d) => { if (d === ax) return true; const v = e[d] + lane[d] * k; return v >= g.room.min[d] + 0.003 && v <= g.room.max[d] - 0.003; }));
+    if (!ok) break;
+    lanes = k;
+  }
+  if (lanes < 1 || extra < 0.02) return null;
+  // m turns, past p, past q, past p…, as deep as u, each pass in the next
+  // lane; the last pass to q's place in its lane, then across to q
+  const build = (m: number, u: number): V3[] => {
+    const at = (e: V3, a: number, k: number): V3 => { const v: V3 = [e[0] + lane[0] * k, e[1] + lane[1] * k, e[2] + lane[2] * k]; v[ax] = a; return v; };
+    const tp = ap + (endP - ap) * u, tq = aq + (endQ - aq) * u;
+    const pts: V3[] = [p];
+    for (let k = 0; k < m; k++) {
+      const a = k % 2 === 0 ? tp : tq;
+      pts.push(at(p, a, k), at(p, a, k + 1));
+    }
+    pts.push(at(q, q[ax], m), q);
+    return pts;
+  };
+  // the fewest turns that take it all, as shallow as they can be; never
+  // longer than asked (turning costs a little even at no depth)
+  const want = L + extra;
+  for (let m = 1; m <= lanes; m++) {
+    if (polyLength(build(m, 1)) < want && m < lanes) continue;
+    if (polyLength(build(m, 1)) <= want) return build(m, 1);
+    if (polyLength(build(m, 0)) > want) return m > 1 ? build(m - 1, 1) : null;
+    let ulo = 0, uhi = 1;
+    for (let it = 0; it < 30; it++) { const u = (ulo + uhi) / 2; if (polyLength(build(m, u)) < want) ulo = u; else uhi = u; }
+    return build(m, ulo);
+  }
+  return null;
+}
+
+/**
+ * The route with its extra length as a belly, in its longest stretch outside
+ * the guides: downwards (and a little forwards) in a level stretch, forwards
+ * in an upright one, as a cord too long hangs.
+ */
+function withBelly(route: V3[], extra: number, guides: Guide[]): V3[] {
+  let best = -1, bl = 0;
+  for (let i = 3; i < route.length - 3; i++) {
+    const a = route[i - 1], b = route[i];
+    const mid = lerp(a, b, 0.5);
+    if (guides.some((g) => inBox(g.room, mid))) continue;
+    const d = dist(a, b);
+    if (d > bl) { bl = d; best = i; }
+  }
+  if (best < 0) {
+    // no stretch outside a guide: the longest one
+    for (let i = 3; i < route.length - 3; i++) { const d = dist(route[i - 1], route[i]); if (d > bl) { bl = d; best = i; } }
+  }
+  if (best < 0) return route;
+  const a = route[best - 1], b = route[best];
+  const level = Math.abs(b[1] - a[1]) < dist(a, b) * 0.7;
+  const dir: V3 = level ? [0, -0.9, 0.44] : [0, 0, 1];
+  const bow = (h: number): V3[] => {
+    const out: V3[] = [];
+    for (let k = 1; k < 16; k++) {
+      const f = k / 16, q = lerp(a, b, f), s = h * Math.sin(Math.PI * f);
+      out.push([q[0] + dir[0] * s, q[1] + dir[1] * s, q[2] + dir[2] * s]);
+    }
+    return [...route.slice(0, best), ...out, ...route.slice(best)];
+  };
+  const want = polyLength(route) + extra;
+  let lo = 0, hi = 0.05;
+  while (polyLength(bow(hi)) < want && hi < 5) hi *= 2;
+  for (let it = 0; it < 30; it++) { const m = (lo + hi) / 2; if (polyLength(bow(m)) < want) lo = m; else hi = m; }
+  return bow((lo + hi) / 2);
+}
+
+/**
+ * A route being laid: every node is led out to the front of the cabinet,
+ * across to the front of its place, and in, all at the same pace. Then the
+ * cord is held there a moment and let go; the other end plugs into its port
+ * if it got there.
+ */
+export class RouteRun {
+  t = 0;
+  readonly duration: number;
+  private hold = 0.8;
+  private pos: Float64Array;
+  private wt: Float64Array;
+  /** each node's whole way (out, across, in), the arc lengths where its phases end, and how far along it its goal is */
+  private paths: (V3[] | null)[];
+  private ends: number[][];
+  private prog: Float64Array;
+  /** when the cord got there, −1 before */
+  private arrived = -1;
+  done = false;
+  /** the other end plugged in at the end (null: not yet, or none asked) */
+  plugged: boolean | null = null;
+
+  constructor(private w: World, readonly plan: RoutePlan) {
+    const cb = w.cables[plan.cable];
+    this.pos = new Float64Array(3 * cb.count);
+    this.wt = new Float64Array(cb.count);
+    this.prog = new Float64Array(cb.count);
+    this.paths = plan.ways.map((way) => (way ? [...way.out, ...way.inn] : null));
+    this.ends = plan.ways.map((way) => (way ? [polyLength(way.out), polyLength(way.out) + dist(way.out[way.out.length - 1], way.inn[0]), polyLength(way.out) + dist(way.out[way.out.length - 1], way.inn[0]) + polyLength(way.inn)] : []));
+    let across = 0.1;
+    for (const way of plan.ways) if (way) across = Math.max(across, dist(way.out[way.out.length - 1], way.inn[0]));
+    this.duration = clamp(1.1 + across * 1.2, 1.4, 3);
+    // the end that moves to another port comes out of its own first
+    const b = 1 - plan.a;
+    if (plan.portB && cb.ends[b].port) w.unplug(plan.cable, b);
+  }
+
+  /** advances by dt seconds; true once finished */
+  step(dt: number): boolean {
+    if (this.done) return true;
+    this.t += dt;
+    const { plan, w } = this;
+    const cb = w.cables[plan.cable], x = w.sim.x;
+    const u = Math.min(1, this.t / this.duration);
+    // out (0 – 0.25), across (0.25 – 0.6), in (0.6 – 1), each eased, every
+    // node at the same pace (the cord keeps a shape)
+    const ease = (v: number) => { const q = clamp(v, 0, 1); return q * q * (3 - 2 * q); };
+    let behind = false;
+    for (let k = 0; k < cb.count; k++) {
+      const path = this.paths[k], e = this.ends[k];
+      const i = plan.a === 0 ? k : cb.count - 1 - k;
+      if (!path) { this.wt[i] = 0; continue; }
+      const want = u < 0.25 ? e[0] * ease(u / 0.25) : u < 0.6 ? e[0] + (e[1] - e[0]) * ease((u - 0.25) / 0.35) : e[1] + (e[2] - e[1]) * ease((u - 0.6) / 0.4);
+      this.prog[k] = want;
+      if (want < e[2] - 1e-4) behind = true;
+      const p = along(path, this.prog[k]);
+      this.pos[3 * i] = p[0]; this.pos[3 * i + 1] = p[1]; this.pos[3 * i + 2] = p[2];
+    }
+    if (this.arrived < 0 && !behind) this.arrived = this.t;
+    // held there a moment, then let go gently
+    const weight = this.arrived < 0 ? 1 : Math.max(0, 1 - (this.t - this.arrived) / this.hold);
+    for (let k = 0; k < cb.count; k++) if (this.paths[k]) this.wt[plan.a === 0 ? k : cb.count - 1 - k] = weight;
+    // the other end, there: plugged in (while the cord is held there)
+    if (this.arrived >= 0 && plan.portB && !this.plugged) {
+      const b = 1 - plan.a;
+      const [n0] = w.endNodes(plan.cable, b), port = w.rack.port(plan.portB);
+      this.plugged = Math.hypot(x[3 * n0] - port.x, x[3 * n0 + 1] - port.y, x[3 * n0 + 2] - CONNECTOR) < 0.03 && port.plug < 0 && w.plug(plan.cable, b, plan.portB);
+    }
+    w.sim.setGoals(cb.start, this.pos, this.wt);
+    if (weight <= 0) this.done = true;
+    return this.done;
+  }
+
+  /** stops leading the cord where it is */
+  cancel(): void {
+    if (this.done) return;
+    const cb = this.w.cables[this.plan.cable];
+    this.w.sim.setGoals(cb.start, new Float64Array(3 * cb.count), new Float64Array(cb.count));
+    this.done = true;
+  }
+}

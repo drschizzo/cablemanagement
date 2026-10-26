@@ -14,6 +14,7 @@ src/
     levels.ts       niveaux, services (couleurs d'étiquettes), partie libre, vitrine avant / après
     tangle.ts       plan de brassage, erreurs de départ, chemins emmêlés
     tidy.ts         la route idéale de chaque cordon, la baie « finie » d'un niveau (tidyKit)
+    route.ts        l'outil Chemin : le chemin tracé par le joueur à travers les guides, et la pose du câble le long de lui
     world.ts        état d'une partie : branchement, fenêtre de maintenance, velcro, longueurs, bac, score
     controller.ts   une partie en cours : boucle, saisie, outils (relie world, render et les événements de l'interface)
   render/    three.js : scène et post-traitement, baie, câbles (tubes lissés), connecteurs
@@ -106,7 +107,7 @@ par niveau) et tutoriel terminé. Les clés sont celles des versions précédent
 | `npm run typecheck` | types (TypeScript strict) |
 | `npm test` | géométrie, baie, stockage, règles d'une partie (branchement, fenêtre de maintenance, étiquettes, velcro, longueurs, bac), niveaux (plan, emmêlage stable, 3 étoiles possibles) |
 | `npm run check` | les trois à la suite |
-| `npm run bench` · `precision` · `levels` · `solvable` · `showcase` · `free` · `pinch` | bancs du moteur et des niveaux, sans navigateur (`tools/`) ; `free` : partie libre de 48 câbles (stabilisation, cordon tiré à travers les autres) ; `pinch` : un coude pincé, ce qu'il en reste une fois lâché |
+| `npm run bench` · `precision` · `levels` · `solvable` · `showcase` · `free` · `pinch` · `route` | bancs du moteur et des niveaux, sans navigateur (`tools/`) ; `free` : partie libre de 48 câbles (stabilisation, cordon tiré à travers les autres) ; `pinch` : un coude pincé, ce qu'il en reste une fois lâché ; `route` : des câbles posés le long d'un chemin tracé (branchés, dans leurs guides, au repos, sans rien traverser) |
 
 Ces vérifications se lancent en local avant de pousser. La CI (`.github/workflows/ci.yml`) fait la même chose,
 plus la construction, mais seulement quand on la lance à la main (onglet *Actions* de GitHub).

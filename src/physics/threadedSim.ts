@@ -192,6 +192,11 @@ export class ThreadedSim extends CableSim {
     this.post({ type: 'pinches', list: this.pinches });
   }
 
+  setGoals(start: number, pos: ArrayLike<number>, w: ArrayLike<number>): void {
+    super.setGoals(start, pos, w);
+    this.post({ type: 'goals', start, pos: Float64Array.from(pos), w: Float64Array.from(w) });
+  }
+
   setStatics(shapes: StaticShape[]): void {
     super.setStatics(shapes);
     this.post({ type: 'statics', statics: shapes });

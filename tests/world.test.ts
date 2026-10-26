@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { HOLD, World } from '../src/game/world';
 import { LEVELS, type LevelDef } from '../src/game/levels';
+import { planRoute, RouteRun } from '../src/game/route';
 
 // level 1, every cord on its planned ports: four copper cords, at most one production link cut
 const L1: LevelDef = { ...LEVELS[0], wrong: 0, loose: 0 };
@@ -240,5 +241,43 @@ describe('what the player sees while tidying', () => {
     const ev = w.evaluate();
     expect(ev.bundles).toBe(0);
     expect(ev.bundlesNeeded).toBe(1);
+  });
+});
+
+describe('a cord laid along a drawn route', () => {
+  const B = { kind: 'blank' as const };
+  const bench: LevelDef = {
+    id: 'route', title: '', brief: '',
+    units: [B, { kind: 'panel', name: 'A', ports: 12, style: 'copper' }, B, B, B, B, B, B, { kind: 'switch', name: 'S', ports: 12, style: 'switch' }, B, B],
+    cables: 2, wrong: 0, loose: 0, slack: [0.3, 0.4], mess: 1,
+    labels: false, services: 1, types: ['CU'], colorByService: true, inventory: {},
+    preinstalled: [{ kind: 'hmgr', unit: 2, side: 0 }, { kind: 'hmgr', unit: 7, side: 0 }, { kind: 'vring', unit: 3, side: 1 }, { kind: 'vring', unit: 5, side: 1 }],
+    seed: 2, seg: 0.025,
+  };
+
+  it('goes through the guides in order, plugs into its port, and is routed', () => {
+    const w = new World(bench);
+    w.preroll(60);
+    const c = 0, port = w.circuits[c].b;
+    w.unplug(c, 1);
+    const [m2, m7, r3, r5] = w.rack.guides();
+    const res = planRoute(w, c, [m2, r3, r5, m7], w.rack.port(port));
+    expect('plan' in res).toBe(true);
+    if (!('plan' in res)) return;
+    const run = new RouteRun(w, res.plan);
+    for (let f = 0; f < 600 && !run.step(1 / 60); f++) w.sim.step();
+    for (let f = 0; f < 120; f++) w.sim.step();
+    expect(w.cables[c].ends[1].port).toBe(port);
+    expect(w.evaluate().cableRouted[c]).toBe(true);
+  });
+
+  it('a cord too short for the route is refused, and says how much it lacks', () => {
+    const w = new World(bench);
+    const c = 0;
+    w.unplug(c, 1);
+    w.setCableLength(c, w.minCableLength(c));
+    const [m2, m7, r3, r5] = w.rack.guides();
+    const res = planRoute(w, c, [m2, r3, r5, m7], w.rack.port(w.circuits[c].b));
+    expect('error' in res && res.error).toMatch(/trop court.*il manque \d+ cm/);
   });
 });
