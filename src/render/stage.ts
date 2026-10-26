@@ -125,6 +125,14 @@ export class Stage {
     // (its bright pass runs at half resolution, where one bilinear read averages each 2×2 block: at a
     // quarter, it read 4 pixels of 16, and a light of a few pixels flashed in and out as the camera moved)
     this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), BLOOM.near.strength, BLOOM.near.radius, 3);
+    // a pixel of the scene that is not a number (or infinite, past the half float) on some GPUs:
+    // the blur spread it over its whole mip chain, and the screen flashed black. Its bright pass
+    // reads it as nothing, and caps the rest (far above any light)
+    const high = this.bloom.materialHighPassFilter;
+    high.fragmentShader = high.fragmentShader.replace(
+      'vec4 texel = texture2D( tDiffuse, vUv );',
+      'vec4 texel = texture2D( tDiffuse, vUv );\n\t\t\tif ( any( isnan( texel ) ) || any( isinf( texel ) ) ) texel = vec4( 0.0 );\n\t\t\ttexel = min( texel, vec4( 1000.0 ) );',
+    );
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
     this.cinema = new CinemaPass();
