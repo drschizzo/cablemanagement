@@ -419,8 +419,7 @@ export class World {
     const end = this.cables[c].ends[e];
     if (end.port) this.unplug(c, e);
     const [n0, n1] = this.endNodes(c, e);
-    this.sim.pin(n0, port.x, port.y, CONNECTOR);
-    this.sim.pin(n1, port.x, port.y, CONNECTOR + this.seg);
+    this.sim.pinEnd(n0, n1, [port.x, port.y, CONNECTOR], [port.x, port.y, CONNECTOR + this.seg]);
     port.plug = c * 2 + e;
     end.port = portId;
     return true;

@@ -235,6 +235,8 @@ export interface CableInfo {
 }
 
 const FRICTION_K = { start: 0.05, growth: 3, max: 1.5 }; // × M/h²
+/** a connector's stroke into its port: speed (m/s), shortest and longest (s), and how far out it lines up first (m) */
+const PLUG_STROKE = { speed: 0.6, least: 0.1, most: 0.35, lead: 0.03 };
 
 export class CableSim {
   P: SimParams;
@@ -568,6 +570,7 @@ export class CableSim {
 
   /** puts every free node at the given positions, at rest (pins keep theirs) */
   teleport(pos: ArrayLike<number>): void {
+    this.strokePlugs(0, true);
     for (let i = 0; i < this.n; i++) {
       if (this.pinned[i]) continue;
       for (let d = 0; d < 3; d++) this.x[3 * i + d] = pos[3 * i + d];
@@ -602,8 +605,59 @@ export class CableSim {
   }
 
   unpin(i: number): void {
+    this.plugs = this.plugs.filter((q) => q.i0 !== i && q.i1 !== i);
     this.pinned[i] = 0;
     this.wakeCable(this.cableOf[i]);
+  }
+
+  /**
+   * Plugs an end: its connector node i0 and the next one i1 go to a and b
+   * (in the port, and just behind it), not at once but along a short
+   * stroke that ends in line with the port, as a hand pushes a plug in; the
+   * cord follows them. Snapped there, the connector jumped across the gap
+   * the pointer had left (centimetres, up to a hand's depth in front of the
+   * rack) and the cord, yanked after it, whipped about.
+   */
+  pinEnd(i0: number, i1: number, a: ArrayLike<number>, b: ArrayLike<number>): void {
+    this.plugs = this.plugs.filter((q) => q.i0 !== i0 && q.i1 !== i1);
+    const x = this.x;
+    const s0 = [x[3 * i0], x[3 * i0 + 1], x[3 * i0 + 2]], s1 = [x[3 * i1], x[3 * i1 + 1], x[3 * i1 + 2]];
+    const gap = Math.max(Math.hypot(a[0] - s0[0], a[1] - s0[1], a[2] - s0[2]), Math.hypot(b[0] - s1[0], b[1] - s1[1], b[2] - s1[2]));
+    if (gap > 1e-3) {
+      const P = PLUG_STROKE;
+      this.plugs.push({ i0, i1, s0, s1, a: [a[0], a[1], a[2]], b: [b[0], b[1], b[2]], t: 0, T: Math.min(P.most, Math.max(P.least, gap / P.speed)) });
+      this.pinned[i0] = 1; this.pinned[i1] = 1;
+      this.wakeCable(this.cableOf[i0]);
+      return;
+    }
+    this.pin(i0, a[0], a[1], a[2]);
+    this.pin(i1, b[0], b[1], b[2]);
+  }
+
+  /** connectors on their way into a port (see `pinEnd`) */
+  private plugs: { i0: number; i1: number; s0: number[]; s1: number[]; a: number[]; b: number[]; t: number; T: number }[] = [];
+
+  /**
+   * A frame of the plugs' strokes: a curve from where the connector was,
+   * through a point straight out from the port, into it; eased at both ends.
+   * `finish` puts them all in at once.
+   */
+  private strokePlugs(dt: number, finish = false): void {
+    if (!this.plugs.length) return;
+    const back = PLUG_STROKE.lead;
+    this.plugs = this.plugs.filter((q) => {
+      q.t = finish ? q.T : Math.min(q.T, q.t + dt);
+      const r = q.t / q.T, u = r * r * (3 - 2 * r);
+      // straight out of the port: from the node in it towards the one behind
+      const ox = q.b[0] - q.a[0], oy = q.b[1] - q.a[1], oz = q.b[2] - q.a[2];
+      const ol = Math.hypot(ox, oy, oz) || 1;
+      const ex = (ox / ol) * back, ey = (oy / ol) * back, ez = (oz / ol) * back;
+      const at = (s: number[], e: number[], k: number) =>
+        (1 - u) * (1 - u) * s[k] + 2 * u * (1 - u) * (e[k] + (k === 0 ? ex : k === 1 ? ey : ez)) + u * u * e[k];
+      this.pin(q.i0, at(q.s0, q.a, 0), at(q.s0, q.a, 1), at(q.s0, q.a, 2));
+      this.pin(q.i1, at(q.s1, q.b, 0), at(q.s1, q.b, 1), at(q.s1, q.b, 2));
+      return q.t < q.T;
+    });
   }
 
   grab(i: number): void {
@@ -814,6 +868,7 @@ export class CableSim {
     const t0 = performance.now();
     const P = this.P;
     const h = P.dt / P.substeps;
+    this.strokePlugs(P.dt);
     this.convert(h);
     this.markGateFree();
     this.markKept();

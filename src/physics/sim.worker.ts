@@ -9,6 +9,7 @@ export type ToWorker =
   | { type: 'init'; params: SimParams; defs: CableInit[]; x: Float64Array; v: Float64Array; pins: number[]; statics: StaticShape[]; pinches: Pinch[] }
   | { type: 'pin'; i: number; p: [number, number, number] }
   | { type: 'unpin'; i: number }
+  | { type: 'pinEnd'; i0: number; i1: number; a: [number, number, number]; b: [number, number, number] }
   | { type: 'grab'; i: number }
   | { type: 'release' }
   | { type: 'holdStill'; i: number; p: [number, number, number] }
@@ -57,6 +58,7 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
   switch (m.type) {
     case 'pin': sim.pin(m.i, ...m.p); break;
     case 'unpin': sim.unpin(m.i); break;
+    case 'pinEnd': sim.pinEnd(m.i0, m.i1, m.a, m.b); break;
     case 'grab': sim.grab(m.i); break;
     case 'release': sim.release(); break;
     case 'holdStill': sim.holdStill(m.i, ...m.p); break;

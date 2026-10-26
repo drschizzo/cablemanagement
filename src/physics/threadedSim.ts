@@ -151,6 +151,11 @@ export class ThreadedSim extends CableSim {
     this.post({ type: 'unpin', i });
   }
 
+  pinEnd(i0: number, i1: number, a: ArrayLike<number>, b: ArrayLike<number>): void {
+    super.pinEnd(i0, i1, a, b);
+    this.post({ type: 'pinEnd', i0, i1, a: [a[0], a[1], a[2]], b: [b[0], b[1], b[2]] });
+  }
+
   grab(i: number): void {
     super.grab(i);
     this.post({ type: 'grab', i });
