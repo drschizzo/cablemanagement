@@ -35,6 +35,12 @@ export class Stage {
   private framed = { cy: 0, height: 1, halfWidth: 0.41, cx: 0.03, shadowWidth: 0.41, near: 0 };
   /** screen space taken by the panels (px): the cabinet is framed in the rest */
   insets = { left: 0, right: 0, top: 0, bottom: 0 };
+  /**
+   * Where the camera rests, relative to the framing (see frame()): its distance
+   * (× the one that fits), its angle above the horizontal (rad), how far below
+   * the middle of the subject it looks (m). null: the framing as it is.
+   */
+  view: { zoom: number; elevation: number; lower: number } | null = null;
   /** slow sway of the camera around the cabinet (demo), stopped by the player */
   private swaying = false;
   private swayT = 0;
@@ -195,6 +201,12 @@ export class Stage {
     fog.near = dist + 1.5;
     fog.far = dist * 2 + 4;
     this.home.pos.set(cx, cy + dist * 0.16, dist);
+    const v = this.view;
+    if (v) {
+      this.home.target.y -= v.lower;
+      const len = Math.hypot(dist * 0.16, dist) * v.zoom;
+      this.home.pos.set(cx, this.home.target.y + Math.sin(v.elevation) * len, this.home.target.z + Math.cos(v.elevation) * len);
+    }
     this.resetView();
     const s = this.key.shadow.camera;
     const half = Math.max(height * 0.75, shadowWidth) + 0.3;

@@ -1,13 +1,14 @@
 // Headless check of the before/after cabinet, over a few random closets: the
 // mess (settled as in the demo), then the tidy cords on their routes.
-//   npx esbuild tools/showcase.ts --bundle --platform=node --format=esm --outfile=/tmp/showcase.mjs && node /tmp/showcase.mjs [seeds]
+//   npx esbuild tools/showcase.ts --bundle --platform=node --format=esm --outfile=/tmp/showcase.mjs && node /tmp/showcase.mjs [seeds] [pairs]
 declare const process: { argv: string[] };
 import { World } from '../src/game/world';
 import { SHOWCASE_SETTLE, showcaseRack } from '../src/game/levels';
 
 const seeds = process.argv[2] ? process.argv[2].split(',').map(Number) : [1, 2, 3, 4, 5, 6, 7, 8];
+const pairs = process.argv[3] ? Number(process.argv[3]) : undefined;
 for (const seed of seeds) {
-  const m = new World(showcaseRack('mess', seed));
+  const m = new World(showcaseRack('mess', seed, pairs));
   Object.assign(m.sim.P, SHOWCASE_SETTLE.solver);
   const t0 = performance.now();
   for (let f = 0; f < SHOWCASE_SETTLE.frames; f++) m.sim.step();
@@ -16,7 +17,7 @@ for (const seed of seeds) {
   for (let i = 0; i < m.sim.n; i++) if (m.sim.x[3 * i + 1] < m.rack.floorY + 0.02) low++;
   for (const v of m.sim.x) if (!Number.isFinite(v)) nan++;
 
-  const w = new World(showcaseRack('tidy', seed));
+  const w = new World(showcaseRack('tidy', seed, pairs));
   w.sim.teleport(w.tidyTargets());
   w.circuits.forEach((ci, i) => { for (const e of w.cables[i].ends) e.label = ci.service; });
   const ev = w.evaluate();

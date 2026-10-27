@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { COLUMN_X, FRONT_Z, Rack, SIDE_BACK, SIDE_IN, SIDE_OUT, U, WALL_X, type Item, type Port } from '../game/rack';
 import type { StaticShape } from '../physics/cableSim';
 import type { FibreType } from '../game/levels';
@@ -48,9 +49,12 @@ for (const m of Object.values(mat)) shared(m);
 export const ghostMat = shared(new THREE.MeshStandardMaterial({ color: '#6fd3ff', transparent: true, opacity: 0.45, emissive: '#1f6f99', depthWrite: false }));
 export const ghostBadMat = shared(new THREE.MeshStandardMaterial({ color: '#ff6f6f', transparent: true, opacity: 0.4, emissive: '#992020', depthWrite: false }));
 
+const markerGeo = shared(new THREE.RingGeometry(0.0085, 0.0105, 24));
+
 export class RackView {
   group = new THREE.Group();
   itemsGroup = new THREE.Group();
+  /** the rings that highlight ports, made the first time each is asked for (see marker()) */
   portMarkers = new Map<string, THREE.Mesh>();
   /** every port LED, one instance each */
   private leds: THREE.InstancedMesh;
@@ -59,6 +63,8 @@ export class RackView {
   private ledBlink: THREE.InstancedBufferAttribute;
   /** the status and activity lights of the equipment, gathered while it is built */
   private lights: LedSpec[] = [];
+  /** the name plates of the equipment (unit, light or dark), gathered while it is built: drawn on one texture */
+  private labels: { k: number; light: boolean }[] = [];
   /** so that two cabinets side by side do not blink in step */
   private seed = Math.random() * 1000;
   private builtVersion = -1;
@@ -69,6 +75,7 @@ export class RackView {
     this.group.add(this.itemsGroup);
     this.buildCabinet();
     rack.units.forEach((u, k) => this.buildUnit(k, panelTypes.get(k) ?? 'OS2'));
+    this.buildLabels();
     // the cabinet and its equipment never move: one mesh per material
     mergeStatic(this.group, (m) => m.parent === this.group && !m.userData.reflective);
     const ports = rack.ports.filter((p) => this.ledOf.has(p.id));
@@ -232,10 +239,7 @@ export class RackView {
       else this.light(x, y, style === 'router' ? '#3aa8ff' : '#ffae1f', activity(s, 0.45));
     }
     // ears with the name of the equipment
-    const label = labelTexture(r, k, style === 'fibre');
-    const plane = new THREE.Mesh(new THREE.PlaneGeometry(w, U - 0.002), new THREE.MeshStandardMaterial({ map: label, transparent: true, roughness: 0.6 }));
-    plane.position.set(0, y, 0.0004);
-    this.group.add(plane);
+    this.labels.push({ k, light: style === 'fibre' });
     for (const p of r.ports.filter((q) => q.unit === k)) {
       if (style === 'copper') {
         // white keystone jack with its RJ45 opening
@@ -249,13 +253,60 @@ export class RackView {
         this.add(bevelBox(0.0085, 0.008, 0.002, 0.0005), mat.hole, p.x, p.y - 0.002, 0.0042);
       }
       this.ledOf.set(p.id, this.ledOf.size);
-      // invisible marker used to highlight a port
-      const marker = new THREE.Mesh(new THREE.RingGeometry(0.0085, 0.0105, 24), new THREE.MeshBasicMaterial({ color: '#7ee0ff', transparent: true, opacity: 0.9, depthTest: false }));
-      marker.position.set(p.x, p.y - 0.002, 0.008);
-      marker.visible = false;
-      marker.renderOrder = 10;
-      this.group.add(marker);
-      this.portMarkers.set(p.id, marker);
+    }
+  }
+
+  /**
+   * The ring that highlights a port, hidden until shown. Made when first asked
+   * for: one per port, hidden, was every port of an aisle of tall racks (14 000)
+   * gone through by the passes that walk the whole scene, hidden or not, each frame.
+   */
+  marker(id: string): THREE.Mesh {
+    let m = this.portMarkers.get(id);
+    if (m) return m;
+    const p = this.rack.port(id);
+    m = new THREE.Mesh(markerGeo, new THREE.MeshBasicMaterial({ color: '#7ee0ff', transparent: true, opacity: 0.9, depthTest: false }));
+    m.position.set(p.x, p.y - 0.002, 0.008);
+    m.visible = false;
+    m.renderOrder = 10;
+    this.group.add(m);
+    this.portMarkers.set(id, m);
+    return m;
+  }
+
+  /**
+   * The name plates of all the equipment, on one texture (a row each) and one
+   * mesh: one plane and one texture per unit was a draw call each in every
+   * pass, and 1.6 MB each. Past 8192 px of rows, another texture; in a tall
+   * rack (seen from afar), rows of half the size.
+   */
+  private buildLabels(): void {
+    const w = COLUMN_X * 2 - 0.036;
+    const scale = this.labels.length > 24 ? 0.5 : 1;
+    const rowH = LABEL_H * scale, per = Math.floor(8192 / rowH);
+    for (let i0 = 0; i0 < this.labels.length; i0 += per) {
+      const rows = this.labels.slice(i0, i0 + per);
+      const c = document.createElement('canvas');
+      c.width = LABEL_W * scale; c.height = rowH * rows.length;
+      const g = c.getContext('2d')!;
+      const planes = rows.map(({ k, light }, row) => {
+        g.save();
+        g.translate(0, row * rowH);
+        g.scale(scale, scale);
+        drawLabel(g, this.rack, k, light);
+        g.restore();
+        const p = new THREE.PlaneGeometry(w, U - 0.002).translate(0, this.rack.unitY(k), 0.0004);
+        // its row of the texture (the canvas is flipped: its top row at v = 1)
+        const uv = p.attributes.uv;
+        for (let i = 0; i < uv.count; i++) uv.setY(i, 1 - (row + 1 - uv.getY(i)) / rows.length);
+        return p;
+      });
+      const t = new THREE.CanvasTexture(c);
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.anisotropy = 8;
+      const geo = mergeGeometries(planes);
+      for (const p of planes) p.dispose();
+      this.group.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: t, transparent: true, roughness: 0.6 })));
     }
   }
 
@@ -435,12 +486,13 @@ function railMaterial(height: number): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({ map: t, roughness: 0.5, metalness: 0.7 });
 }
 
-function labelTexture(rack: Rack, k: number, light: boolean): THREE.CanvasTexture {
+/** size of the name plate of a unit on its texture (px) */
+const LABEL_W = 2048, LABEL_H = 200;
+
+/** the port numbers, name and label of unit k, light on a dark face or dark on a light one */
+function drawLabel(g: CanvasRenderingContext2D, rack: Rack, k: number, light: boolean): void {
   const u = rack.units[k];
-  const W = 2048, H = 200;
-  const c = document.createElement('canvas');
-  c.width = W; c.height = H;
-  const g = c.getContext('2d')!;
+  const W = LABEL_W, H = LABEL_H;
   const w = COLUMN_X * 2 - 0.036;
   const toPx = (x: number) => ((x + w / 2) / w) * W;
   g.fillStyle = light ? '#2a3038' : '#c9d1da';
@@ -456,10 +508,6 @@ function labelTexture(rack: Rack, k: number, light: boolean): THREE.CanvasTextur
   g.fillStyle = light ? '#59616b' : '#8d97a3';
   g.textAlign = 'right';
   g.fillText(u.label ?? '', W - 16, H - 26);
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 8;
-  return t;
 }
 
 /** a box with rounded edges (r: bevel radius) */

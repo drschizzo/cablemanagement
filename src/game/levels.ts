@@ -270,6 +270,8 @@ export const LEVELS: LevelDef[] = [
  * the router, the servers' two NICs.
  * 'mess': the cords are long and tangled, nothing is managed.
  * 'tidy': short cords on their tidy routes, managers and ducts installed.
+ * `pairs`: as many panel / switch pairs instead of 3 or 4 (a taller rack, far
+ * beyond any real one), with servers in proportion.
  */
 /**
  * How the mess of the demo is settled before it is shown: a short fall with a
@@ -277,14 +279,17 @@ export const LEVELS: LevelDef[] = [
  */
 export const SHOWCASE_SETTLE = { frames: 40, solver: { substeps: 1, refSubsteps: 1, iterations: 4 } };
 
-export function showcaseRack(state: 'mess' | 'tidy', seed: number): LevelDef {
+export function showcaseRack(state: 'mess' | 'tidy', seed: number, pairs?: number): LevelDef {
   // the closet is drawn from the seed: both worlds of the demo get the same one
   const r = rng(seed);
   const pick = <T>(a: T[]): T => a[Math.floor(r() * a.length)];
   const cu = (name: string): UnitSpec => ({ kind: 'panel', name, ports: 24, style: 'copper', label: `Panneau de brassage ${name}` });
   const sw = (name: string): UnitSpec => ({ kind: 'switch', name, ports: 24, style: 'switch', label: `Switch ${name}` });
-  const pairs = 3 + Math.floor(r() * 2);
-  const panels = 'ABCD'.slice(0, pairs).split(''), switches = 'STUV'.slice(0, pairs).split('');
+  const drawn = 3 + Math.floor(r() * 2);
+  pairs ??= drawn;
+  // past the first four, two letters (none of them F, R, X, Y: the other units)
+  const named = (first: string, more: string) => [...Array(pairs).keys()].map((k) => (k < 4 ? first[k] : more + String.fromCharCode(65 + k - 4)));
+  const panels = named('ABCD', 'P'), switches = named('STUV', 'Q');
   // three ways to fill a closet, all of them patched across through the side ducts:
   // the panels above the switches, the switches between two banks of panels,
   // or panel / switch pairs patched to each other's switch
@@ -299,15 +304,17 @@ export function showcaseRack(state: 'mess' | 'tidy', seed: number): LevelDef {
     for (const n of switches) units.push(sw(n), B);
     for (const p of panels.slice(top)) units.push(cu(p), B);
   } else panels.forEach((p, k) => units.push(cu(p), B, sw(switches[k]), B));
-  const fw: UnitSpec = { kind: 'switch', name: 'F', ports: 8, style: 'firewall', label: 'Pare-feu' };
-  const rt: UnitSpec = { kind: 'switch', name: 'R', ports: 8, style: 'router', label: 'Routeur' };
+  // an uplink per switch, then the servers' links
+  const up = Math.max(4, pairs);
+  const fw: UnitSpec = { kind: 'switch', name: 'F', ports: up + 4, style: 'firewall', label: 'Pare-feu' };
+  const rt: UnitSpec = { kind: 'switch', name: 'R', ports: up + 4, style: 'router', label: 'Routeur' };
   units.push(...(r() < 0.5 ? [fw, B, rt, B] : [rt, B, fw, B]));
   const servers = r() < 0.7 ? ['X', 'Y'] : ['X'];
   for (const n of servers) {
     const at = 0.02 + r() * 0.1;
     units.push({ kind: 'server', name: n, portsAt: [at, at + 0.025], style: 'server', label: `Serveur ${n}` });
   }
-  for (let k = Math.floor(r() * 3); k > 0; k--) units.push({ kind: 'server', style: 'server', label: 'Serveur' });
+  for (let k = Math.floor(r() * 3) + Math.max(0, pairs - drawn); k > 0; k--) units.push({ kind: 'server', style: 'server', label: 'Serveur' });
   units.push(B);
   for (let k = 1 + Math.floor(r() * 2); k > 0; k--) units.push({ kind: 'server', style: 'ups', label: 'Onduleur' });
   // a finger manager on every blank next to a panel or a switch
@@ -326,8 +333,9 @@ export function showcaseRack(state: 'mess' | 'tidy', seed: number): LevelDef {
     const svc = pick([0, 0, 1, 2, 4, 5]);
     const used = shuffle([...Array(22).keys()].map((i) => i + 1)).slice(0, 16 + Math.floor(r() * 7)).sort((a, b) => a - b);
     used.forEach((i) => {
-      // any switch but the one next to the panel, as long as it has ports left
-      const others = switches.map((_, j) => j).filter((j) => j !== k && free[j].length > 0);
+      // any switch but the one next to the panel, as long as it has ports left (in a taller
+      // rack than drawn, one of the closest: across the whole of it, the cords grew too long to fall)
+      const others = switches.map((_, j) => j).filter((j) => j !== k && free[j].length > 0 && (pairs === drawn || Math.abs(j - k) <= 2));
       const j = others.length ? pick(others) : k;
       if (!free[j].length) return;
       out.push({ a: `${p}${i}`, b: `${switches[j]}${free[j].pop()}`, type: 'CU', service: special && i % special === 0 ? 3 : svc });
@@ -338,10 +346,12 @@ export function showcaseRack(state: 'mess' | 'tidy', seed: number): LevelDef {
     out.push({ a: `${n}24`, b: `R${k + 1}`, type: 'CU', service: 2 });
   });
   servers.forEach((n, k) => {
-    out.push({ a: `F${5 + k}`, b: `${n}1`, type: 'CU', service: 4 });
-    out.push({ a: `R${5 + k}`, b: `${n}2`, type: 'CU', service: 4 });
+    out.push({ a: `F${up + 1 + k}`, b: `${n}1`, type: 'CU', service: 4 });
+    out.push({ a: `R${up + 1 + k}`, b: `${n}2`, type: 'CU', service: 4 });
   });
-  const lo = 1.3 + r() * 0.3;
+  // a taller rack, longer cords: they still have to reach the floor from the top
+  const tall = Math.sqrt((4 * pairs + 10) / (4 * drawn + 10));
+  const lo = (1.3 + r() * 0.3) * tall;
   return {
     id: `showcase-${state}`,
     title: 'Avant / Après',
@@ -358,12 +368,13 @@ export function showcaseRack(state: 'mess' | 'tidy', seed: number): LevelDef {
     // the old cords of the mess are limp, the new ones springy
     bend: state === 'mess' ? 1.5 : 0,
     open: true,
-    // the mess is coarser: it only has to fall once, and quickly
-    seg: state === 'mess' ? 0.05 : 0.025,
+    // the mess is coarser: it only has to fall once, and quickly (coarser still in a taller
+    // rack, its cords longer: a hanging curtain of them, seen from afar)
+    seg: state === 'mess' ? 0.05 * Math.min(1.4, tall) : 0.025,
     radius: 0.0028,
     // most detours start low, close to where they will end up
     messSpread: { x: 0.45 + r() * 0.15, z: [0.02, 0.3 + r() * 0.1], fall: 2.5 },
-    messLength: [lo, lo + 1.2 + r() * 0.6],
+    messLength: [lo, lo + (1.2 + r() * 0.6) * tall],
     colorByService: true,
     schedule: () => out,
   };

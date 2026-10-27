@@ -7,18 +7,11 @@ import { tintable } from './batch';
 import { bevelBox } from './bevel';
 import { ledLit, type LedGlow } from './ledGlow';
 import { JACKET_KIND, jacketed } from './jacket';
-import { RADIAL, SUB, TubeMesh, TubeNodes, layTube, tubeIndices, tubeVerts } from './tube';
-
-/** cos and sin of the angle of each vertex around a ring */
-const RING_COS = Float64Array.from({ length: RADIAL }, (_, r) => Math.cos((r / RADIAL) * Math.PI * 2));
-const RING_SIN = Float64Array.from({ length: RADIAL }, (_, r) => Math.sin((r / RADIAL) * Math.PI * 2));
+import { TubeMesh, TubeNodes } from './tube';
 
 export const FIBRE_COLORS = { OS2: '#f2c12e', OM4: '#3cc9cf', CU: '#3d7fe0' } as const;
 
 interface CableMesh {
-  /** first vertex of the cord in the shared tube buffers */
-  v0: number;
-  samples: number;
   visible: boolean;
   lastSig: number;
   /** linear colour of the cord (its boots too) */
@@ -56,18 +49,18 @@ const PINCH_SOFT = new THREE.Color('#2f5866'), PINCH_FIRM = new THREE.Color('#6f
 const Z = new THREE.Vector3(0, 0, 1);
 const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 const HOUSING = { OS2: new THREE.Color('#2d6fd8'), OM4: new THREE.Color('#d9cfa3') };
+/** how clear an RJ45 plug is (its transmission) */
+const CLEAR = 0.6;
 
 /**
- * Every cord of a world drawn in one mesh (their tubes share one buffer, coloured
- * per vertex, swept on the GPU from their nodes), and their connectors in a
- * handful of instanced meshes.
+ * Every cord of a world drawn in one mesh (a segment an instance, swept on the
+ * GPU from their nodes), and their connectors in a handful of instanced meshes.
  */
 export class CableView {
   group = new THREE.Group();
   cables: CableMesh[] = [];
   private tube: TubeMesh;
   private nodes: TubeNodes;
-  private tint: Float32Array;
   private plugs: { fibre: Plugs; copper: Plugs };
   private straps: THREE.InstancedMesh | null = null;
   private strapMat = new THREE.MeshStandardMaterial({ color: '#1b2a4a', roughness: 0.9 });
@@ -78,6 +71,8 @@ export class CableView {
   pinchHover = -1;
   /** the cord whose pinches are shown (under the pointer, or in hand), or −1: none */
   pinchShown = -1;
+  /** how many cords are visible */
+  private shown: number;
   private tmp = new THREE.Vector3();
   private q = new THREE.Quaternion();
   private m4 = new THREE.Matrix4();
@@ -89,45 +84,21 @@ export class CableView {
   private recoloured = new Set<THREE.InstancedMesh>();
 
   constructor(private world: World) {
-    let verts = 0, indices = 0, nodes = 0;
+    let segments = 0, nodes = 0;
     world.cables.forEach((cb) => {
-      const samples = (cb.count - 1) * SUB + 1;
-      this.cables.push({ v0: verts, samples, visible: true, lastSig: NaN, color: new THREE.Color(cb.color ?? FIBRE_COLORS[cb.type]) });
-      verts += tubeVerts(cb.count);
-      indices += tubeIndices(cb.count);
+      this.cables.push({ visible: true, lastSig: NaN, color: new THREE.Color(cb.color ?? FIBRE_COLORS[cb.type]) });
+      segments += cb.count - 1;
       nodes = Math.max(nodes, cb.start + cb.count);
     });
     this.nodes = new TubeNodes(nodes);
-    this.tint = new Float32Array(verts * 3);
-    const colors = new Float32Array(verts * 3);
-    // length along the cord at rest, angle around it, kind: what the jacket shader draws with
-    const jacket = new Float32Array(verts * 4);
-    const tube = new Float32Array(verts * 3);
-    const idx = new Uint32Array(indices), coarse = new Uint32Array(indices / 4);
-    let i0 = 0;
-    this.cables.forEach((cm, k) => {
-      for (let v = cm.v0; v < cm.v0 + cm.samples * RADIAL; v++) cm.color.toArray(colors, 3 * v);
-      const kind = JACKET_KIND[world.cables[k].type];
-      for (let s = 0; s < cm.samples; s++) {
-        for (let r = 0; r < RADIAL; r++) {
-          const o = 4 * (cm.v0 + s * RADIAL + r);
-          jacket[o] = (s / SUB) * world.seg + k * 0.37;
-          jacket[o + 1] = RING_COS[r];
-          jacket[o + 2] = RING_SIN[r];
-          jacket[o + 3] = kind;
-        }
-      }
-      const cb = world.cables[k];
-      layTube(tube, cm.v0, cb.start, cb.count, idx, coarse, i0);
-      i0 += tubeIndices(cb.count);
+    this.shown = this.cables.length;
+    this.tube = new TubeMesh(segments, jacketed(tintable(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, metalness: 0.0 }))), this.nodes);
+    let at = 0;
+    world.cables.forEach((cb, k) => {
+      // each cord's marking from its own place along the print
+      this.tube.lay(at, cb.start, cb.count, this.cables[k].color, k * 0.37, world.seg, JACKET_KIND[cb.type]);
+      at += cb.count - 1;
     });
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('normal', new THREE.BufferAttribute(tube, 3));
-    geo.setAttribute('emissiveTint', new THREE.BufferAttribute(this.tint, 3).setUsage(THREE.DynamicDrawUsage));
-    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    geo.setAttribute('jacket', new THREE.BufferAttribute(jacket, 4));
-    geo.setIndex(new THREE.BufferAttribute(idx, 1));
-    this.tube = new TubeMesh(geo, coarse, jacketed(tintable(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, metalness: 0.0 }))), this.nodes);
     this.tube.castShadow = true;
     this.tube.receiveShadow = true;
     this.group.add(this.tube);
@@ -158,7 +129,7 @@ export class CableView {
     };
     this.plugs = {
       fibre: make(false, new THREE.MeshStandardMaterial({ roughness: 0.4 })),
-      copper: make(true, new THREE.MeshPhysicalMaterial({ color: '#e8f0f4', roughness: 0.15, transmission: 0.6, thickness: 0.004, transparent: true, opacity: 0.85 })),
+      copper: make(true, new THREE.MeshPhysicalMaterial({ color: '#e8f0f4', roughness: 0.15, transmission: CLEAR, thickness: 0.004, transparent: true, opacity: 0.85 })),
     };
     world.cables.forEach((cb, c) => {
       const p = this.plugOf(c);
@@ -207,6 +178,9 @@ export class CableView {
       this.updateEnds(c);
     });
     this.flush();
+    // a clear plug costs the frame a pass of its own (the scene behind it, drawn again):
+    // not worth it on cords a pixel or two wide
+    (this.plugs.copper.housing.material as THREE.MeshPhysicalMaterial).transmission = this.tube.level === 2 ? 0 : CLEAR;
     this.updateStraps();
     this.updatePinches();
   }
@@ -298,7 +272,10 @@ export class CableView {
   /** shows or hides one cord with its connectors */
   setVisible(c: number, on: boolean): void {
     const cm = this.cables[c];
+    if (cm.visible !== on) this.shown += on ? 1 : -1;
     cm.visible = on;
+    // none left: the tubes and plugs of radius and scale 0 would still be run through the GPU
+    for (const o of this.group.children) if (o !== this.straps && o !== this.pinchMarks) o.visible = this.shown > 0;
     if (on) { this.buildTube(c); this.updateEnds(c); }
     else {
       // a tube of radius 0: nothing left to draw
@@ -314,10 +291,8 @@ export class CableView {
     const cm = this.cables[c];
     if (!cm) return;
     this.col.set(on ? color : '#000000');
-    for (let v = cm.v0; v < cm.v0 + cm.samples * RADIAL; v++) this.col.toArray(this.tint, 3 * v);
-    const a = this.tube.geometry.attributes.emissiveTint as THREE.BufferAttribute;
-    a.addUpdateRange(3 * cm.v0, 3 * cm.samples * RADIAL);
-    a.needsUpdate = true;
+    const cb = this.world.cables[c];
+    for (let i = cb.start; i < cb.start + cb.count; i++) this.nodes.tint(i, this.col);
     const p = this.plugOf(c);
     for (const e of [0, 1]) this.col.toArray(p.tint.array, 3 * (2 * c + e));
     p.tint.needsUpdate = true;
@@ -328,13 +303,8 @@ export class CableView {
     const cm = this.cables[c];
     if (!cm) return;
     const black = new THREE.Color(0, 0, 0);
-    for (let s = 0; s < cm.samples; s++) {
-      const col = colors[Math.min(colors.length - 1, Math.round(s / SUB))] ?? black;
-      for (let r = 0; r < RADIAL; r++) col.toArray(this.tint, 3 * (cm.v0 + s * RADIAL + r));
-    }
-    const a = this.tube.geometry.attributes.emissiveTint as THREE.BufferAttribute;
-    a.addUpdateRange(3 * cm.v0, 3 * cm.samples * RADIAL);
-    a.needsUpdate = true;
+    const cb = this.world.cables[c];
+    for (let k = 0; k < cb.count; k++) this.nodes.tint(cb.start + k, colors[Math.min(colors.length - 1, k)] ?? black);
   }
 
   /** sends what changed this frame to the GPU */

@@ -64,8 +64,8 @@ class Bay {
   /** time not yet stepped by the physics (s) */
   private acc = 0;
 
-  constructor(stage: Stage, state: 'mess' | 'tidy', seed: number, at: Place) {
-    this.world = new World(showcaseRack(state, seed));
+  constructor(stage: Stage, state: 'mess' | 'tidy', seed: number, at: Place, pairs?: number) {
+    this.world = new World(showcaseRack(state, seed, pairs));
     const types = new Map<number, FibreType>();
     this.world.circuits.forEach((c) => types.set(this.world.rack.port(c.a).unit, c.type));
     this.rackView = new RackView(this.world.rack, types, { roomFloor: false });
@@ -235,9 +235,9 @@ class Closet {
   /** the cords of the mess laid along the tidy routes */
   tidyShapes!: Float64Array;
 
-  constructor(stage: Stage, seed: number, at: Place, threaded: boolean) {
-    this.mess = new Bay(stage, 'mess', seed, at);
-    this.tidy = new Bay(stage, 'tidy', seed, at);
+  constructor(stage: Stage, seed: number, at: Place, threaded: boolean, pairs?: number) {
+    this.mess = new Bay(stage, 'mess', seed, at, pairs);
+    this.tidy = new Bay(stage, 'tidy', seed, at, pairs);
     // the mess only falls once: a cheap solver will do
     Object.assign(this.mess.world.sim.P, SHOWCASE_SETTLE.solver);
     if (threaded) this.mess.world.sim.startWorker();
@@ -362,16 +362,19 @@ export class Showcase {
   private floor: THREE.Group;
   /** before it is tidied, cords keep falling from above and pile up in the middle of the room */
   private rain!: CableRain;
+  /** where the camera rests, relative to the framing of the aisle (see Stage.view); set before start() */
+  view: Stage['view'] = null;
 
   /**
-   * Builds an aisle of `bays` closets at random and lets their mess fall (each
-   * in its worker), reporting progress. Nothing shows until start(): the caller
-   * may throw it away first.
+   * Builds an aisle of `bays` closets at random (of `pairs` panel / switch pairs
+   * each, drawn if not given) and lets their mess fall (each in its worker),
+   * reporting progress. Nothing shows until start(): the caller may throw it
+   * away first.
    */
-  static async create(stage: Stage, threaded: boolean, actions: { another(): void }, progress: (f: number) => void, seed = Math.floor(Math.random() * 1e9), bays = 1): Promise<Showcase> {
+  static async create(stage: Stage, threaded: boolean, actions: { another(): void }, progress: (f: number) => void, seed = Math.floor(Math.random() * 1e9), bays = 1, pairs?: number): Promise<Showcase> {
     const sc = new Showcase(stage, actions);
     const places = layout(bays, seed);
-    places.forEach((at, k) => sc.closets.push(new Closet(stage, seed + k, at, threaded)));
+    places.forEach((at, k) => sc.closets.push(new Closet(stage, seed + k, at, threaded, pairs)));
     const rack = sc.closets[0].mess.world.rack;
     // the heap in the middle of the half circle, a little ahead of the racks
     sc.rain = new CableRain({
@@ -414,6 +417,7 @@ export class Showcase {
     const ends = this.closets.map((c) => c.mess.group.position);
     const side = Math.max(...ends.map((p) => Math.abs(p.x)));
     const near = Math.max(...ends.map((p) => p.z));
+    this.stage.view = this.view;
     this.stage.frame((r.topY + r.floorY) / 2 + 0.02, r.topY - r.floorY + 0.1, side + (n > 1 ? 0.15 : 0.6), n > 1 ? 0 : 0.03, side + 0.6, near);
     document.body.classList.add('demo');
     this.el.classList.add('on');
@@ -440,6 +444,7 @@ export class Showcase {
     delete document.body.dataset.sc;
     this.stage.sway(false);
     this.stage.dragPans(false);
+    this.stage.view = null;
   }
 
   /** advances by dt and draws (also called by the automated checks) */

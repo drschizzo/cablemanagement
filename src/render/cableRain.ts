@@ -15,14 +15,12 @@ import { CABLE_R } from '../game/rack';
 import { SERVICES } from '../game/levels';
 import { rng } from '../game/tangle';
 import { FIBRE_COLORS, connectorGeos } from './cableView';
-import { RADIAL, SUB, TubeMesh, TubeNodes, coarseIndices, layTube, tubeIndices, tubeVerts } from './tube';
+import { TubeMesh, TubeNodes } from './tube';
 import { JACKET_KIND, jacketed } from './jacket';
 
 /** cords at most (on screen at once): past it, the oldest, deep in the heap, makes room */
 const POOL = 240;
 const NODES = 24;
-const SAMPLES = (NODES - 1) * SUB + 1;
-const VERTS = tubeVerts(NODES);
 const R = CABLE_R;
 /** fixed step of the little simulation (s), and its passes over the constraints */
 const STEP = 1 / 120;
@@ -104,8 +102,6 @@ export class CableRain {
 
   private tube: TubeMesh;
   private nodes = new TubeNodes(POOL * NODES);
-  private colors: Float32Array;
-  private jacket: Float32Array;
   private moved = new Uint8Array(POOL);
   private plugs: { boot: THREE.InstancedMesh; housing: THREE.InstancedMesh }[];
   private m4 = new THREE.Matrix4();
@@ -127,19 +123,9 @@ export class CableRain {
     this.bumps = [0, 0, 0, 0].map(() => this.r() * 2 * Math.PI);
     this.racks = o.racks.map((p) => ({ x: p.x, z: p.z, c: Math.cos(p.yaw), s: Math.sin(p.yaw) }));
 
-    this.colors = new Float32Array(POOL * VERTS * 3);
-    this.jacket = new Float32Array(POOL * VERTS * 4);
-    const tube = new Float32Array(POOL * VERTS * 3);
-    const idx = new Uint32Array(POOL * tubeIndices(NODES)), coarse = new Uint32Array(POOL * coarseIndices(NODES));
-    for (let c = 0; c < POOL; c++) layTube(tube, c * VERTS, c * NODES, NODES, idx, coarse, c * tubeIndices(NODES));
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('normal', new THREE.BufferAttribute(tube, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(this.colors, 3));
-    geo.setAttribute('jacket', new THREE.BufferAttribute(this.jacket, 4));
-    geo.setIndex(new THREE.BufferAttribute(idx, 1));
-    this.tube = new TubeMesh(geo, coarse, jacketed(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, metalness: 0 })), this.nodes);
+    this.tube = new TubeMesh(POOL * (NODES - 1), jacketed(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, metalness: 0 })), this.nodes);
     this.tube.castShadow = this.tube.receiveShadow = true;
-    this.tube.setDrawn(0, 0);
+    this.tube.setDrawn(0);
     this.group.add(this.tube);
 
     // two plugs per cord: a clear RJ45 on copper, an LC on fibre (opaque: a transmissive
@@ -288,21 +274,7 @@ export class CableRain {
     const type = copper ? 'CU' : kind < 0.86 ? 'OS2' : 'OM4';
     const color = copper ? (r() < 0.25 ? FIBRE_COLORS.CU : SERVICES[Math.floor(r() * SERVICES.length)].color) : FIBRE_COLORS[type];
     this.col.set(color);
-    const v0 = c * VERTS, at = r() * 3;
-    for (let s = 0; s < SAMPLES; s++) {
-      for (let q = 0; q < RADIAL; q++) {
-        const v = v0 + s * RADIAL + q;
-        this.col.toArray(this.colors, 3 * v);
-        this.jacket[4 * v] = (s / SUB) * seg + at;
-        this.jacket[4 * v + 1] = Math.cos((q / RADIAL) * Math.PI * 2);
-        this.jacket[4 * v + 2] = Math.sin((q / RADIAL) * Math.PI * 2);
-        this.jacket[4 * v + 3] = JACKET_KIND[type];
-      }
-    }
-    const geo = this.tube.geometry;
-    const ca = geo.attributes.color as THREE.BufferAttribute, ja = geo.attributes.jacket as THREE.BufferAttribute;
-    ca.addUpdateRange(3 * v0, 3 * VERTS); ca.needsUpdate = true;
-    ja.addUpdateRange(4 * v0, 4 * VERTS); ja.needsUpdate = true;
+    this.tube.lay(c * (NODES - 1), c * NODES, NODES, this.col, r() * 3, seg, JACKET_KIND[type]);
     // the plugs of the other kind, out of sight
     for (const e of [0, 1]) {
       const other = this.plugs[1 - this.copper[c]];
@@ -481,7 +453,7 @@ export class CableRain {
 
   /** sends the nodes and plugs of the cords that moved (the GPU sweeps their tubes) */
   private draw(): void {
-    this.tube.setDrawn(this.used * tubeIndices(NODES), this.used * coarseIndices(NODES));
+    this.tube.setDrawn(this.used * (NODES - 1));
     let any = false;
     for (let c = 0; c < this.used; c++) {
       if (this.moved[c] !== 1) continue;

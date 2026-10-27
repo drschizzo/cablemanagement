@@ -172,7 +172,7 @@ export class Controller {
     for (const m of this.rackView.portMarkers.values()) m.visible = false;
     if (circuit >= 0) {
       const ci = this.world.circuits[circuit];
-      for (const id of [ci.a, ci.b]) this.rackView.portMarkers.get(id)!.visible = true;
+      for (const id of [ci.a, ci.b]) this.rackView.marker(id).visible = true;
     }
     this.refreshHighlights();
   }
@@ -527,7 +527,7 @@ export class Controller {
     for (const i of this.world.live) {
       if (this.world.circuitUp(i)) continue;
       const ci = this.world.circuits[i];
-      for (const id of [ci.a, ci.b]) this.rackView.portMarkers.get(id)!.visible = true;
+      for (const id of [ci.a, ci.b]) this.rackView.marker(id).visible = true;
     }
   }
 
@@ -635,7 +635,7 @@ export class Controller {
     this.traced.add(c);
     this.tracing = { cable: c, until: this.clock + 4 };
     for (const m of this.rackView.portMarkers.values()) m.visible = false;
-    for (const e of this.world.cables[c].ends) if (e.port) this.rackView.portMarkers.get(e.port)!.visible = true;
+    for (const e of this.world.cables[c].ends) if (e.port) this.rackView.marker(e.port).visible = true;
     sfx.label();
   }
 
@@ -983,13 +983,13 @@ export class Controller {
   private setPortHint(p: Port | null): void {
     if (this.portHint === p) return;
     if (this.portHint) {
-      const m = this.rackView.portMarkers.get(this.portHint.id)!;
+      const m = this.rackView.marker(this.portHint.id);
       m.visible = false;
       (m.material as THREE.MeshBasicMaterial).color.set('#7ee0ff');
     }
     this.portHint = p;
     if (p) {
-      const m = this.rackView.portMarkers.get(p.id)!;
+      const m = this.rackView.marker(p.id);
       m.visible = true;
       (m.material as THREE.MeshBasicMaterial).color.set('#ffe066');
     }

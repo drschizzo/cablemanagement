@@ -1,21 +1,32 @@
 // The tubes of the cords, swept on the GPU. The CPU used to turn every node into
 // SUB rings of RADIAL vertices (positions and normals) and send them all each
 // frame a cord moved: the bigger the tube, the more of the frame went into it.
-// Now it only sends the nodes, two texels each (position and radius, the normal
-// of a frame carried along the cord), and the vertex shader finds its own point:
-// the Catmull-Rom curve between the nodes, its tangent, the ring around it. The
-// geometry never changes; a finer tube costs the GPU more vertices, not the CPU
-// a bigger loop and a bigger upload.
+// Now it only sends the nodes, three texels each (position and radius, the
+// normal of a frame carried along the cord, the glow of the node), and the
+// vertex shader finds its own point: the Catmull-Rom curve between the nodes,
+// its tangent, the ring around it.
+//
+// Nor does the geometry hold a vertex per point of every tube: that was 128
+// vertices a node, 10 kB of attributes and indices, and gigabytes for an aisle
+// of tall racks. Every segment of every cord is one instance of the same
+// stretch of tube (SUB + 1 rings: the last one is the first of the next
+// segment, drawn twice), with a few numbers of its own: its first node, the
+// ends of its cord, its colour, where it starts along the cord.
 //
 // Those vertices are not free on the GPU either: the cords are drawn in five
 // passes (the image, its shadow, the normals of the reflections and of the
 // ambient occlusion, the mask of the reflections). Only the image shows their
 // outline and their shading, so only it draws the fine tube: the other passes
-// draw every other ring, every other vertex round it (a quarter of the work),
-// from the same vertices. And a cord a few pixels wide needs no 16 sides: as its
-// radius on screen shrinks, every other vertex (then three in four) folds onto
-// its neighbour, along the cord and around it, and their triangles, flat, are
-// dropped before they cost a pixel. The mesh stays whole: it is the same one.
+// draw every other ring, every other vertex round it (a quarter of the work).
+// And a cord a few pixels wide needs no 16 sides: as its radius on screen
+// shrinks, every other vertex (then three in four) folds onto its neighbour,
+// along the cord and around it, and their triangles, flat, are dropped before
+// they cost a pixel.
+//
+// Folded vertices still run the shader, though. When even the nearest of the
+// nodes is that far (a whole aisle of racks across the room), the mesh draws
+// the coarser lists of triangles instead, a quarter or a sixteenth of the
+// vertices: those that would not have folded.
 
 import * as THREE from 'three';
 
@@ -25,25 +36,25 @@ export const SUB = 8;
 /** radius on screen (px) under which a tube has half its vertices, a quarter */
 const LOD_HALF = 6;
 const LOD_QUARTER = 1.5;
-/** texels per row of the node map */
+/** texels per row of the node map, and per node */
 const W = 1024;
-
-/** vertices and triangle indices of a tube through n nodes, fine (the image) and coarse (the other passes) */
-export const tubeVerts = (n: number) => ((n - 1) * SUB + 1) * RADIAL;
-export const tubeIndices = (n: number) => (n - 1) * SUB * RADIAL * 6;
-export const coarseIndices = (n: number) => tubeIndices(n) / 4;
+const PER = 3;
 
 /**
- * The nodes of the tubes, as the GPU reads them: node i is texel 2i (position,
- * radius: 0 hides the tube) and 2i + 1 (normal of its frame, parallel-transported
- * from the first node of the cord, so that the rings do not twist).
+ * The nodes of the tubes, as the GPU reads them: node i is texel 3i (position,
+ * radius: 0 hides the tube), 3i + 1 (normal of its frame, parallel-transported
+ * from the first node of the cord, so that the rings do not twist) and 3i + 2
+ * (the glow of the cord there, linear RGB).
  */
 export class TubeNodes {
   readonly texture: THREE.DataTexture;
   private data: Float32Array;
+  /** the box of every node ever written (it only grows), where the tubes may be; their largest radius */
+  readonly box = new THREE.Box3();
+  radius = 0;
 
   constructor(nodes: number) {
-    const h = Math.max(1, Math.ceil((2 * nodes) / W));
+    const h = Math.max(1, Math.ceil((PER * nodes) / W));
     this.data = new Float32Array(W * h * 4);
     this.texture = new THREE.DataTexture(this.data, W, h, THREE.RGBAFormat, THREE.FloatType);
     this.texture.magFilter = this.texture.minFilter = THREE.NearestFilter;
@@ -70,16 +81,25 @@ export class TubeNodes {
       let nl = Math.sqrt(nx * nx + ny * ny + nz * nz);
       if (nl < 1e-6) { if (Math.abs(ty) < 0.9) { nx = -tz; ny = 0; nz = tx; } else { nx = 0; ny = tz; nz = -ty; } nl = Math.sqrt(nx * nx + ny * ny + nz * nz); }
       nx /= nl; ny /= nl; nz /= nl;
-      const o = 8 * i;
+      const o = 4 * PER * i;
       d[o] = x[3 * i]; d[o + 1] = x[3 * i + 1]; d[o + 2] = x[3 * i + 2]; d[o + 3] = R;
       d[o + 4] = nx; d[o + 5] = ny; d[o + 6] = nz;
+      grow(this.box, d[o], d[o + 1], d[o + 2], R);
     }
+    if (R > this.radius) this.radius = R;
     this.texture.needsUpdate = true;
   }
 
   /** hides the tube through these nodes (they keep their place) */
   hide(start: number, n: number): void {
-    for (let i = start; i < start + n; i++) this.data[8 * i + 3] = 0;
+    for (let i = start; i < start + n; i++) this.data[4 * PER * i + 3] = 0;
+    this.texture.needsUpdate = true;
+  }
+
+  /** the glow of the cord at node i (linear RGB); sent with the next frame */
+  tint(i: number, c: THREE.Color): void {
+    const o = 4 * PER * i + 8;
+    this.data[o] = c.r; this.data[o + 1] = c.g; this.data[o + 2] = c.b;
     this.texture.needsUpdate = true;
   }
 
@@ -88,79 +108,96 @@ export class TubeNodes {
   }
 }
 
+function grow(b: THREE.Box3, x: number, y: number, z: number, r: number): void {
+  if (x - r < b.min.x) b.min.x = x - r;
+  if (y - r < b.min.y) b.min.y = y - r;
+  if (z - r < b.min.z) b.min.z = z - r;
+  if (x + r > b.max.x) b.max.x = x + r;
+  if (y + r > b.max.y) b.max.y = y + r;
+  if (z + r > b.max.z) b.max.z = z + r;
+}
+
 /**
- * Lays out one tube through the n nodes from `start`, from vertex v0 (a whole
- * number of rings: the shader takes the angle of a vertex around the cord from
- * its index). In `tube` (vec3 per vertex, the geometry's `normal`: without one,
- * three.js would shade it flat) the node its ring follows plus how far towards
- * the next, the first and last nodes of the cord; its triangles in `idx` from
- * i0, and those of the coarse tube in `coarse` from i0 / 4.
+ * The stretch of tube every segment is drawn with: SUB + 1 rings of RADIAL
+ * vertices, each with its ring and its place round it in `normal` (without a
+ * normal, three.js would shade it flat), and its triangles three times: every
+ * ring and vertex, one in two, one in four.
  */
-export function layTube(tube: Float32Array, v0: number, start: number, n: number, idx: Uint32Array, coarse: Uint32Array, i0: number): void {
-  const S = (n - 1) * SUB + 1;
-  for (let s = 0; s < S; s++) {
+function stretch(): { rings: THREE.BufferAttribute; lists: THREE.BufferAttribute[] } {
+  const rings = new Float32Array((SUB + 1) * RADIAL * 3);
+  for (let k = 0; k <= SUB; k++) {
     for (let r = 0; r < RADIAL; r++) {
-      const o = 3 * (v0 + s * RADIAL + r);
-      tube[o] = start + s / SUB;
-      tube[o + 1] = start;
-      tube[o + 2] = start + n - 1;
+      const o = 3 * (k * RADIAL + r);
+      rings[o] = k;
+      rings[o + 1] = r;
     }
   }
-  const quads = (out: Uint32Array, k: number, step: number) => {
-    const next = step * RADIAL;
-    for (let s = 0; s < S - 1; s += step) {
+  const lists = [1, 2, 4].map((step) => {
+    const out: number[] = [];
+    for (let k = 0; k < SUB; k += step) {
       for (let r = 0; r < RADIAL; r += step) {
-        const a = v0 + s * RADIAL + r, b = v0 + s * RADIAL + ((r + step) % RADIAL);
-        out[k++] = a; out[k++] = a + next; out[k++] = b;
-        out[k++] = b; out[k++] = a + next; out[k++] = b + next;
+        const a = k * RADIAL + r, b = k * RADIAL + ((r + step) % RADIAL), next = step * RADIAL;
+        out.push(a, a + next, b, b, a + next, b + next);
       }
     }
-  };
-  quads(idx, i0, 1);
-  quads(coarse, i0 / 4, 2);
+    return new THREE.BufferAttribute(new Uint16Array(out), 1);
+  });
+  return { rings: new THREE.BufferAttribute(rings, 3), lists };
 }
 
 // The point and normal of the vertex, as the CPU found them before: the curve
 // through the four nodes around its stretch, the frame between those of its two
 // nodes, set square to the tangent. Then `position` and `normal` stand for them
 // in the rest of the shader, whoever wrote it (the jacket, the glow of the LEDs,
-// the normals and depth of the passes).
+// the normals and depth of the passes), and so do `jacket` (where the vertex is
+// along the cord and round it, its kind: see jacket.ts) and `emissiveTint` (the
+// glow of the node it is nearest to).
 const DECL = /* glsl */ `
 uniform highp sampler2D tubeNodes;
 uniform float tubeHalfHeight;
+attribute vec3 tubeSeg;
+attribute vec3 tubeArc;
 vec4 tubeAt(int k) { return texelFetch(tubeNodes, ivec2(k % ${W}, k / ${W}), 0); }
 `;
 const MAIN = /* glsl */ `
-  int tI1 = int(normal.x);
-  int tA = int(normal.y + 0.5), tB = int(normal.z + 0.5);
-  vec4 tN1 = tubeAt(2 * tI1);
-  // radius on screen (px), from the first node of the stretch: the same for all its vertices
-  float tPx = tN1.w * abs(projectionMatrix[1][1]) * tubeHalfHeight / max(1e-4, -(modelViewMatrix * vec4(tN1.xyz, 1.0)).z);
+  int tI1 = int(tubeSeg.x + 0.5);
+  int tA = int(tubeSeg.y + 0.5), tB = int(tubeSeg.z + 0.5);
+  int tI0 = max(tI1 - 1, tA), tI2 = min(tI1 + 1, tB), tI3 = min(tI1 + 2, tB);
+  int tK = int(normal.x + 0.5), tR = int(normal.y + 0.5);
+  // radius on screen (px), from the node of the ring at either end (the ring both segments
+  // draw folds the same way in both), from the first node elsewhere
+  vec4 tN1 = tubeAt(${PER} * tI1), tN2 = tubeAt(${PER} * tI2);
+  vec4 tEnd = tK == ${SUB} ? tN2 : tN1;
+  float tPx = tEnd.w * abs(projectionMatrix[1][1]) * tubeHalfHeight / max(1e-4, -(modelViewMatrix * vec4(tEnd.xyz, 1.0)).z);
   int tStep = tPx < ${LOD_QUARTER.toFixed(1)} ? 4 : tPx < ${LOD_HALF.toFixed(1)} ? 2 : 1;
-  int tK = int((normal.x - float(tI1)) * ${SUB.toFixed(1)} + 0.5), tR = gl_VertexID % ${RADIAL};
   tK -= tK % tStep;
   tR -= tR % tStep;
   float tU = float(tK) / ${SUB.toFixed(1)}, tU2 = tU * tU, tU3 = tU2 * tU;
   float tAng = float(tR) * ${((2 * Math.PI) / RADIAL).toFixed(8)};
-  int tI0 = max(tI1 - 1, tA), tI2 = min(tI1 + 1, tB), tI3 = min(tI1 + 2, tB);
-  vec3 tP0 = tubeAt(2 * tI0).xyz, tP1 = tN1.xyz, tP2 = tubeAt(2 * tI2).xyz, tP3 = tubeAt(2 * tI3).xyz;
+  vec3 tP0 = tubeAt(${PER} * tI0).xyz, tP1 = tN1.xyz, tP2 = tN2.xyz, tP3 = tubeAt(${PER} * tI3).xyz;
   vec3 tC1 = -tP0 + tP2, tC2 = 2.0 * tP0 - 5.0 * tP1 + 4.0 * tP2 - tP3, tC3 = -tP0 + 3.0 * tP1 - 3.0 * tP2 + tP3;
   vec3 tCentre = 0.5 * (2.0 * tP1 + tC1 * tU + tC2 * tU2 + tC3 * tU3);
   vec3 tT = tC1 + 2.0 * tC2 * tU + 3.0 * tC3 * tU2;
   if (dot(tT, tT) < 1e-14) tT = tP2 - tP0;
   tT = normalize(tT);
-  vec3 tN = mix(tubeAt(2 * tI1 + 1).xyz, tubeAt(2 * tI2 + 1).xyz, tU);
+  vec3 tN = mix(tubeAt(${PER} * tI1 + 1).xyz, tubeAt(${PER} * tI2 + 1).xyz, tU);
   tN -= dot(tN, tT) * tT;
   tN = dot(tN, tN) < 1e-12 ? normalize(cross(tT, abs(tT.y) < 0.9 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0))) : normalize(tN);
   vec3 tubeNormal = tN * cos(tAng) + cross(tT, tN) * sin(tAng);
-  vec3 tubePos = tCentre + tubeNormal * tN1.w;
+  vec3 tubePos = tCentre + tubeNormal * tEnd.w;
+  vec4 tubeJacket = vec4(tubeArc.x + tU * tubeArc.y, cos(tAng), sin(tAng), tubeArc.z);
+  vec3 tubeTint = tubeAt(${PER} * (tU < 0.5 ? tI1 : tI2) + 2).rgb;
 #define position tubePos
 #define normal tubeNormal
+#define jacket tubeJacket
+#define emissiveTint tubeTint
 `;
 
 /** half the height of what is being drawn into (px), set before each draw */
 const tubeHalfHeight = { value: 500 };
 const size = new THREE.Vector2();
+const sphere = new THREE.Sphere();
+const eye = new THREE.Vector3();
 
 /** the materials made to draw tubes (their copies are not) */
 const sweptSet = new WeakSet<THREE.Material>();
@@ -181,7 +218,8 @@ export function swept<T extends THREE.Material>(m: T, nodes: TubeNodes): T {
 }
 
 /**
- * The mesh of the tubes. Its geometry has no positions of its own, so every
+ * The mesh of the tubes: `segments` instances of the stretch of tube, laid
+ * along the cords by lay(). Its geometry has no positions of its own, so every
  * material it is drawn with must be swept: its shadow, and the materials the
  * passes put in place of its own (the normals of the reflections and of the
  * ambient occlusion, the mask of the reflections), for which it hands a swept
@@ -189,20 +227,37 @@ export function swept<T extends THREE.Material>(m: T, nodes: TubeNodes): T {
  */
 export class TubeMesh extends THREE.Mesh {
   readonly isTubeMesh = true;
+  declare geometry: THREE.InstancedBufferGeometry;
   private copies = new Map<THREE.Material, THREE.Material>();
   /** its material, or the one a pass put in its place for a while */
   private own!: THREE.Material;
-  private fine: THREE.BufferAttribute;
-  private coarse: THREE.BufferAttribute;
-  /** how many indices of each to draw (the first tubes only) */
-  private drawn = { fine: Infinity, coarse: Infinity };
+  /** the triangle lists of the stretch, finest first */
+  private lists: THREE.BufferAttribute[];
+  /** per segment: first node, first and last of its cord; colour; start along the cord (m), length, kind */
+  private seg: THREE.InstancedBufferAttribute;
+  private color: THREE.InstancedBufferAttribute;
+  private arc: THREE.InstancedBufferAttribute;
+  /** the finest list the nearest node needs from where the camera stands (0, 1, 2), as of the last image */
+  level = 0;
 
-  /** `geo`: the fine triangles as its index; `coarse`: the others (see layTube) */
-  constructor(geo: THREE.BufferGeometry, coarse: Uint32Array, private main: THREE.Material, private nodes: TubeNodes) {
+  constructor(segments: number, private main: THREE.Material, private nodes: TubeNodes) {
+    const geo = new THREE.InstancedBufferGeometry();
+    const { rings, lists } = stretch();
+    geo.setAttribute('normal', rings);
+    const seg = new THREE.InstancedBufferAttribute(new Float32Array(3 * segments), 3);
+    const color = new THREE.InstancedBufferAttribute(new Float32Array(3 * segments), 3);
+    const arc = new THREE.InstancedBufferAttribute(new Float32Array(3 * segments), 3);
+    geo.setAttribute('tubeSeg', seg);
+    geo.setAttribute('color', color);
+    geo.setAttribute('tubeArc', arc);
+    geo.setIndex(lists[0]);
+    geo.instanceCount = segments;
     super(geo, swept(main, nodes));
     this.own = main;
-    this.fine = geo.index!;
-    this.coarse = new THREE.BufferAttribute(coarse, 1);
+    this.lists = lists;
+    this.seg = seg;
+    this.color = color;
+    this.arc = arc;
     Object.defineProperty(this, 'material', {
       get: () => {
         let root = this.parent;
@@ -216,23 +271,58 @@ export class TubeMesh extends THREE.Mesh {
     this.customDistanceMaterial = swept(new THREE.MeshDistanceMaterial(), nodes);
     this.frustumCulled = false;
     // the fine tube for the image only
-    this.onBeforeRender = (r, _s, _c, _g, m) => {
+    this.onBeforeRender = (r, _s, c, _g, m) => {
       const t = r.getRenderTarget();
       tubeHalfHeight.value = (t ? t.height : r.getDrawingBufferSize(size).y) / 2;
-      this.lod(m === this.main);
+      if (m === this.main) this.level = this.levelFor(c);
+      this.lod(m === this.main ? this.level : this.level + 1);
     };
-    this.onBeforeShadow = () => this.lod(false);
+    // (before the image: from the camera, at the size of the last one)
+    this.onBeforeShadow = (_r, _o, c) => { this.level = this.levelFor(c); this.lod(this.level + 1); };
   }
 
-  /** draws only the first tubes: `fine` indices of the fine tube, as many tubes of the coarse one */
-  setDrawn(fine: number, coarse: number): void {
-    this.drawn.fine = fine;
-    this.drawn.coarse = coarse;
+  /**
+   * Lays the cord through the n nodes from `start` on the segments from `at`
+   * (n − 1 of them): its colour, and along it, the length at rest of a segment
+   * and where its first starts (m), and its kind, for the jacket.
+   */
+  lay(at: number, start: number, n: number, color: THREE.Color, arc0: number, seg: number, kind: number): void {
+    const s = this.seg.array as Float32Array, c = this.color.array as Float32Array, a = this.arc.array as Float32Array;
+    for (let j = 0; j < n - 1; j++) {
+      const o = 3 * (at + j);
+      s[o] = start + j; s[o + 1] = start; s[o + 2] = start + n - 1;
+      c[o] = color.r; c[o + 1] = color.g; c[o + 2] = color.b;
+      a[o] = arc0 + j * seg; a[o + 1] = seg; a[o + 2] = kind;
+    }
+    for (const attr of [this.seg, this.color, this.arc]) {
+      attr.addUpdateRange(3 * at, 3 * (n - 1));
+      attr.needsUpdate = true;
+    }
   }
 
-  private lod(fine: boolean): void {
-    this.geometry.index = fine ? this.fine : this.coarse;
-    this.geometry.drawRange.count = fine ? this.drawn.fine : this.drawn.coarse;
+  /** draws only the first segments */
+  setDrawn(segments: number): void {
+    this.geometry.instanceCount = segments;
+  }
+
+  /**
+   * The finest list the image needs: none of the nodes is nearer the camera
+   * than the edge of their box, so if a tube there is thin enough on screen
+   * for the shader to fold its vertices (see MAIN), all of them are.
+   */
+  private levelFor(camera: THREE.Camera): number {
+    const b = this.nodes.box;
+    if (b.isEmpty() || !(camera as THREE.PerspectiveCamera).isPerspectiveCamera) return 0;
+    b.getBoundingSphere(sphere).applyMatrix4(this.matrixWorld);
+    eye.setFromMatrixPosition(camera.matrixWorld);
+    // (a little nearer: the shader goes by the depth, a little less than the distance off the axis)
+    const d = Math.max(1e-3, 0.9 * (eye.distanceTo(sphere.center) - sphere.radius));
+    const px = this.nodes.radius * camera.projectionMatrix.elements[5] * tubeHalfHeight.value / d;
+    return px < LOD_QUARTER ? 2 : px < LOD_HALF ? 1 : 0;
+  }
+
+  private lod(level: number): void {
+    this.geometry.index = this.lists[Math.min(level, this.lists.length - 1)];
   }
 
   private sweptOf(m: THREE.Material): THREE.Material {
@@ -250,7 +340,7 @@ export class TubeMesh extends THREE.Mesh {
   /** frees what is its own beyond its geometry and material (disposeTree frees those) */
   dispose(): void {
     // (the geometry frees only the index it holds)
-    this.geometry.index = this.fine;
+    this.geometry.index = this.lists[0];
     for (const m of [...this.copies.values(), this.customDepthMaterial!, this.customDistanceMaterial!]) m.dispose();
     this.copies.clear();
     this.nodes.dispose();

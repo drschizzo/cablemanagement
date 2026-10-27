@@ -59,7 +59,10 @@ Trois sortes de scènes : un niveau (un `Controller`), le tutoriel (un `Tutorial
 vitrine avant / après (un `Showcase`, sans contrôleur), qui sert d'écran titre : le jeu s'ouvre toujours dessus,
 avec son nom et son menu (`#title`) par-dessus, et en bas l'interrupteur Avant / Après (`#sc-switch`) et les
 jauges de la salle (rangés, façade dégagée, étiquetés). `?seed=N` tire toujours la même salle, `?bays=N` choisit
-son nombre de baies (5 par défaut). Chaque chargement passe par `loadScene()` :
+son nombre de baies (5 par défaut, 32 au plus), `?pairs=N` la hauteur de chacune en paires panneau / switch (10 par
+défaut, 16 au plus ; voir « Jusqu'où va l'écran d'accueil » dans `anatomie-d-une-frame.md`). L'allée par défaut
+(5 × 10) est vue de plus près et plus bas que son cadrage (`Stage.view`, réglé dans `main.ts`). Chaque chargement
+passe par `loadScene()` :
 
 - le voile de chargement s'affiche et peint avant le calcul (bloquant) de l'emmêlage ; pour l'écran titre, pas
   de voile : le nom du jeu reste seul au milieu de l'écran avec sa barre de progression (`body.booting`), puis

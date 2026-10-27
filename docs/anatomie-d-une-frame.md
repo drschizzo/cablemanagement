@@ -366,19 +366,19 @@ Dans un niveau, la scène contient la baie (`rackView.group`), les câbles (`cab
 
 ### Les câbles : un tube calculé par le GPU
 
-Tous les câbles d'un niveau sont dessinés par **un seul mesh**, dont les sommets sont rangés dans un seul grand tableau, câble après câble. Ce tableau ne change jamais. Un sommet ne porte pas sa position : il sait seulement sur quel tronçon de quel câble il se trouve, et à quelle place de son anneau. À chaque frame, le CPU envoie au GPU les nœuds des câbles qui ont bougé, et c'est le *vertex shader* (`src/render/tube.ts`) qui calcule où se trouve chaque sommet.
+Tous les câbles d'un niveau sont dessinés par **un seul mesh**, en *instanciation* : chaque segment de chaque câble (d'un nœud au suivant) est une instance du même bout de tube, 9 anneaux de 16 sommets. Un sommet ne porte pas sa position : il sait seulement à quel anneau du bout de tube il appartient et à quelle place autour de lui ; son instance lui dit sur quel segment de quel câble il se trouve. À chaque frame, le CPU envoie au GPU les nœuds des câbles qui ont bougé, et c'est le *vertex shader* (`src/render/tube.ts`) qui calcule où se trouve chaque sommet.
 
 ![Des nœuds au tube de triangles](frame/schema-tube.png)
 
 1. **Le CPU donne un repère à chaque nœud.** Pour placer un anneau autour du câble, il faut une direction perpendiculaire au câble, la *normale*. Celle d'un nœud est celle du nœud précédent, projetée sur le plan perpendiculaire à la nouvelle direction du câble (transport parallèle). Recalculer la normale indépendamment en chaque nœud ferait tourner le tube sur lui-même et tordrait ses triangles. Comme chaque normale dépend de la précédente, ce calcul se fait en séquence, sur le CPU, mais il ne coûte qu'un passage par nœud.
 2. **Il range les nœuds dans une texture.** Voir la section suivante.
-3. **Le vertex shader lisse la chaîne de nœuds.** Entre deux nœuds, il place 7 points sur une courbe de Catmull-Rom, qui passe par les nœuds et utilise leurs voisins pour s'incurver. Un câble de n nœuds donne 8(n − 1) + 1 anneaux. La direction du câble en un point est la dérivée de la courbe ; la normale est interpolée entre celles des deux nœuds voisins, puis redressée perpendiculairement à cette direction.
+3. **Le vertex shader lisse la chaîne de nœuds.** Entre deux nœuds, il place 7 points sur une courbe de Catmull-Rom, qui passe par les nœuds et utilise leurs voisins pour s'incurver. Le dernier anneau d'un segment est le premier du suivant : il est dessiné deux fois, au même endroit. La direction du câble en un point est la dérivée de la courbe ; la normale est interpolée entre celles des deux nœuds voisins, puis redressée perpendiculairement à cette direction.
 4. **Il place l'anneau.** Chaque anneau a 16 sommets, au rayon du câble, chacun avec une normale qui pointe vers l'extérieur (utilisée pour l'éclairage).
-5. **Les triangles relient chaque anneau au suivant.** Leur liste est construite une fois, à la création du niveau.
+5. **Les triangles relient chaque anneau au suivant.** Leur liste est celle du bout de tube : 256 triangles, partagés par tous les segments.
 
-Ce dont le shader a besoin pour un sommet tient en trois nombres : l'indice du nœud où commence son tronçon plus la fraction du chemin vers le suivant (0, 1/8, 2/8…), et les indices du premier et du dernier nœud du câble. L'angle du sommet autour du câble se déduit de son numéro (`gl_VertexID`), puisque chaque anneau compte 16 sommets consécutifs. Ces trois nombres sont rangés dans l'attribut `normal` de la géométrie : sans attribut de ce nom, three.js conclurait que le maillage n'a pas de normales et l'éclairerait en facettes plates.
+Ce dont le shader a besoin pour un sommet tient en peu de nombres. Le bout de tube donne à chacun son anneau (0 à 8) et sa place autour (0 à 15), rangés dans l'attribut `normal` de la géométrie : sans attribut de ce nom, three.js conclurait que le maillage n'a pas de normales et l'éclairerait en facettes plates. Chaque instance donne l'indice du premier nœud de son segment, ceux du premier et du dernier nœud du câble, la couleur du câble, et où le segment commence le long du câble (pour l'impression de la gaine).
 
-Pour le niveau capturé : 83 920 sommets et 167 424 triangles pour l'ensemble des câbles.
+Un segment coûte ainsi 36 octets, quel que soit le nombre de sommets qu'en tire le GPU. Avant l'instanciation, chaque nœud portait ses 128 sommets dans la géométrie, avec leurs attributs et leurs indices : environ 10 Ko par nœud, 3,5 Go pour l'allée de 10 baies géantes décrite plus bas, contre 12 Mo aujourd'hui.
 
 ![Maillage des câbles en fil de fer](frame/maillage.jpg)
 
@@ -388,15 +388,15 @@ Un câble endormi n'est pas renvoyé. `update()` calcule une signature à partir
 
 ### N'envoyer au GPU que les nœuds
 
-Les nœuds vivent en double : une copie en JavaScript (`Float32Array`) et une copie dans la mémoire du GPU, sous forme de texture (`TubeNodes`). Chaque nœud y occupe deux texels de quatre nombres : sa position et le rayon du câble, puis la normale de son repère. Un rayon nul cache le câble. Modifier la copie JavaScript ne change pas la texture : il faut la marquer `needsUpdate = true`, et three.js la recopie au prochain rendu.
+Les nœuds vivent en double : une copie en JavaScript (`Float32Array`) et une copie dans la mémoire du GPU, sous forme de texture (`TubeNodes`). Chaque nœud y occupe trois texels de quatre nombres : sa position et le rayon du câble, la normale de son repère, puis la lueur du câble en ce nœud (la surbrillance d'un câble survolé, la couleur de chaque portion tenue). Un rayon nul cache le câble. Modifier la copie JavaScript ne change pas la texture : il faut la marquer `needsUpdate = true`, et three.js la recopie au prochain rendu.
 
-Un nœud coûte 32 octets, quel que soit le nombre de sommets que le GPU en tire. La texture est recopiée en entier dès qu'un câble a bougé : 32 Ko pour les 667 nœuds du niveau capturé. Côté CPU, écrire les nœuds et leurs repères prend 1,3 ms par frame pour 1 200 câbles de 60 nœuds, tous en mouvement.
+Un nœud coûte 48 octets. La texture est recopiée en entier dès qu'un câble a bougé : 32 Ko pour les 667 nœuds du niveau capturé. Côté CPU, écrire les nœuds et leurs repères prend 1,3 ms par frame pour 1 200 câbles de 60 nœuds, tous en mouvement.
 
 ### Le coût des sommets
 
 Les sommets ne coûtent presque rien au CPU, mais le GPU exécute le vertex shader pour chacun d'eux, dans chaque passe qui dessine les câbles : l'image, l'ombre, les normales des reflets, celles de l'occlusion ambiante et le masque des reflets. Un câble lointain ne fait pourtant que quelques pixels de large. Deux réglages évitent de dépenser ce travail là où il ne se voit pas.
 
-**Un tube allégé hors de l'image.** Seule l'image montre le contour et l'éclairage des câbles. Les quatre autres passes dessinent un sommet sur deux autour du câble et un anneau sur deux : une seconde liste de triangles, qui reprend les mêmes sommets, en référence quatre fois moins. `TubeMesh` choisit la liste avant chaque dessin (`onBeforeRender`, `onBeforeShadow`). Pour le niveau capturé, 41 856 triangles au lieu de 167 424 dans ces passes.
+**Un tube allégé hors de l'image.** Seule l'image montre le contour et l'éclairage des câbles. Les quatre autres passes dessinent un sommet sur deux autour du câble et un anneau sur deux : une seconde liste de triangles du bout de tube, qui reprend les mêmes sommets, en référence quatre fois moins. `TubeMesh` choisit la liste avant chaque dessin (`onBeforeRender`, `onBeforeShadow`).
 
 **Un niveau de détail dans l'image.** Le vertex shader calcule le rayon du câble à l'écran, en pixels, à partir du premier nœud du tronçon. Sous 6 pixels, un sommet sur deux se replie sur son voisin, autour du câble et le long de lui ; sous 1,5 pixel, trois sur quatre. Les triangles repliés deviennent plats, et le GPU les élimine avant d'avoir un seul pixel à calculer. La liste des triangles ne change pas, donc le tube reste fermé : un sommet replié reste partagé par les mêmes triangles. Comme tous les sommets d'un tronçon lisent le même nœud pour décider, ils choisissent le même niveau.
 
@@ -404,7 +404,20 @@ Les sommets ne coûtent presque rien au CPU, mais le GPU exécute le vertex shad
 
 La même vue avec le niveau de détail forcé, pour le rendre visible. De gauche à droite : 16 sommets par anneau et 8 anneaux d'un nœud au suivant, puis 8 et 4, puis 4 et 2. En jeu, les deux derniers ne servent que pour des câbles de moins de 6 et de 1,5 pixel de rayon, où leurs facettes ne se distinguent pas. Dans la vue par défaut du niveau capturé, un câble mesure environ 2,7 pixels de rayon : l'image en dessine donc la version 8 × 4.
 
-Sur l'écran d'accueil (5 baies remplies de câbles, environ 2 000 × 1 500 pixels), une frame prend 27 ms ; sans ces deux réglages, elle en prendrait 33.
+**Un niveau de détail par mesh.** Un sommet replié passe quand même par le vertex shader. Quand même le nœud le plus proche de la caméra est assez loin pour être replié (la boîte de tous les nœuds écrits, vue depuis la caméra), `TubeMesh` dessine directement la liste qui ne référence que les sommets qui ne se replient pas : un quart ou un seizième d'entre eux. C'est le cas de chaque baie de l'écran d'accueil. Au même seuil, `CableView` ôte la transparence (la *transmission*) des connecteurs RJ45 : elle coûtait à elle seule une passe de plus, la scène redessinée derrière eux, pour des connecteurs de deux pixels.
+
+### Jusqu'où va l'écran d'accueil
+
+`?bays=N` (5 par défaut, 32 au plus) règle le nombre de baies de l'allée, `?pairs=N` (10 par défaut, 16 au plus) le nombre de paires panneau / switch de chacune, au lieu des 3 ou 4 d'une vraie baie : une baie plus haute qu'aucune vraie, avec des cordons plus longs et des serveurs en proportion. Mesures sur un Mac à 10 cœurs, image de 1 972 × 1 544 pixels :
+
+| Allée | Cordons | Nœuds | Chargement | Images par seconde |
+|---|---|---|---|---|
+| 5 baies × 3 ou 4 paires | 377 | 17 035 | 2,5 s | 60 |
+| 5 baies × 10 paires (défaut, vue rapprochée) | 1 088 | 51 740 | 3,6 s | 50 |
+| 10 baies × 14 paires | 2 984 | 160 732 | 17 à 22 s | 45 (36 rangée, 34 pendant le rangement) |
+| 16 baies × 16 paires | 5 391 | 300 266 | 32 s | 31 |
+
+Le chargement est la chute du désordre, une fois, dans un Worker par baie : au-delà de 10 baies, elles attendent un cœur libre. La collision des câbles entre eux y prend le plus de temps, et elle croît plus vite que le nombre de nœuds, les cordons étant plus serrés. Une fois tombée, l'allée ne coûte plus que son image.
 
 ### Les connecteurs : l'instanciation
 
