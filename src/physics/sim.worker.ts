@@ -6,7 +6,11 @@
 import { CableSim, type CableInit, type Pinch, type SimParams, type StaticShape } from './cableSim';
 
 export type ToWorker =
-  | { type: 'init'; params: SimParams; defs: CableInit[]; x: Float64Array; v: Float64Array; pins: number[]; statics: StaticShape[]; pinches: Pinch[] }
+  | {
+    type: 'init'; params: SimParams; defs: CableInit[]; x: Float64Array; v: Float64Array; pins: number[]; statics: StaticShape[]; pinches: Pinch[];
+    /** what the points alone do not tell: the rest lengths, and what the keepers know of the cords */
+    rest: Float64Array; handled: Uint8Array; lastHand: Int32Array; keepOf: Int32Array;
+  }
   | { type: 'pin'; i: number; p: [number, number, number] }
   | { type: 'unpin'; i: number }
   | { type: 'pinEnd'; i0: number; i1: number; a: [number, number, number]; b: [number, number, number] }
@@ -50,6 +54,10 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
     sim.v.set(m.v);
     for (const i of m.pins) sim.pin(i, m.x[3 * i], m.x[3 * i + 1], m.x[3 * i + 2]);
     sim.setStatics(m.statics);
+    sim.rest.set(m.rest);
+    sim.handled.set(m.handled);
+    sim.lastHand.set(m.lastHand);
+    sim.keepOf.set(m.keepOf);
     sim.loadPinches(m.pinches);
     sim.takePinchChange();
     return;

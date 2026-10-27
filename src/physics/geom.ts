@@ -44,7 +44,7 @@ export function segSeg(
   closest.s = s; closest.t = t; closest.d2 = dx * dx + dy * dy + dz * dz;
 }
 
-export function clamp01(x: number): number {
+function clamp01(x: number): number {
   return x < 0 ? 0 : x > 1 ? 1 : x;
 }
 

@@ -309,12 +309,16 @@ export class World {
   addCable(type: FibreType, length: number, color?: string): number {
     const n = Math.max(3, Math.round(length / this.seg));
     const rests = new Array(n).fill(length / n);
-    this.rebuild(new Map(), [{ points: this.coil(rests), type, color }]);
+    this.rebuild(new Map(), [{ points: this.coil(rests), rests, type, color }]);
     return this.cables.length - 1;
   }
 
-  /** rebuilds the physics with some cords replaced and others added, keeping every pin, strap, rest length and pinch */
-  private rebuild(replace: Map<number, number[]>, append: { points: number[]; type: FibreType; color?: string }[] = []): void {
+  /**
+   * rebuilds the physics with some cords replaced and others added, keeping
+   * every pin, strap, rest length (an added cord's are given) and pinch, and
+   * what the keepers know of the cords (a replaced one is still handled)
+   */
+  private rebuild(replace: Map<number, number[]>, append: { points: number[]; rests: number[]; type: FibreType; color?: string }[] = []): void {
     const old = this.sim;
     const threaded = old.threaded;
     const defs = this.cables.map((cb, k) => {
@@ -323,6 +327,12 @@ export class World {
     });
     for (const a of append) defs.push({ points: a.points, radius: this.radius, bend: this.stiffness(a.type) });
     const rests = this.cables.map((cb) => Array.from(old.rest.subarray(cb.start, cb.start + cb.count)));
+    for (const a of append) rests.push(a.rests);
+    const kept = this.cables.map((cb, k) => ({
+      handled: old.handled[k],
+      lastHand: replace.has(k) || old.lastHand[k] < 0 ? -1 : old.lastHand[k] - cb.start,
+      keepOf: replace.has(k) ? null : old.keepOf.slice(cb.start, cb.start + cb.count),
+    }));
     const straps = this.straps.map((s) => s.nodes.map((i) => {
       const k = old.cableOf[i], cb = this.cables[k];
       return { k, f: (i - cb.start) / (cb.count - 1) };
@@ -344,11 +354,17 @@ export class World {
     this.cables.forEach((cb, k) => {
       cb.start = at[k];
       cb.count = defs[k].points.length / 3;
-      if (!replace.has(k) && k < rests.length) for (let j = 0; j < cb.count - 1; j++) this.sim.rest[cb.start + j] = rests[k][j];
+      if (!replace.has(k)) for (let j = 0; j < cb.count - 1; j++) this.sim.rest[cb.start + j] = rests[k][j];
       cb.ends.forEach((e) => { e.port = null; });
       ends[k].forEach((port, e) => { if (port) this.plug(k, e, port); });
     });
     this.sim.setStatics(this.rack.statics());
+    kept.forEach((s, k) => {
+      const cb = this.cables[k];
+      this.sim.handled[k] = s.handled;
+      this.sim.lastHand[k] = s.lastHand < 0 ? -1 : cb.start + s.lastHand;
+      if (s.keepOf) this.sim.keepOf.set(s.keepOf, cb.start);
+    });
     this.sim.loadPinches(pinches.map(({ k, off, p }) => ({ ...p, a: this.cables[k].start + off })));
     this.straps = straps.map((list) => {
       const nodes = list.map(({ k, f }) => {

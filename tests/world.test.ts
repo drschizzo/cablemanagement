@@ -120,8 +120,8 @@ describe('labels, straps and cord lengths', () => {
     expect(w.cables[2].ends.every((e) => e.port === null)).toBe(true);
     const c = w.addCable('CU', 1);
     expect(c).toBe(L1.cables);
-    // laid on a coil of random radius: its rest lengths are the chords of the arcs, a little shorter
-    expect(Math.abs(w.cableLength(c) - 1)).toBeLessThan(0.01);
+    // laid on a coil, whose chords are a little shorter than its rest lengths: it is as long as asked
+    expect(w.cableLength(c)).toBeCloseTo(1, 9);
     expect(w.cables[c].ends.every((e) => e.port === null)).toBe(true);
   });
 });
@@ -269,6 +269,28 @@ describe('a cord laid along a drawn route', () => {
     for (let f = 0; f < 120; f++) w.sim.step();
     expect(w.cables[c].ends[1].port).toBe(port);
     expect(w.evaluate().cableRouted[c]).toBe(true);
+  });
+
+  it('stays held by the managers it was laid in when a new cord comes from the stock', () => {
+    const w = new World(bench);
+    w.preroll(60);
+    const c = 0;
+    w.unplug(c, 1);
+    const [m2, m7, r3, r5] = w.rack.guides();
+    const res = planRoute(w, c, [m2, r3, r5, m7], w.rack.port(w.circuits[c].b));
+    if (!('plan' in res)) throw new Error('no route');
+    const run = new RouteRun(w, res.plan);
+    for (let f = 0; f < 600 && !run.step(1 / 60); f++) w.sim.step();
+    for (let f = 0; f < 120; f++) w.sim.step();
+    const kept = () => {
+      const cb = w.cables[c];
+      return Array.from(w.sim.keepOf.subarray(cb.start, cb.start + cb.count));
+    };
+    const before = kept();
+    expect(before.some((k) => k >= 0)).toBe(true);
+    w.addCable('CU', 1);
+    expect(w.sim.handled[c]).toBe(1);
+    expect(kept()).toEqual(before);
   });
 
   it('passes where the line was drawn, and goes into a manager by the end the line came in by', () => {
