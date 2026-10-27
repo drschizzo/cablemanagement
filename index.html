@@ -9,7 +9,8 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
     <link rel="stylesheet" href="/src/ui/style.css" />
   </head>
-  <body>
+  <!-- it opens loading the title screen: a black page, the name and its bar (see body.booting) -->
+  <body class="demo booting">
     <div id="view"></div>
 
     <header id="topbar">
@@ -106,7 +107,7 @@
       <h1 class="logo">Brassage</h1>
       <div class="leds" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
       <p class="tagline">Démêlez, rebranchez, rangez.</p>
-      <div id="title-load"><div class="bar"><div class="fill"></div></div><span>Emmêlage des câbles…</span></div>
+      <div id="title-load"><div class="bar"><div class="fill"></div></div></div>
       <nav class="menu">
         <button id="title-play" class="primary">Jouer →</button>
         <button id="title-tuto" class="ghost">Tutoriel</button>
@@ -124,7 +125,6 @@
         <button id="sc-new" title="Tirer d'autres baies au hasard" aria-label="Tirer d'autres baies au hasard">↻</button>
       </div>
       <p id="sc-caption"></p>
-      <div id="sc-stats"></div>
     </div>
 
     <div id="tuto">

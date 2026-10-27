@@ -57,8 +57,9 @@ physics  ←  game  ←  ui
 
 Trois sortes de scènes : un niveau (un `Controller`), le tutoriel (un `Tutorial` par-dessus un niveau) et la
 vitrine avant / après (un `Showcase`, sans contrôleur), qui sert d'écran titre : le jeu s'ouvre toujours dessus,
-avec son nom et son menu (`#title`) par-dessus, et en bas l'interrupteur Avant / Après (`#sc-switch`) et les
-jauges de la salle (rangés, façade dégagée, étiquetés). La première salle est toujours la même
+avec son nom et son menu (`#title`) par-dessus, et en bas l'interrupteur Avant / Après (`#sc-switch`) et sa
+légende. La page s'ouvre en chargement (`body.booting`, dès le HTML) : un fond noir, le nom au milieu et sa barre,
+rien d'autre ; le reste apparaît avec la salle. La première salle est toujours la même
 (`SHOWCASE_DEFAULT` dans `levels.ts`) : son désordre tombé est précalculé (`npm run bake`, `game/showcase.bin`,
 ~210 Ko, lu par `game/baked.ts`), elle s'affiche donc sans attendre la physique ; une baie dont le désordre
 n'est plus celui du fichier (le code a changé depuis) retombe comme avant, et un test le signale. Pendant qu'une

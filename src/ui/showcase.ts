@@ -16,7 +16,7 @@ import { RackView, buildRoom } from '../render/rackView';
 import { CableView } from '../render/cableView';
 import { disposeTree } from '../render/dispose';
 import { CableRain } from '../render/cableRain';
-import { World, type Evaluation } from '../game/world';
+import { World } from '../game/world';
 import { SHOWCASE_SETTLE, showcaseRack, type FibreType } from '../game/levels';
 import { U } from '../game/rack';
 import { resample } from '../game/tidy';
@@ -437,21 +437,26 @@ export class Showcase {
     const chunks = 5;
     let steps = 0;
     const step = () => progress(++steps / (chunks * bays));
-    // in the background, a frame between two pieces (or a moment, if the page draws none)
-    const pause: Pause = o.background
-      ? () => new Promise((r) => {
-        let gone = false;
-        const go = () => { if (!gone) { gone = true; setTimeout(r, 0); } };
-        requestAnimationFrame(go);
-        setTimeout(go, 100);
-      })
-      : () => Promise.resolve();
+    // a frame (or a moment, if the page draws none)
+    const frame: Pause = () => new Promise((r) => {
+      let gone = false;
+      const go = () => { if (!gone) { gone = true; setTimeout(r, 0); } };
+      requestAnimationFrame(go);
+      setTimeout(go, 100);
+    });
+    // in the background, between any two pieces; otherwise only between two closets (the bar moves)
+    const pause: Pause = o.background ? frame : () => Promise.resolve();
     // nothing baked: every mess is drawn and falls in a worker of its own, all at once, and the
     // page builds each closet around it as soon as it is down
     const falls = threaded && !o.baked ? places.map((_, k) => fall(seed + k, pairs(k), chunks, step)) : null;
     for (let k = 0; k < places.length; k++) {
       const fallen = falls ? await falls[k] : undefined;
       sc.closets.push(await Closet.make(stage, seed + k, places[k], threaded, pairs(k), pause, fallen, o.baked?.[k]));
+      // baked, nothing falls: the bar follows the closets as they are built
+      if (o.baked) {
+        progress((k + 1) / bays);
+        if (!o.background) await frame();
+      }
     }
     const rack = sc.closets[0].mess.world.rack;
     // the heap in the middle of the half circle, a little ahead of the racks
@@ -535,7 +540,7 @@ export class Showcase {
     (this.el.querySelector('#sc-new') as HTMLElement).onclick = () => this.actions.another();
     this.stage.sway(true);
     this.stage.dragPans(true);
-    this.render(this.evaluate('mess'));
+    this.render();
     this.rain.start();
     requestAnimationFrame(this.frame);
   }
@@ -579,7 +584,7 @@ export class Showcase {
     if (this.state === 'moving') return;
     const tidy = this.state === 'before';
     this.state = 'moving';
-    this.render(null, tidy ? 'after' : 'before');
+    this.render(tidy ? 'after' : 'before');
     if (tidy) this.rain.stop();
     else this.rain.start();
     // a wave down the aisle: left to right to tidy up, back the other way to mess up
@@ -588,28 +593,20 @@ export class Showcase {
     const done = () => {
       if (--left) return;
       this.state = tidy ? 'after' : 'before';
-      this.render(this.evaluate(tidy ? 'tidy' : 'mess'));
+      this.render();
       if (tidy) sfx.win();
     };
     const later = (ms: number, f: () => void) => this.later(ms, f);
     order.forEach((c, k) => this.later(k * WAVE, () => (tidy ? c.tidyUp(later, k === 0, done) : c.messUp(later, done))));
   }
 
-  /** the score of the whole aisle, in one state or the other */
-  private evaluate(state: 'mess' | 'tidy'): Evaluation {
-    const evs = this.closets.map((c) => c[state].world.evaluate());
-    const sum = (f: (e: Evaluation) => number) => evs.reduce((a, e) => a + f(e), 0);
-    return { ...evs[0], total: sum((e) => e.total), routed: sum((e) => e.routed), clear: sum((e) => e.clear), labelled: sum((e) => e.labelled), stars: Math.min(...evs.map((e) => e.stars)) };
-  }
-
   private later(ms: number, f: () => void): void {
     this.timers.push(window.setTimeout(() => { if (!this.disposed) f(); }, ms));
   }
 
-  /** the switch, its caption and the gauges; while it moves, the switch is already on its way to `to` */
-  private render(ev: Evaluation | null, to?: 'before' | 'after'): void {
+  /** the switch and its caption; while it moves, the switch is already on its way to `to` */
+  private render(to?: 'before' | 'after'): void {
     const sw = this.el.querySelector('#sc-switch') as HTMLElement;
-    const stats = this.el.querySelector('#sc-stats') as HTMLElement;
     const many = this.closets.length > 1;
     // the title screen follows the state too (its LEDs, its play button)
     document.body.dataset.sc = this.state;
@@ -624,23 +621,5 @@ export class Showcase {
       this.state === 'before' ? `${what}, et le technicien précédent est passé par là.`
       : this.state === 'after' ? 'Chaque cordon à sa longueur, rangé, étiqueté.'
       : to === 'after' ? 'Rangement en cours…' : 'Retour au désordre…';
-    // the gauges keep their last values while it moves, and fill (or empty) once it is done
-    if (!ev) return;
-    const n = ev.total;
-    const gauge = (name: string, k: number) => {
-      const cls = k === n ? 'full' : k >= n / 2 ? 'some' : '';
-      return `<div class="g ${cls}"><span>${name}</span><b>${Math.round((100 * k) / n)} %</b><div class="bar"><i style="width:${(100 * k) / n}%"></i></div></div>`;
-    };
-    const html = gauge('Rangés', ev.routed) + gauge('Façade dégagée', ev.clear) + gauge('Étiquetés', ev.labelled);
-    if (!stats.children.length) { stats.innerHTML = html; return; }
-    // update in place, so the bars slide to their new length
-    const tmp = document.createElement('div');
-    tmp.innerHTML = html;
-    [...tmp.children].forEach((g, k) => {
-      const old = stats.children[k] as HTMLElement;
-      old.className = g.className;
-      old.querySelector('b')!.textContent = g.querySelector('b')!.textContent;
-      (old.querySelector('.bar i') as HTMLElement).style.width = (g.querySelector('.bar i') as HTMLElement).style.width;
-    });
   }
 }

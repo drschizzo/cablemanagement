@@ -285,8 +285,11 @@ body.booting #view { opacity: 0; }
   transition: top 0.9s cubic-bezier(.2, .8, .2, 1), transform 0.9s cubic-bezier(.2, .8, .2, 1);
 }
 body.demo #title { display: flex; }
-/* while the aisle falls, the name stands alone in the middle of the screen */
+/* while the aisle loads, a black page: the name alone in the middle of the screen, and its bar */
 body.booting #title { top: 50%; transform: translate(-50%, -60%); }
+body.booting > :not(#title):not(#view) { visibility: hidden; }
+#title .kicker, #title .leds, #title .tagline, #title .menu { transition: opacity 0.7s ease 0.5s, visibility 0s 0.5s; }
+body.booting #title .kicker, body.booting #title .leds, body.booting #title .tagline, body.booting #title .menu { opacity: 0; visibility: hidden; transition: none; }
 #title > * { pointer-events: auto; }
 #title .kicker { font: 500 10.5px var(--mono); text-transform: uppercase; letter-spacing: 0.32em; color: var(--dim); }
 #title .logo {
@@ -310,7 +313,7 @@ body:not(.booting) #title .leds i { animation: traffic 3.1s steps(1) infinite; }
 #title .leds i:nth-child(4n + 1) { animation-delay: -0.7s; }
 @keyframes traffic { 0%, 90% { opacity: 1; } 91% { opacity: 0.35; } 93% { opacity: 1; } 95% { opacity: 0.35; } 97% { opacity: 1; } }
 #title .tagline { margin: 0; font-size: 15px; color: #c6cbc7; letter-spacing: 0.02em; text-shadow: 0 1px 10px rgba(0, 0, 0, 0.9); }
-#title-load { display: none; flex-direction: column; align-items: center; gap: 8px; margin-top: 22px; font: 12px var(--mono); color: var(--dim); }
+#title-load { display: none; flex-direction: column; align-items: center; margin-top: 26px; }
 body.booting #title-load { display: flex; }
 #title-load .bar { width: 240px; height: 2px; background: rgba(255, 255, 255, 0.08); }
 #title-load .fill { height: 100%; width: 0; background: var(--accent); transition: width 0.3s; }
@@ -360,13 +363,6 @@ body[data-sc='after'] #title-play.primary { background: var(--accent); color: va
 #sc-new:hover { color: var(--text); }
 #sc-caption { margin: 0; font-size: 13px; color: #c6cbc7; font-style: italic; text-shadow: 0 1px 10px rgba(0, 0, 0, 0.95); }
 /* three gauges that fill up as the aisle is tidied */
-#sc-stats { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; font: 500 10.5px var(--mono); text-transform: uppercase; letter-spacing: 0.12em; color: var(--dim); }
-#sc-stats .g { display: grid; grid-template-columns: auto auto; gap: 5px 10px; align-items: baseline; min-width: 132px; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.95); }
-#sc-stats .g b { justify-self: end; color: var(--text); font-weight: 500; }
-#sc-stats .bar { grid-column: 1 / -1; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
-#sc-stats .bar i { display: block; height: 100%; background: var(--bad); transition: width 1.2s cubic-bezier(.2, .8, .2, 1), background 1.2s; }
-#sc-stats .g.full .bar i { background: var(--accent); }
-#sc-stats .g.some .bar i { background: var(--warn); }
 
 #menu-close { position: absolute; top: 14px; right: 16px; font-size: 11px; }
 
@@ -378,8 +374,6 @@ body[data-sc='after'] #title-play.primary { background: var(--accent); color: va
   #title .menu { margin-top: 10px; }
   #showcase { bottom: 12px; gap: 8px; }
   #sc-switch button { min-width: 92px; padding: 8px 14px; }
-  #sc-stats { gap: 10px; }
-  #sc-stats .g { min-width: 96px; }
 }
 
 /* ---- tutorial */

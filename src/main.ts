@@ -116,7 +116,9 @@ function startShowcase(): void {
     leaveScene();
     document.getElementById('menu')!.classList.remove('on');
     // the game's panels stay hidden, the title shows its own progress while the aisle falls
-    document.body.classList.add('demo', 'booting');
+    // (not for an aisle already made ready behind the last one: it shows at once)
+    document.body.classList.add('demo');
+    if (!next?.ready) document.body.classList.add('booting');
     refreshTitle();
     titleProgress(0);
     let sc: Showcase;
@@ -148,14 +150,15 @@ function startShowcase(): void {
  * The next aisle, built and fallen in the background while this one is on
  * screen: "another" then shows it at once (or as soon as it has fallen).
  */
-interface NextAisle { aisle: Promise<Showcase>; progress: (f: number) => void; done: number }
+interface NextAisle { aisle: Promise<Showcase>; progress: (f: number) => void; done: number; ready: boolean }
 let next: NextAisle | null = null;
 
 function prepareNext(): void {
   if (next) return;
-  const n: NextAisle = { aisle: null!, progress: () => {}, done: 0 };
+  const n: NextAisle = { aisle: null!, progress: () => {}, done: 0, ready: false };
   n.aisle = Showcase.create(stage, !syncPhysics, { another: startShowcase }, (f) => { n.done = f; n.progress(f); },
     { bays: showcaseBays, pairs: anotherPairs(), background: true });
+  void n.aisle.then(() => { n.ready = true; });
   next = n;
 }
 
@@ -176,11 +179,9 @@ function playNext(): void {
 // ------------------------------------------------------------ title screen
 
 const titleFill = document.querySelector<HTMLElement>('#title-load .fill')!;
-const titleLoadText = document.querySelector<HTMLElement>('#title-load span')!;
 
 function titleProgress(f: number): void {
   titleFill.style.width = `${Math.round(f * 100)}%`;
-  titleLoadText.textContent = f < 1 ? `Le technicien précédent est passé par là… ${Math.round(f * 100)} %` : 'Prêt.';
 }
 
 /** a first visit starts with the tutorial; afterwards, where the player left off */
