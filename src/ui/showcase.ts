@@ -61,6 +61,8 @@ class Bay {
   group = new THREE.Group();
   flight: Flight | null = null;
   private moved: Uint8Array;
+  /** time not yet stepped by the physics (s) */
+  private acc = 0;
 
   constructor(stage: Stage, state: 'mess' | 'tidy', seed: number, at: Place) {
     this.world = new World(showcaseRack(state, seed));
@@ -97,7 +99,12 @@ class Bay {
       // frozen: nothing to rebuild but the labels and straps
       this.cableView.update(() => false);
     } else {
-      this.world.sim.advance(dt >= 1 / 90 ? 1 : 0);
+      // fixed steps, at most two a frame, whatever the rate of the frames
+      const h = this.world.sim.P.dt;
+      this.acc = Math.min(this.acc + dt, 2 * h);
+      const k = Math.floor(this.acc / h);
+      this.acc -= k * h;
+      this.world.sim.advance(k);
       this.cableView.update();
     }
     this.rackView.syncItems(this.world.itemsVersion);
@@ -446,6 +453,7 @@ export class Showcase {
     if (this.disposed) return;
     requestAnimationFrame(this.frame);
     const now = performance.now();
+    if (!this.stage.due(now)) return;
     const dt = Math.min(0.05, (now - this.last) / 1000);
     this.last = now;
     this.tick(dt);

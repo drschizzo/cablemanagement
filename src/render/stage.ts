@@ -39,8 +39,14 @@ export class Stage {
   private swaying = false;
   private swayT = 0;
 
+  /** when the last frame was drawn and the player last touched anything (ms), for the pacing (see due()) */
+  private lastFrame = -Infinity;
+  private lastInput = performance.now();
+
   constructor(host: HTMLElement) {
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    // no multisampling on the canvas: it only takes the full-screen quad of the last pass
+    // (the scene is multisampled in the reflection pass, see below)
+    this.renderer = new THREE.WebGLRenderer({ antialias: false });
     this.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
     this.renderer.shadowMap.enabled = true;
     // PCF in three r183 samples a rotated Vogel disk of `shadow.radius` (PCFSoft is deprecated into it)
@@ -87,10 +93,12 @@ export class Stage {
     fill.position.set(-1.5, 0.5, 1.5);
     this.scene.add(fill);
 
-    // multisampled target: the composer would otherwise lose the antialiasing
-    const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 });
+    // half float, for the bloom; not multisampled: every pass after the first draws a full-screen
+    // quad, and resolving 4 samples a pixel after each of them took a third of the frame for nothing
+    const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType });
     this.composer = new EffectComposer(this.renderer, target);
-    // the scene itself, plus soft screen-space reflections on the floor only
+    // the scene itself (multisampled here, the antialiasing of the whole image), plus soft
+    // screen-space reflections on the floor only
     this.ssr = new SSRPass({ renderer: this.renderer, scene: this.scene, camera: this.camera, width: 1, height: 1, selects: this.mirrors, groundReflector: null });
     this.ssr.beautyRenderTarget.samples = 4;
     // the pass ships a 16-bit depth buffer: the port openings and the unit faces, a few mm apart,
@@ -139,7 +147,26 @@ export class Stage {
     this.composer.addPass(this.cinema);
 
     window.addEventListener('resize', () => this.resize());
+    for (const e of ['pointermove', 'pointerdown', 'wheel', 'keydown']) {
+      window.addEventListener(e, () => { this.lastInput = performance.now(); }, { capture: true, passive: true });
+    }
     this.resize();
+  }
+
+  /**
+   * Whether the loop should draw a frame at `now` (ms). The browser calls the
+   * loops at the screen's rate, 120 Hz on a ProMotion display, while the
+   * physics steps at 60 Hz: every other image was the same cords, for twice
+   * the work of the GPU. 60 frames a second, then; 30 when nobody is looking
+   * (the page out of focus) or, in a level, nothing has been touched for a
+   * few seconds (the physics takes two steps a frame).
+   */
+  due(now: number): boolean {
+    const idle = !document.hasFocus() || (!this.swaying && now - this.lastInput > 4000);
+    // a few ms of slack: the calls of a 60 Hz screen come a little early or late
+    if (now - this.lastFrame < (idle ? 1000 / 30 : 1000 / 60) - 4) return false;
+    this.lastFrame = now;
+    return true;
   }
 
   /**
@@ -230,8 +257,10 @@ export class Stage {
   }
 
   render(): void {
+    const now = performance.now();
+    const dt = Math.min(0.1, (now - this.lastRender) / 1000);
     if (this.swaying) {
-      this.swayT += 1 / 60;
+      this.swayT += dt;
       const a = 0.3 * Math.sin(this.swayT * 0.4);
       const rel = this.home.pos.clone().sub(this.home.target).applyAxisAngle(new THREE.Vector3(0, 1, 0), a);
       this.camera.position.copy(this.home.target).add(rel);
@@ -246,8 +275,6 @@ export class Stage {
     u.cameraProjectionMatrix.value.copy(this.camera.projectionMatrix);
     u.cameraInverseProjectionMatrix.value.copy(this.camera.projectionMatrixInverse);
     this.fitBloom();
-    const now = performance.now();
-    const dt = Math.min(0.1, (now - this.lastRender) / 1000);
     this.cinema.frame(dt, window.innerWidth, window.innerHeight, this.insets);
     // (wrapped, so that the GPU's hash of it keeps its precision)
     ledClock.value = (ledClock.value + dt) % 600;

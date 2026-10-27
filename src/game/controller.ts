@@ -183,6 +183,7 @@ export class Controller {
     if (this.disposed) return;
     requestAnimationFrame(this.frame);
     const now = performance.now();
+    if (!this.stage.due(now)) return;
     const dt = Math.min(0.1, (now - this.last) / 1000);
     this.last = now;
     this.tick(dt);
