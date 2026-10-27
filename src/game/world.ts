@@ -6,7 +6,7 @@ import { ThreadedSim } from '../physics/threadedSim';
 import type { Pinch } from '../physics/cableSim';
 import { CABLE_R, CONNECTOR, Rack, SEG, insideBox, type Item, type ItemKind } from './rack';
 import { SERVICES, type FibreType, type LevelDef } from './levels';
-import { makeCables, makeSchedule, rng, type Circuit } from './tangle';
+import { makeCables, makeSchedule, rng, type CableStart, type Circuit } from './tangle';
 import { pathToNodes, polyLength, resample, tidyRoutes, type V3 } from './tidy';
 
 export interface CableEnd {
@@ -92,7 +92,11 @@ export class World {
     return this.bend || (type === 'CU' ? 12 : 6);
   }
 
-  constructor(level: LevelDef) {
+  /** where every cord was laid at the start (its tangle, or its tidy route) */
+  readonly starts: CableStart[];
+
+  /** `starts`: the tangle already drawn for this level (by another World, in a worker): not drawn again */
+  constructor(level: LevelDef, starts?: CableStart[]) {
     this.level = level;
     this.seg = level.seg ?? SEG;
     this.radius = level.radius ?? CABLE_R;
@@ -106,19 +110,18 @@ export class World {
       this.setAside = this.rack.items.map((it) => ({ kind: it.kind, unit: it.unit, side: it.side }));
       this.rack.items = [];
     }
-    let starts;
     if (level.showcase === 'tidy') {
       // the cords are laid along their tidy routes, cut to length (no tangle to draw: it was half
       // the time it took to build, for nothing)
       this.tidyPaths = tidyRoutes(this.rack, this.circuits, this.radius, this.seg);
-      starts = this.circuits.map((ci, c) => ({ type: ci.type, ends: [ci.a, ci.b] as [string, string], points: pathToNodes(this.tidyPaths[c], this.seg) }));
-    } else starts = makeCables(level, this.rack, this.circuits, r);
+      this.starts = this.circuits.map((ci, c) => ({ type: ci.type, ends: [ci.a, ci.b] as [string, string], points: pathToNodes(this.tidyPaths[c], this.seg) }));
+    } else this.starts = starts ?? makeCables(level, this.rack, this.circuits, r);
     // big cabinets trade a substep for frame rate (≈ 13 ms instead of 18 for 40 cords);
     // the solver settings were tuned at these substep counts (see `refSubsteps`)
     const big = level.cables >= 20;
     this.sim = new ThreadedSim(big ? { substeps: 2, refSubsteps: 2, iterations: 5 } : { substeps: 3, refSubsteps: 3, iterations: 6 });
-    const at = this.sim.build(starts.map((s) => ({ points: s.points, radius: this.radius, bend: this.stiffness(s.type) })));
-    starts.forEach((s, c) => {
+    const at = this.sim.build(this.starts.map((s) => ({ points: s.points, radius: this.radius, bend: this.stiffness(s.type) })));
+    this.starts.forEach((s, c) => {
       this.cables.push({
         type: s.type,
         start: at[c],

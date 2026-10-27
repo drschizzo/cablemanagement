@@ -5,7 +5,6 @@
 // LEDs) are instanced, with a colour and a glow of their own per instance.
 
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 /**
  * A standard material that adds the `emissiveTint` attribute (linear RGB, per
@@ -44,20 +43,57 @@ export function mergeStatic(root: THREE.Object3D, ok: (m: THREE.Mesh) => boolean
     if (!b) buckets.set(key, (b = { mat: m.material, cast: m.castShadow, receive: m.receiveShadow, order: m.renderOrder, meshes: [] }));
     b.meshes.push(m);
   });
-  const mtx = new THREE.Matrix4();
+  const mtx = new THREE.Matrix4(), nm = new THREE.Matrix3();
   for (const b of buckets.values()) {
     if (b.meshes.length < 2) continue;
     const names = KEEP.filter((n) => b.meshes.every((m) => m.geometry.getAttribute(n)));
-    const geos = b.meshes.map((m) => {
-      let g = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone();
-      for (const n of Object.keys(g.attributes)) if (!names.includes(n)) g.deleteAttribute(n);
-      g.clearGroups();
-      g = g.applyMatrix4(mtx.multiplyMatrices(inv, m.matrixWorld));
-      return g;
-    });
-    const merged = mergeGeometries(geos);
-    for (const g of geos) g.dispose();
-    if (!merged) continue;
+    if (!names.includes('position')) continue;
+    // laid straight into one indexed geometry, each part moved as it stood (copying each
+    // part unindexed, moving it, then merging the copies took ten times as long)
+    let verts = 0, idx = 0;
+    for (const m of b.meshes) {
+      const g = m.geometry;
+      verts += g.attributes.position.count;
+      idx += g.index ? g.index.count : g.attributes.position.count;
+    }
+    const pos = new Float32Array(3 * verts), index = new Uint32Array(idx);
+    const nrm = names.includes('normal') ? new Float32Array(3 * verts) : null;
+    const uv = names.includes('uv') ? new Float32Array(2 * verts) : null;
+    let v = 0, i = 0;
+    for (const m of b.meshes) {
+      const g = m.geometry;
+      mtx.multiplyMatrices(inv, m.matrixWorld);
+      nm.getNormalMatrix(mtx);
+      const e = mtx.elements, f = nm.elements;
+      const P = g.attributes.position, n = P.count;
+      for (let k = 0; k < n; k++) {
+        const x = P.getX(k), y = P.getY(k), z = P.getZ(k), o = 3 * (v + k);
+        pos[o] = e[0] * x + e[4] * y + e[8] * z + e[12];
+        pos[o + 1] = e[1] * x + e[5] * y + e[9] * z + e[13];
+        pos[o + 2] = e[2] * x + e[6] * y + e[10] * z + e[14];
+      }
+      if (nrm) {
+        const N = g.attributes.normal;
+        for (let k = 0; k < n; k++) {
+          const x = N.getX(k), y = N.getY(k), z = N.getZ(k), o = 3 * (v + k);
+          const a = f[0] * x + f[3] * y + f[6] * z, c = f[1] * x + f[4] * y + f[7] * z, d = f[2] * x + f[5] * y + f[8] * z;
+          const l = Math.sqrt(a * a + c * c + d * d) || 1;
+          nrm[o] = a / l; nrm[o + 1] = c / l; nrm[o + 2] = d / l;
+        }
+      }
+      if (uv) {
+        const T = g.attributes.uv;
+        for (let k = 0; k < n; k++) { uv[2 * (v + k)] = T.getX(k); uv[2 * (v + k) + 1] = T.getY(k); }
+      }
+      if (g.index) for (let k = 0; k < g.index.count; k++) index[i++] = g.index.getX(k) + v;
+      else for (let k = 0; k < n; k++) index[i++] = v + k;
+      v += n;
+    }
+    const merged = new THREE.BufferGeometry();
+    merged.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    if (nrm) merged.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
+    if (uv) merged.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    merged.setIndex(new THREE.BufferAttribute(index, 1));
     for (const m of b.meshes) {
       m.removeFromParent();
       if (!m.geometry.userData.shared) m.geometry.dispose();

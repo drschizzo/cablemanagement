@@ -408,18 +408,18 @@ La même vue avec le niveau de détail forcé, pour le rendre visible. De gauche
 
 ### Jusqu'où va l'écran d'accueil
 
-`?bays=N` (5 par défaut, 32 au plus) règle le nombre de baies de l'allée, `?pairs=N` (10 par défaut, 16 au plus) le nombre de paires panneau / switch de chacune, au lieu des 3 ou 4 d'une vraie baie : une baie plus haute qu'aucune vraie, avec des cordons plus longs et des serveurs en proportion. Mesures sur un Mac à 10 cœurs, image de 1 972 × 1 544 pixels :
+`?bays=N` (5 par défaut, 32 au plus) règle le nombre de baies de l'allée, `?pairs=N` (16 au plus) le nombre de paires panneau / switch de chacune (sans lui : 10, 8, 10, 8, 10 pour la salle d'accueil, puis tiré entre 5 et 12 pour chaque baie), au lieu des 3 ou 4 d'une vraie baie : une baie plus haute qu'aucune vraie, avec des cordons plus longs et des serveurs en proportion. Mesures sur un Mac à 10 cœurs, image de 1 972 × 1 544 pixels :
 
 | Allée | Cordons | Nœuds | Chargement | Images par seconde |
 |---|---|---|---|---|
 | 5 baies × 3 ou 4 paires | 377 | 17 035 | 2,5 s | 60 |
-| 5 baies × 10 paires (défaut, vue rapprochée) | 1 088 | 51 740 | 3,6 s, 1,2 s précalculée | 50 |
+| 5 baies × 10 paires (vue rapprochée) | 1 088 | 51 740 | 3,6 s, 1,2 s précalculée | 50 |
 | 10 baies × 14 paires | 2 984 | 160 732 | 17 à 22 s | 45 (36 rangée, 34 pendant le rangement) |
 | 16 baies × 16 paires | 5 391 | 300 266 | 32 s | 31 |
 
 Le chargement est la chute du désordre, une fois, dans un Worker par baie : au-delà de 10 baies, elles attendent un cœur libre. La collision des câbles entre eux y prend le plus de temps, et elle croît plus vite que le nombre de nœuds, les cordons étant plus serrés. Une fois tombée, l'allée ne coûte plus que son image.
 
-L'allée par défaut ne tombe pas : sa chute (22 s de calcul sur un cœur) est précalculée dans `src/game/showcase.bin`. Chaque nœud y est l'écart au précédent, au dixième de millimètre, par axe, en entiers de 16 bits, le tout compressé : 206 Ko pour 50 302 nœuds. Il ne reste que la construction des baies, environ 170 ms chacune : la salle est à l'écran 1,2 s après l'ouverture de la page (build de production). La salle suivante est construite et tombe en fond pendant qu'on regarde celle-ci, une baie à la fois pour ne pas figer l'image : « une autre salle » l'affiche en un quart de seconde.
+L'allée par défaut ne tombe pas : sa chute (22 s de calcul sur un cœur) est précalculée dans `src/game/showcase.bin`. Chaque nœud y est l'écart au précédent, au dixième de millimètre, par axe, en entiers de 16 bits, le tout compressé : 193 Ko pour les 47 244 nœuds de ses baies de 10, 8, 10, 8 et 10 paires. Il ne reste que la construction des baies, environ 170 ms chacune : la salle est à l'écran 1,2 s après l'ouverture de la page (build de production). La salle suivante est construite et tombe en fond pendant qu'on regarde celle-ci, sans figer l'image : son emmêlage est tracé et tombe dans un Worker par baie (`game/fall.worker.ts`), la page reconstruit chaque baie autour par petits morceaux (moins de 30 ms chacun, une image entre deux), puis la dessine une fois hors écran, dans un pixel, pour que shaders, tampons et textures soient sur le GPU avant sa première vraie image (`Showcase.warm`). « Une autre salle » l'affiche alors en un dixième de seconde.
 
 ### Les connecteurs : l'instanciation
 

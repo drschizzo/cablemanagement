@@ -6,7 +6,7 @@ import type { StaticShape } from '../physics/cableSim';
 import type { FibreType } from '../game/levels';
 import { disposeTree, shared } from './dispose';
 import { mergeStatic } from './batch';
-import { bevelBox } from './bevel';
+import { bevelBox, bevelTemplate } from './bevel';
 import { LedGlow, ledGlows } from './ledGlow';
 import { STEADY, activity, blinkable, ledGlow, ledMesh, pulse, type LedSpec } from './leds';
 
@@ -78,6 +78,7 @@ export class RackView {
     this.buildLabels();
     // the cabinet and its equipment never move: one mesh per material
     mergeStatic(this.group, (m) => m.parent === this.group && !m.userData.reflective);
+    this.layParts();
     const ports = rack.ports.filter((p) => this.ledOf.has(p.id));
     // a unit lens, sized by its instance (blinkable() reads the size there)
     const geo = new THREE.BoxGeometry(1, 1, 0.001);
@@ -102,6 +103,51 @@ export class RackView {
 
   private light(x: number, y: number, color: THREE.ColorRepresentation, blink = STEADY, w = 0.0022, h = 0.0016, z = 0.0035): void {
     this.lights.push({ x, y, z, w, h, color, blink });
+  }
+
+  /** the small parts of the ports, by material: where each copy of its shape goes */
+  private parts = new Map<THREE.Material, { geo: THREE.BufferGeometry; x: number; y: number; z: number }[]>();
+
+  /**
+   * A small part repeated at every port: laid straight into one mesh with the
+   * others of its material (layParts). A mesh each, copied, moved and merged
+   * afterwards, took most of the time a rack took to build.
+   */
+  private part(geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number): void {
+    let list = this.parts.get(m);
+    if (!list) this.parts.set(m, (list = []));
+    list.push({ geo, x, y, z });
+  }
+
+  private layParts(): void {
+    for (const [m, list] of this.parts) {
+      let verts = 0, idx = 0;
+      for (const p of list) { verts += p.geo.attributes.position.count; idx += p.geo.index!.count; }
+      const pos = new Float32Array(3 * verts), nrm = new Float32Array(3 * verts), uv = new Float32Array(2 * verts);
+      const index = new Uint32Array(idx);
+      let v = 0, i = 0;
+      for (const p of list) {
+        const P = p.geo.attributes.position.array, N = p.geo.attributes.normal.array, T = p.geo.attributes.uv.array, I = p.geo.index!.array;
+        const n = P.length / 3;
+        for (let k = 0; k < n; k++) {
+          pos[3 * (v + k)] = P[3 * k] + p.x; pos[3 * (v + k) + 1] = P[3 * k + 1] + p.y; pos[3 * (v + k) + 2] = P[3 * k + 2] + p.z;
+        }
+        nrm.set(N, 3 * v);
+        uv.set(T, 2 * v);
+        for (let k = 0; k < I.length; k++) index[i + k] = I[k] + v;
+        v += n;
+        i += I.length;
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
+      geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+      geo.setIndex(new THREE.BufferAttribute(index, 1));
+      const mesh = new THREE.Mesh(geo, m);
+      mesh.receiveShadow = true;
+      this.group.add(mesh);
+    }
+    this.parts.clear();
   }
 
   private add(geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, shadow = true): THREE.Mesh {
@@ -243,14 +289,14 @@ export class RackView {
     for (const p of r.ports.filter((q) => q.unit === k)) {
       if (style === 'copper') {
         // white keystone jack with its RJ45 opening
-        this.add(bevelBox(0.0135, 0.0135, 0.005, 0.0008), mat.keystone, p.x, p.y - 0.002, 0.0025);
-        this.add(bevelBox(0.0115, 0.0085, 0.002, 0.0005), mat.hole, p.x, p.y - 0.003, 0.0052);
+        this.part(bevelTemplate(0.0135, 0.0135, 0.005, 0.0008), mat.keystone, p.x, p.y - 0.002, 0.0025);
+        this.part(bevelTemplate(0.0115, 0.0085, 0.002, 0.0005), mat.hole, p.x, p.y - 0.003, 0.0052);
       } else if (u.kind === 'panel') {
-        this.add(bevelBox(0.0095, 0.0105, 0.006, 0.0008), type === 'OS2' ? mat.adapterSM : mat.adapterMM, p.x, p.y - 0.002, 0.003);
-        this.add(bevelBox(0.0055, 0.0065, 0.002, 0.0005), mat.hole, p.x, p.y - 0.002, 0.0062);
+        this.part(bevelTemplate(0.0095, 0.0105, 0.006, 0.0008), type === 'OS2' ? mat.adapterSM : mat.adapterMM, p.x, p.y - 0.002, 0.003);
+        this.part(bevelTemplate(0.0055, 0.0065, 0.002, 0.0005), mat.hole, p.x, p.y - 0.002, 0.0062);
       } else {
-        this.add(bevelBox(0.011, 0.0115, 0.004, 0.0006), mat.cage, p.x, p.y - 0.002, 0.002);
-        this.add(bevelBox(0.0085, 0.008, 0.002, 0.0005), mat.hole, p.x, p.y - 0.002, 0.0042);
+        this.part(bevelTemplate(0.011, 0.0115, 0.004, 0.0006), mat.cage, p.x, p.y - 0.002, 0.002);
+        this.part(bevelTemplate(0.0085, 0.008, 0.002, 0.0005), mat.hole, p.x, p.y - 0.002, 0.0042);
       }
       this.ledOf.set(p.id, this.ledOf.size);
     }
@@ -510,10 +556,15 @@ function drawLabel(g: CanvasRenderingContext2D, rack: Rack, k: number, light: bo
   g.fillText(u.label ?? '', W - 16, H - 26);
 }
 
-/** a box with rounded edges (r: bevel radius) */
+/** a box with rounded edges (r: bevel radius); made once per size, then copied (the faces of the units repeat) */
 function rbox(w: number, h: number, d: number, r: number): THREE.BufferGeometry {
-  return new RoundedBoxGeometry(w, h, d, 2, r);
+  const key = `${w} ${h} ${d} ${r}`;
+  let g = rounded.get(key);
+  if (!g) rounded.set(key, (g = new RoundedBoxGeometry(w, h, d, 2, r)));
+  return g.clone();
 }
+
+const rounded = new Map<string, THREE.BufferGeometry>();
 
 /** a centred rounded rectangle (a shape, or a hole when `hole`) */
 function roundRect(w: number, h: number, r: number, x = 0, y = 0, hole = false): THREE.Shape | THREE.Path {

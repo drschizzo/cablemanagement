@@ -26,17 +26,22 @@ let sceneToken = 0;
 const syncPhysics = new URLSearchParams(location.search).has('sync');
 // ?bays=N: how many closets stand side by side in the before/after aisle
 const showcaseBays = Math.max(1, Math.min(32, Number(new URLSearchParams(location.search).get('bays')) || SHOWCASE_DEFAULT.bays));
-// ?pairs=N: how many panel / switch pairs each of them holds (far taller than a real rack by default)
-const showcasePairs = Math.max(1, Math.min(16, Number(new URLSearchParams(location.search).get('pairs')) || SHOWCASE_DEFAULT.pairs));
-const defaultAisle = showcaseBays === SHOWCASE_DEFAULT.bays && showcasePairs === SHOWCASE_DEFAULT.pairs;
+// ?pairs=N: how many panel / switch pairs each of them holds (far taller than a real rack by default),
+// in every aisle; if not given, the first aisle has the default height and the next ones are drawn
+const pairsParam = Math.max(0, Math.min(16, Number(new URLSearchParams(location.search).get('pairs')) || 0));
+const defaultAisle = showcaseBays === SHOWCASE_DEFAULT.bays && !pairsParam;
+/** the heights of the racks of the first aisle: as asked, or those of the default one */
+const showcasePairs = pairsParam || (defaultAisle ? SHOWCASE_DEFAULT.pairs : 10);
+/** the heights of the racks of another aisle: as asked, or each drawn between 5 and 12 pairs */
+const anotherPairs = () => pairsParam || Array.from({ length: showcaseBays }, () => 5 + Math.floor(Math.random() * 8));
 // ?seed=N draws the same before/after aisle every time (the first one only); otherwise the first
 // is the default one, whose mess is baked, and the next ones are drawn at random
 let showcaseSeed: number | undefined = Number(new URLSearchParams(location.search).get('seed')) || (defaultAisle ? SHOWCASE_DEFAULT.seed : undefined);
 // its fallen mess, fetched while the rest starts
 const baked = defaultAisle && showcaseSeed === SHOWCASE_DEFAULT.seed ? loadBaked(bakedUrl) : Promise.resolve(null);
 // the aisle as it opens, seen a little closer and lower than it is framed: the cords fill the screen
-// (only for the aisle of the default size: another one keeps the framing that fits it)
-const showcaseView = defaultAisle ? { zoom: 0.69, elevation: 0.104, lower: 0.13 } : null;
+// (for an aisle of the default width, whatever its height: another one keeps the framing that fits it)
+const showcaseView = showcaseBays === SHOWCASE_DEFAULT.bays ? { zoom: 0.69, elevation: 0.104, lower: 0.13 } : null;
 
 const hud = new Hud((level) => start(level));
 
@@ -125,7 +130,7 @@ function startShowcase(): void {
     } else {
       const seed = showcaseSeed;
       sc = await Showcase.create(stage, !syncPhysics, { another: startShowcase }, titleProgress,
-        { seed, bays: showcaseBays, pairs: showcasePairs, baked: seed === SHOWCASE_DEFAULT.seed ? await baked : null });
+        { seed, bays: showcaseBays, pairs: seed === undefined ? anotherPairs() : showcasePairs, baked: seed === SHOWCASE_DEFAULT.seed ? await baked : null });
     }
     showcaseSeed = undefined;
     // overtaken while it was falling: thrown away before it ever showed
@@ -150,7 +155,7 @@ function prepareNext(): void {
   if (next) return;
   const n: NextAisle = { aisle: null!, progress: () => {}, done: 0 };
   n.aisle = Showcase.create(stage, !syncPhysics, { another: startShowcase }, (f) => { n.done = f; n.progress(f); },
-    { bays: showcaseBays, pairs: showcasePairs, background: true });
+    { bays: showcaseBays, pairs: anotherPairs(), background: true });
   next = n;
 }
 

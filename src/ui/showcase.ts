@@ -22,6 +22,11 @@ import { U } from '../game/rack';
 import { resample } from '../game/tidy';
 import { rng } from '../game/tangle';
 import { printOf, type BakedBay } from '../game/baked';
+import { fall } from '../game/fall';
+import type { CableStart } from '../game/tangle';
+
+/** waits a little, so that the page may draw (or not at all) */
+type Pause = () => Promise<void>;
 import { sfx } from '../audio/sfx';
 
 interface FlightOpts {
@@ -56,30 +61,45 @@ const SPRING_W = 22;
 const SPRING_Z = 0.5;
 
 class Bay {
-  world: World;
   /** the rack on screen, for the tidy bay only (the mess draws its cords in front of it) */
   rackView: RackView | null = null;
-  cableView: CableView;
+  cableView!: CableView;
   group = new THREE.Group();
   flight: Flight | null = null;
-  private moved: Uint8Array;
+  private moved!: Uint8Array;
   /** time not yet stepped by the physics (s) */
   private acc = 0;
 
-  constructor(stage: Stage, state: 'mess' | 'tidy', seed: number, at: Place, pairs?: number) {
-    this.world = new World(showcaseRack(state, seed, pairs));
-    const types = new Map<number, FibreType>();
-    this.world.circuits.forEach((c) => types.set(this.world.rack.port(c.a).unit, c.type));
-    if (state === 'tidy') this.group.add((this.rackView = new RackView(this.world.rack, types, { roomFloor: false })).group);
-    this.cableView = new CableView(this.world);
-    this.group.add(this.cableView.group);
-    this.group.position.set(at.x, 0, at.z);
-    this.group.rotation.y = at.yaw;
-    stage.scene.add(this.group);
-    this.rackView?.syncItems(this.world.itemsVersion);
-    this.cableView.update(true);
-    this.moved = new Uint8Array(this.world.cables.length);
-    this.leds();
+  private constructor(public world: World) {}
+
+  /**
+   * Builds a bay (hidden), a piece at a time, with `pause` between them; `starts`:
+   * the tangle of the mess, already drawn.
+   */
+  static async make(stage: Stage, state: 'mess' | 'tidy', seed: number, at: Place, pairs: number | undefined, pause: Pause, starts?: CableStart[]): Promise<Bay> {
+    const b = new Bay(new World(showcaseRack(state, seed, pairs), starts));
+    const w = b.world;
+    b.group.visible = false;
+    b.group.position.set(at.x, 0, at.z);
+    b.group.rotation.y = at.yaw;
+    stage.scene.add(b.group);
+    if (state === 'tidy') {
+      await pause();
+      const types = new Map<number, FibreType>();
+      w.circuits.forEach((c) => types.set(w.rack.port(c.a).unit, c.type));
+      b.rackView = new RackView(w.rack, types, { roomFloor: false });
+      b.group.add(b.rackView.group);
+      await pause();
+      b.rackView.syncItems(w.itemsVersion);
+    }
+    await pause();
+    b.cableView = new CableView(w);
+    b.group.add(b.cableView.group);
+    b.cableView.update(true);
+    b.moved = new Uint8Array(w.cables.length);
+    await pause();
+    b.leds();
+    return b;
   }
 
   dispose(stage: Stage): void {
@@ -226,27 +246,44 @@ function layout(n: number, seed: number): Place[] {
   return out;
 }
 
+/** where a closet is drawn out of sight once, before it shows (see Showcase.warm) */
+const warmTarget = new THREE.WebGLRenderTarget(1, 1);
+
 /** delay between two racks of the aisle, when they are tidied up or messed up (ms) */
 const WAVE = 700;
 
 /** one closet of the aisle: its mess and its tidy self, drawn on the same rack */
 class Closet {
-  mess: Bay;
-  tidy: Bay;
   messPos!: Float64Array;
   /** the cords of the mess laid along the tidy routes */
   tidyShapes!: Float64Array;
-  /** where the mess comes to rest, if it was baked for this very mess (it then does not fall) */
-  private fallen: Float64Array | null;
+  /** where the mess comes to rest, if it is known already (baked, or fallen in a worker): it then does not fall here */
+  private fallen: Float64Array | null = null;
 
-  constructor(stage: Stage, seed: number, at: Place, threaded: boolean, pairs?: number, baked?: BakedBay) {
-    this.mess = new Bay(stage, 'mess', seed, at, pairs);
-    this.tidy = new Bay(stage, 'tidy', seed, at, pairs);
-    const sim = this.mess.world.sim;
-    this.fallen = baked && baked.x.length === sim.x.length && baked.print === printOf(sim.x) ? baked.x : null;
+  private constructor(public mess: Bay, public tidy: Bay) {}
+
+  /**
+   * Builds a closet (hidden), a piece at a time, with `pause` between them. Its
+   * mess, if not `fallen` already (its tangle and where it came to rest), or
+   * `baked` (where it came to rest, if it still is the same mess), falls in
+   * settle(): in its worker when `threaded`.
+   */
+  static async make(stage: Stage, seed: number, at: Place, threaded: boolean, pairs: number | undefined, pause: Pause,
+    fallen?: { starts: CableStart[]; x: Float64Array }, baked?: BakedBay): Promise<Closet> {
+    const mess = await Bay.make(stage, 'mess', seed, at, pairs, pause, fallen?.starts);
+    await pause();
+    const c = new Closet(mess, await Bay.make(stage, 'tidy', seed, at, pairs, pause));
+    const sim = mess.world.sim;
+    c.fallen = fallen?.x ?? (baked && baked.x.length === sim.x.length && baked.print === printOf(sim.x) ? baked.x : null);
     // the mess only falls once: a cheap solver will do
     Object.assign(sim.P, SHOWCASE_SETTLE.solver);
-    if (threaded && !this.fallen) sim.startWorker();
+    if (threaded && !c.fallen) sim.startWorker();
+    await pause();
+    c.dress();
+    return c;
+  }
+
+  private dress(): void {
     // one rack on screen: the tidy bay draws it with its managers (hidden for now), the mess bay only its cords
     const rack = this.tidy.rackView!;
     rack.itemsGroup.visible = false;
@@ -266,13 +303,17 @@ class Closet {
     this.mess.group.visible = this.tidy.group.visible = v;
   }
 
-  /** lets the mess fall, in `chunks` steps (or puts it where it was baked) */
-  async settle(chunks: number, step: () => void): Promise<void> {
-    for (let i = 0; i < chunks; i++) {
-      if (!this.fallen) await this.mess.world.sim.settle(Math.ceil(SHOWCASE_SETTLE.frames / chunks));
-      step();
+  /** lets the mess fall, in `chunks` steps (or puts it where it is known to come to rest) */
+  async settle(chunks: number, step: () => void, pause: Pause): Promise<void> {
+    if (this.fallen) {
+      await pause();
+      this.mess.world.sim.x.set(this.fallen);
+    } else {
+      for (let i = 0; i < chunks; i++) {
+        await this.mess.world.sim.settle(Math.ceil(SHOWCASE_SETTLE.frames / chunks));
+        step();
+      }
     }
-    if (this.fallen) this.mess.world.sim.x.set(this.fallen);
     // frozen as it fell
     this.mess.world.sim.hold = true;
     this.messPos = Float64Array.from(this.mess.world.sim.x);
@@ -370,37 +411,62 @@ export class Showcase {
   private floor: THREE.Group;
   /** before it is tidied, cords keep falling from above and pile up in the middle of the room */
   private rain!: CableRain;
+  /** the top of the tallest rack (m): the racks of an aisle may be of any height */
+  private get topY(): number {
+    return Math.max(...this.closets.map((c) => c.tidy.world.rack.topY));
+  }
+
   /** where the camera rests, relative to the framing of the aisle (see Stage.view); set before start() */
   view: Stage['view'] = null;
 
   /**
    * Builds an aisle of `bays` closets from `seed` (drawn if not given), of
-   * `pairs` panel / switch pairs each (drawn if not given), and lets their mess
+   * `pairs` panel / switch pairs (one for all, or one each; drawn if not given), and lets their mess
    * fall (each in its worker; or puts it where `baked` says it fell), reporting
    * progress. Nothing shows until start(): the caller may throw it away first.
    * `background`: built while another is on screen, one closet at a time, the
    * frames going on between them.
    */
   static async create(stage: Stage, threaded: boolean, actions: { another(): void }, progress: (f: number) => void,
-    o: { seed?: number; bays?: number; pairs?: number; baked?: BakedBay[] | null; background?: boolean } = {}): Promise<Showcase> {
+    o: { seed?: number; bays?: number; pairs?: number | number[]; baked?: BakedBay[] | null; background?: boolean } = {}): Promise<Showcase> {
     const sc = new Showcase(stage, actions);
     const seed = o.seed ?? Math.floor(Math.random() * 1e9), bays = o.bays ?? 1;
     const places = layout(bays, seed);
+    // one height for all, or one each
+    const pairs = (k: number) => (Array.isArray(o.pairs) ? o.pairs[k] : o.pairs);
+    const chunks = 5;
+    let steps = 0;
+    const step = () => progress(++steps / (chunks * bays));
+    // in the background, a frame between two pieces (or a moment, if the page draws none)
+    const pause: Pause = o.background
+      ? () => new Promise((r) => {
+        let gone = false;
+        const go = () => { if (!gone) { gone = true; setTimeout(r, 0); } };
+        requestAnimationFrame(go);
+        setTimeout(go, 100);
+      })
+      : () => Promise.resolve();
+    // nothing baked: every mess is drawn and falls in a worker of its own, all at once, and the
+    // page builds each closet around it as soon as it is down
+    const falls = threaded && !o.baked ? places.map((_, k) => fall(seed + k, pairs(k), chunks, step)) : null;
     for (let k = 0; k < places.length; k++) {
-      if (o.background && k > 0) await new Promise((r) => setTimeout(r, 16));
-      sc.closets.push(new Closet(stage, seed + k, places[k], threaded, o.pairs, o.baked?.[k]));
+      const fallen = falls ? await falls[k] : undefined;
+      sc.closets.push(await Closet.make(stage, seed + k, places[k], threaded, pairs(k), pause, fallen, o.baked?.[k]));
     }
     const rack = sc.closets[0].mess.world.rack;
     // the heap in the middle of the half circle, a little ahead of the racks
     sc.rain = new CableRain({
-      floorY: rack.floorY, topY: rack.topY, racks: places, seed,
+      floorY: rack.floorY, topY: sc.topY, racks: places, seed,
       centre: { x: 0, z: bays > 1 ? 0.75 : 0.45 }, spread: bays > 1 ? 0.2 : 0.12,
     });
+    sc.rain.group.visible = false;
     stage.scene.add(sc.rain.group);
-    sc.rain.group.visible = sc.floor.visible = false;
-    const chunks = 5;
-    let steps = 0;
-    await Promise.all(sc.closets.map((c) => c.settle(chunks, () => progress(++steps / (chunks * bays)))));
+    await Promise.all(sc.closets.map((c) => c.settle(chunks, step, pause)));
+    // drawn once out of sight, so that its first image on screen does not stall on them
+    for (const c of sc.closets) {
+      await pause();
+      sc.warm(c);
+    }
     // the cords fall on the mess spilt on the floor
     const p = new THREE.Vector3();
     for (const c of sc.closets) {
@@ -418,7 +484,34 @@ export class Showcase {
   private constructor(private stage: Stage, private actions: { another(): void }) {
     this.el = document.getElementById('showcase')!;
     this.floor = buildRoom(0);
+    // hidden until start(): an aisle made ready in the background must not lay its floor over the one on screen
+    this.floor.visible = false;
     stage.scene.add(this.floor);
+  }
+
+  /**
+   * Draws a closet once, alone, into a pixel: its shaders, buffers and
+   * textures go to the GPU then. Left to its first image on screen, that took
+   * a tenth of a second or more, and the title screen stalled as it appeared.
+   */
+  private warm(c: Closet): void {
+    const scene = this.stage.scene, r = this.stage.renderer;
+    const shown = scene.children.filter((o) => o.visible && !(o as THREE.Light).isLight);
+    for (const o of shown) o.visible = false;
+    // all of it, its managers too (hidden until it is tidied), wherever the camera looks
+    const items = c.tidy.rackView!.itemsGroup;
+    c.visible = items.visible = true;
+    const culled: THREE.Object3D[] = [];
+    for (const g of [c.mess.group, c.tidy.group]) g.traverse((o) => { if (o.frustumCulled) { o.frustumCulled = false; culled.push(o); } });
+    const prev = r.getRenderTarget();
+    r.setRenderTarget(warmTarget);
+    r.render(scene, this.stage.camera);
+    r.setRenderTarget(prev);
+    // and the light of its LEDs on the cords (its map, drawn before each image)
+    c.tidy.rackView!.glow.render(r);
+    for (const o of culled) o.frustumCulled = true;
+    c.visible = items.visible = false;
+    for (const o of shown) o.visible = true;
   }
 
   /** puts the aisle on screen: its panel, the camera sway (the title screen around it is the caller's) */
@@ -426,7 +519,7 @@ export class Showcase {
     this.started = true;
     for (const c of this.closets) c.visible = true;
     this.floor.visible = this.rain.group.visible = true;
-    const r = this.closets[0].tidy.world.rack;
+    const r = { floorY: this.closets[0].tidy.world.rack.floorY, topY: this.topY };
     this.floor.position.y = r.floorY;
     const n = this.closets.length;
     // the whole half circle, as close as it fits: the racks at its ends come towards the camera

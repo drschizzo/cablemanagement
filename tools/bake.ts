@@ -20,7 +20,7 @@ const { bays, pairs, seed } = SHOWCASE_DEFAULT;
 const out: BakedBay[] = [];
 const t0 = performance.now();
 for (let k = 0; k < bays; k++) {
-  const w = new World(showcaseRack('mess', seed + k, pairs));
+  const w = new World(showcaseRack('mess', seed + k, pairs[k]));
   const print = printOf(w.sim.x);
   Object.assign(w.sim.P, SHOWCASE_SETTLE.solver);
   // as Closet.settle() does it: in chunks of frames, each run at once

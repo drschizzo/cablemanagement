@@ -64,9 +64,9 @@ jauges de la salle (rangés, façade dégagée, étiquetés). La première salle
 n'est plus celui du fichier (le code a changé depuis) retombe comme avant, et un test le signale. Pendant qu'une
 salle est à l'écran, la suivante, tirée au hasard, se construit et tombe en fond (`prepareNext()`) : « une autre
 salle » l'affiche aussitôt. `?seed=N` tire toujours la même salle, `?bays=N` choisit
-son nombre de baies (5 par défaut, 32 au plus), `?pairs=N` la hauteur de chacune en paires panneau / switch (10 par
-défaut, 16 au plus ; voir « Jusqu'où va l'écran d'accueil » dans `anatomie-d-une-frame.md`). L'allée par défaut
-(5 × 10) est vue de plus près et plus bas que son cadrage (`Stage.view`, réglé dans `main.ts`). Chaque chargement
+son nombre de baies (5 par défaut, 32 au plus), `?pairs=N` la hauteur de chacune en paires panneau / switch (16 au
+plus ; sans lui, 10, 8, 10, 8, 10 pour la première salle, puis tirée entre 5 et 12 pour chaque baie des suivantes ; voir « Jusqu'où va l'écran d'accueil » dans `anatomie-d-une-frame.md`). Une allée de 5 baies
+est vue de plus près et plus bas que son cadrage (`Stage.view`, réglé dans `main.ts`), cadrée sur sa baie la plus haute. Chaque chargement
 passe par `loadScene()` :
 
 - le voile de chargement s'affiche et peint avant le calcul (bloquant) de l'emmêlage ; pour l'écran titre, pas

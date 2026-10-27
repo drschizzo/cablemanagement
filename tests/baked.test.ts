@@ -27,7 +27,7 @@ describe('baked aisle', () => {
     const bays = decode(bytes.slice().buffer);
     expect(bays.length).toBe(SHOWCASE_DEFAULT.bays);
     bays.forEach((b, k) => {
-      const w = new World(showcaseRack('mess', SHOWCASE_DEFAULT.seed + k, SHOWCASE_DEFAULT.pairs));
+      const w = new World(showcaseRack('mess', SHOWCASE_DEFAULT.seed + k, SHOWCASE_DEFAULT.pairs[k]));
       expect(b.x.length).toBe(w.sim.x.length);
       expect(b.print).toBe(printOf(w.sim.x));
       w.dispose();
