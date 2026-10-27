@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Pour afficher une image, Brassage lit la souris, fait avancer la physique des câbles dans un Web Worker, reconstruit la géométrie des câbles qui ont bougé, puis demande à la carte graphique de dessiner la scène en plusieurs passes. Ce document décrit chacune de ces étapes, dans l'ordre où elles s'exécutent, avec les fichiers du dépôt qui les réalisent.
+Pour afficher une image, Brassage lit la souris, fait avancer la physique des câbles dans un Web Worker, envoie à la carte graphique les nœuds des câbles qui ont bougé, puis lui demande de dessiner la scène en plusieurs passes. Ce document décrit chacune de ces étapes, dans l'ordre où elles s'exécutent, avec les fichiers du dépôt qui les réalisent.
 
 Brassage est un jeu de rangement de câbles dans une baie réseau. Le rendu utilise [three.js](https://threejs.org/), une bibliothèque qui simplifie l'usage de WebGL. La physique des câbles est écrite pour le projet, dans `src/physics/cableSim.ts`, sans bibliothèque externe.
 
@@ -18,7 +18,7 @@ Dans Brassage, une frame se découpe en quatre étapes :
 
 1. **Entrées** : la position de la souris déplace la « main » qui tient un câble.
 2. **Physique** : le moteur calcule les nouvelles positions des câbles. Ce calcul tourne sur un autre fil d'exécution (un Web Worker), en parallèle du reste.
-3. **Préparation de la scène** : le processeur (le CPU) transforme les positions des câbles en triangles et envoie au GPU ce qui a changé.
+3. **Préparation de la scène** : le processeur (le CPU) envoie au GPU les positions des nœuds qui ont bougé ; le GPU en tire lui-même les triangles des câbles.
 4. **Rendu** : le GPU dessine la scène, puis applique une série de passes de post-traitement avant l'affichage.
 
 Le schéma ci-dessous montre qui fait quoi, et sur quel fil d'exécution.
@@ -356,7 +356,7 @@ La grosse pile dépasse le budget d'une frame : c'est précisément le cas que l
 
 ## Préparation de la scène
 
-Le GPU ne connaît ni les câbles ni les nœuds : il dessine des triangles à partir de tableaux de nombres stockés dans sa propre mémoire. Entre la physique et le dessin, le CPU convertit donc les positions des nœuds en triangles, place les connecteurs, et n'envoie au GPU que les données qui ont changé. Ce travail est fait par `src/render/cableView.ts` pour les câbles et `rackView.ts` pour la baie.
+Le GPU ne connaît ni les câbles ni les nœuds : il dessine des triangles à partir de tableaux de nombres stockés dans sa propre mémoire. Entre la physique et le dessin, le CPU envoie donc au GPU les positions des nœuds, place les connecteurs, et n'envoie que les données qui ont changé. Le *vertex shader* des câbles transforme ensuite les nœuds en triangles. Ce travail est fait par `src/render/cableView.ts` et `tube.ts` pour les câbles et `rackView.ts` pour la baie.
 
 ### Le graphe de scène
 
@@ -364,29 +364,47 @@ three.js organise ce qu'il faut dessiner en un arbre d'objets, comparable au DOM
 
 Dans un niveau, la scène contient la baie (`rackView.group`), les câbles (`cableView.group`), le guide qui montre la main, les lumières et un fond. Au moment des captures, cela faisait 83 meshes ordinaires et 10 meshes instanciés regroupant 266 instances.
 
-### Les câbles : un tube autour d'une courbe
+### Les câbles : un tube calculé par le GPU
 
-Tous les câbles d'un niveau sont dessinés par **un seul mesh**, dont les sommets sont rangés dans un seul grand tableau, câble après câble. Pour chaque câble qui a bougé, `buildTube()` :
+Tous les câbles d'un niveau sont dessinés par **un seul mesh**, dont les sommets sont rangés dans un seul grand tableau, câble après câble. Ce tableau ne change jamais. Un sommet ne porte pas sa position : il sait seulement sur quel tronçon de quel câble il se trouve, et à quelle place de son anneau. À chaque frame, le CPU envoie au GPU les nœuds des câbles qui ont bougé, et c'est le *vertex shader* (`src/render/tube.ts`) qui calcule où se trouve chaque sommet.
 
-1. **Lisse la chaîne de nœuds.** Entre deux nœuds, il ajoute un point intermédiaire sur une courbe de Catmull-Rom, qui passe par les nœuds et utilise leurs voisins pour s'incurver. Un câble de n nœuds donne 2(n − 1) + 1 points.
-2. **Calcule un repère en chaque point.** La tangente suit la courbe. La normale est celle du point précédent, projetée sur le plan perpendiculaire à la nouvelle tangente (transport parallèle). Recalculer la normale indépendamment en chaque point ferait tourner le tube sur lui-même et tordrait ses triangles.
-3. **Place un anneau de 8 sommets** autour de chaque point, au rayon du câble, avec pour chacun une normale qui pointe vers l'extérieur (utilisée pour l'éclairage).
+![Des nœuds au tube de triangles](frame/schema-tube.png)
 
-![buildTube() · de la physique aux triangles](frame/schema-tube.png)
+1. **Le CPU donne un repère à chaque nœud.** Pour placer un anneau autour du câble, il faut une direction perpendiculaire au câble, la *normale*. Celle d'un nœud est celle du nœud précédent, projetée sur le plan perpendiculaire à la nouvelle direction du câble (transport parallèle). Recalculer la normale indépendamment en chaque nœud ferait tourner le tube sur lui-même et tordrait ses triangles. Comme chaque normale dépend de la précédente, ce calcul se fait en séquence, sur le CPU, mais il ne coûte qu'un passage par nœud.
+2. **Il range les nœuds dans une texture.** Voir la section suivante.
+3. **Le vertex shader lisse la chaîne de nœuds.** Entre deux nœuds, il place 7 points sur une courbe de Catmull-Rom, qui passe par les nœuds et utilise leurs voisins pour s'incurver. Un câble de n nœuds donne 8(n − 1) + 1 anneaux. La direction du câble en un point est la dérivée de la courbe ; la normale est interpolée entre celles des deux nœuds voisins, puis redressée perpendiculairement à cette direction.
+4. **Il place l'anneau.** Chaque anneau a 16 sommets, au rayon du câble, chacun avec une normale qui pointe vers l'extérieur (utilisée pour l'éclairage).
+5. **Les triangles relient chaque anneau au suivant.** Leur liste est construite une fois, à la création du niveau.
 
-La liste des triangles, qui relie chaque anneau au suivant, ne change jamais : elle est construite une fois à la création du niveau. Seules les positions et les normales sont recalculées. Pour le niveau capturé : 10 568 sommets et 20 928 triangles pour l'ensemble des câbles.
+Ce dont le shader a besoin pour un sommet tient en trois nombres : l'indice du nœud où commence son tronçon plus la fraction du chemin vers le suivant (0, 1/8, 2/8…), et les indices du premier et du dernier nœud du câble. L'angle du sommet autour du câble se déduit de son numéro (`gl_VertexID`), puisque chaque anneau compte 16 sommets consécutifs. Ces trois nombres sont rangés dans l'attribut `normal` de la géométrie : sans attribut de ce nom, three.js conclurait que le maillage n'a pas de normales et l'éclairerait en facettes plates.
+
+Pour le niveau capturé : 83 920 sommets et 167 424 triangles pour l'ensemble des câbles.
 
 ![Maillage des câbles en fil de fer](frame/maillage.jpg)
 
-Les triangles des câbles, vus de très près. On distingue les anneaux de 8 sommets et les points intermédiaires ajoutés entre les nœuds. Le bout ouvert de chaque tube est caché par le connecteur.
+Les triangles des câbles, vus de très près : anneaux de 16 sommets, 8 anneaux entre deux nœuds. Les câbles du fond ont déjà moins de triangles (voir « Le coût des sommets » plus bas). Au centre, le bout ouvert d'un tube, caché en jeu par le connecteur.
 
-Un câble endormi n'est pas reconstruit. `update()` calcule une signature à partir de trois de ses nœuds et saute le câble si elle n'a pas changé.
+Un câble endormi n'est pas renvoyé. `update()` calcule une signature à partir de trois de ses nœuds et saute le câble si elle n'a pas changé.
 
-### N'envoyer au GPU que ce qui a changé
+### N'envoyer au GPU que les nœuds
 
-Les tableaux de sommets vivent en double : une copie en JavaScript (`Float32Array`) et une copie dans la mémoire du GPU (un *buffer*). Modifier la première ne change pas la seconde. Il faut marquer l'attribut `needsUpdate = true`, et three.js le recopie au prochain rendu.
+Les nœuds vivent en double : une copie en JavaScript (`Float32Array`) et une copie dans la mémoire du GPU, sous forme de texture (`TubeNodes`). Chaque nœud y occupe deux texels de quatre nombres : sa position et le rayon du câble, puis la normale de son repère. Un rayon nul cache le câble. Modifier la copie JavaScript ne change pas la texture : il faut la marquer `needsUpdate = true`, et three.js la recopie au prochain rendu.
 
-Recopier tout le tableau à chaque frame serait inutile quand un seul câble bouge. `cableView.ts` note le premier et le dernier sommet modifiés (`dirtyLo`, `dirtyHi`) et ne déclare que cette plage (`addUpdateRange`). three.js utilise alors l'appel WebGL `bufferSubData`, qui ne copie qu'une partie du buffer.
+Un nœud coûte 32 octets, quel que soit le nombre de sommets que le GPU en tire. La texture est recopiée en entier dès qu'un câble a bougé : 32 Ko pour les 667 nœuds du niveau capturé. Côté CPU, écrire les nœuds et leurs repères prend 1,3 ms par frame pour 1 200 câbles de 60 nœuds, tous en mouvement.
+
+### Le coût des sommets
+
+Les sommets ne coûtent presque rien au CPU, mais le GPU exécute le vertex shader pour chacun d'eux, dans chaque passe qui dessine les câbles : l'image, l'ombre, les normales des reflets, celles de l'occlusion ambiante et le masque des reflets. Un câble lointain ne fait pourtant que quelques pixels de large. Deux réglages évitent de dépenser ce travail là où il ne se voit pas.
+
+**Un tube allégé hors de l'image.** Seule l'image montre le contour et l'éclairage des câbles. Les quatre autres passes dessinent un sommet sur deux autour du câble et un anneau sur deux : une seconde liste de triangles, qui reprend les mêmes sommets, en référence quatre fois moins. `TubeMesh` choisit la liste avant chaque dessin (`onBeforeRender`, `onBeforeShadow`). Pour le niveau capturé, 41 856 triangles au lieu de 167 424 dans ces passes.
+
+**Un niveau de détail dans l'image.** Le vertex shader calcule le rayon du câble à l'écran, en pixels, à partir du premier nœud du tronçon. Sous 6 pixels, un sommet sur deux se replie sur son voisin, autour du câble et le long de lui ; sous 1,5 pixel, trois sur quatre. Les triangles repliés deviennent plats, et le GPU les élimine avant d'avoir un seul pixel à calculer. La liste des triangles ne change pas, donc le tube reste fermé : un sommet replié reste partagé par les mêmes triangles. Comme tous les sommets d'un tronçon lisent le même nœud pour décider, ils choisissent le même niveau.
+
+![Les trois niveaux de détail du tube](frame/niveaux-de-detail.jpg)
+
+La même vue avec le niveau de détail forcé, pour le rendre visible. De gauche à droite : 16 sommets par anneau et 8 anneaux d'un nœud au suivant, puis 8 et 4, puis 4 et 2. En jeu, les deux derniers ne servent que pour des câbles de moins de 6 et de 1,5 pixel de rayon, où leurs facettes ne se distinguent pas. Dans la vue par défaut du niveau capturé, un câble mesure environ 2,7 pixels de rayon : l'image en dessine donc la version 8 × 4.
+
+Sur l'écran d'accueil (5 baies remplies de câbles, environ 2 000 × 1 500 pixels), une frame prend 27 ms ; sans ces deux réglages, elle en prendrait 33.
 
 ### Les connecteurs : l'instanciation
 
@@ -394,7 +412,7 @@ Chaque câble a deux connecteurs, faits de quatre pièces : boîtier, loquet, ma
 
 Un **appel de dessin** (*draw call*) est l'ordre que le CPU envoie au GPU pour dessiner un objet : « dessine ce buffer avec ce programme et ces paramètres ». Chaque appel a un coût fixe côté CPU et pilote, quelle que soit la taille de l'objet. Mille petits objets coûtent bien plus cher qu'un gros objet de même nombre de triangles.
 
-Les connecteurs utilisent donc l'**instanciation** (`THREE.InstancedMesh`) : une seule géométrie de boîtier, dessinée en un seul appel autant de fois qu'il y a d'extrémités, chaque copie ayant sa propre matrice de position et sa propre couleur. `updateEnds()` calcule la matrice de chaque connecteur à partir des deux derniers nœuds du câble ; un connecteur branché pointe droit dans son port. Comme pour les tubes, seules les matrices qui ont changé sont renvoyées.
+Les connecteurs utilisent donc l'**instanciation** (`THREE.InstancedMesh`) : une seule géométrie de boîtier, dessinée en un seul appel autant de fois qu'il y a d'extrémités, chaque copie ayant sa propre matrice de position et sa propre couleur. `updateEnds()` calcule la matrice de chaque connecteur à partir des deux derniers nœuds du câble ; un connecteur branché pointe droit dans son port. Comme pour les nœuds des câbles, seules les matrices qui ont changé sont renvoyées.
 
 Pour les 13 câbles du niveau capturé, 26 extrémités × 4 pièces donneraient 104 appels de dessin sans instanciation. Avec, il en faut 8 : un par pièce et par type de connecteur (fibre ou cuivre).
 
@@ -429,17 +447,18 @@ Les voyants des équipements clignotent sans aucun calcul côté CPU. Chaque ins
 
 ### À retenir
 
-- Le CPU transforme les nœuds en un tube de triangles et n'envoie au GPU que les parties modifiées.
+- Le CPU n'envoie au GPU que les nœuds qui ont bougé ; le vertex shader en tire le tube de triangles.
+- Un câble n'a que les triangles que sa taille à l'écran justifie : un tube allégé hors de l'image, trois niveaux de détail dans l'image.
 - Moins d'appels de dessin, c'est moins de temps CPU : un seul mesh pour tous les câbles, des pièces fusionnées ou instanciées pour la baie.
 - Trois matrices (M, V, P) transforment une position 3D en position à l'écran.
 
 ## Le rendu de la scène sur le GPU
 
-Une fois les buffers à jour, `stage.render()` (`src/render/stage.ts`) lance le dessin. Pour chaque objet, le GPU exécute deux petits programmes, les shaders : l'un place les sommets à l'écran, l'autre calcule la couleur de chaque pixel en fonction des lumières et du matériau. Un rendu simple de la scène, sans post-traitement, coûte 85 appels de dessin et 190 874 triangles.
+Une fois les buffers à jour, `stage.render()` (`src/render/stage.ts`) lance le dessin. Pour chaque objet, le GPU exécute deux petits programmes, les shaders : l'un place les sommets à l'écran, l'autre calcule la couleur de chaque pixel en fonction des lumières et du matériau. Un rendu simple de la scène, sans post-traitement, coûte 89 appels de dessin et 505 938 triangles, dont 167 424 pour les câbles dans l'image et 41 856 dans leur ombre.
 
 ### Ce que fait le GPU pour un appel de dessin
 
-1. **Vertex shader.** Exécuté une fois par sommet, en parallèle. Il reçoit les attributs du sommet (position, normale, couleur…) et calcule sa position à l'écran avec les matrices P, V et M.
+1. **Vertex shader.** Exécuté une fois par sommet, en parallèle. Il reçoit les attributs du sommet (position, normale, couleur…) et calcule sa position à l'écran avec les matrices P, V et M. Pour les câbles, il calcule d'abord la position et la normale du sommet à partir des nœuds (voir « Les câbles : un tube calculé par le GPU »).
 2. **Rastérisation.** Le GPU détermine quels pixels chaque triangle recouvre. Chaque pixel couvert devient un *fragment*, et les valeurs des trois sommets sont interpolées pour lui.
 3. **Fragment shader.** Exécuté une fois par fragment, en parallèle. Il calcule la couleur : couleur de base, lumières, ombres, reflets.
 4. **Test de profondeur.** Le GPU garde pour chaque pixel la distance du fragment le plus proche déjà dessiné (le *depth buffer*). Un fragment plus lointain est jeté. C'est ce qui fait qu'un câble devant un port le cache, quel que soit l'ordre de dessin.
@@ -452,7 +471,7 @@ Les shaders sont écrits en GLSL, un langage proche du C. three.js les génère 
 
 Presque tout est dessiné avec `MeshStandardMaterial`, le matériau « physique » de three.js. Il décrit une surface par sa couleur, sa rugosité (`roughness`, de 0 pour un miroir à 1 pour une surface mate) et son caractère métallique (`metalness`). Son shader calcule la lumière réfléchie selon ces paramètres.
 
-Pour ajouter un comportement sans réécrire ce shader, le projet utilise `onBeforeCompile` : juste avant la compilation, three.js passe le code source GLSL à une fonction, qui le modifie par des remplacements de chaînes. three.js découpe son shader en blocs nommés (`#include <emissivemap_fragment>`, `#include <normal_fragment_maps>`…), ce qui donne des points d'insertion stables. Quatre extensions sont ainsi empilées :
+Pour ajouter un comportement sans réécrire ce shader, le projet utilise `onBeforeCompile` : juste avant la compilation, three.js passe le code source GLSL à une fonction, qui le modifie par des remplacements de chaînes. three.js découpe son shader en blocs nommés (`#include <emissivemap_fragment>`, `#include <normal_fragment_maps>`…), ce qui donne des points d'insertion stables. Cinq extensions sont ainsi empilées :
 
 | Fonction | Fichier | Code ajouté |
 | --- | --- | --- |
@@ -460,6 +479,7 @@ Pour ajouter un comportement sans réécrire ce shader, le projet utilise `onBef
 | `blinkable` | `leds.ts` | le clignotement des voyants à partir de l'horloge partagée ; une taille minimale de 3 pixels à l'écran |
 | `jacketed` | `jacket.ts` | la gaine des câbles vue de près (voir ci-dessous) |
 | `ledLit` | `ledGlow.ts` | la lumière des voyants sur les câbles, leurs connecteurs et les pièces de la baie (voir plus bas) |
+| `swept` | `tube.ts` | la position et la normale de chaque sommet des câbles, calculées à partir de la texture des nœuds |
 
 Voici la partie fragment de `tintable`, raccourcie. Elle ajoute une ligne juste après le bloc qui calcule la lueur du matériau :
 
@@ -473,6 +493,10 @@ material.onBeforeCompile = (shader) => {
 ```
 
 `vEmissiveTint` est une couleur fournie pour chaque sommet ; la ligne ajoutée l'additionne à la lueur du pixel. Mettre cette couleur à zéro ou à une teinte vive suffit à allumer ou éteindre la surbrillance d'un câble, sans changer de matériau.
+
+`swept` procède autrement. Il insère son calcul au tout début de la fonction `main` du vertex shader, puis deux lignes `#define position tubePos` et `#define normal tubeNormal`. Tout le code qui suit, celui de three.js comme celui des autres extensions, lit alors la position et la normale calculées sans savoir qu'elles ne viennent pas de la géométrie. Le même ajout fonctionne donc pour n'importe quel matériau.
+
+C'est nécessaire parce que les câbles ne sont pas toujours dessinés avec leur propre matériau. L'ombre utilise un matériau de profondeur ; les reflets et l'occlusion ambiante redessinent la scène avec un matériau de normales, et les reflets avec un matériau de masque. Ces matériaux ignorent la texture des nœuds. `TubeMesh` en fournit donc des copies qui la lisent, créées une fois pour chacun : pour l'ombre par `customDepthMaterial`, pour les autres en remplaçant à la volée le matériau que la passe impose.
 
 `customProgramCacheKey` donne à chaque variante un nom distinct. Sans lui, three.js réutiliserait le programme déjà compilé d'un matériau standard et ignorerait les modifications.
 
@@ -527,7 +551,7 @@ Quatre lectures de plus, de part et d'autre, donnent la pente de la carte, donc 
 
 ## Post-traitement et affichage final
 
-La scène n'est pas dessinée directement à l'écran. Elle est d'abord rendue dans une image intermédiaire, que cinq passes modifient tour à tour : reflets sur le sol, occlusion ambiante, halo des lumières, conversion pour l'écran, puis retouches finales. Cette chaîne est gérée par l'`EffectComposer` de three.js, configuré dans le constructeur de `Stage`. Avec toutes ses passes, une frame coûte 272 appels de dessin et environ 566 000 triangles, soit plus de trois fois le rendu simple de la scène.
+La scène n'est pas dessinée directement à l'écran. Elle est d'abord rendue dans une image intermédiaire, que cinq passes modifient tour à tour : reflets sur le sol, occlusion ambiante, halo des lumières, conversion pour l'écran, puis retouches finales. Cette chaîne est gérée par l'`EffectComposer` de three.js, configuré dans le constructeur de `Stage`. Avec toutes ses passes, une frame coûte 282 appels de dessin et environ 1 008 000 triangles, soit plus de trois fois les appels du rendu simple de la scène.
 
 ### Le principe d'une passe
 
@@ -604,15 +628,15 @@ Le tableau suit une frame de bout en bout, dans l'ordre d'exécution. La colonne
 | 4 | Demande de pas au Worker | principal → Worker | `threadedSim.ts`, `advance` | chaque frame qui a un pas | un message |
 | 5 | Collisions, 3 sous-pas × 6 itérations, sommeil | Worker | `cableSim.ts`, `step` | par pas, pendant les étapes 6 à 18 | 0,2 ms au repos ; 0,6 à 16 ms en mouvement selon la taille |
 | 6 | Réception des positions (frame précédente ou en cours) | Worker → principal | `threadedSim.ts`, `receive` | quand la réponse arrive | un tableau transféré, sans copie |
-| 7 | Reconstruction des tubes des câbles qui ont bougé | principal | `cableView.ts`, `update` | chaque frame | jusqu'à 10 568 sommets |
+| 7 | Repères et texture des nœuds des câbles qui ont bougé | principal | `cableView.ts`, `update` | chaque frame | jusqu'à 667 nœuds, 32 Ko envoyés |
 | 8 | Matrices des connecteurs | principal | `cableView.ts`, `updateEnds` | chaque frame | 26 extrémités × 4 pièces |
 | 9 | Mise à jour de la baie si un élément a changé | principal | `rackView.ts`, `syncItems` | si changement | — |
 | 10 | Score, voyants des ports, plan du HUD | principal | `world.ts`, `evaluate` | toutes les 0,4 s | — |
 | 11 | Amortissement de la caméra, horloges des voyants et du grain | principal | `stage.ts`, `render` | chaque frame | quelques nombres |
 | 12 | Carte de lumière des voyants | GPU | `ledGlow.ts`, `render` | chaque frame, par baie visible | 1 appel, 240 × 300 pixels et ses mipmaps |
 | 13 | Carte d'ombre de la lumière principale | GPU | three.js | chaque frame | 2048 × 2048 pixels |
-| 14 | Scène + images auxiliaires + reflets du sol | GPU | `SSRPass` | chaque frame | environ 200 des 272 appels, carte d'ombre comprise |
-| 15 | Occlusion ambiante | GPU | `GTAOPass` | chaque frame | 58 appels (passe de normales comprise) |
+| 14 | Scène + images auxiliaires + reflets du sol | GPU | `SSRPass` | chaque frame | 205 des 282 appels, carte d'ombre comprise |
+| 15 | Occlusion ambiante | GPU | `GTAOPass` | chaque frame | 60 appels (passe de normales comprise) |
 | 16 | Halo des lumières | GPU | `UnrealBloomPass` | chaque frame | 13 appels, 5 niveaux de flou |
 | 17 | Tone mapping et sRGB | GPU | `OutputPass` | chaque frame | 1 appel |
 | 18 | Vignettage, grain, teinte, aberration | GPU | `cinema.ts` | chaque frame | 1 appel |
@@ -622,7 +646,7 @@ Le tableau suit une frame de bout en bout, dans l'ordre d'exécution. La colonne
 Trois points ressortent de ce tableau.
 
 - **La physique et le rendu se chevauchent.** Pendant que le Worker calcule le pas suivant (étape 5), le fil principal prépare et lance le dessin des positions précédentes (étapes 7 à 18). Le décalage d'une frame au plus ne se voit pas à 60 images par seconde.
-- **Le CPU n'envoie au GPU que ce qui change.** Tubes des câbles éveillés, matrices des connecteurs qui ont bougé, quelques nombres pour les horloges. Le reste de la scène reste en mémoire GPU d'une frame à l'autre.
+- **Le CPU n'envoie au GPU que ce qui change.** Nœuds des câbles éveillés, matrices des connecteurs qui ont bougé, quelques nombres pour les horloges. Le reste de la scène reste en mémoire GPU d'une frame à l'autre.
 - **Les travaux lents sont espacés.** Score toutes les 0,4 s, interface HTML toutes les 250 ms, physique des câbles endormis jamais.
 
 ## Glossaire et pistes pour aller plus loin
@@ -638,6 +662,7 @@ Trois points ressortent de ce tableau.
 | HDR | Image dont les valeurs peuvent dépasser le blanc (1), stockée en nombres à virgule. |
 | Instanciation | Dessin d'une même géométrie plusieurs fois en un seul appel, chaque copie ayant sa matrice et sa couleur. |
 | Matrice M, V, P | Tableaux de 4 × 4 nombres qui placent un objet dans le monde, le monde devant la caméra, puis appliquent la perspective. |
+| Niveau de détail | Version simplifiée d'un objet, utilisée quand il est trop petit à l'écran pour que ses détails se voient. Les câbles en ont trois. |
 | MSAA | Calcul de la couverture des triangles en plusieurs points par pixel (4 ici), pour lisser les bords en escalier. |
 | Multiplicateur λ | Nombre associé à une contrainte, qui mémorise la force qu'elle fournit. Il rend les contraintes dures exactes. |
 | Nœud | Point pesant du modèle physique. Un câble est une chaîne de nœuds espacés de 2,5 cm. |
@@ -648,6 +673,7 @@ Trois points ressortent de ce tableau.
 | Rastérisation | Étape où le GPU détermine quels pixels chaque triangle recouvre. |
 | Render target | Image dans laquelle le GPU dessine au lieu de l'écran, et qu'un shader peut lire ensuite. |
 | Shader | Programme exécuté par le GPU : le vertex shader par sommet, le fragment shader par pixel. |
+| Texture | Image stockée dans la mémoire du GPU, qu'un shader peut lire. Elle peut contenir des couleurs ou, comme celle des nœuds, n'importe quels nombres. |
 | Shadow map | Texture de profondeur vue depuis une lumière, qui sert à savoir quels pixels sont à l'ombre. |
 | Sommeil | État d'un câble immobile : ses nœuds sont figés et ne sont plus calculés jusqu'à ce qu'on le touche. |
 | sRGB | Espace de couleur des écrans. Les calculs se font en valeurs linéaires, converties en sRGB à la fin. |
