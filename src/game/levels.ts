@@ -279,6 +279,12 @@ export const LEVELS: LevelDef[] = [
  */
 export const SHOWCASE_SETTLE = { frames: 40, solver: { substeps: 1, refSubsteps: 1, iterations: 4 } };
 
+/**
+ * The aisle the title screen opens on: its bays, their pairs, and its seed (bay
+ * k is drawn from seed + k). Its mess is baked (npm run bake), the others fall.
+ */
+export const SHOWCASE_DEFAULT = { bays: 5, pairs: 10, seed: 7 };
+
 export function showcaseRack(state: 'mess' | 'tidy', seed: number, pairs?: number): LevelDef {
   // the closet is drawn from the seed: both worlds of the demo get the same one
   const r = rng(seed);

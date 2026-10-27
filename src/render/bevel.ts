@@ -10,6 +10,16 @@ import * as THREE from 'three';
  * thousands of small parts of the ports can afford.
  */
 export function bevelBox(w: number, h: number, d: number, r: number): THREE.BufferGeometry {
+  // a rack has a thousand of them, nearly all alike (two a port): each is made once, then copied
+  const key = `${w} ${h} ${d} ${r}`;
+  let g = made.get(key);
+  if (!g) made.set(key, (g = build(w, h, d, r)));
+  return g.clone();
+}
+
+const made = new Map<string, THREE.BufferGeometry>();
+
+function build(w: number, h: number, d: number, r: number): THREE.BufferGeometry {
   r = Math.min(r, Math.min(w, h, d) * 0.45);
   const half = [w / 2, h / 2, d / 2];
   const size = [w, h, d];

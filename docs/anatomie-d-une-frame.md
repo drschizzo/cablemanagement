@@ -413,11 +413,13 @@ La même vue avec le niveau de détail forcé, pour le rendre visible. De gauche
 | Allée | Cordons | Nœuds | Chargement | Images par seconde |
 |---|---|---|---|---|
 | 5 baies × 3 ou 4 paires | 377 | 17 035 | 2,5 s | 60 |
-| 5 baies × 10 paires (défaut, vue rapprochée) | 1 088 | 51 740 | 3,6 s | 50 |
+| 5 baies × 10 paires (défaut, vue rapprochée) | 1 088 | 51 740 | 3,6 s, 1,2 s précalculée | 50 |
 | 10 baies × 14 paires | 2 984 | 160 732 | 17 à 22 s | 45 (36 rangée, 34 pendant le rangement) |
 | 16 baies × 16 paires | 5 391 | 300 266 | 32 s | 31 |
 
 Le chargement est la chute du désordre, une fois, dans un Worker par baie : au-delà de 10 baies, elles attendent un cœur libre. La collision des câbles entre eux y prend le plus de temps, et elle croît plus vite que le nombre de nœuds, les cordons étant plus serrés. Une fois tombée, l'allée ne coûte plus que son image.
+
+L'allée par défaut ne tombe pas : sa chute (22 s de calcul sur un cœur) est précalculée dans `src/game/showcase.bin`. Chaque nœud y est l'écart au précédent, au dixième de millimètre, par axe, en entiers de 16 bits, le tout compressé : 206 Ko pour 50 302 nœuds. Il ne reste que la construction des baies, environ 170 ms chacune : la salle est à l'écran 1,2 s après l'ouverture de la page (build de production). La salle suivante est construite et tombe en fond pendant qu'on regarde celle-ci, une baie à la fois pour ne pas figer l'image : « une autre salle » l'affiche en un quart de seconde.
 
 ### Les connecteurs : l'instanciation
 

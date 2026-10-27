@@ -106,12 +106,13 @@ export class World {
       this.setAside = this.rack.items.map((it) => ({ kind: it.kind, unit: it.unit, side: it.side }));
       this.rack.items = [];
     }
-    let starts = makeCables(level, this.rack, this.circuits, r);
+    let starts;
     if (level.showcase === 'tidy') {
-      // the cords are laid along their tidy routes, cut to length
+      // the cords are laid along their tidy routes, cut to length (no tangle to draw: it was half
+      // the time it took to build, for nothing)
       this.tidyPaths = tidyRoutes(this.rack, this.circuits, this.radius, this.seg);
-      starts = starts.map((st, c) => ({ ...st, ends: [this.circuits[c].a, this.circuits[c].b], points: pathToNodes(this.tidyPaths[c], this.seg) }));
-    }
+      starts = this.circuits.map((ci, c) => ({ type: ci.type, ends: [ci.a, ci.b] as [string, string], points: pathToNodes(this.tidyPaths[c], this.seg) }));
+    } else starts = makeCables(level, this.rack, this.circuits, r);
     // big cabinets trade a substep for frame rate (≈ 13 ms instead of 18 for 40 cords);
     // the solver settings were tuned at these substep counts (see `refSubsteps`)
     const big = level.cables >= 20;

@@ -58,7 +58,12 @@ physics  ←  game  ←  ui
 Trois sortes de scènes : un niveau (un `Controller`), le tutoriel (un `Tutorial` par-dessus un niveau) et la
 vitrine avant / après (un `Showcase`, sans contrôleur), qui sert d'écran titre : le jeu s'ouvre toujours dessus,
 avec son nom et son menu (`#title`) par-dessus, et en bas l'interrupteur Avant / Après (`#sc-switch`) et les
-jauges de la salle (rangés, façade dégagée, étiquetés). `?seed=N` tire toujours la même salle, `?bays=N` choisit
+jauges de la salle (rangés, façade dégagée, étiquetés). La première salle est toujours la même
+(`SHOWCASE_DEFAULT` dans `levels.ts`) : son désordre tombé est précalculé (`npm run bake`, `game/showcase.bin`,
+~210 Ko, lu par `game/baked.ts`), elle s'affiche donc sans attendre la physique ; une baie dont le désordre
+n'est plus celui du fichier (le code a changé depuis) retombe comme avant, et un test le signale. Pendant qu'une
+salle est à l'écran, la suivante, tirée au hasard, se construit et tombe en fond (`prepareNext()`) : « une autre
+salle » l'affiche aussitôt. `?seed=N` tire toujours la même salle, `?bays=N` choisit
 son nombre de baies (5 par défaut, 32 au plus), `?pairs=N` la hauteur de chacune en paires panneau / switch (10 par
 défaut, 16 au plus ; voir « Jusqu'où va l'écran d'accueil » dans `anatomie-d-une-frame.md`). L'allée par défaut
 (5 × 10) est vue de plus près et plus bas que son cadrage (`Stage.view`, réglé dans `main.ts`). Chaque chargement
@@ -108,8 +113,9 @@ par niveau) et tutoriel terminé. Les clés sont celles des versions précédent
 |---|---|
 | `npm run lint` | erreurs probables (ESLint) |
 | `npm run typecheck` | types (TypeScript strict) |
-| `npm test` | géométrie, baie, stockage, règles d'une partie (branchement, fenêtre de maintenance, étiquettes, velcro, longueurs, bac), niveaux (plan, emmêlage stable, 3 étoiles possibles) |
+| `npm test` | géométrie, baie, stockage, règles d'une partie (branchement, fenêtre de maintenance, étiquettes, velcro, longueurs, bac), niveaux (plan, emmêlage stable, 3 étoiles possibles), salle d'accueil précalculée à jour |
 | `npm run check` | les trois à la suite |
+| `npm run bake` | précalcule le désordre de la salle d'accueil par défaut (à relancer quand le test `baked` le demande) |
 | `npm run bench` · `precision` · `levels` · `solvable` · `showcase` · `free` · `pinch` · `route` | bancs du moteur et des niveaux, sans navigateur (`tools/`) ; `free` : partie libre de 48 câbles (stabilisation, cordon tiré à travers les autres) ; `pinch` : un coude pincé, ce qu'il en reste une fois lâché ; `route` : des câbles posés le long d'un chemin tracé (branchés, dans leurs guides, au repos, sans traverser la baie, et ce qu'ils déplacent des autres câbles) |
 
 Ces vérifications se lancent en local avant de pousser. La CI (`.github/workflows/ci.yml`) fait la même chose,

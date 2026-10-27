@@ -10,7 +10,9 @@ import { Controller } from './game/controller';
 import { Hud } from './ui/hud';
 import { Showcase } from './ui/showcase';
 import { Tutorial } from './ui/tutorial';
-import { LEVELS, TUTORIAL, UNLOCK_STARS, freeLevel, type LevelDef } from './game/levels';
+import { LEVELS, SHOWCASE_DEFAULT, TUTORIAL, UNLOCK_STARS, freeLevel, type LevelDef } from './game/levels';
+import { loadBaked } from './game/baked';
+import bakedUrl from './game/showcase.bin?url';
 import { load } from './storage';
 
 const stage = new Stage(document.getElementById('view')!);
@@ -22,17 +24,19 @@ let mode: { dispose(): void } | null = null;
 let sceneToken = 0;
 // ?sync keeps the physics on the main thread (deterministic, for automated checks)
 const syncPhysics = new URLSearchParams(location.search).has('sync');
-// ?seed=N draws the same before/after closet every time (the first one only)
-let showcaseSeed: number | undefined = Number(new URLSearchParams(location.search).get('seed')) || undefined;
 // ?bays=N: how many closets stand side by side in the before/after aisle
-const baysParam = Number(new URLSearchParams(location.search).get('bays'));
-const showcaseBays = Math.max(1, Math.min(32, baysParam || 5));
+const showcaseBays = Math.max(1, Math.min(32, Number(new URLSearchParams(location.search).get('bays')) || SHOWCASE_DEFAULT.bays));
 // ?pairs=N: how many panel / switch pairs each of them holds (far taller than a real rack by default)
-const pairsParam = Number(new URLSearchParams(location.search).get('pairs'));
-const showcasePairs = Math.max(1, Math.min(16, pairsParam || 10));
+const showcasePairs = Math.max(1, Math.min(16, Number(new URLSearchParams(location.search).get('pairs')) || SHOWCASE_DEFAULT.pairs));
+const defaultAisle = showcaseBays === SHOWCASE_DEFAULT.bays && showcasePairs === SHOWCASE_DEFAULT.pairs;
+// ?seed=N draws the same before/after aisle every time (the first one only); otherwise the first
+// is the default one, whose mess is baked, and the next ones are drawn at random
+let showcaseSeed: number | undefined = Number(new URLSearchParams(location.search).get('seed')) || (defaultAisle ? SHOWCASE_DEFAULT.seed : undefined);
+// its fallen mess, fetched while the rest starts
+const baked = defaultAisle && showcaseSeed === SHOWCASE_DEFAULT.seed ? loadBaked(bakedUrl) : Promise.resolve(null);
 // the aisle as it opens, seen a little closer and lower than it is framed: the cords fill the screen
 // (only for the aisle of the default size: another one keeps the framing that fits it)
-const showcaseView = showcaseBays === 5 && showcasePairs === 10 ? { zoom: 0.69, elevation: 0.104, lower: 0.13 } : null;
+const showcaseView = defaultAisle ? { zoom: 0.69, elevation: 0.104, lower: 0.13 } : null;
 
 const hud = new Hud((level) => start(level));
 
@@ -84,6 +88,7 @@ function leaveScene(): void {
 function start(level: LevelDef, brief = true): void {
   loadScene(() => {
     leaveScene();
+    dropNext();
     ctl = new Controller(stage, level, {
       onEval: (ev) => hud.onEval(ev),
       onInventory: () => hud.refreshInventory(),
@@ -109,7 +114,19 @@ function startShowcase(): void {
     document.body.classList.add('demo', 'booting');
     refreshTitle();
     titleProgress(0);
-    const sc = await Showcase.create(stage, !syncPhysics, { another: startShowcase }, titleProgress, showcaseSeed, showcaseBays, showcasePairs);
+    let sc: Showcase;
+    if (next) {
+      // the one made ready while the last was on screen (or still falling: its progress shows)
+      const n = next;
+      next = null;
+      n.progress = titleProgress;
+      titleProgress(n.done);
+      sc = await n.aisle;
+    } else {
+      const seed = showcaseSeed;
+      sc = await Showcase.create(stage, !syncPhysics, { another: startShowcase }, titleProgress,
+        { seed, bays: showcaseBays, pairs: showcasePairs, baked: seed === SHOWCASE_DEFAULT.seed ? await baked : null });
+    }
     showcaseSeed = undefined;
     // overtaken while it was falling: thrown away before it ever showed
     if (token !== sceneToken) { sc.dispose(); return; }
@@ -118,7 +135,30 @@ function startShowcase(): void {
     sc.view = showcaseView;
     sc.start();
     measureInsets();
+    prepareNext();
   });
+}
+
+/**
+ * The next aisle, built and fallen in the background while this one is on
+ * screen: "another" then shows it at once (or as soon as it has fallen).
+ */
+interface NextAisle { aisle: Promise<Showcase>; progress: (f: number) => void; done: number }
+let next: NextAisle | null = null;
+
+function prepareNext(): void {
+  if (next) return;
+  const n: NextAisle = { aisle: null!, progress: () => {}, done: 0 };
+  n.aisle = Showcase.create(stage, !syncPhysics, { another: startShowcase }, (f) => { n.done = f; n.progress(f); },
+    { bays: showcaseBays, pairs: showcasePairs, background: true });
+  next = n;
+}
+
+/** a level leaves the title screen: the aisle made ready for it goes */
+function dropNext(): void {
+  if (!next) return;
+  void next.aisle.then((sc) => sc.dispose());
+  next = null;
 }
 
 /** the first level not yet tidy enough to open the next one, or the menu once they all are */

@@ -25,7 +25,8 @@
     "fold": "vite-node tools/fold.ts",
     "route": "vite-node tools/route.ts",
     "plug": "vite-node tools/plug.ts",
-    "plugin": "vite-node tools/plugin.ts"
+    "plugin": "vite-node tools/plugin.ts",
+    "bake": "vite-node tools/bake.ts"
   },
   "dependencies": {
     "three": "^0.183.2"
