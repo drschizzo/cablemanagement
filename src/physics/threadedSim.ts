@@ -43,6 +43,8 @@ export class ThreadedSim extends CableSim {
     for (let i = 0; i < this.n; i++) if (this.pinned[i]) pins.push(i);
     this.post({ type: 'init', params: this.P, defs: this.defs, x: this.x, v: this.v, pins, statics: this.statics, pinches: this.pinches });
     for (const b of this.bundles) if (b.alive) this.post({ type: 'addBundle', nodes: b.nodes, r: b.r });
+    // connectors on their way into a port go on from where they are
+    for (const q of this.plugs) this.post({ type: 'pinEnd', i0: q.i0, i1: q.i1, a: [q.a[0], q.a[1], q.a[2]], b: [q.b[0], q.b[1], q.b[2]] });
     w.onmessage = (e: MessageEvent<FromWorker>) => this.receive(e.data);
     w.onerror = (e) => console.error('physics worker', e);
   }

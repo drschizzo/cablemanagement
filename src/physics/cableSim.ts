@@ -235,8 +235,14 @@ export interface CableInfo {
 }
 
 const FRICTION_K = { start: 0.05, growth: 3, max: 1.5 }; // × M/h²
-/** a connector's stroke into its port: speed (m/s), shortest and longest (s), and how far out it lines up first (m) */
-const PLUG_STROKE = { speed: 0.6, least: 0.1, most: 0.35, lead: 0.03 };
+/**
+ * a connector's stroke into its port: speed (m/s), shortest and longest (s),
+ * how far out it lines up first (m), how close to their places its node and
+ * the one behind must come to be pinned there (m), and how long after the
+ * stroke they are pinned anyway (s); how many nodes of the cord behind it
+ * may be drawn out of a keeper on its way, as near the hand
+ */
+const PLUG_STROKE = { speed: 0.6, least: 0.1, most: 0.35, lead: 0.03, seat: 0.005, seatBehind: 0.01, giveUp: 0.5, free: 3 };
 
 export class CableSim {
   P: SimParams;
@@ -377,6 +383,9 @@ export class CableSim {
   // route goals: where each node is led to, and how firmly (0: not led)
   goal = new Float64Array(0);
   goalW = new Float64Array(0);
+  /** connector nodes on their way into a port, pushed there as by the hand (see `pinEnd`), and where to at this frame */
+  plugging = new Uint8Array(0);
+  plugAt = new Float64Array(0);
   /** a node that passes through the other cords: −1 while led, then the frames left until it is solid again (0: solid) */
   ghost = new Int16Array(0);
   /** segments a ghost overlapped another cord at this frame */
@@ -456,6 +465,8 @@ export class CableSim {
     this.pinchOf = new Int32Array(N).fill(-1);
     this.goal = new Float64Array(3 * N);
     this.goalW = new Float64Array(N);
+    this.plugging = new Uint8Array(N);
+    this.plugAt = new Float64Array(3 * N);
     this.ghost = new Int16Array(N);
     this.ghostTouch = new Uint8Array(N);
     this.pinchGoal = new Float64Array(3 * N);
@@ -605,7 +616,11 @@ export class CableSim {
   }
 
   unpin(i: number): void {
-    this.plugs = this.plugs.filter((q) => q.i0 !== i && q.i1 !== i);
+    this.plugs = this.plugs.filter((q) => {
+      if (q.i0 !== i && q.i1 !== i) return true;
+      this.plugging[q.i0] = 0; this.plugging[q.i1] = 0;
+      return false;
+    });
     this.pinned[i] = 0;
     this.wakeCable(this.cableOf[i]);
   }
@@ -617,16 +632,23 @@ export class CableSim {
    * cord follows them. Snapped there, the connector jumped across the gap
    * the pointer had left (centimetres, up to a hand's depth in front of the
    * rack) and the cord, yanked after it, whipped about.
+   * On the way they are pushed as the hand pushes, and the cord is as in the
+   * hand (firm against the rack, its end free to be drawn out of a keeper): pinned
+   * on their way, they dragged the cord with no limit, and one laid along a
+   * finger manager slipped through its fingers. They are pinned once there,
+   * or a moment after the stroke at the latest.
    */
   pinEnd(i0: number, i1: number, a: ArrayLike<number>, b: ArrayLike<number>): void {
     this.plugs = this.plugs.filter((q) => q.i0 !== i0 && q.i1 !== i1);
+    this.plugging[i0] = 0; this.plugging[i1] = 0;
     const x = this.x;
     const s0 = [x[3 * i0], x[3 * i0 + 1], x[3 * i0 + 2]], s1 = [x[3 * i1], x[3 * i1 + 1], x[3 * i1 + 2]];
     const gap = Math.max(Math.hypot(a[0] - s0[0], a[1] - s0[1], a[2] - s0[2]), Math.hypot(b[0] - s1[0], b[1] - s1[1], b[2] - s1[2]));
     if (gap > 1e-3) {
       const P = PLUG_STROKE;
       this.plugs.push({ i0, i1, s0, s1, a: [a[0], a[1], a[2]], b: [b[0], b[1], b[2]], t: 0, T: Math.min(P.most, Math.max(P.least, gap / P.speed)) });
-      this.pinned[i0] = 1; this.pinned[i1] = 1;
+      this.pinned[i0] = 0; this.pinned[i1] = 0;
+      this.plugging[i0] = 1; this.plugging[i1] = 1;
       this.wakeCable(this.cableOf[i0]);
       return;
     }
@@ -634,29 +656,46 @@ export class CableSim {
     this.pin(i1, b[0], b[1], b[2]);
   }
 
+  /** a connector of cable ci is on its way into a port */
+  private pluggingCable(ci: number): boolean {
+    for (const q of this.plugs) if (this.cableOf[q.i0] === ci) return true;
+    return false;
+  }
+
+  /** node i is close behind a connector on its way into a port */
+  private nearPlug(i: number): boolean {
+    for (const q of this.plugs) if (this.cableOf[q.i0] === this.cableOf[i] && Math.abs(i - q.i0) <= PLUG_STROKE.free) return true;
+    return false;
+  }
+
   /** connectors on their way into a port (see `pinEnd`) */
-  private plugs: { i0: number; i1: number; s0: number[]; s1: number[]; a: number[]; b: number[]; t: number; T: number }[] = [];
+  protected plugs: { i0: number; i1: number; s0: number[]; s1: number[]; a: number[]; b: number[]; t: number; T: number }[] = [];
 
   /**
    * A frame of the plugs' strokes: a curve from where the connector was,
    * through a point straight out from the port, into it; eased at both ends.
-   * `finish` puts them all in at once.
+   * There, they are pinned. `finish` puts them all in at once.
    */
   private strokePlugs(dt: number, finish = false): void {
     if (!this.plugs.length) return;
     const back = PLUG_STROKE.lead;
     this.plugs = this.plugs.filter((q) => {
-      q.t = finish ? q.T : Math.min(q.T, q.t + dt);
-      const r = q.t / q.T, u = r * r * (3 - 2 * r);
+      q.t = finish ? q.T : q.t + dt;
+      const r = Math.min(1, q.t / q.T), u = r * r * (3 - 2 * r);
       // straight out of the port: from the node in it towards the one behind
       const ox = q.b[0] - q.a[0], oy = q.b[1] - q.a[1], oz = q.b[2] - q.a[2];
       const ol = Math.hypot(ox, oy, oz) || 1;
       const ex = (ox / ol) * back, ey = (oy / ol) * back, ez = (oz / ol) * back;
       const at = (s: number[], e: number[], k: number) =>
         (1 - u) * (1 - u) * s[k] + 2 * u * (1 - u) * (e[k] + (k === 0 ? ex : k === 1 ? ey : ez)) + u * u * e[k];
-      this.pin(q.i0, at(q.s0, q.a, 0), at(q.s0, q.a, 1), at(q.s0, q.a, 2));
-      this.pin(q.i1, at(q.s1, q.b, 0), at(q.s1, q.b, 1), at(q.s1, q.b, 2));
-      return q.t < q.T;
+      const x = this.x, g = this.plugAt;
+      for (let k = 0; k < 3; k++) { g[3 * q.i0 + k] = at(q.s0, q.a, k); g[3 * q.i1 + k] = at(q.s1, q.b, k); }
+      const off = (i: number, e: number[]) => Math.hypot(x[3 * i] - e[0], x[3 * i + 1] - e[1], x[3 * i + 2] - e[2]);
+      if (!finish && (q.t < q.T || ((off(q.i0, q.a) > PLUG_STROKE.seat || off(q.i1, q.b) > PLUG_STROKE.seatBehind) && q.t < q.T + PLUG_STROKE.giveUp))) return true;
+      this.plugging[q.i0] = 0; this.plugging[q.i1] = 0;
+      this.pin(q.i0, q.a[0], q.a[1], q.a[2]);
+      this.pin(q.i1, q.b[0], q.b[1], q.b[2]);
+      return false;
     });
   }
 
@@ -952,7 +991,7 @@ export class CableSim {
     for (let i = 0; i < this.n; i++) {
       if (this.fixed[i] || !this.handled[this.cableOf[i]]) continue;
       const fromHand = this.cableOf[i] === held ? Math.abs(i - g) : Infinity;
-      if (fromHand <= P.keepHand || this.goalW[i] > 0) { this.keepOf[i] = -1; continue; }
+      if (fromHand <= P.keepHand || this.goalW[i] > 0 || this.plugging[i]) { this.keepOf[i] = -1; continue; }
       const px = x[3 * i], py = x[3 * i + 1], pz = x[3 * i + 2];
       const k = this.keepOf[i];
       if (k >= 0) {
@@ -992,7 +1031,7 @@ export class CableSim {
         const cz = Math.min(Math.max(z, b.min[2] + r), b.max[2] - r);
         if (cy === y && cz === z) continue;
         const d = Math.hypot(cy - y, cz - z);
-        if (this.cableOf[i] === held && d > R.keepPeel) { this.keepOf[i] = -1; continue; }
+        if ((this.cableOf[i] === held || this.nearPlug(i)) && d > R.keepPeel) { this.keepOf[i] = -1; continue; }
         x[3 * i + 1] = cy; x[3 * i + 2] = cz;
       }
     }
@@ -1323,6 +1362,16 @@ export class CableSim {
       h00 += kg; h11 += kg; h22 += kg;
     }
 
+    // --- a connector pushed into its port, as by the hand
+    if (this.plugging[i]) {
+      const kg = P.grabK * mh * 4;
+      let ex = xi - this.plugAt[j], ey = yi - this.plugAt[j + 1], ez = zi - this.plugAt[j + 2];
+      const el = Math.sqrt(ex * ex + ey * ey + ez * ez);
+      if (el > P.grabLead) { const f = P.grabLead / el; ex *= f; ey *= f; ez *= f; }
+      gx += kg * ex; gy += kg * ey; gz += kg * ez;
+      h00 += kg; h11 += kg; h22 += kg;
+    }
+
     // --- route goal (leashed, as the hand)
     const gw = this.goalW[i];
     if (gw > 0) {
@@ -1352,7 +1401,7 @@ export class CableSim {
       const kk = P.keepK * mh;
       const ylo = b.min[1] + r, yhi = b.max[1] - r, zlo = b.min[2] + r, zhi = b.max[2] - r;
       let ey = 0, ez = 0;
-      if (this.grabNode < 0 || this.cableOf[i] !== this.cableOf[this.grabNode]) {
+      if ((this.grabNode < 0 || this.cableOf[i] !== this.cableOf[this.grabNode]) && !this.nearPlug(i)) {
         // in it: a stiff one-sided pull back within its height and depth
         ey = yi < ylo ? yi - ylo : yi > yhi ? yi - yhi : 0;
         ez = zi < zlo ? zi - zlo : zi > zhi ? zi - zhi : 0;
@@ -1404,7 +1453,7 @@ export class CableSim {
     const x = this.x;
     // the hands' nodes are heavy; a node a keeper holds does not move for its
     // free neighbour (between two kept nodes, both do)
-    const w = (i: number) => (this.fixed[i] ? 0 : i === this.grabNode || i === this.holdNode ? 0.1 / this.mass[i] : 1 / this.mass[i]);
+    const w = (i: number) => (this.fixed[i] ? 0 : i === this.grabNode || i === this.holdNode || this.plugging[i] ? 0.1 / this.mass[i] : 1 / this.mass[i]);
     const kept = this.keepOf;
     for (let q = 0; q < this.nAwake; q++) {
       const cb = this.cables[this.awake[forward ? q : this.nAwake - 1 - q]];
@@ -1606,7 +1655,8 @@ export class CableSim {
     if (b0 >= 0) m = Math.max(m, this.mass[b0], this.mass[b1]);
     const mh2 = m / this.R.hk;
     const held = this.grabNode >= 0 && this.cableOf[a0] === this.cableOf[this.grabNode];
-    const kmax = (b0 >= 0 ? this.P.kCapCable : held ? this.P.kCapHeld : this.P.kCap) * mh2;
+    const plugging = this.pluggingCable(this.cableOf[a0]);
+    const kmax = (b0 >= 0 ? this.P.kCapCable : held || plugging ? this.P.kCapHeld : this.P.kCap) * mh2;
     this.ckmax[c] = kmax;
     this.cmh[c] = mh2;
     const kmin = this.P.kMin * mh2;
@@ -1824,6 +1874,8 @@ export class CableSim {
     for (let a = 0; a < N; a++) {
       if (!this.segOK[a]) continue;
       if (this.fixed[a] && this.fixed[a + 1]) continue;
+      // a connector going into its port passes the fingers of the guides on its way, as when it was pinned
+      if (this.plugging[a] && this.plugging[a + 1]) continue;
       const mx = (x[3 * a] + x[3 * a + 3]) * 0.5, my = (x[3 * a + 1] + x[3 * a + 4]) * 0.5, mz = (x[3 * a + 2] + x[3 * a + 5]) * 0.5;
       const list = this.staticGrid.get(cellKey(Math.floor(mx / SC), Math.floor(my / SC), Math.floor(mz / SC)));
       if (!list) continue;
@@ -2047,7 +2099,7 @@ export class CableSim {
       if (c.asleep) continue;
       awake++;
       const held = (this.grabNode >= c.start && this.grabNode < c.start + c.count) || (this.holdNode >= c.start && this.holdNode < c.start + c.count);
-      let moved = held;
+      let moved = held || this.pluggingCable(ci);
       if (!moved) {
         const lim = P.sleepDist * P.sleepDist;
         for (let i = c.start; i < c.start + c.count; i++) {

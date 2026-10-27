@@ -23,7 +23,9 @@
     "pinch": "vite-node tools/pinch.ts",
     "release": "vite-node tools/release.ts",
     "fold": "vite-node tools/fold.ts",
-    "route": "vite-node tools/route.ts"
+    "route": "vite-node tools/route.ts",
+    "plug": "vite-node tools/plug.ts",
+    "plugin": "vite-node tools/plugin.ts"
   },
   "dependencies": {
     "three": "^0.183.2"
