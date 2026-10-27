@@ -8,20 +8,21 @@
 // that it keeps its curls). The cords do not see each other while they fall:
 // they land on a height map of the heap, raised by every cord that came to
 // rest. A cord at rest is frozen, and costs nothing but its triangles: the
-// physics and the tube rebuilt each frame are those of the few in the air.
+// physics and the nodes sent each frame are those of the few in the air.
 
 import * as THREE from 'three';
 import { CABLE_R } from '../game/rack';
 import { SERVICES } from '../game/levels';
 import { rng } from '../game/tangle';
-import { FIBRE_COLORS, RADIAL, SUB, connectorGeos, sweepTube } from './cableView';
+import { FIBRE_COLORS, connectorGeos } from './cableView';
+import { RADIAL, SUB, TubeMesh, TubeNodes, coarseIndices, layTube, tubeIndices, tubeVerts } from './tube';
 import { JACKET_KIND, jacketed } from './jacket';
 
 /** cords at most (on screen at once): past it, the oldest, deep in the heap, makes room */
 const POOL = 240;
 const NODES = 24;
 const SAMPLES = (NODES - 1) * SUB + 1;
-const VERTS = SAMPLES * RADIAL;
+const VERTS = tubeVerts(NODES);
 const R = CABLE_R;
 /** fixed step of the little simulation (s), and its passes over the constraints */
 const STEP = 1 / 120;
@@ -101,9 +102,8 @@ export class CableRain {
   /** phases of the lumps of the heap */
   private bumps: number[];
 
-  private tube: THREE.Mesh;
-  private pos: Float32Array;
-  private nrm: Float32Array;
+  private tube: TubeMesh;
+  private nodes = new TubeNodes(POOL * NODES);
   private colors: Float32Array;
   private jacket: Float32Array;
   private moved = new Uint8Array(POOL);
@@ -127,31 +127,19 @@ export class CableRain {
     this.bumps = [0, 0, 0, 0].map(() => this.r() * 2 * Math.PI);
     this.racks = o.racks.map((p) => ({ x: p.x, z: p.z, c: Math.cos(p.yaw), s: Math.sin(p.yaw) }));
 
-    this.pos = new Float32Array(POOL * VERTS * 3);
-    this.nrm = new Float32Array(POOL * VERTS * 3);
     this.colors = new Float32Array(POOL * VERTS * 3);
     this.jacket = new Float32Array(POOL * VERTS * 4);
-    const idx = new Uint32Array(POOL * (SAMPLES - 1) * RADIAL * 6);
-    let k = 0;
-    for (let c = 0; c < POOL; c++) {
-      for (let s = 0; s < SAMPLES - 1; s++) {
-        for (let q = 0; q < RADIAL; q++) {
-          const a = c * VERTS + s * RADIAL + q, b = c * VERTS + s * RADIAL + ((q + 1) % RADIAL);
-          idx[k++] = a; idx[k++] = a + RADIAL; idx[k++] = b;
-          idx[k++] = b; idx[k++] = a + RADIAL; idx[k++] = b + RADIAL;
-        }
-      }
-    }
+    const tube = new Float32Array(POOL * VERTS * 3);
+    const idx = new Uint32Array(POOL * tubeIndices(NODES)), coarse = new Uint32Array(POOL * coarseIndices(NODES));
+    for (let c = 0; c < POOL; c++) layTube(tube, c * VERTS, c * NODES, NODES, idx, coarse, c * tubeIndices(NODES));
     const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(this.pos, 3).setUsage(THREE.DynamicDrawUsage));
-    geo.setAttribute('normal', new THREE.BufferAttribute(this.nrm, 3).setUsage(THREE.DynamicDrawUsage));
+    geo.setAttribute('normal', new THREE.BufferAttribute(tube, 3));
     geo.setAttribute('color', new THREE.BufferAttribute(this.colors, 3));
     geo.setAttribute('jacket', new THREE.BufferAttribute(this.jacket, 4));
     geo.setIndex(new THREE.BufferAttribute(idx, 1));
-    geo.setDrawRange(0, 0);
-    this.tube = new THREE.Mesh(geo, jacketed(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, metalness: 0 })));
+    this.tube = new TubeMesh(geo, coarse, jacketed(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, metalness: 0 })), this.nodes);
     this.tube.castShadow = this.tube.receiveShadow = true;
-    this.tube.frustumCulled = false;
+    this.tube.setDrawn(0, 0);
     this.group.add(this.tube);
 
     // two plugs per cord: a clear RJ45 on copper, an LC on fibre (opaque: a transmissive
@@ -209,6 +197,7 @@ export class CableRain {
   dispose(): void {
     this.tube.geometry.dispose();
     (this.tube.material as THREE.Material).dispose();
+    this.tube.dispose();
     for (const p of this.plugs) {
       for (const im of [p.boot, p.housing]) { im.geometry.dispose(); (im.material as THREE.Material).dispose(); im.dispose(); }
     }
@@ -397,7 +386,7 @@ export class CableRain {
     for (let j = o + 1; j < o + NODES * 3; j += 3) low = Math.min(low, x[j]);
     if (low > this.o.topY + SKY || t > 4) {
       this.state[c] = S.Free;
-      this.pos.fill(0, 3 * c * VERTS, 3 * (c + 1) * VERTS);
+      this.nodes.hide(c * NODES, NODES);
     }
   }
 
@@ -490,26 +479,17 @@ export class CableRain {
 
   // ------------------------------------------------------------ drawing
 
-  /** rebuilds the tubes and plugs of the cords that moved; one upload per run of them */
+  /** sends the nodes and plugs of the cords that moved (the GPU sweeps their tubes) */
   private draw(): void {
-    const geo = this.tube.geometry;
-    geo.setDrawRange(0, this.used * (SAMPLES - 1) * RADIAL * 6);
-    const pa = geo.attributes.position as THREE.BufferAttribute, na = geo.attributes.normal as THREE.BufferAttribute;
-    let run = -1, any = false;
-    for (let c = 0; c <= this.used; c++) {
-      const m = c < this.used && this.moved[c] === 1;
-      if (m) {
-        if (this.state[c] !== S.Free) sweepTube(this.x, c * NODES, NODES, R, this.pos, this.nrm, c * VERTS);
-        this.ends(c);
-        if (run < 0) run = c;
-        any = true;
-      } else if (run >= 0) {
-        for (const a of [pa, na]) a.addUpdateRange(3 * run * VERTS, 3 * (c - run) * VERTS);
-        run = -1;
-      }
+    this.tube.setDrawn(this.used * tubeIndices(NODES), this.used * coarseIndices(NODES));
+    let any = false;
+    for (let c = 0; c < this.used; c++) {
+      if (this.moved[c] !== 1) continue;
+      if (this.state[c] !== S.Free) this.nodes.write(this.x, c * NODES, NODES, R);
+      this.ends(c);
+      any = true;
     }
     if (!any) return;
-    pa.needsUpdate = na.needsUpdate = true;
     for (const p of this.plugs) p.boot.instanceMatrix.needsUpdate = p.housing.instanceMatrix.needsUpdate = true;
   }
 

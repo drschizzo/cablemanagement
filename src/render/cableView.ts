@@ -7,9 +7,8 @@ import { tintable } from './batch';
 import { bevelBox } from './bevel';
 import { ledLit, type LedGlow } from './ledGlow';
 import { JACKET_KIND, jacketed } from './jacket';
+import { RADIAL, SUB, TubeMesh, TubeNodes, layTube, tubeIndices, tubeVerts } from './tube';
 
-export const RADIAL = 8;
-export const SUB = 2; // samples per segment (Catmull-Rom in between)
 /** cos and sin of the angle of each vertex around a ring */
 const RING_COS = Float64Array.from({ length: RADIAL }, (_, r) => Math.cos((r / RADIAL) * Math.PI * 2));
 const RING_SIN = Float64Array.from({ length: RADIAL }, (_, r) => Math.sin((r / RADIAL) * Math.PI * 2));
@@ -60,14 +59,14 @@ const HOUSING = { OS2: new THREE.Color('#2d6fd8'), OM4: new THREE.Color('#d9cfa3
 
 /**
  * Every cord of a world drawn in one mesh (their tubes share one buffer, coloured
- * per vertex), and their connectors in a handful of instanced meshes.
+ * per vertex, swept on the GPU from their nodes), and their connectors in a
+ * handful of instanced meshes.
  */
 export class CableView {
   group = new THREE.Group();
   cables: CableMesh[] = [];
-  private tube: THREE.Mesh;
-  private pos: Float32Array;
-  private nrm: Float32Array;
+  private tube: TubeMesh;
+  private nodes: TubeNodes;
   private tint: Float32Array;
   private plugs: { fibre: Plugs; copper: Plugs };
   private straps: THREE.InstancedMesh | null = null;
@@ -88,24 +87,24 @@ export class CableView {
   /** instanced meshes whose matrices or colours changed this frame: only those are sent to the GPU */
   private moved = new Set<THREE.InstancedMesh>();
   private recoloured = new Set<THREE.InstancedMesh>();
-  /** vertices of the tube rebuilt this frame: one range sent to the GPU, not one per cord */
-  private dirtyLo = Infinity;
-  private dirtyHi = -Infinity;
 
   constructor(private world: World) {
-    let verts = 0;
+    let verts = 0, indices = 0, nodes = 0;
     world.cables.forEach((cb) => {
       const samples = (cb.count - 1) * SUB + 1;
       this.cables.push({ v0: verts, samples, visible: true, lastSig: NaN, color: new THREE.Color(cb.color ?? FIBRE_COLORS[cb.type]) });
-      verts += samples * RADIAL;
+      verts += tubeVerts(cb.count);
+      indices += tubeIndices(cb.count);
+      nodes = Math.max(nodes, cb.start + cb.count);
     });
-    this.pos = new Float32Array(verts * 3);
-    this.nrm = new Float32Array(verts * 3);
+    this.nodes = new TubeNodes(nodes);
     this.tint = new Float32Array(verts * 3);
     const colors = new Float32Array(verts * 3);
     // length along the cord at rest, angle around it, kind: what the jacket shader draws with
     const jacket = new Float32Array(verts * 4);
-    const idx: number[] = [];
+    const tube = new Float32Array(verts * 3);
+    const idx = new Uint32Array(indices), coarse = new Uint32Array(indices / 4);
+    let i0 = 0;
     this.cables.forEach((cm, k) => {
       for (let v = cm.v0; v < cm.v0 + cm.samples * RADIAL; v++) cm.color.toArray(colors, 3 * v);
       const kind = JACKET_KIND[world.cables[k].type];
@@ -118,25 +117,19 @@ export class CableView {
           jacket[o + 3] = kind;
         }
       }
-      for (let s = 0; s < cm.samples - 1; s++) {
-        for (let r = 0; r < RADIAL; r++) {
-          const a = cm.v0 + s * RADIAL + r, b = cm.v0 + s * RADIAL + ((r + 1) % RADIAL);
-          const c = a + RADIAL, d = b + RADIAL;
-          idx.push(a, c, b, b, c, d);
-        }
-      }
+      const cb = world.cables[k];
+      layTube(tube, cm.v0, cb.start, cb.count, idx, coarse, i0);
+      i0 += tubeIndices(cb.count);
     });
     const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(this.pos, 3).setUsage(THREE.DynamicDrawUsage));
-    geo.setAttribute('normal', new THREE.BufferAttribute(this.nrm, 3).setUsage(THREE.DynamicDrawUsage));
+    geo.setAttribute('normal', new THREE.BufferAttribute(tube, 3));
     geo.setAttribute('emissiveTint', new THREE.BufferAttribute(this.tint, 3).setUsage(THREE.DynamicDrawUsage));
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     geo.setAttribute('jacket', new THREE.BufferAttribute(jacket, 4));
-    geo.setIndex(idx);
-    this.tube = new THREE.Mesh(geo, jacketed(tintable(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, metalness: 0.0 }))));
+    geo.setIndex(new THREE.BufferAttribute(idx, 1));
+    this.tube = new TubeMesh(geo, coarse, jacketed(tintable(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, metalness: 0.0 }))), this.nodes);
     this.tube.castShadow = true;
     this.tube.receiveShadow = true;
-    this.tube.frustumCulled = false;
     this.group.add(this.tube);
 
     const n = 2 * world.cables.length;
@@ -308,9 +301,9 @@ export class CableView {
     cm.visible = on;
     if (on) { this.buildTube(c); this.updateEnds(c); }
     else {
-      // every vertex of the tube on one point: nothing left to draw
-      this.pos.fill(0, 3 * cm.v0, 3 * (cm.v0 + cm.samples * RADIAL));
-      this.dirty(cm);
+      // a tube of radius 0: nothing left to draw
+      const cb = this.world.cables[c];
+      this.nodes.hide(cb.start, cb.count);
       const p = this.plugOf(c);
       for (const e of [0, 1]) for (const im of [p.housing, p.latch, p.boot, p.label]) this.putMatrix(im, 2 * c + e, ZERO);
     }
@@ -344,23 +337,8 @@ export class CableView {
     a.needsUpdate = true;
   }
 
-  private dirty(cm: CableMesh): void {
-    this.dirtyLo = Math.min(this.dirtyLo, cm.v0);
-    this.dirtyHi = Math.max(this.dirtyHi, cm.v0 + cm.samples * RADIAL);
-  }
-
   /** sends what changed this frame to the GPU */
   private flush(): void {
-    if (this.dirtyHi > this.dirtyLo) {
-      const geo = this.tube.geometry;
-      for (const n of ['position', 'normal']) {
-        const a = geo.attributes[n] as THREE.BufferAttribute;
-        a.addUpdateRange(3 * this.dirtyLo, 3 * (this.dirtyHi - this.dirtyLo));
-        a.needsUpdate = true;
-      }
-      this.dirtyLo = Infinity;
-      this.dirtyHi = -Infinity;
-    }
     for (const im of this.moved) im.instanceMatrix.needsUpdate = true;
     for (const im of this.recoloured) im.instanceColor!.needsUpdate = true;
     this.moved.clear();
@@ -390,59 +368,6 @@ export class CableView {
 
   private buildTube(c: number): void {
     const cb = this.world.cables[c];
-    sweepTube(this.world.sim.x, cb.start, cb.count, this.world.radius, this.pos, this.nrm, this.cables[c].v0);
-    this.dirty(this.cables[c]);
+    this.nodes.write(this.world.sim.x, cb.start, cb.count, this.world.radius);
   }
 }
-
-/**
- * Tube of radius R around a Catmull-Rom curve through the n nodes of `x` from
- * `start`, with parallel-transported frames: (n − 1) · SUB + 1 rings of RADIAL
- * vertices written into pos and nrm from vertex v0.
- */
-export function sweepTube(x: ArrayLike<number>, start: number, n: number, R: number, pos: Float32Array, nrm: Float32Array, v0: number): void {
-  const V = v0;
-  const S = (n - 1) * SUB + 1;
-  const pts = sampleBuf.length >= S * 3 ? sampleBuf : (sampleBuf = new Float64Array(S * 3 * 2));
-  let k = 0;
-  for (let i = 0; i < n - 1; i++) {
-    const i0 = start + Math.max(0, i - 1), i1 = start + i, i2 = start + i + 1, i3 = start + Math.min(n - 1, i + 2);
-    for (let s = 0; s < SUB; s++) {
-      const u = s / SUB, u2 = u * u, u3 = u2 * u;
-      for (let d = 0; d < 3; d++) {
-        const p0 = x[3 * i0 + d], p1 = x[3 * i1 + d], p2 = x[3 * i2 + d], p3 = x[3 * i3 + d];
-        pts[k * 3 + d] = 0.5 * (2 * p1 + (-p0 + p2) * u + (2 * p0 - 5 * p1 + 4 * p2 - p3) * u2 + (-p0 + 3 * p1 - 3 * p2 + p3) * u3);
-      }
-      k++;
-    }
-  }
-  for (let d = 0; d < 3; d++) pts[k * 3 + d] = x[3 * (start + n - 1) + d];
-  // frames
-  let nx = 0, ny = 0, nz = 0;
-  for (let s = 0; s < S; s++) {
-    const a = Math.max(0, s - 1), b = Math.min(S - 1, s + 1);
-    let tx = pts[3 * b] - pts[3 * a], ty = pts[3 * b + 1] - pts[3 * a + 1], tz = pts[3 * b + 2] - pts[3 * a + 2];
-    const tl = Math.hypot(tx, ty, tz) || 1;
-    tx /= tl; ty /= tl; tz /= tl;
-    if (s === 0) {
-      // any vector not parallel to the tangent
-      if (Math.abs(ty) < 0.9) { nx = 0; ny = 1; nz = 0; } else { nx = 1; ny = 0; nz = 0; }
-    }
-    // project the previous normal on the plane of the new tangent
-    const dp = nx * tx + ny * ty + nz * tz;
-    nx -= dp * tx; ny -= dp * ty; nz -= dp * tz;
-    let nl = Math.hypot(nx, ny, nz);
-    if (nl < 1e-6) { if (Math.abs(ty) < 0.9) { nx = -tz; ny = 0; nz = tx; } else { nx = 0; ny = tz; nz = -ty; } nl = Math.hypot(nx, ny, nz); }
-    nx /= nl; ny /= nl; nz /= nl;
-    const bx = ty * nz - tz * ny, by = tz * nx - tx * nz, bz = tx * ny - ty * nx;
-    for (let r = 0; r < RADIAL; r++) {
-      const ca = RING_COS[r], sa = RING_SIN[r];
-      const ox = nx * ca + bx * sa, oy = ny * ca + by * sa, oz = nz * ca + bz * sa;
-      const o = (V + s * RADIAL + r) * 3;
-      pos[o] = pts[3 * s] + ox * R; pos[o + 1] = pts[3 * s + 1] + oy * R; pos[o + 2] = pts[3 * s + 2] + oz * R;
-      nrm[o] = ox; nrm[o + 1] = oy; nrm[o + 2] = oz;
-    }
-  }
-}
-
-let sampleBuf = new Float64Array(0);
