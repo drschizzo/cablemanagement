@@ -392,7 +392,7 @@ Un câble endormi n'est pas renvoyé. `update()` calcule une signature à partir
 
 ### N'envoyer au GPU que les nœuds
 
-Les nœuds vivent en double : une copie en JavaScript (`Float32Array`) et une copie dans la mémoire du GPU, sous forme de texture (`TubeNodes`). Chaque nœud y occupe trois texels de quatre nombres : sa position et le rayon du câble, la normale de son repère, puis la lueur du câble en ce nœud (la surbrillance d'un câble survolé, la couleur de chaque portion tenue). Un rayon nul cache le câble. Modifier la copie JavaScript ne change pas la texture : il faut la marquer `needsUpdate = true`, et three.js la recopie au prochain rendu.
+Les nœuds vivent en double : une copie en JavaScript (`Float32Array`) et une copie dans la mémoire du GPU, sous forme de texture (`TubeNodes`). Chaque nœud y occupe trois texels de quatre nombres : sa position et le rayon du câble en ce nœud, la normale de son repère, puis la lueur du câble en ce nœud (la surbrillance d'un câble survolé, la couleur de chaque portion tenue). Un rayon nul cache le câble. `TubeSync` n'y écrit que les câbles qui ont bougé : un câble endormi n'est réécrit que si quelques-uns de ses nœuds ont changé de place quand même. Modifier la copie JavaScript ne change pas la texture : il faut la marquer `needsUpdate = true`, et three.js la recopie au prochain rendu.
 
 Un nœud coûte 48 octets. La texture est recopiée en entier dès qu'un câble a bougé : 32 Ko pour les 667 nœuds du niveau capturé. Côté CPU, écrire les nœuds et leurs repères prend 1,3 ms par frame pour 1 200 câbles de 60 nœuds, tous en mouvement.
 
@@ -513,7 +513,7 @@ material.onBeforeCompile = (shader) => {
 
 `vEmissiveTint` est une couleur fournie pour chaque sommet ; la ligne ajoutée l'additionne à la lueur du pixel. Mettre cette couleur à zéro ou à une teinte vive suffit à allumer ou éteindre la surbrillance d'un câble, sans changer de matériau.
 
-`swept` procède autrement. Il insère son calcul au tout début de la fonction `main` du vertex shader, puis deux lignes `#define position tubePos` et `#define normal tubeNormal`. Tout le code qui suit, celui de three.js comme celui des autres extensions, lit alors la position et la normale calculées sans savoir qu'elles ne viennent pas de la géométrie. Le même ajout fonctionne donc pour n'importe quel matériau.
+`swept` procède autrement. Il insère son calcul au tout début de la fonction `main` du vertex shader, puis deux lignes `#define position tubePos` et `#define normal tubeNormal`. Tout le code qui suit, celui de three.js comme celui des autres extensions, lit alors la position et la normale calculées sans savoir qu'elles ne viennent pas de la géométrie. Le même ajout fonctionne donc pour n'importe quel matériau. Il laisse aussi deux valeurs aux extensions : `tubeCoord` (où est le sommet le long du câble et autour de lui, voir plus bas) et `tubeTint` (la lueur du nœud le plus proche), que l'option `aliases` donne sous un autre nom aux matériaux écrits pour d'autres géométries : celui des câbles la lit comme `emissiveTint`, comme les manchons des connecteurs.
 
 C'est nécessaire parce que les câbles ne sont pas toujours dessinés avec leur propre matériau. L'ombre utilise un matériau de profondeur ; les reflets et l'occlusion ambiante redessinent la scène avec un matériau de normales, et les reflets avec un matériau de masque. Ces matériaux ignorent la texture des nœuds. `TubeMesh` en fournit donc des copies qui la lisent, créées une fois pour chacun : pour l'ombre par `customDepthMaterial`, pour les autres en remplaçant à la volée le matériau que la passe impose.
 
@@ -523,7 +523,7 @@ C'est nécessaire parce que les câbles ne sont pas toujours dessinés avec leur
 
 Un tube lisse d'une seule couleur ressemble à de la peinture. Le fragment shader de `jacket.ts` ajoute ce qu'on voit sur un vrai câble à bout de bras : le relief des paires torsadées sous la gaine d'un câble cuivre, un grain fin, un fini satiné irrégulier, et le marquage imprimé le long du câble.
 
-Pour cela, chaque sommet du tube porte un attribut `jacket` : la longueur le long du câble (mesurée au repos, pour que le marquage suive le câble quand il bouge), l'angle autour du câble, et le type de câble. Le marquage est un texte dessiné une fois dans un `<canvas>` 2D, puis utilisé comme texture. Le relief ne modifie pas la géométrie : il modifie la normale utilisée pour l'éclairage, pixel par pixel (technique du *bump mapping*).
+Pour cela, chaque sommet du tube porte `tubeCoord` : la longueur le long du câble (mesurée au repos, pour que le marquage suive le câble quand il bouge), l'angle autour du câble, et le type de câble (l'étiquette donnée à `lay`). Le marquage est un texte dessiné une fois dans un `<canvas>` 2D, puis utilisé comme texture. Le relief ne modifie pas la géométrie : il modifie la normale utilisée pour l'éclairage, pixel par pixel (technique du *bump mapping*).
 
 ![La gaine de près et de loin](frame/gaine.jpg)
 

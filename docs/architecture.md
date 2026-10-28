@@ -10,7 +10,9 @@ packages/    ce qui peut servir hors du jeu (workspaces npm), sans rien importer
     cableSim.ts       le solveur (nœuds, contraintes, contacts, cibles, veille), son instantané pour un Worker
     threaded.ts       threaded() : le même, dont les pas tournent dans un Worker ; hostSimWorker() : le Worker
     geom.ts           noyaux géométriques (segment–segment, segment–boîte, système 3×3)
-  three-cable-tubes/  les tubes des câbles, construits par le GPU à partir de leurs nœuds (TubeNodes, TubeMesh, swept)   three.js
+  three-cable-tubes/  les tubes des câbles, construits par le GPU à partir de leurs nœuds   three.js
+    tube.ts           TubeNodes (les nœuds, rayon par nœud), TubeMesh (options : sommets, anneaux, niveaux de détail),
+                      swept (tout matériau ; tubeCoord, tubeTint et leurs alias), TubeSync (n'écrire que ce qui a bougé)
 src/
   game/      la baie et ses règles                                            sans DOM ni three.js (sauf controller)
     rackSim.ts      le solveur tel que le jeu le mène : mains, buts du chemin, connecteur poussé dans son port, creux des guides
@@ -131,7 +133,7 @@ par niveau) et tutoriel terminé. Les clés sont celles des versions précédent
 |---|---|
 | `npm run lint` | erreurs probables (ESLint) |
 | `npm run typecheck` | types (TypeScript strict) |
-| `npm test` | moteur seul (chute, traversée, câble suspendu, empilement, main, cible, sa laisse et sa portée, déterminisme), géométrie, baie, stockage, règles d'une partie (branchement, fenêtre de maintenance, étiquettes, velcro, longueurs, bac), niveaux (plan, emmêlage stable, 3 étoiles possibles), salle d'accueil précalculée à jour |
+| `npm test` | moteur seul (chute, traversée, câble suspendu, empilement, main, cible, sa laisse et sa portée, déterminisme), tubes (nœuds, rayon par nœud, réécriture, shader et ses options), géométrie, baie, stockage, règles d'une partie (branchement, fenêtre de maintenance, étiquettes, velcro, longueurs, bac), niveaux (plan, emmêlage stable, 3 étoiles possibles), salle d'accueil précalculée à jour |
 | `npm run check` | les trois à la suite |
 | `npm run bake` | précalcule le désordre de la salle d'accueil par défaut (à relancer quand le test `baked` le demande) |
 | `npm run bench` · `precision` · `levels` · `solvable` · `showcase` · `free` · `pinch` · `route` | bancs du moteur et des niveaux, sans navigateur (`tools/`) ; `free` : partie libre de 48 câbles (stabilisation, cordon tiré à travers les autres) ; `pinch` : un coude pincé, ce qu'il en reste une fois lâché ; `route` : des câbles posés le long d'un chemin tracé (branchés, dans leurs guides, au repos, sans traverser la baie, et ce qu'ils déplacent des autres câbles) |

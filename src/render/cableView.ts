@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { TubeMesh, TubeNodes } from 'three-cable-tubes';
+import { TubeMesh, TubeNodes, TubeSync } from 'three-cable-tubes';
 import type { World } from '../game/world';
 import { CONNECTOR } from '../game/rack';
 import { SERVICES } from '../game/levels';
@@ -13,7 +13,6 @@ export const FIBRE_COLORS = { OS2: '#f2c12e', OM4: '#3cc9cf', CU: '#3d7fe0' } as
 
 interface CableMesh {
   visible: boolean;
-  lastSig: number;
   /** linear colour of the cord (its boots too) */
   color: THREE.Color;
 }
@@ -61,6 +60,7 @@ export class CableView {
   cables: CableMesh[] = [];
   private tube: TubeMesh;
   private nodes: TubeNodes;
+  private sync: TubeSync;
   private plugs: { fibre: Plugs; copper: Plugs };
   private straps: THREE.InstancedMesh | null = null;
   private strapMat = new THREE.MeshStandardMaterial({ color: '#1b2a4a', roughness: 0.9 });
@@ -86,13 +86,16 @@ export class CableView {
   constructor(private world: World) {
     let segments = 0, nodes = 0;
     world.cables.forEach((cb) => {
-      this.cables.push({ visible: true, lastSig: NaN, color: new THREE.Color(cb.color ?? FIBRE_COLORS[cb.type]) });
+      this.cables.push({ visible: true, color: new THREE.Color(cb.color ?? FIBRE_COLORS[cb.type]) });
       segments += cb.count - 1;
       nodes = Math.max(nodes, cb.start + cb.count);
     });
     this.nodes = new TubeNodes(nodes);
+    this.sync = new TubeSync(this.nodes, world.radius);
     this.shown = this.cables.length;
-    this.tube = new TubeMesh(segments, jacketed(tintable(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, metalness: 0.0 }))), this.nodes);
+    // (tintable reads the glow as `emissiveTint`, as on the plugs)
+    const mat = jacketed(tintable(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, metalness: 0.0 })));
+    this.tube = new TubeMesh(segments, mat, this.nodes, { aliases: { emissiveTint: 'tubeTint' } });
     let at = 0;
     world.cables.forEach((cb, k) => {
       // each cord's marking from its own place along the print
@@ -157,24 +160,11 @@ export class CableView {
   /** `force`: rebuild every cord, or only those it picks (scripted motion) */
   update(force: boolean | ((c: number) => boolean) = false): void {
     const sim = this.world.sim;
-    const x = sim.x;
-    this.world.cables.forEach((cb, c) => {
-      const cm = this.cables[c];
-      if (!cm.visible) return;
-      if (typeof force === 'function') {
-        if (force(c)) this.buildTube(c);
-        this.updateEnds(c);
-        return;
-      }
-      // skip cables that did not move (asleep)
-      const sig = x[3 * cb.start] + x[3 * (cb.start + (cb.count >> 1)) + 1] * 3.1 + x[3 * (cb.start + cb.count - 1) + 2] * 7.7;
-      const asleep = sim.cables[c].asleep;
-      if (!force && asleep && sig === cm.lastSig) {
-        this.updateEnds(c);
-        return;
-      }
-      cm.lastSig = sig;
-      this.buildTube(c);
+    this.world.cables.forEach((_, c) => {
+      if (!this.cables[c].visible) return;
+      if (typeof force === 'function') { if (force(c)) this.sync.cable(sim, c, true); }
+      // (only the cables that moved)
+      else this.sync.cable(sim, c, force);
       this.updateEnds(c);
     });
     this.flush();
@@ -276,7 +266,7 @@ export class CableView {
     cm.visible = on;
     // none left: the tubes and plugs of radius and scale 0 would still be run through the GPU
     for (const o of this.group.children) if (o !== this.straps && o !== this.pinchMarks) o.visible = this.shown > 0;
-    if (on) { this.buildTube(c); this.updateEnds(c); }
+    if (on) { this.sync.cable(this.world.sim, c, true); this.updateEnds(c); }
     else {
       // a tube of radius 0: nothing left to draw
       const cb = this.world.cables[c];
@@ -334,10 +324,5 @@ export class CableView {
       if (label === null) this.putMatrix(p.label, i, ZERO);
       else { this.putMatrix(p.label, i, this.m4); this.putColor(p.label, i, this.col.set(SERVICES[label].color)); }
     }
-  }
-
-  private buildTube(c: number): void {
-    const cb = this.world.cables[c];
-    this.nodes.write(this.world.sim.x, cb.start, cb.count, this.world.radius);
   }
 }

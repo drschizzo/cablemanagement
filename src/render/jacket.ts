@@ -48,9 +48,10 @@ function printAtlas(): THREE.CanvasTexture {
 }
 
 /**
- * Adds the jacket to the material of the cords. Their geometry carries
- * `jacket` (vec4): length along the cord (m, at rest, so the print moves with
- * it), cos and sin of the angle around it, and its kind.
+ * Adds the jacket to the material of the cords' tubes (three-cable-tubes),
+ * from their `tubeCoord`: length along the cord (m, at rest, so the print
+ * moves with it), cos and sin of the angle around it, and its kind (the tag
+ * `lay` was given: JACKET_KIND).
  */
 export function jacketed<T extends THREE.MeshStandardMaterial>(m: T): T {
   const prev = m.onBeforeCompile.bind(m);
@@ -59,8 +60,8 @@ export function jacketed<T extends THREE.MeshStandardMaterial>(m: T): T {
     prev(s, r);
     s.uniforms.jacketPrint = { value: printAtlas() };
     s.vertexShader = s.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute vec4 jacket;\nvarying vec4 vJacket;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvJacket = jacket;');
+      .replace('#include <common>', '#include <common>\nvarying vec4 vJacket;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvJacket = tubeCoord;');
     s.fragmentShader = s.fragmentShader
       .replace('#include <common>', `#include <common>
 uniform sampler2D jacketPrint;
