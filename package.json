@@ -29,7 +29,8 @@
     "route": "vite-node tools/route.ts",
     "plug": "vite-node tools/plug.ts",
     "plugin": "vite-node tools/plugin.ts",
-    "bake": "vite-node tools/bake.ts"
+    "bake": "vite-node tools/bake.ts",
+    "presets": "vite-node tools/presets.ts"
   },
   "dependencies": {
     "three": "^0.183.2"

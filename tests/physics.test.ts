@@ -1,14 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { CableSim, closest, segSeg, type StaticShape } from 'avbd-cables';
+import { CABLES, CableSim, closest, segSeg, type StaticShape } from 'avbd-cables';
 
 // The solver on its own, without the cabinet: cords, boxes and rods.
 
 const SEG = 0.025;
-const R = 0.0022;
+/** patch cords, connectors at both ends */
+const PATCH = CABLES.patchCord.cable;
+const R = PATCH.radius;
 
-/** a straight cord from a to b, nodes SEG apart */
-function cord(a: [number, number, number], b: [number, number, number]): number[] {
-  const n = Math.max(2, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]) / SEG) + 1);
+/** a straight cord from a to b, nodes `seg` apart */
+function cord(a: [number, number, number], b: [number, number, number], seg = SEG): number[] {
+  const n = Math.max(2, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]) / seg) + 1);
   const pts: number[] = [];
   for (let k = 0; k < n; k++) {
     const t = k / (n - 1);
@@ -60,7 +62,7 @@ const floor: StaticShape = { kind: 'box', min: [-1, -0.1, -1], max: [1, 0, 1] };
 describe('cable solver', () => {
   it('a cord dropped on a floor lies on it, unstretched, and falls asleep', () => {
     const sim = new CableSim();
-    sim.build([{ points: cord([-0.3, 0.2, 0], [0.3, 0.2, 0]), radius: R }]);
+    sim.build([{ points: cord([-0.3, 0.2, 0], [0.3, 0.2, 0]), ...PATCH }]);
     sim.setStatics([floor]);
     run(sim, 3);
     expect(lowest(sim)).toBeGreaterThan(R - 0.001);
@@ -72,7 +74,7 @@ describe('cable solver', () => {
   // (up to marginStatic a frame: 3.6 m/s at 60 Hz)
   it('a fast cord does not pass through a thin plate', () => {
     const sim = new CableSim();
-    sim.build([{ points: cord([-0.3, 0.1, 0], [0.3, 0.1, 0]), radius: R }]);
+    sim.build([{ points: cord([-0.3, 0.1, 0], [0.3, 0.1, 0]), ...PATCH }]);
     for (let i = 0; i < sim.n; i++) sim.v[3 * i + 1] = -3;
     sim.setStatics([{ kind: 'box', min: [-1, -0.004, -1], max: [1, 0, 1] }]);
     run(sim, 1);
@@ -83,7 +85,7 @@ describe('cable solver', () => {
     const sim = new CableSim();
     // 0.6 m apart, 0.75 m of cord: slack, so it sags
     const pts = cord([-0.375, 0.5, 0], [0.375, 0.5, 0]);
-    sim.build([{ points: pts, radius: R }]);
+    sim.build([{ points: pts, ...PATCH }]);
     const last = sim.n - 1;
     sim.pin(0, -0.3, 0.5, 0);
     sim.pin(last, 0.3, 0.5, 0);
@@ -95,7 +97,7 @@ describe('cable solver', () => {
 
   it('a cord dropped across a rod hangs on it', () => {
     const sim = new CableSim();
-    sim.build([{ points: cord([-0.2, 0.1, 0], [0.2, 0.1, 0]), radius: R }]);
+    sim.build([{ points: cord([-0.2, 0.1, 0], [0.2, 0.1, 0]), ...PATCH }]);
     sim.setStatics([{ kind: 'capsule', ax: 0, ay: 0, az: -0.2, bx: 0, by: 0, bz: 0.2, r: 0.01 }]);
     run(sim, 3);
     const mid = sim.n >> 1;
@@ -112,7 +114,7 @@ describe('cable solver', () => {
     for (let k = 0; k < 6; k++) {
       const a = (k * Math.PI) / 6;
       const c = Math.cos(a) * 0.25, s = Math.sin(a) * 0.25;
-      defs.push({ points: cord([-c, 0.02 + 0.03 * k, -s], [c, 0.02 + 0.03 * k, s]), radius: R });
+      defs.push({ points: cord([-c, 0.02 + 0.03 * k, -s], [c, 0.02 + 0.03 * k, s]), ...PATCH });
     }
     sim.build(defs);
     sim.setStatics([floor]);
@@ -124,7 +126,7 @@ describe('cable solver', () => {
 
   it('a heavy target moved along, as a hand, drags the cord after it', () => {
     const sim = new CableSim();
-    sim.build([{ points: cord([-0.3, 0.1, 0], [0.3, 0.1, 0]), radius: R }]);
+    sim.build([{ points: cord([-0.3, 0.1, 0], [0.3, 0.1, 0]), ...PATCH }]);
     sim.setStatics([floor]);
     run(sim, 1);
     const last = sim.n - 1;
@@ -142,7 +144,7 @@ describe('cable solver', () => {
 
   it('a target leads a node to its point; cleared, the node falls back', () => {
     const sim = new CableSim();
-    sim.build([{ points: cord([-0.3, 0.1, 0], [0.3, 0.1, 0]), radius: R }]);
+    sim.build([{ points: cord([-0.3, 0.1, 0], [0.3, 0.1, 0]), ...PATCH }]);
     sim.setStatics([floor]);
     run(sim, 1);
     const last = sim.n - 1;
@@ -160,7 +162,7 @@ describe('cable solver', () => {
     // is brought back within reach of the 0.5 m of cord
     for (const [pinAt, led] of [[0, -1], [-1, 0]]) {
       const sim = new CableSim();
-      sim.build([{ points: cord([0, 0.5, 0], [0.5, 0.5, 0]), radius: R }]);
+      sim.build([{ points: cord([0, 0.5, 0], [0.5, 0.5, 0]), ...PATCH }]);
       const p = pinAt < 0 ? sim.n - 1 : pinAt, l = led < 0 ? sim.n - 1 : led;
       sim.pin(p, sim.x[3 * p], 0.5, 0);
       sim.setTarget(l, sim.x[3 * l] + (l > p ? 1.5 : -1.5), 0.5, 0, 1.6, 0.06, true);
@@ -176,7 +178,7 @@ describe('cable solver', () => {
 
   it('a target between two pins stays within reach of both', () => {
     const sim = new CableSim();
-    sim.build([{ points: cord([0, 0.5, 0], [0.6, 0.5, 0]), radius: R }]);
+    sim.build([{ points: cord([0, 0.5, 0], [0.6, 0.5, 0]), ...PATCH }]);
     const last = sim.n - 1, mid = last >> 1;
     sim.pin(0, 0, 0.5, 0);
     sim.pin(last, 0.4, 0.5, 0);
@@ -190,10 +192,29 @@ describe('cable solver', () => {
     expect(sim.x[3 * mid + 1] - 0.5).toBeGreaterThan(0.15);
   });
 
+  it('every kind of cable piles up, settles and falls asleep', () => {
+    for (const [name, k] of Object.entries(CABLES)) {
+      const sim = new CableSim(k.params);
+      const r = k.cable.radius, seg = k.segment, defs = [];
+      for (let c = 0; c < 6; c++) {
+        const a = (c * Math.PI) / 6, h = 0.05 + c * 4 * r;
+        defs.push({ ...k.cable, points: cord([-0.5 * Math.cos(a), h, -0.5 * Math.sin(a)], [0.5 * Math.cos(a), h, 0.5 * Math.sin(a)], seg) });
+      }
+      sim.build(defs);
+      sim.setStatics([floor]);
+      run(sim, 8);
+      expect(sim.x.every(Number.isFinite), name).toBe(true);
+      expect(sim.cables.every((c) => c.asleep), name).toBe(true);
+      expect(overlap(sim), name).toBeLessThan(0.5 * r);
+      expect(lowest(sim), name).toBeGreaterThan(0.5 * r);
+      expect(stretch(sim), name).toBeLessThan(0.03);
+    }
+  });
+
   it('is deterministic: the same start gives the same positions, bit for bit', () => {
     const go = () => {
       const sim = new CableSim();
-      sim.build([0, 1, 2].map((k) => ({ points: cord([-0.2, 0.05 + 0.04 * k, -0.1 + 0.1 * k], [0.2, 0.05 + 0.04 * k, 0.1 - 0.1 * k]), radius: R })));
+      sim.build([0, 1, 2].map((k) => ({ points: cord([-0.2, 0.05 + 0.04 * k, -0.1 + 0.1 * k], [0.2, 0.05 + 0.04 * k, 0.1 - 0.1 * k]), ...PATCH })));
       sim.setStatics([floor]);
       run(sim, 1.5);
       return sim.x;

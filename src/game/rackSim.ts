@@ -11,7 +11,7 @@
 // once in it, until the hand pulls it out or a route leads it elsewhere. It
 // never draws a cord in: laying a cord in the guides is the route's job.
 
-import { CableSim, type CableInit, type NodeSystem, type Pinch, type SimSnapshot, type StaticShape } from 'avbd-cables';
+import { CableSim, defaultSimParams, type CableInit, type NodeSystem, type Pinch, type SimParams, type SimSnapshot, type StaticShape } from 'avbd-cables';
 
 /**
  * A channel that keeps what is left in it (the trough of a finger manager):
@@ -38,6 +38,46 @@ export type RackShape = StaticShape | StaticKeeper;
  */
 const PLUG_STROKE = { speed: 0.6, least: 0.1, most: 0.35, lead: 0.03, seat: 0.005, seatBehind: 0.01, giveUp: 0.5, free: 3 };
 
+/** the settings of the game's springs and keepers, beyond the solver's */
+export interface RackParams extends SimParams {
+  /** stiffness of the hand (× 4 M/h²), and of a connector pushed into its port */
+  grabK: number;
+  /**
+   * Leash of the hand (m): the held node is pulled towards the hand from at
+   * most this far, so a cord caught on something is never stretched like an
+   * elastic (and does not snap back when let go).
+   */
+  grabLead: number;
+  /** stiffness of a route goal at full weight (× M/h²), and its leash (m): see `setGoals` */
+  goalK: number;
+  goalLead: number;
+  /** nodes on each side of the hand that a pinch takes */
+  pinchSpan: number;
+  /** firmness of a pinch as it starts, and what it gains per second while the hand keeps pinching (see `firmPinch`) */
+  pinchStart: number;
+  pinchGrow: number;
+  /** nodes of the held cable on each side of the hand that keepers let go of */
+  keepHand: number;
+  /** nodes of a cable on each side of where the hand last took it that a keeper may take (beyond, only next to nodes it holds) */
+  keepZip: number;
+  /** stiffness of a keeper's pull in the solve (× M/h²) */
+  keepK: number;
+  /** how far a node may stick out of a keeper and still be taken (m): a cord resting on the fingers is on the edge */
+  keepTol: number;
+  /** a kept node of the held cord pulled this far out of its keeper in one substep comes out (m) */
+  keepPeel: number;
+}
+
+export function defaultRackParams(p: Partial<RackParams> = {}): RackParams {
+  return {
+    ...defaultSimParams(),
+    grabK: 0.4, grabLead: 0.06, goalK: 6, goalLead: 0.05,
+    pinchSpan: 3, pinchStart: 0.15, pinchGrow: 0.6,
+    keepHand: 2, keepZip: 10, keepK: 16, keepTol: 0.002, keepPeel: 0.003,
+    ...p,
+  };
+}
+
 /** what a worker needs of a RackSim's own, beyond the solver's (see `snapshot`) */
 interface RackSnapshot extends SimSnapshot {
   handled: Uint8Array;
@@ -48,6 +88,7 @@ interface RackSnapshot extends SimSnapshot {
 }
 
 export class RackSim extends CableSim {
+  declare P: RackParams;
   static mirrored = [...CableSim.mirrored, 'pinEnd', 'grab', 'release', 'holdStill', 'letGoStill', 'pinch', 'setGoals'];
 
   /** the shapes of the cabinet as given, keepers included (the solver gets the others) */
@@ -86,6 +127,10 @@ export class RackSim extends CableSim {
   protected plugs: { i0: number; i1: number; s0: number[]; s1: number[]; a: number[]; b: number[]; t: number; T: number }[] = [];
 
   /** the keeper holding each node, or −1 */
+  constructor(params: Partial<RackParams> = {}) {
+    super(defaultRackParams(params));
+  }
+
   get keepOf(): Int32Array {
     return this.heldBy;
   }

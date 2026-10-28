@@ -84,10 +84,13 @@ export interface CableInit {
   /** node positions, xyz interleaved */
   points: ArrayLike<number>;
   radius: number;
-  /** mass of one node (kg); end nodes (connectors) get `endMass` */
+  /** mass of one node (kg, 0.001 if not given); the two nodes at each end get `endMass` (a connector: as heavy as the others if not given) */
   mass?: number;
   endMass?: number;
+  /** bending stiffness (1 if not given) */
   bend?: number;
+  /** the ends are a connector's boot: their bending stiffness × 3 over 2 nodes, then × 1.8 over 2 more */
+  boot?: boolean;
 }
 
 export interface SimParams {
@@ -156,20 +159,12 @@ export interface SimParams {
   marginStatic: number;
   /** clamp of one block solve's displacement (m) */
   maxMove: number;
-  /** stiffness of the hand (× 4 M/h²), and of a connector pushed into its port */
-  grabK: number;
   /**
-   * weight of a node moved as by a hand in the length passes, against 1 for
-   * the others: heavy, so that the cord follows the hand rather than the
-   * opposite
+   * weight of a node led by a heavy target (a hand) in the length passes,
+   * against 1 for the others: heavy, so that the cord follows the hand rather
+   * than the opposite
    */
   handWeight: number;
-  /**
-   * Leash of the hand (m): the held node is pulled towards the hand from at
-   * most this far, so a cord caught on something is never stretched like an
-   * elastic (and does not snap back when let go).
-   */
-  grabLead: number;
   /** inextensibility passes after the solve (position projection along each cord) */
   pbdPasses: number;
   /**
@@ -183,16 +178,6 @@ export interface SimParams {
   frictionK: number;
   /** the most an overlap is undone per substep (m): a soft way out instead of a kick */
   maxDepen: number;
-  /** nodes of the held cable on each side of the hand that keepers let go of */
-  keepHand: number;
-  /** nodes of a cable on each side of where the hand last took it that a keeper may take (beyond, only next to nodes it holds) */
-  keepZip: number;
-  /** stiffness of a keeper's pull in the solve (× M/h²) */
-  keepK: number;
-  /** how far a node may stick out of a keeper and still be taken (m): a cord resting on the fingers is on the edge */
-  keepTol: number;
-  /** a kept node of the held cord pulled this far out of its keeper in one substep comes out (m) */
-  keepPeel: number;
   /** a cable whose nodes all stay within sleepDist (m) for sleepTime (s) falls asleep */
   sleepDist: number;
   sleepTime: number;
@@ -207,17 +192,9 @@ export interface SimParams {
   wakeSink: number;
   /** stiffness of a velcro strap (× M/h²) */
   strapK: number;
-  /** nodes on each side of the hand that a pinch takes */
-  pinchSpan: number;
   /** stiffness of a pinch held at its firmest (× M/h²) */
   pinchK: number;
-  /** firmness of a pinch as it starts, and what it gains per second while the hand keeps pinching (see `firmPinch`) */
-  pinchStart: number;
-  pinchGrow: number;
-  /** stiffness of a route goal at full weight (× M/h²), and its leash (m): see `setGoals` */
-  goalK: number;
-  goalLead: number;
-  /** frames a node let go by its route goal may still pass through the cords it lies in (then it pushes them out) */
+  /** frames a node that stops passing through the other cords (`ghost`) may still do so where it lies in them (then it pushes them out) */
   ghostFrames: number;
 }
 
@@ -227,11 +204,9 @@ export function defaultSimParams(p: Partial<SimParams> = {}): SimParams {
     stretch: 10, kMin: 0.05, kCap: 2, kCapCable: 4, kCapHeld: 8, beta: 2000, gamma: 0.9, alpha: 0.25, alphaS: 0.3, lamWarm: 0.8, lamWarmS: 0.8, contactDamping: 0.3, restFriction: 0.012,
     muCable: 0.3, muStatic: 0.4, drag: 2.5,
     margin: 0.0015, marginLead: 1.2, marginCap: 0.008, marginStatic: 0.06, maxMove: 0.012,
-    grabK: 0.4, handWeight: 0.1, grabLead: 0.06, pbdPasses: 4, maxDepen: 0.001, frictionK: 0.3,
-    keepHand: 2, keepZip: 10, keepK: 16, keepTol: 0.002, keepPeel: 0.003,
+    handWeight: 0.1, pbdPasses: 4, maxDepen: 0.001, frictionK: 0.3,
     sleepDist: 0.006, sleepTime: 0.5, wakeSpeed: 0.1, wakeCreep: 0.2, wakeSink: 0.002, strapK: 0.3,
-    pinchSpan: 3, pinchK: 6, pinchStart: 0.15, pinchGrow: 0.6,
-    goalK: 6, goalLead: 0.05, ghostFrames: 90,
+    pinchK: 6, ghostFrames: 90,
     ...p,
   };
 }
@@ -548,13 +523,14 @@ export class CableSim {
         this.x[3 * i + 1] = d.points[3 * k + 1];
         this.x[3 * i + 2] = d.points[3 * k + 2];
         const end = k < 2 || k >= cnt - 2;
-        this.mass[i] = end ? d.endMass ?? 0.004 : d.mass ?? 0.001;
+        const m = d.mass ?? 0.001;
+        this.mass[i] = end ? d.endMass ?? m : m;
         this.cableOf[i] = ci;
         this.radius[i] = d.radius;
         // the boot of the connector is much stiffer than the cord
         const edge = Math.min(k, cnt - 1 - k);
         const b = d.bend ?? 1;
-        this.bendK[i] = edge <= 2 ? b * BOOT.stiff : edge <= 4 ? b * BOOT.firm : b;
+        this.bendK[i] = !d.boot ? b : edge <= 2 ? b * BOOT.stiff : edge <= 4 ? b * BOOT.firm : b;
         if (k < cnt - 1) {
           this.segOK[i] = 1;
           const dx = d.points[3 * k + 3] - d.points[3 * k];
@@ -579,7 +555,10 @@ export class CableSim {
   setStatics(shapes: StaticShape[]): void {
     this.statics = shapes;
     this.staticGrid.clear();
-    const pad = 0.02 + this.P.marginStatic; // half a segment, a radius and the static margin
+    // half a segment, a radius and the static margin (2 cm at least for the first two)
+    let reach = 0.02;
+    for (let i = 0; i < this.n; i++) if (this.segOK[i]) reach = Math.max(reach, 0.5 * this.rest[i] + this.radius[i]);
+    const pad = reach + this.P.marginStatic;
     const C = this.SCELL;
     this.staticBounds = new Float64Array(6 * shapes.length);
     shapes.forEach((s, id) => {

@@ -11,6 +11,7 @@
 // its nodes' velocity over the next three seconds, and when it falls asleep.
 //   PARAMS='{"pinchK":8}' npm run pinch
 declare const process: { env: Record<string, string | undefined> };
+import { CABLES } from 'avbd-cables';
 import { RackSim } from '../src/game/rackSim';
 import { World } from '../src/game/world';
 import { LEVELS } from '../src/game/levels';
@@ -31,7 +32,7 @@ function run(label: string, pinch: boolean, n: number, shelf: boolean, extra: Re
   const sim = new RackSim({ ...params, ...extra });
   const pts: number[] = [];
   for (let k = 0; k < n; k++) pts.push(k * SEG, 1, 0);
-  sim.build([{ points: pts, radius: R, bend: 12 }]);
+  sim.build([{ points: pts, ...CABLES.patchCord.cable, radius: R, bend: 12 }]);
   // a shelf 20 cm under the port, for the hanging part to rest on
   if (shelf) sim.setStatics([{ kind: 'box', min: [0.1, 0.5, -0.3], max: [1.2, 0.8, 0.3] }]);
   // the connector, in its port

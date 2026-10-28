@@ -2,7 +2,7 @@
 // cords with their ends and labels, the velcro straps, the inventory, and the
 // evaluation of how tidy it all is.
 
-import type { Pinch } from 'avbd-cables';
+import { CABLES, type CableInit, type Pinch } from 'avbd-cables';
 import { ThreadedSim } from './threadedSim';
 import { CABLE_R, CONNECTOR, Rack, SEG, insideBox, type Item, type ItemKind } from './rack';
 import { SERVICES, type FibreType, type LevelDef } from './levels';
@@ -88,6 +88,11 @@ export class World {
   bend: number;
 
   /** patch cords are springy: copper about twice as stiff as a fibre jumper */
+  /** a patch cord of this type through these nodes, for the solver */
+  private cord(type: FibreType, points: number[]): CableInit {
+    return { ...CABLES.patchCord.cable, points, radius: this.radius, bend: this.stiffness(type) };
+  }
+
   stiffness(type: FibreType): number {
     return this.bend || (type === 'CU' ? 12 : 6);
   }
@@ -120,7 +125,7 @@ export class World {
     // the solver settings were tuned at these substep counts (see `refSubsteps`)
     const big = level.cables >= 20;
     this.sim = new ThreadedSim(big ? { substeps: 2, refSubsteps: 2, iterations: 5 } : { substeps: 3, refSubsteps: 3, iterations: 6 });
-    const at = this.sim.build(this.starts.map((s) => ({ points: s.points, radius: this.radius, bend: this.stiffness(s.type) })));
+    const at = this.sim.build(this.starts.map((s) => this.cord(s.type, s.points)));
     this.starts.forEach((s, c) => {
       this.cables.push({
         type: s.type,
@@ -327,9 +332,9 @@ export class World {
     const threaded = old.threaded;
     const defs = this.cables.map((cb, k) => {
       const points = replace.get(k) ?? Array.from(old.x.subarray(3 * cb.start, 3 * (cb.start + cb.count)));
-      return { points, radius: this.radius, bend: this.stiffness(cb.type) };
+      return this.cord(cb.type, points);
     });
-    for (const a of append) defs.push({ points: a.points, radius: this.radius, bend: this.stiffness(a.type) });
+    for (const a of append) defs.push(this.cord(a.type, a.points));
     const rests = this.cables.map((cb) => Array.from(old.rest.subarray(cb.start, cb.start + cb.count)));
     for (const a of append) rests.push(a.rests);
     const kept = this.cables.map((cb, k) => ({

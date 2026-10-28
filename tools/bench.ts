@@ -1,10 +1,12 @@
 // Headless checks of the cable solver: run with
 declare const process: { env: Record<string, string | undefined> };
 //   npx esbuild tools/bench.ts --bundle --platform=node --format=esm --outfile=/tmp/bench.mjs && node /tmp/bench.mjs
-import { CableSim, closest, segSeg, type CableInit, type StaticShape } from 'avbd-cables';
+import { CABLES, CableSim, closest, segSeg, type CableInit, type StaticShape } from 'avbd-cables';
 
 const SEG = 0.025;
-const R = 0.0022;
+/** patch cords, connectors at both ends */
+const PATCH = CABLES.patchCord.cable;
+const R = PATCH.radius;
 
 function line(ax: number, ay: number, az: number, bx: number, by: number, bz: number, len: number): number[] {
   const n = Math.max(2, Math.round(len / SEG) + 1);
@@ -73,7 +75,7 @@ function maxSpeed(sim: CableSim): number {
 {
   const sim = new CableSim();
   const pts = line(-0.3, 0.5, 0.05, 0.3, 0.5, 0.05, 1.0);
-  sim.build([{ points: pts, radius: R }]);
+  sim.build([{ points: pts, ...PATCH }]);
   const last = sim.n - 1;
   sim.pin(0, pts[0], pts[1], pts[2]);
   sim.pin(last, pts[3 * last], pts[3 * last + 1], pts[3 * last + 2]);
@@ -94,7 +96,7 @@ for (const [label, params] of variants) {
     const y = 0.3 + c * 0.012;
     const z = 0.02 + ((c * 7) % 10) * 0.009;
     const a = (c % 2 ? 1 : -1) * 0.05;
-    defs.push({ points: line(-0.4, y + a, z, 0.4, y - a, z + 0.01, 1.3), radius: R });
+    defs.push({ points: line(-0.4, y + a, z, 0.4, y - a, z + 0.01, 1.3), ...PATCH });
   }
   sim.build(defs);
   const statics: StaticShape[] = [
@@ -147,7 +149,7 @@ for (const [label, params] of variants) {
       acc += Math.hypot(fine[k][0] - fine[k - 1][0], fine[k][1] - fine[k - 1][1], fine[k][2] - fine[k - 1][2]);
       if (acc >= SEG) { pts.push(...fine[k]); acc = 0; }
     }
-    defs.push({ points: pts, radius: R });
+    defs.push({ points: pts, ...PATCH });
   }
   const sim = new CableSim();
   const starts = sim.build(defs);
