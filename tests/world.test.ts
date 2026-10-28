@@ -1,10 +1,10 @@
 // The rules of a cabinet: plugging, the maintenance window, the score.
 import { describe, it, expect, beforeEach } from 'vitest';
 import { HOLD, World } from '../src/game/world';
-import { LEVELS, type LevelDef } from '../src/game/levels';
+import { LEVELS, SERVICES, type LevelDef } from '../src/game/levels';
 import { planRoute, RouteRun } from '../src/game/route';
 
-// level 1, every cord on its planned ports: four copper cords, at most one production link cut
+// level 1, every cord on its planned ports: four copper cords, all in production
 const L1: LevelDef = { ...LEVELS[0], wrong: 0, loose: 0 };
 
 describe('a cabinet at the start', () => {
@@ -44,11 +44,29 @@ describe('plugging and the maintenance window', () => {
     expect(w.evaluate().stars).toBe(0);
   });
 
-  it('no more production links cut at once than the window allows', () => {
-    expect(w.canUnplug(1)).toBe(true);
+  it('every second a production link is cut costs its service\'s weight', () => {
+    const weight = SERVICES[w.circuits[0].service].weight;
+    w.tickDowntime(2);
+    expect(w.downtime).toBe(0);
     w.unplug(0, 0);
-    expect(w.canUnplug(1)).toBe(false); // a second cut: over the limit of 1
-    expect(w.canUnplug(0)).toBe(true); // its own line is already down
+    w.tickDowntime(2);
+    expect(w.downtime).toBeCloseTo(2 * weight);
+    expect(w.evaluate().downtime).toBeCloseTo(2 * weight);
+  });
+
+  it('a bypass carries its link while it is cut, and comes back once it is restored', () => {
+    const v = new World({ ...L1, bypass: 1 });
+    const port = v.cables[0].ends[0].port!;
+    expect(v.toggleBypass(0)).toBe(true);
+    expect(v.inventory.bypass).toBe(0);
+    expect(v.toggleBypass(1)).toBe(false); // none left
+    v.unplug(0, 0);
+    v.tickDowntime(5);
+    expect(v.downtime).toBe(0);
+    v.plug(0, 0, port);
+    expect(v.tickDowntime(0.1)).toEqual([0]);
+    expect(v.inventory.bypass).toBe(1);
+    expect(v.bypassed.size).toBe(0);
   });
 
   it('plugged back, the line works again', () => {
@@ -56,7 +74,7 @@ describe('plugging and the maintenance window', () => {
     w.unplug(0, 0);
     expect(w.plug(0, 0, port)).toBe(true);
     expect(w.circuitUp(0)).toBe(true);
-    expect(w.canUnplug(1)).toBe(true);
+    expect(w.liveDown()).toBe(0);
   });
 
   it('a port takes one connector', () => {
@@ -67,7 +85,7 @@ describe('plugging and the maintenance window', () => {
   });
 
   it('a cord of the wrong type does not make a line', () => {
-    const lv: LevelDef = { ...L1, maxCuts: undefined };
+    const lv: LevelDef = { ...L1 };
     const v = new World(lv);
     v.cables[0].type = 'OS2';
     expect(v.circuitUp(0)).toBe(false);
@@ -76,13 +94,49 @@ describe('plugging and the maintenance window', () => {
 });
 
 describe('labels, straps and cord lengths', () => {
-  it('a line is labelled when both ends carry its service colour', () => {
+  it('a cord plugged as planned takes the label of its service, at both ends', () => {
     const w = new World({ ...L1, labels: true });
     const svc = w.circuits[0].service;
-    w.cables[0].ends[0].label = svc;
+    for (const e of w.cables[0].ends) e.label = null;
     expect(w.evaluate().circuits[0].labelled).toBe(false);
-    w.cables[0].ends[1].label = svc;
+    const port = w.cables[0].ends[1].port!;
+    w.unplug(0, 1);
+    w.plug(0, 1, port);
+    expect(w.cables[0].ends.map((e) => e.label)).toEqual([svc, svc]);
     expect(w.evaluate().circuits[0].labelled).toBe(true);
+  });
+
+  it('new cords come out of a stock counted by length', () => {
+    const w = new World({ ...L1, cords: [[1, 1]] });
+    expect(w.takeCord('CU', 1)).toBe(L1.cables);
+    expect(w.takeCord('CU', 1)).toBe(-1);
+    expect(w.takeCord('CU', 2)).toBe(-1);
+    expect(w.cables).toHaveLength(L1.cables + 1);
+  });
+
+  it('a cord cut to the shortest that joins its ports is taut, one cut to its tidy route is not', () => {
+    const w = new World({ ...LEVELS[2], wrong: 0, loose: 0 });
+    // a cord whose ports are far apart across the cabinet: the tidy route takes it to the side
+    const c = w.cables.findIndex((_, k) => w.minCableLength(k) < 0.65 * w.routeLength(k)!);
+    expect(c).toBeGreaterThanOrEqual(0);
+    w.setCableLength(c, w.minCableLength(c) + 0.01);
+    expect(w.strain(c)).toBe('tendu');
+    expect(w.evaluate().cableStrain[c]).toBe('tendu');
+    w.setCableLength(c, w.tidyLength(c)!);
+    expect(w.strain(c)).toBeNull();
+  });
+
+  it('a connector let go in the air stays hooked there, and undo puts it back', () => {
+    const w = new World(L1);
+    w.unplug(0, 0);
+    const s = w.snapshot();
+    w.park(0, 0, [[0.1, 0.5, 0.1], [0.1, 0.525, 0.1]]);
+    // carried there along a stroke, as into a port, then held
+    for (let f = 0; f < 90; f++) w.sim.step();
+    const [n0] = w.endNodes(0, 0);
+    expect(w.sim.x[3 * n0 + 1]).toBeCloseTo(0.5, 3);
+    w.restore(s);
+    expect(w.cables[0].ends[0].parked).toBeNull();
   });
 
   it('a strap needs two cords within reach, and goes back to the stock', () => {
@@ -115,7 +169,7 @@ describe('labels, straps and cord lengths', () => {
   });
 
   it('a cord dropped in the crate is unplugged, and a new one arrives there', () => {
-    const w = new World({ ...L1, maxCuts: undefined });
+    const w = new World(L1);
     w.depositCable(2);
     expect(w.cables[2].ends.every((e) => e.port === null)).toBe(true);
     const c = w.addCable('CU', 1);

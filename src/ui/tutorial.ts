@@ -176,9 +176,8 @@ const STEPS: Step[] = [
   },
   {
     title: 'Le bon cordon',
-    text: 'Un rangement parfait passe par des cordons <b>à la bonne longueur</b> : trop longs, ils font du mou partout. Outil Longueur (touche 7) : cliquez un cordon et choisissez une longueur du catalogue (15 cm à 5 m), ou ajustez de 5 cm. <b>Ajuster au rangement</b> propose la longueur de sa route par les guide-câbles et goulottes. Il est remplacé sans être débranché.',
-    task: 'Changez la longueur d\'un cordon',
-    tool: 'length',
+    text: 'Un rangement parfait passe par des cordons <b>à la bonne longueur</b> : trop longs, ils font du mou partout ; trop courts, ils sont <b>tendus</b> et ne valent pas ★★★. Le <b>Stock</b> (touche 0) fournit des cordons neufs, en nombre limité par longueur : ils arrivent dans le bac. Pour remplacer un cordon branché, il faut le débrancher, et donc couper sa liaison le temps de changer.',
+    task: 'Prenez un cordon neuf au Stock',
     done: (c) => c.world.cablesVersion > 0,
   },
   {

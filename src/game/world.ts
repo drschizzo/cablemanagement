@@ -12,6 +12,8 @@ import { pathToNodes, polyLength, resample, tidyRoutes, type V3 } from './tidy';
 export interface CableEnd {
   port: string | null;
   label: number | null;
+  /** a free connector hooked where it was let go (connector node, the next one), or null */
+  parked?: [V3, V3] | null;
 }
 
 export interface Cable {
@@ -34,6 +36,14 @@ export interface CircuitStatus {
   routed: boolean;
   clear: boolean;
   labelled: boolean;
+  /** neither pulled taut nor kinked */
+  relaxed: boolean;
+}
+
+/** how readable the cabinet is, beyond the stars: each part 0..1, the note 0..100 */
+export interface Readability {
+  note: number;
+  parts: { name: string; value: number; tip: string }[];
 }
 
 export interface Evaluation {
@@ -47,13 +57,30 @@ export interface Evaluation {
   /** per cable: tidy route, obstructs a port */
   cableRouted: boolean[];
   cableObstructs: boolean[];
-  /** production links cut now, and the most allowed at once */
+  /** production links cut now; downtime spent so far and the budget (Infinity: none) */
   liveDown: number;
-  maxCuts?: number;
+  downtime: number;
+  budget: number;
+  /** cords pulled taut ('tendu') or kinked ('plié'), per cable (null: neither) */
+  cableStrain: (Strain | null)[];
+  relaxed: number;
+  readability: Readability;
   /** velcro bundles (three cords or more, in the management), and how many three stars need */
   bundles: number;
   bundlesNeeded: number;
 }
+
+export type Strain = 'tendu' | 'plié';
+
+/**
+ * A cord this much shorter than the tidy route between its ports is pulled
+ * taut: it cuts the corners the managers and ducts make it turn. (The route
+ * is the outermost lane's; the inner lanes are up to a fifth shorter. A cord
+ * straight from one port to the one right under it is no taut cord.)
+ */
+const TAUT_SHORT = 0.7;
+/** a fibre turning this much (rad) over two segments is kinked */
+const KINK = 1.9;
 
 /** how a node of a cord is held (World.holdMap) */
 export const HOLD = { FREE: 0, HELD: 1, HANGING: 2, LOW: 3 } as const;
@@ -65,7 +92,7 @@ export interface Snapshot {
   ends: CableEnd[][];
 }
 
-export type Inventory = Record<ItemKind | 'velcro', number>;
+export type Inventory = Record<ItemKind | 'velcro' | 'bypass', number>;
 
 export class World {
   level: LevelDef;
@@ -139,7 +166,9 @@ export class World {
       }
     });
     this.sim.setStatics(this.rack.statics());
-    this.inventory = { hmgr: 0, duct: 0, vring: 0, velcro: 0, ...level.inventory };
+    this.inventory = { hmgr: 0, duct: 0, vring: 0, velcro: 0, ...level.inventory, bypass: level.bypass ?? 0 };
+    this.cordStock = new Map(level.cords ?? []);
+    this.budget = level.downtime ?? Infinity;
     // what works at the start is in production
     this.circuits.forEach((_, i) => { if (this.circuitUp(i)) this.live.add(i); });
   }
@@ -163,17 +192,49 @@ export class World {
     return n;
   }
 
-  /** may this cord be unplugged without cutting more production links than allowed? */
-  canUnplug(c: number): boolean {
-    const max = this.level.maxCuts;
-    if (max === undefined) return true;
-    let cuts = 0;
+  /** downtime spent: every second a production link is cut costs its service's weight */
+  downtime = 0;
+  budget: number;
+  /** production links on a bypass (the traffic takes a temporary path), and whether they were cut since */
+  bypassed = new Map<number, { cut: boolean }>();
+
+  /**
+   * Time passes with production links cut: the downtime grows. A bypass
+   * carries its link meanwhile, and comes back to the stock once the link is
+   * restored. Returns the links whose bypass just came back.
+   */
+  tickDowntime(dt: number): number[] {
+    const back: number[] = [];
     for (const i of this.live) {
-      if (!this.circuitUp(i)) continue;
-      const ci = this.circuits[i];
-      if (this.rack.port(ci.a).plug >> 1 === c) cuts++;
+      const up = this.circuitUp(i), by = this.bypassed.get(i);
+      if (by) {
+        if (!up) by.cut = true;
+        else if (by.cut) {
+          this.bypassed.delete(i);
+          this.inventory.bypass++;
+          back.push(i);
+        }
+      } else if (!up) this.downtime += dt * SERVICES[this.circuits[i].service].weight;
     }
-    return cuts === 0 || this.liveDown() + cuts <= max;
+    return back;
+  }
+
+  /** puts a bypass on a production link, or takes it off; false when there is none left or it is no production link */
+  toggleBypass(i: number): boolean {
+    if (this.bypassed.has(i)) {
+      this.bypassed.delete(i);
+      this.inventory.bypass++;
+      return true;
+    }
+    if (!this.live.has(i) || this.inventory.bypass <= 0) return false;
+    this.bypassed.set(i, { cut: !this.circuitUp(i) });
+    this.inventory.bypass--;
+    return true;
+  }
+
+  /** what a second of this link cut costs now (0: not in production, or on a bypass) */
+  cutCost(i: number): number {
+    return this.live.has(i) && !this.bypassed.has(i) ? SERVICES[this.circuits[i].service].weight : 0;
   }
 
   /** bumps when the cords are rebuilt (a cord swapped for another length) */
@@ -248,12 +309,40 @@ export class World {
    * up to 5 cm with a little play (null: it is not plugged at both ends).
    */
   tidyLength(c: number): number | null {
+    const L = this.routeLength(c);
+    return L === null ? null : Math.ceil((L + 0.03) / 0.05) * 0.05;
+  }
+
+  /** length of the tidy route between the two ports a cord is plugged into (null: not plugged at both ends) */
+  routeLength(c: number): number | null {
     const [pa, pb] = this.cables[c].ends.map((e) => e.port);
     if (!pa || !pb) return null;
     // the route starts from the upper port
     const [a, b] = this.rack.port(pa).unit <= this.rack.port(pb).unit ? [pa, pb] : [pb, pa];
-    const route = tidyRoutes(this.rack, [{ a, b, type: this.cables[c].type, service: 0 }], this.radius, this.seg)[0];
-    return Math.ceil((polyLength(route) + 0.03) / 0.05) * 0.05;
+    return polyLength(tidyRoutes(this.rack, [{ a, b, type: this.cables[c].type, service: 0 }], this.radius, this.seg)[0]);
+  }
+
+  /**
+   * A cord plugged at both ends pulled taut (much shorter than its tidy
+   * route), or a fibre kinked away from
+   * its connectors; null when neither.
+   */
+  strain(c: number): Strain | null {
+    const cb = this.cables[c];
+    if (!cb.ends[0].port || !cb.ends[1].port) return null;
+    if (this.cableLength(c) < TAUT_SHORT * this.routeLength(c)!) return 'tendu';
+    const x = this.sim.x;
+    if (cb.type === 'CU') return null;
+    // away from the boots (where the cord turns sharply on purpose), over two segments either side
+    const near = Math.ceil(0.15 / this.seg);
+    for (let k = near; k < cb.count - near; k++) {
+      const i = cb.start + k;
+      const ux = x[3 * i] - x[3 * i - 6], uy = x[3 * i + 1] - x[3 * i - 5], uz = x[3 * i + 2] - x[3 * i - 4];
+      const vx = x[3 * i + 6] - x[3 * i], vy = x[3 * i + 7] - x[3 * i + 1], vz = x[3 * i + 8] - x[3 * i + 2];
+      const cos = (ux * vx + uy * vy + uz * vz) / (Math.hypot(ux, uy, uz) * Math.hypot(vx, vy, vz) || 1);
+      if (Math.acos(Math.max(-1, Math.min(1, cos))) > KINK) return 'plié';
+    }
+    return null;
   }
 
   // ------------------------------------------------------- undo
@@ -271,12 +360,16 @@ export class World {
   /** puts a snapshot back; false when the cords have been rebuilt since (another length, a new cord) */
   restore(s: Snapshot): boolean {
     if (s.version !== this.cablesVersion || s.ends.length !== this.cables.length) return false;
-    this.cables.forEach((cb, c) => cb.ends.forEach((e, k) => { if (e.port !== s.ends[c][k].port) this.unplug(c, k); }));
+    this.cables.forEach((cb, c) => cb.ends.forEach((e, k) => {
+      if (e.port !== s.ends[c][k].port) this.unplug(c, k);
+      this.unpark(c, k);
+    }));
     this.sim.teleport(s.x);
     this.sim.loadPinches(s.pinches);
     this.cables.forEach((cb, c) => cb.ends.forEach((e, k) => {
       const want = s.ends[c][k];
       if (want.port && e.port !== want.port) this.plug(c, k, want.port);
+      else if (!want.port && want.parked) this.park(c, k, want.parked);
       e.label = want.label;
     }));
     return true;
@@ -307,14 +400,25 @@ export class World {
 
   /** unplugs a cord, coils it and throws it in the crate (its straps come off) */
   depositCable(c: number): void {
-    for (const e of [0, 1]) this.unplug(c, e);
+    for (const e of [0, 1]) { this.unplug(c, e); this.unpark(c, e); }
     const cb = this.cables[c];
     for (const st of [...this.straps]) if (st.nodes.some((i) => i >= cb.start && i < cb.start + cb.count)) this.removeStrap(st);
     const rests = Array.from(this.sim.rest.subarray(cb.start, cb.start + cb.count - 1));
     this.sim.moveNodes(cb.start, this.coil(rests));
   }
 
-  /** a new cord from the stock, dropped in the crate */
+  /** new cords left in the stock, by length (m) */
+  cordStock: Map<number, number>;
+
+  /** takes a new cord of that length out of the stock, into the crate; −1 when there is none left */
+  takeCord(type: FibreType, length: number, color?: string): number {
+    const left = this.cordStock.get(length) ?? 0;
+    if (left <= 0) return -1;
+    this.cordStock.set(length, left - 1);
+    return this.addCable(type, length, color);
+  }
+
+  /** a new cord, dropped in the crate */
   addCable(type: FibreType, length: number, color?: string): number {
     const n = Math.max(3, Math.round(length / this.seg));
     const rests = new Array(n).fill(length / n);
@@ -364,8 +468,9 @@ export class World {
       cb.start = at[k];
       cb.count = defs[k].points.length / 3;
       if (!replace.has(k)) for (let j = 0; j < cb.count - 1; j++) this.sim.rest[cb.start + j] = rests[k][j];
-      cb.ends.forEach((e) => { e.port = null; });
-      ends[k].forEach((port, e) => { if (port) this.plug(k, e, port); });
+      const parked = cb.ends.map((e) => e.parked);
+      cb.ends.forEach((e) => { e.port = null; e.parked = null; });
+      ends[k].forEach((port, e) => { if (port) this.plug(k, e, port); else if (parked[e]) this.park(k, e, parked[e]!); });
     });
     this.sim.setStatics(this.rack.statics());
     kept.forEach((s, k) => {
@@ -444,10 +549,42 @@ export class World {
     const end = this.cables[c].ends[e];
     if (end.port) this.unplug(c, e);
     const [n0, n1] = this.endNodes(c, e);
+    end.parked = null;
     this.sim.pinEnd(n0, n1, [port.x, port.y, CONNECTOR], [port.x, port.y, CONNECTOR + this.seg]);
     port.plug = c * 2 + e;
     end.port = portId;
+    this.autoLabel(c);
     return true;
+  }
+
+  /** a cord plugged on both ports of a line of the schedule takes its service's label, at both ends */
+  private autoLabel(c: number): void {
+    const cb = this.cables[c];
+    const [pa, pb] = cb.ends.map((e) => e.port);
+    if (!this.level.labels || !pa || !pb) return;
+    const ci = this.circuits.find((q) => q.type === cb.type && ((q.a === pa && q.b === pb) || (q.a === pb && q.b === pa)));
+    if (ci) for (const e of cb.ends) e.label = ci.service;
+  }
+
+  /** a free connector let go in the air: it stays hooked there until taken again */
+  park(c: number, e: number, at?: [V3, V3]): void {
+    const end = this.cables[c].ends[e];
+    if (end.port) return;
+    const [n0, n1] = this.endNodes(c, e);
+    const x = this.sim.x;
+    const p = at ?? [[x[3 * n0], x[3 * n0 + 1], x[3 * n0 + 2]], [x[3 * n1], x[3 * n1 + 1], x[3 * n1 + 2]]];
+    end.parked = p;
+    this.sim.pinEnd(n0, n1, p[0], p[1]);
+  }
+
+  /** a hooked connector is taken again */
+  unpark(c: number, e: number): void {
+    const end = this.cables[c].ends[e];
+    if (!end.parked) return;
+    end.parked = null;
+    const [n0, n1] = this.endNodes(c, e);
+    this.sim.unpin(n0);
+    this.sim.unpin(n1);
   }
 
   unplug(c: number, e: number): void {
@@ -616,6 +753,7 @@ export class World {
       cableObstructs.push(obstructs);
     }
 
+    const cableStrain = this.cables.map((_, c) => this.strain(c));
     const circuits: CircuitStatus[] = this.circuits.map((ci) => {
       let cable = -1;
       const pa = this.rack.port(ci.a).plug, pb = this.rack.port(ci.b).plug;
@@ -624,7 +762,8 @@ export class World {
       const routed = connected && cableRouted[cable];
       const clear = connected && !cableObstructs[cable];
       const labelled = connected && this.cables[cable].ends.every((e) => e.label === ci.service);
-      return { cable, connected, routed, clear, labelled };
+      const relaxed = connected && !cableStrain[cable];
+      return { cable, connected, routed, clear, labelled, relaxed };
     });
     const n = circuits.length;
     const count = (f: (s: CircuitStatus) => boolean) => circuits.filter(f).length;
@@ -632,15 +771,117 @@ export class World {
     const routed = count((s) => s.routed);
     const clear = count((s) => s.clear);
     const labelled = this.level.labels ? count((s) => s.labelled) : n;
+    const relaxed = count((s) => s.relaxed);
     const bundles = this.bundleCount(supports);
     const bundlesNeeded = this.level.bundles ?? 0;
     let stars = 0;
     if (connected === n) {
       stars = 1;
       if (routed >= 0.7 * n && clear >= 0.85 * n) stars = 2;
-      if (routed === n && clear === n && labelled === n && bundles >= bundlesNeeded) stars = 3;
+      // past the downtime budget, an incident: three stars are out of reach
+      if (routed === n && clear === n && labelled === n && relaxed === n && bundles >= bundlesNeeded && this.downtime <= this.budget) stars = 3;
     }
-    return { circuits, connected, routed, clear, labelled, total: n, stars, cableRouted, cableObstructs, liveDown: this.liveDown(), maxCuts: this.level.maxCuts, bundles, bundlesNeeded };
+    return {
+      circuits, connected, routed, clear, labelled, relaxed, total: n, stars, cableRouted, cableObstructs, cableStrain,
+      liveDown: this.liveDown(), downtime: this.downtime, budget: this.budget, bundles, bundlesNeeded,
+      readability: this.readability(circuits, cableStrain, supports),
+    };
+  }
+
+  /**
+   * What a technician coming after you would think of the cabinet, beyond
+   * the stars: cords with just the slack they need, of their service's
+   * colour, bundles of one service, fibre and copper apart, no cords crossing
+   * in front of the cabinet.
+   */
+  private readability(circuits: CircuitStatus[], strain: (Strain | null)[], supports: ReturnType<Rack['supports']>): Readability {
+    const parts: Readability['parts'] = [];
+    const made = circuits.map((s, i) => ({ s, i })).filter(({ s }) => s.connected);
+    // the slack: none pulled taut or kinked, and no more than half a metre beyond the route
+    if (made.length) {
+      let sum = 0;
+      for (const { s } of made) {
+        if (strain[s.cable]) continue;
+        const extra = this.cableLength(s.cable) - this.routeLength(s.cable)!;
+        sum += Math.max(0, Math.min(1, 1 - (extra - 0.5)));
+      }
+      parts.push({ name: 'Le mou juste', value: sum / made.length, tip: 'ni tendu ni plié, et pas plus de 50 cm de trop' });
+    }
+    // copper cords of the colour of their service
+    if (this.level.colorByService) {
+      const cu = made.filter(({ s }) => this.cables[s.cable].type === 'CU');
+      if (cu.length) {
+        const ok = cu.filter(({ s, i }) => this.cables[s.cable].color === SERVICES[this.circuits[i].service].color).length;
+        parts.push({ name: 'Couleurs', value: ok / cu.length, tip: 'chaque cordon cuivre de la couleur de son service' });
+      }
+    }
+    // bundles of one service
+    const serviceOf = new Map<number, number>();
+    circuits.forEach((s, i) => { if (s.connected) serviceOf.set(s.cable, this.circuits[i].service); });
+    const straps = this.straps.filter((st) => st.nodes.length >= 2);
+    if (straps.length) {
+      const pure = straps.filter((st) => new Set(st.nodes.map((i) => serviceOf.get(this.sim.cableOf[i]) ?? -1)).size === 1).length;
+      parts.push({ name: 'Faisceaux', value: pure / straps.length, tip: 'un seul service par velcro' });
+    }
+    // fibre and copper in separate ducts and managers
+    const x = this.sim.x;
+    if (new Set(this.cables.map((cb) => cb.type === 'CU')).size > 1) {
+      let used = 0, mixed = 0;
+      for (const sp of supports) {
+        const kinds = new Set<boolean>();
+        this.cables.forEach((cb) => {
+          for (let k = 4; k < cb.count - 4; k += 2) {
+            const i = cb.start + k;
+            if (insideBox(sp, x[3 * i], x[3 * i + 1], x[3 * i + 2])) { kinds.add(cb.type === 'CU'); break; }
+          }
+        });
+        if (kinds.size) used++;
+        if (kinds.size > 1) mixed++;
+      }
+      if (used) parts.push({ name: 'Fibre et cuivre', value: 1 - mixed / used, tip: 'la fibre et le cuivre dans des supports séparés' });
+    }
+    // cords crossing each other in front of the cabinet, out of every support
+    const crossings = this.crossings(supports);
+    parts.push({ name: 'Croisements', value: Math.max(0, 1 - crossings / Math.max(4, this.cables.length)), tip: `${crossings} croisement${crossings > 1 ? 's' : ''} hors des supports` });
+    const note = Math.round((100 * parts.reduce((a, p) => a + p.value, 0)) / parts.length);
+    return { note, parts };
+  }
+
+  /** pairs of cord segments crossing seen from the front, where neither is in a support */
+  private crossings(supports: ReturnType<Rack['supports']>): number {
+    const x = this.sim.x;
+    const segs: { c: number; ax: number; ay: number; bx: number; by: number }[] = [];
+    this.cables.forEach((cb, c) => {
+      if (!cb.ends[0].port && !cb.ends[1].port) return;
+      for (let k = 0; k < cb.count - 1; k++) {
+        const i = cb.start + k;
+        if (x[3 * i + 2] > 0.3) continue;
+        if (supports.some((s) => insideBox(s, x[3 * i], x[3 * i + 1], x[3 * i + 2]))) continue;
+        segs.push({ c, ax: x[3 * i], ay: x[3 * i + 1], bx: x[3 * i + 3], by: x[3 * i + 4] });
+      }
+    });
+    // a grid of 5 cm cells, each pair tested once
+    const cell = 0.05, grid = new Map<string, number[]>();
+    segs.forEach((s, j) => {
+      const key = `${Math.floor((s.ax + s.bx) / 2 / cell)},${Math.floor((s.ay + s.by) / 2 / cell)}`;
+      (grid.get(key) ?? grid.set(key, []).get(key)!).push(j);
+    });
+    const pairs = new Set<string>();
+    for (const [key, list] of grid) {
+      const [gx, gy] = key.split(',').map(Number);
+      const near: number[] = [];
+      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) near.push(...(grid.get(`${gx + dx},${gy + dy}`) ?? []));
+      for (const j of list) {
+        for (const k of near) {
+          if (k <= j) continue;
+          const p = segs[j], q = segs[k];
+          if (p.c === q.c) continue;
+          const key2 = p.c < q.c ? `${p.c}:${q.c}` : `${q.c}:${p.c}`;
+          if (!pairs.has(key2) && cross(p, q)) pairs.add(key2);
+        }
+      }
+    }
+    return pairs.size;
   }
 
   /** straps round three cords or more, lying in a manager or a duct */
@@ -651,6 +892,13 @@ export class World {
       return supports.some((s) => insideBox(s, x, y, z));
     }).length;
   }
+}
+
+/** do two segments of the front view cross? */
+function cross(p: { ax: number; ay: number; bx: number; by: number }, q: { ax: number; ay: number; bx: number; by: number }): boolean {
+  const o = (ax: number, ay: number, bx: number, by: number, cx: number, cy: number) => Math.sign((bx - ax) * (cy - ay) - (by - ay) * (cx - ax));
+  return o(p.ax, p.ay, p.bx, p.by, q.ax, q.ay) * o(p.ax, p.ay, p.bx, p.by, q.bx, q.by) < 0
+    && o(q.ax, q.ay, q.bx, q.by, p.ax, p.ay) * o(q.ax, q.ay, q.bx, q.by, p.bx, p.by) < 0;
 }
 
 function dist3(a: V3, b: V3): number {

@@ -1,5 +1,6 @@
 import type { Controller, Tool } from '../game/controller';
-import { FIBRE_NAMES, LEVELS, SERVICES, UNLOCK_STARS, type LevelDef } from '../game/levels';
+import { CATALOGUE, FIBRE_NAMES, LEVELS, SERVICES, UNLOCK_STARS, type LevelDef } from '../game/levels';
+import { fmtCost } from '../game/controller';
 import type { Evaluation } from '../game/world';
 import { FIBRE_COLORS } from '../render/cableView';
 import { isMuted, setMuted, sfx } from '../audio/sfx';
@@ -15,13 +16,10 @@ const TOOLS: { tool: Tool; key: string; name: string; icon: string; stock?: 'hmg
   { tool: 'vring', key: '4', name: 'Anneau', icon: iconRing(), stock: 'vring', help: 'Anneau de passage vertical dans un couloir latéral.' },
   { tool: 'velcro', key: '5', name: 'Velcro', icon: iconVelcro(), stock: 'velcro', help: 'Cliquez sur des câbles qui se touchent pour les attacher en faisceau. Cliquez sur un velcro pour l\'enlever.' },
   { tool: 'label', key: '6', name: 'Étiquette', icon: iconLabel(), help: 'Auto : cliquez un cordon branché sur sa liaison, ses deux bouts prennent la couleur de son service. Ou choisissez une couleur et cliquez près d\'un connecteur (re-cliquez pour l\'enlever).' },
-  { tool: 'length', key: '7', name: 'Longueur', icon: iconRuler(), help: 'Cliquez sur un cordon pour le remplacer par un cordon d\'une autre longueur, sans le débrancher.' },
   { tool: 'trace', key: '8', name: 'Traceur', icon: iconTrace(), help: 'Cliquez sur un câble : il clignote en rouge et ses deux ports s\'entourent, pour savoir où il va vraiment.' },
   { tool: 'deposit', key: '9', name: 'Déposer', icon: iconBin(), help: 'Cliquez sur un câble : il est débranché, enroulé et jeté dans le bac au sol. Reprenez-le à la main quand vous voulez.' },
 ];
 
-/** standard patch cord lengths (m) */
-const CATALOGUE = [0.15, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 5];
 const fmtLen = (m: number) => (m < 1 ? `${Math.round(m * 100)} cm` : `${m.toFixed(m % 1 ? 2 : 0).replace('.', ',')} m`);
 
 export class Hud {
@@ -67,9 +65,13 @@ export class Hud {
     $('#brief-title').textContent = level.title;
     $('#brief-text').textContent = level.brief;
     const tips = [...(level.tips ?? [])];
-    if (level.labels) tips.push('Étiquettes obligatoires : la couleur du service, aux deux extrémités de chaque liaison (l\'étiquette Auto le fait en un clic sur un cordon bien branché).');
     if (level.par) tips.push(`<b>Défi chrono</b> : ★★★ en moins de ${fmtTime(level.par)}.`);
-    if (level.maxCuts !== undefined) tips.unshift(`<b>Fenêtre de maintenance</b> : les liaisons ⚡ sont en production. Au plus ${level.maxCuts} coupée${level.maxCuts > 1 ? 's' : ''} en même temps : recâblez-les une par une.`);
+    tips.push('<b>Ni tendu ni plié</b> : un cordon bien plus court que son chemin rangé, ou une fibre pliée en angle vif, ne vaut pas ★★★.');
+    if (level.downtime !== undefined) {
+      const used = [...new Set(this.ctl?.world.circuits.map((c) => c.service) ?? [])].sort((a, b) => SERVICES[b].weight - SERVICES[a].weight);
+      tips.unshift(`<b>Fenêtre de maintenance</b> : les liaisons ⚡ sont en production. Chaque seconde où l'une est coupée coûte le poids de son service sur un budget de <b>${level.downtime} pts</b> : ${used.map((i) => `<span class="svc-chip" style="--c:${SERVICES[i].color}" title="${SERVICES[i].what}">${SERVICES[i].name} ×${fmtCost(SERVICES[i].weight).replace(/ pts?/, '')}</span>`).join(' ')}. Budget dépassé : incident, plus de ★★★.`
+        + (level.bypass ? ` Vous avez <b>${level.bypass} dérivation${level.bypass > 1 ? 's' : ''}</b> : posée sur une liaison (cliquez son ⚡ dans le plan), elle porte son trafic pendant qu'on la recâble.` : ''));
+    }
     tips.push('Les voyants des ports : vert = liaison conforme au plan, orange = mauvais port.');
     $('#brief-tips').innerHTML = tips.map((t) => `<li>${t}</li>`).join('');
     const inv = level.inventory;
@@ -77,6 +79,8 @@ export class Hud {
       inv.hmgr ? `${inv.hmgr} guide-câbles` : '', inv.duct ? `${inv.duct} goulottes` : '',
       inv.vring ? `${inv.vring} anneaux` : '', inv.velcro ? `${inv.velcro} velcros` : '',
     ].filter(Boolean);
+    const cords = (level.cords ?? []).map(([L, n]) => `${n} × ${fmtLen(L)}`);
+    if (cords.length) parts.push(`cordons neufs : ${cords.join(', ')}`);
     $('#brief-inv').textContent = parts.length ? `Matériel : ${parts.join(', ')}.` : '';
     // the clock waits for the player to read
     if (this.ctl) this.ctl.running = false;
@@ -121,33 +125,11 @@ export class Hud {
     bar.appendChild(stock);
     // menus close on a click elsewhere
     window.addEventListener('pointerdown', (e) => {
-      for (const id of ['length-menu', 'stock-menu']) {
+      for (const id of ['stock-menu']) {
         const m = document.getElementById(id);
         if (m && m.classList.contains('on') && !m.contains(e.target as Node) && !(e.target as HTMLElement).closest('.stock')) m.classList.remove('on');
       }
     }, true);
-  }
-
-  /** the cord catalogue, for the cord picked with the length tool */
-  showLengthMenu(c: number, x: number, y: number): void {
-    const ctl = this.ctl;
-    if (!ctl) return;
-    const cur = ctl.world.cableLength(c), min = ctl.world.minCableLength(c);
-    const fit = ctl.world.tidyLength(c);
-    const m = $('#length-menu');
-    m.innerHTML = `<div class="h">Cordon actuel : <b>${fmtLen(cur)}</b><span>minimum pour relier ses deux bouts : ${fmtLen(min)}</span></div>
-      ${fit !== null && fit >= min ? `<button class="fit" data-l="${fit}" title="La longueur de sa route rangée, par les guide-câbles et les goulottes posés">Ajuster au rangement : <b>${fmtLen(fit)}</b></button>` : ''}
-      <div class="grid">${CATALOGUE.map((L) => `<button data-l="${L}" ${L < min ? 'disabled' : ''} class="${Math.abs(L - cur) < 0.03 ? 'cur' : ''}">${fmtLen(L)}</button>`).join('')}</div>
-      <div class="fine"><button data-d="-0.05">− 5 cm</button><button data-d="0.05">+ 5 cm</button></div>`;
-    m.querySelectorAll<HTMLButtonElement>('button').forEach((b) => {
-      b.onclick = () => {
-        const L = b.dataset.l ? Number(b.dataset.l) : cur + Number(b.dataset.d);
-        if (ctl.setLength(c, L)) m.classList.remove('on');
-      };
-    });
-    m.style.left = `${Math.min(x + 12, window.innerWidth - 260)}px`;
-    m.style.top = `${Math.min(y + 12, window.innerHeight - 200)}px`;
-    m.classList.add('on');
   }
 
   /** new cords from the stock */
@@ -159,14 +141,21 @@ export class Hud {
     let type = types[0];
     let color: string | undefined = lv.colorByService ? SERVICES[0].color : undefined;
     const render = () => {
-      m.innerHTML = `<div class="h">Stock de cordons neufs<span>Ils arrivent enroulés dans le bac, au sol.</span></div>
+      const stock = ctl.world.cordStock;
+      const bypass = ctl.world.inventory.bypass;
+      m.innerHTML = `<div class="h">Stock de cordons neufs<span>Ils arrivent enroulés dans le bac, au sol. Remplacer un cordon branché coupe sa liaison le temps de changer.</span></div>
         ${types.length > 1 ? `<div class="types">${types.map((t) => `<button data-t="${t}" class="${t === type ? 'cur' : ''}"><i style="background:${FIBRE_COLORS[t]}"></i>${FIBRE_NAMES[t]}</button>`).join('')}</div>` : ''}
         ${type === 'CU' && lv.colorByService ? `<div class="colors">${SERVICES.slice(0, Math.max(1, lv.services)).map((sv) => `<button data-c="${sv.color}" class="${sv.color === color ? 'cur' : ''}" style="background:${sv.color}" title="${sv.name}"></button>`).join('')}</div>` : ''}
-        <div class="grid">${CATALOGUE.map((L) => `<button data-l="${L}">${fmtLen(L)}</button>`).join('')}</div>`;
+        <div class="grid">${CATALOGUE.map((L) => `<button data-l="${L}" ${(stock.get(L) ?? 0) > 0 ? '' : 'disabled'}>${fmtLen(L)}<small>×${stock.get(L) ?? 0}</small></button>`).join('')}</div>
+        ${lv.bypass ? `<div class="h foot">Dérivations : <b>${bypass}</b><span>Cliquez le ⚡ d'une liaison du plan.</span></div>` : ''}`;
       m.querySelectorAll<HTMLButtonElement>('[data-t]').forEach((b) => { b.onclick = () => { type = b.dataset.t as typeof type; render(); }; });
       m.querySelectorAll<HTMLButtonElement>('[data-c]').forEach((b) => { b.onclick = () => { color = b.dataset.c; render(); }; });
       m.querySelectorAll<HTMLButtonElement>('[data-l]').forEach((b) => {
-        b.onclick = () => { ctl.newCord(type, Number(b.dataset.l), type === 'CU' ? color : undefined); this.toast(`Cordon ${FIBRE_NAMES[type]} de ${fmtLen(Number(b.dataset.l))} dans le bac.`); };
+        b.onclick = () => {
+          if (!ctl.newCord(type, Number(b.dataset.l), type === 'CU' ? color : undefined)) return;
+          this.toast(`Cordon ${FIBRE_NAMES[type]} de ${fmtLen(Number(b.dataset.l))} dans le bac.`);
+          render();
+        };
       });
     };
     render();
@@ -232,17 +221,22 @@ export class Hud {
     const w = this.ctl!.world;
     const tb = $('#plan tbody');
     tb.innerHTML = '';
-    $('#plan-label-h').style.display = this.level!.labels ? '' : 'none';
+    const windowed = this.level!.downtime !== undefined;
     this.planRows = w.circuits.map((c, i) => {
       const tr = document.createElement('tr');
       const svc = SERVICES[c.service];
-      const prod = w.live.has(i) ? '<span class="prod" title="En production : ne pas la couper trop longtemps">⚡</span>' : '';
+      const live = windowed && w.live.has(i);
+      const prodTip = `En production : chaque seconde coupée coûte ${fmtCost(svc.weight)}`;
+      const prod = !live ? '' : this.level!.bypass
+        ? `<button class="prod bypass" title="${prodTip}. Cliquez pour lui poser une dérivation : le trafic passe par un chemin provisoire pendant que vous la recâblez (re-cliquez pour la retirer).">⚡</button>`
+        : `<span class="prod" title="${prodTip}">⚡</span>`;
       tr.innerHTML = `<td class="n">${i + 1}${prod}</td><td class="ports">${c.a} <span class="arrow">↔</span> ${c.b}</td>
         <td><span class="chip" style="background:${FIBRE_COLORS[c.type]}" title="${FIBRE_NAMES[c.type]}">${c.type}</span></td>
-        <td class="svc" style="${this.level!.labels ? '' : 'display:none'}"><span class="dot" style="background:${svc.color}"></span>${svc.name}</td>
-        <td class="st"><i class="s-conn" title="Branchée"></i><i class="s-route" title="Rangée"></i><i class="s-clear" title="Façade dégagée"></i>${this.level!.labels ? '<i class="s-label" title="Étiquetée"></i>' : ''}</td>`;
+        <td class="svc" title="${svc.name} : ${svc.what}${windowed ? ` — coupée, ${fmtCost(svc.weight)} par seconde` : ''}"><span class="dot" style="background:${svc.color}"></span>${svc.name}</td>
+        <td class="st"><i class="s-conn" title="Branchée"></i><i class="s-route" title="Rangée"></i><i class="s-clear" title="Façade dégagée"></i><i class="s-relax" title="Ni tendu ni plié"></i></td>`;
       tr.onmouseenter = () => this.ctl?.focus(i);
       tr.onmouseleave = () => this.ctl?.focus(-1);
+      tr.querySelector<HTMLButtonElement>('.bypass')?.addEventListener('click', () => this.ctl?.toggleBypass(i));
       tb.appendChild(tr);
       return tr;
     });
@@ -255,29 +249,43 @@ export class Hud {
       tr.querySelector('.s-conn')!.className = 's-conn' + (s.connected ? ' ok' : '');
       tr.querySelector('.s-route')!.className = 's-route' + (s.routed ? ' ok' : '');
       tr.querySelector('.s-clear')!.className = 's-clear' + (s.clear ? ' ok' : '');
-      const l = tr.querySelector('.s-label');
-      if (l) l.className = 's-label' + (s.labelled ? ' ok' : '');
-      tr.classList.toggle('done', s.connected && s.routed && s.clear && (s.labelled || !this.level!.labels));
-      tr.classList.toggle('cut', !!this.ctl?.world.live.has(i) && !s.connected);
+      tr.querySelector('.s-relax')!.className = 's-relax' + (s.relaxed ? ' ok' : '');
+      tr.querySelector('.s-relax')!.setAttribute('title', s.cable >= 0 && ev.cableStrain[s.cable] ? `Cordon ${ev.cableStrain[s.cable]}` : 'Ni tendu ni plié');
+      tr.classList.toggle('done', s.connected && s.routed && s.clear && s.relaxed);
+      const w = this.ctl?.world;
+      tr.classList.toggle('cut', !!w && this.level!.downtime !== undefined && w.live.has(i) && !w.circuitUp(i));
+      tr.classList.toggle('bypassed', !!w?.bypassed.has(i));
     });
     const n = ev.total;
-    const cuts = $('#cuts');
-    cuts.style.display = ev.maxCuts === undefined ? 'none' : '';
-    cuts.innerHTML = `⚡ Coupures <b>${ev.liveDown}/${ev.maxCuts}</b>`;
-    cuts.className = ev.maxCuts !== undefined && ev.liveDown >= ev.maxCuts ? 'full' : ev.liveDown > 0 ? 'some' : '';
+    this.showDowntime(ev);
     setBar('#bar-conn', ev.connected, n);
     setBar('#bar-route', ev.routed, n);
     setBar('#bar-clear', ev.clear, n);
-    setBar('#bar-label', ev.labelled, n);
-    $('#bar-label').style.display = this.level?.labels ? '' : 'none';
+    setBar('#bar-relax', ev.relaxed, n);
     setBar('#bar-bundle', Math.min(ev.bundles, ev.bundlesNeeded), ev.bundlesNeeded);
     $('#bar-bundle').style.display = ev.bundlesNeeded ? '' : 'none';
-    this.showClean(cleanliness(ev, !!this.level?.labels));
+    this.showClean(cleanliness(ev));
+    $('#note').innerHTML = `Lisibilité <b>${ev.readability.note}</b>`;
+    $('#note').title = ev.readability.parts.map((p) => `${p.name} : ${Math.round(p.value * 100)} % (${p.tip})`).join('\n');
     $('#live-stars').innerHTML = starsHtml(ev.stars);
     const v = $<HTMLButtonElement>('#btn-validate');
     v.disabled = ev.stars < 1;
     v.classList.toggle('ready', ev.stars >= 1);
     v.textContent = ev.stars < 1 ? `Branchez les ${n} liaisons du plan` : ev.stars < UNLOCK_STARS ? 'Valider (rangez pour ★★)' : 'Valider la baie';
+  }
+
+  /** the downtime budget: spent, and how fast it goes now */
+  private showDowntime(ev: Evaluation): void {
+    const el = $('#cuts'), w = this.ctl?.world;
+    el.style.display = this.level?.downtime === undefined ? 'none' : '';
+    if (!w || this.level?.downtime === undefined) return;
+    const rate = [...w.live].reduce((a, i) => a + (w.circuitUp(i) ? 0 : w.cutCost(i)), 0);
+    const pct = Math.min(100, (100 * ev.downtime) / ev.budget);
+    el.innerHTML = `⚡ Interruption <b>${Math.round(ev.downtime)}/${ev.budget}</b>${rate > 0 ? ` <em>+${fmtCost(rate)}/s</em>` : ''}<div class="bar"><div class="fill" style="width:${pct}%"></div></div>`;
+    el.className = ev.downtime > ev.budget ? 'full' : rate > 0 ? 'some' : '';
+    el.title = ev.downtime > ev.budget
+      ? 'Incident : le budget d\'interruption est dépassé, ★★★ n\'est plus possible.'
+      : 'Budget d\'interruption : chaque seconde où une liaison ⚡ est coupée coûte le poids de son service (survolez un service du plan). Au-delà du budget, plus de ★★★.';
   }
 
   private clean = -1;
@@ -307,6 +315,8 @@ export class Hud {
     const prev = this.progress.stars[lv.id] ?? 0;
     this.progress.stars[lv.id] = Math.max(prev, ev.stars);
     if (!this.progress.times[lv.id] || t < this.progress.times[lv.id]) this.progress.times[lv.id] = t;
+    const note = ev.readability.note, bestNote = this.progress.notes[lv.id];
+    this.progress.notes[lv.id] = Math.max(bestNote ?? 0, note);
     const parWon = !!lv.par && ev.stars === 3 && t <= lv.par;
     if (parWon) this.progress.challenges[lv.id] = true;
     save('progress', this.progress);
@@ -319,12 +329,15 @@ export class Hud {
       `Liaisons branchées : ${ev.connected}/${ev.total}`,
       `Liaisons rangées : ${ev.routed}/${ev.total}`,
       `Façade dégagée : ${ev.clear}/${ev.total}`,
+      `Ni tendus ni pliés : ${ev.relaxed}/${ev.total}`,
     ];
-    if (lv.labels) lines.push(`Étiquetées : ${ev.labelled}/${ev.total}`);
     if (ev.bundlesNeeded) lines.push(`Faisceaux : ${Math.min(ev.bundles, ev.bundlesNeeded)}/${ev.bundlesNeeded}`);
-    if (ev.stars < 3) lines.push(ev.stars === 1 ? '★★ : rangez au moins 70 % des liaisons, façade dégagée à 85 %.' : '★★★ : tout rangé, façade entièrement dégagée' + (lv.labels ? ', tout étiqueté' : '') + (ev.bundlesNeeded ? `, ${ev.bundlesNeeded} faisceaux` : '') + '.');
+    if (lv.downtime !== undefined) lines.push(ev.downtime > ev.budget ? `<span class="bad">Incident : ${Math.round(ev.downtime)} pts d'interruption pour un budget de ${ev.budget}.</span>` : `Interruption : ${Math.round(ev.downtime)} pts sur ${ev.budget}.`);
+    if (ev.stars < 3) lines.push(ev.stars === 1 ? '★★ : rangez au moins 70 % des liaisons, façade dégagée à 85 %.' : '★★★ : tout rangé, façade entièrement dégagée, aucun cordon tendu ni plié' + (ev.bundlesNeeded ? `, ${ev.bundlesNeeded} faisceaux` : '') + (lv.downtime !== undefined ? ', budget d\'interruption tenu' : '') + '.');
     if (lv.par) lines.push(parWon ? `⏱ Défi chrono réussi : ★★★ en moins de ${fmtTime(lv.par)} !` : `⏱ Défi chrono : ★★★ en moins de ${fmtTime(lv.par)}${this.progress.challenges[lv.id] ? ' (déjà réussi)' : ''}.`);
     $('#result-lines').innerHTML = lines.map((l) => `<li>${l}</li>`).join('');
+    $('#result-note').innerHTML = `<div class="grade"><b>${note}</b><span>Lisibilité${bestNote !== undefined ? ` · record ${Math.max(bestNote, note)}${note > bestNote ? ' — nouveau record !' : ''}` : ''}</span></div>`
+      + ev.readability.parts.map((p) => `<div class="part"><span>${p.name}</span><div class="bar"><div class="fill" style="width:${Math.round(p.value * 100)}%"></div></div><i>${p.tip}</i></div>`).join('');
     const idx = LEVELS.findIndex((l) => l.id === lv.id);
     const next = idx >= 0 && idx + 1 < LEVELS.length ? LEVELS[idx + 1] : null;
     const nb = $<HTMLButtonElement>('#result-next');
@@ -398,10 +411,10 @@ export class Hud {
 }
 
 /** how tidy the cabinet is overall (0..1): the four criteria, plugging counting double */
-export function cleanliness(ev: Evaluation, labels: boolean): number {
+export function cleanliness(ev: Evaluation): number {
   const n = Math.max(1, ev.total);
   const bundles = ev.bundlesNeeded ? [n * Math.min(1, ev.bundles / ev.bundlesNeeded)] : [];
-  const parts = [ev.connected * 2, ev.routed, ev.clear, ...(labels ? [ev.labelled] : []), ...bundles];
+  const parts = [ev.connected * 2, ev.routed, ev.clear, ev.relaxed, ...bundles];
   return parts.reduce((a, b) => a + b, 0) / (n * (parts.length + 1));
 }
 
@@ -432,7 +445,6 @@ function iconDuct(): string { return svg('<path d="M7 2v20M17 2v20"/><path d="M7
 function iconRing(): string { return svg('<path d="M6 4v9a6 6 0 0 0 12 0V4"/><path d="M4 4h4M16 4h4"/>'); }
 function iconVelcro(): string { return svg('<path d="M4 8c3-3 13-3 16 0M4 16c3 3 13 3 16 0"/><path d="M4 8v8M20 8v8"/><path d="M9 10.5v3M12 10v4M15 10.5v3"/>'); }
 function iconLabel(): string { return svg('<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.5"/>'); }
-function iconRuler(): string { return svg('<rect x="2" y="8" width="20" height="8" rx="1" transform="rotate(-30 12 12)"/><path d="M8 7.5l1 1.7M11 5.8l1.5 2.6M14 4.1l1 1.7"/>'); }
 function iconTrace(): string { return svg('<path d="M3 21l6-6"/><path d="M9 15l2-6 6-6 4 4-6 6-6 2z"/><path d="M17 3l4 4"/><circle cx="20" cy="20" r="1.5"/>'); }
 function iconRoute(): string { return svg('<circle cx="5" cy="5" r="2"/><path d="M5 7v4a3 3 0 0 0 3 3h8a3 3 0 0 1 3 3v2"/><path d="M16 17l3 3 3-3"/>'); }
 function iconBin(): string { return svg('<path d="M3 8h18l-2 12H5z"/><ellipse cx="12" cy="8" rx="5" ry="2"/><path d="M8 13c2 1.5 6 1.5 8 0"/>'); }

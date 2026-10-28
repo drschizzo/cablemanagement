@@ -102,7 +102,6 @@ function start(level: LevelDef, brief = true): void {
       onHover: (t, x, y) => hud.onHover(t, x, y),
       onToast: (t) => hud.toast(t),
       onStats: (t) => hud.stats(t),
-      onLengthMenu: (c, x, y) => hud.showLengthMenu(c, x, y),
       onHint: (t) => hud.hint(t),
     }, !syncPhysics);
     hud.attach(ctl, level);

@@ -9,10 +9,10 @@ import { disposeTree } from '../render/dispose';
 import { HOLD, World, type Evaluation, type Snapshot, type Strap } from './world';
 import { COLUMN_X, FRONT_Z, ROOM_FLOOR, U, WALL_X, type Guide, type Item, type ItemKind, type Port } from './rack';
 import { RouteRun, planRoute } from './route';
-import { FIBRE_NAMES, type FibreType, type LevelDef } from './levels';
+import { FIBRE_NAMES, SERVICES, type FibreType, type LevelDef } from './levels';
 import { sfx } from '../audio/sfx';
 
-export type Tool = 'hand' | 'route' | ItemKind | 'velcro' | 'label' | 'length' | 'trace' | 'deposit';
+export type Tool = 'hand' | 'route' | ItemKind | 'velcro' | 'label' | 'trace' | 'deposit';
 
 export interface ControllerEvents {
   onEval(ev: Evaluation): void;
@@ -20,8 +20,6 @@ export interface ControllerEvents {
   onHover(text: string | null, x: number, y: number): void;
   onToast(text: string): void;
   onStats(text: string): void;
-  /** the length tool picked a cord: show the cord catalogue */
-  onLengthMenu(cable: number, x: number, y: number): void;
   /** a hint for what the player is doing now (null: back to the tool's) */
   onHint(text: string | null): void;
 }
@@ -39,7 +37,7 @@ const MAX_TARGET_STEP = 0.035; // m per frame the hand may move
 const UNPLUG_PULL = 0.04;
 /** glow of a stretch of the carried cord: held by the management, hanging too long, on the floor */
 const HOLD_TINT = [null, new THREE.Color('#1f9a45'), new THREE.Color('#c06800'), new THREE.Color('#b01c1c')];
-const CORD_TOOLS = new Set<Tool>(['hand', 'route', 'label', 'velcro', 'length', 'trace', 'deposit']);
+const CORD_TOOLS = new Set<Tool>(['hand', 'route', 'label', 'velcro', 'trace', 'deposit']);
 
 export class Controller {
   world: World;
@@ -60,7 +58,7 @@ export class Controller {
     /** hand minus pointer-on-plane: keeps the cord where it is when Shift is released */
     offset: THREE.Vector3;
     /** a plugged connector was taken: it stays in until the hand pulls it far enough */
-    pull: { end: number; from: THREE.Vector3; refused: boolean } | null;
+    pull: { end: number; from: THREE.Vector3 } | null;
     /** what pinches the cord: Space, the right button (either will do) */
     pinchBy: { space: boolean; right: boolean };
     /** the hand pinched during this drag (worth an undo, even without moving) */
@@ -191,7 +189,13 @@ export class Controller {
 
   /** advances the game by dt seconds and draws it */
   tick(dt: number, draw = true): void {
-    if (this.running) this.elapsed += dt;
+    if (this.running) {
+      this.elapsed += dt;
+      for (const i of this.world.tickDowntime(dt)) {
+        this.events.onToast(`Liaison ${i + 1} rétablie : sa dérivation revient au stock.`);
+        this.events.onInventory();
+      }
+    }
     this.clock += dt;
     if (this.tracing) {
       const t = this.tracing;
@@ -325,13 +329,10 @@ export class Controller {
   /** the hand pulled a plugged connector far enough: it comes out, and the hand now holds it */
   private pullOut(d: NonNullable<Controller['drag']>): void {
     const w = this.world, p = d.pull!;
-    if (!w.canUnplug(d.cable)) {
-      if (!p.refused) this.refuseCut();
-      p.refused = true;
-      return;
-    }
     d.pull = null;
+    const cut = this.liveLinksOf(d.cable);
     w.unplug(d.cable, p.end);
+    this.sayCut(cut);
     this.counters.unplugged++;
     sfx.unplug();
     this.reevaluate();
@@ -469,18 +470,16 @@ export class Controller {
       if (p) this.applyLabel(p);
     } else if (this.tool === 'velcro') {
       this.applyVelcro();
-    } else if (this.tool === 'length') {
-      const p = this.pick();
-      if (p) this.events.onLengthMenu(p.cable, e.clientX, e.clientY);
     } else if (this.tool === 'trace') {
       const p = this.pick();
       if (p) this.trace(p.cable);
     } else if (this.tool === 'deposit') {
       const p = this.pick();
-      if (p && !this.world.canUnplug(p.cable)) this.refuseCut();
-      else if (p) {
+      if (p) {
+        const cut = this.liveLinksOf(p.cable);
         this.remember();
         this.world.depositCable(p.cable);
+        this.sayCut(cut);
         this.counters.deposited++;
         sfx.unplug();
         this.afterRewire();
@@ -518,17 +517,19 @@ export class Controller {
     this.events.onToast('Annulé.');
   }
 
-  /** the maintenance window is full: say so, and point at the cut links */
-  private refuseCut(): void {
-    const max = this.world.level.maxCuts ?? 0;
-    this.events.onToast(`Fenêtre de maintenance : ${max} liaison${max > 1 ? 's' : ''} en production déjà coupée${max > 1 ? 's' : ''}. Rebranchez-en une avant d'en couper une autre.`);
-    sfx.error();
-    for (const m of this.rackView.portMarkers.values()) m.visible = false;
-    for (const i of this.world.live) {
-      if (this.world.circuitUp(i)) continue;
-      const ci = this.world.circuits[i];
-      for (const id of [ci.a, ci.b]) this.rackView.marker(id).visible = true;
-    }
+  /** the production links a cord carries now (unplugging it cuts them) */
+  private liveLinksOf(c: number): number[] {
+    return [...this.world.live].filter((i) => this.world.circuitUp(i) && this.world.rack.port(this.world.circuits[i].a).plug >> 1 === c);
+  }
+
+  /** production links just cut: what each second of them costs */
+  private sayCut(links: number[]): void {
+    const cost = links.reduce((a, i) => a + this.world.cutCost(i), 0);
+    if (!links.length) return;
+    const names = links.map((i) => `${i + 1} (${SERVICES[this.world.circuits[i].service].name})`).join(', ');
+    this.events.onToast(cost > 0
+      ? `Liaison ${names} coupée : ${fmtCost(cost)} par seconde sur le budget d'interruption. Rebranchez vite.`
+      : `Liaison ${names} coupée, mais sa dérivation porte le trafic.`);
   }
 
   /** every tool but the rack items works on a cord */
@@ -536,11 +537,11 @@ export class Controller {
     return CORD_TOOLS.has(this.tool);
   }
 
-  /** swaps a cord for one of another length; false when it would not reach */
-  setLength(c: number, length: number): boolean {
+  /** a new cord from the stock, in the crate; false when there is none of that length left */
+  newCord(type: FibreType, length: number, color?: string): boolean {
     this.stopRoute();
-    if (!this.world.setCableLength(c, length)) {
-      this.events.onToast('Trop court : ce cordon n\'irait pas d\'un bout à l\'autre.');
+    if (this.world.takeCord(type, length, color) < 0) {
+      this.events.onToast('Plus aucun cordon de cette longueur en stock.');
       sfx.error();
       return false;
     }
@@ -549,12 +550,16 @@ export class Controller {
     return true;
   }
 
-  /** a new cord from the stock, in the crate */
-  newCord(type: FibreType, length: number, color?: string): void {
-    this.stopRoute();
-    this.world.addCable(type, length, color);
-    sfx.place();
-    this.afterRewire();
+  /** puts a bypass on a production link, or takes it off */
+  toggleBypass(i: number): void {
+    if (!this.world.toggleBypass(i)) {
+      this.events.onToast(this.world.live.has(i) ? 'Plus de dérivation en stock.' : 'Seules les liaisons en production (⚡) se dérivent.');
+      sfx.error();
+      return;
+    }
+    sfx.label();
+    this.events.onInventory();
+    this.reevaluate();
   }
 
   private afterRewire(): void {
@@ -724,11 +729,11 @@ export class Controller {
       return;
     }
     const b = 1 - res.plan.a, end = this.world.cables[st.cable].ends[b];
-    if (res.plan.portB && end.port && !this.world.canUnplug(st.cable)) { this.refuseCut(); return; }
+    if (res.plan.portB && end.port) this.sayCut(this.liveLinksOf(st.cable));
     this.remember();
     this.routing = new RouteRun(this.world, res.plan);
     this.counters.routed++;
-    if (res.plan.slack > 0.2) this.events.onToast(`Ce cordon a ${Math.round(res.plan.slack * 100)} cm de trop pour ce chemin : le mou est rangé dans les guides, ou pend (outil Longueur pour un cordon plus court).`);
+    if (res.plan.slack > 0.2) this.events.onToast(`Ce cordon a ${Math.round(res.plan.slack * 100)} cm de trop pour ce chemin : le mou est rangé dans les guides, ou pend (un cordon plus court se prend au Stock).`);
     sfx.whoosh();
   }
 
@@ -829,14 +834,14 @@ export class Controller {
     const w = this.world;
     let node = p.node;
     let end = -1;
-    let pull: { end: number; from: THREE.Vector3; refused: boolean } | null = null;
+    let pull: { end: number; from: THREE.Vector3 } | null = null;
     const eo = w.endOfNode(node);
     if (eo) {
       const [n0, n1] = w.endNodes(eo.cable, eo.end);
       if (w.cables[eo.cable].ends[eo.end].port) {
         // a plugged connector stays in until it is pulled: the hand takes the cord just behind its boot
         node = n1 + (eo.end === 0 ? 1 : -1);
-        pull = { end: eo.end, from: new THREE.Vector3(), refused: false };
+        pull = { end: eo.end, from: new THREE.Vector3() };
         sfx.grab();
       } else {
         end = eo.end;
@@ -1329,6 +1334,11 @@ export class Controller {
   private refreshLeds(): void {
     this.rackView.showLeds(this.world.okPorts(this.lastEval));
   }
+}
+
+/** downtime per second, as the budget counts it */
+export function fmtCost(v: number): string {
+  return `${Number.isInteger(v) ? v : v.toFixed(2).replace(/0$/, '').replace('.', ',')} pt${v > 1 ? 's' : ''}`;
 }
 
 /** the depth cue while carrying a cord: plumb line, ring on the floor, tick on the rack */

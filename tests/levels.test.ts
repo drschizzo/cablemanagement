@@ -41,12 +41,16 @@ describe('levels', () => {
 
 /** the cabinet of a level finished by a careful technician, settled and labelled */
 function finished(lv: LevelDef) {
+  return finishedWorld(lv).evaluate();
+}
+
+function finishedWorld(lv: LevelDef) {
   const w = new World(tidyKit(lv));
   for (let f = 0; f < 240; f++) w.sim.step();
   strapBundles(w, lv.bundles ?? 0);
   for (let f = 0; f < 60; f++) w.sim.step();
   w.circuits.forEach((ci, i) => { for (const e of w.cables[i].ends) e.label = ci.service; });
-  return w.evaluate();
+  return w;
 }
 
 describe('no level is won before the player does anything', () => {
@@ -68,6 +72,15 @@ describe('three stars are possible, with the level\'s own stock', () => {
       expect(finished(lv).stars).toBe(3);
     });
   }
+
+  it('past the downtime budget, an incident: two stars at most', () => {
+    const lv = LEVELS[0];
+    const w = new World(tidyKit(lv));
+    for (let f = 0; f < 240; f++) w.sim.step();
+    expect(w.evaluate().stars).toBe(3);
+    w.downtime = w.budget + 1;
+    expect(w.evaluate().stars).toBe(2);
+  });
 
   it('the tidy cabinet of the before/after is perfect', () => {
     const w = new World(showcaseRack('tidy', 7));

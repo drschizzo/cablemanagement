@@ -10,17 +10,24 @@ export const FIBRE_NAMES: Record<FibreType, string> = { OS2: 'Monomode OS2', OM4
 export interface Service {
   name: string;
   color: string;
+  /** what a second of this service cut costs from the downtime budget */
+  weight: number;
+  /** what it carries, and who notices when it is cut */
+  what: string;
 }
 
-/** label colours: one per service of the patching schedule */
+/** the services of the patching schedule: colour of their cords and labels, and what cutting them costs */
 export const SERVICES: Service[] = [
-  { name: 'Données', color: '#2f7cf6' },
-  { name: 'Voix', color: '#2bb24c' },
-  { name: 'Vidéo', color: '#f08a1c' },
-  { name: 'Admin', color: '#e23d3d' },
-  { name: 'Stockage', color: '#9b5de5' },
-  { name: 'Invités', color: '#f2f2f2' },
+  { name: 'Données', color: '#2f7cf6', weight: 1, what: 'les postes de travail : un fichier qui ne s\'enregistre plus' },
+  { name: 'Voix', color: '#2bb24c', weight: 3, what: 'les téléphones IP : un appel coupé, tout le monde l\'entend' },
+  { name: 'Vidéo', color: '#f08a1c', weight: 2, what: 'les caméras : un trou dans l\'enregistrement' },
+  { name: 'Admin', color: '#e23d3d', weight: 4, what: 'pare-feu, routeur, supervision : sans elle, on travaille à l\'aveugle' },
+  { name: 'Stockage', color: '#9b5de5', weight: 3, what: 'serveurs et disques : les machines virtuelles s\'arrêtent' },
+  { name: 'Invités', color: '#f2f2f2', weight: 0.25, what: 'le Wi-Fi des visiteurs : personne ne s\'en plaindra' },
 ];
+
+/** standard patch cord lengths (m) */
+export const CATALOGUE = [0.15, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 5];
 
 /** stars a level needs before the next one opens: connected is not enough, it must be tidy */
 export const UNLOCK_STARS = 2;
@@ -65,10 +72,15 @@ export interface LevelDef {
   /** cords coloured by their service (copper patch cords) */
   colorByService?: boolean;
   /**
-   * Maintenance window: the links working at the start are in production;
-   * no more than this many of them may be cut at the same time.
+   * Maintenance window: the links working at the start are in production.
+   * Every second one of them is cut costs the weight of its service; past
+   * this budget, an incident is declared and three stars are out of reach.
    */
-  maxCuts?: number;
+  downtime?: number;
+  /** bypasses: a temporary path that keeps a production link running while it is recabled */
+  bypass?: number;
+  /** new cords in stock, by length (m): how many of each */
+  cords?: [number, number][];
   /** one-to-one patching: each panel port to the same port of the switch right below */
   pairing?: boolean;
   /** links between equipment (switch uplinks, firewall, router, servers), on top of the panel cords */
@@ -99,7 +111,7 @@ const SVd: UnitSpec = { kind: 'server', style: 'server', label: 'Serveur' };
 const UPS: UnitSpec = { kind: 'server', style: 'ups', label: 'Onduleur' };
 const M = (unit: number) => ({ kind: 'hmgr' as const, unit, side: 0 });
 
-const LENGTH_TIP = 'Outil Longueur (7) : remplacez un cordon trop long par un cordon de la bonne longueur, sans le débrancher.';
+const LENGTH_TIP = 'Un cordon trop long se remplace par un cordon neuf du Stock (0), qui arrive dans le bac : il faut couper la liaison le temps de changer. Le stock est compté : choisissez bien qui reçoit quel cordon.';
 
 export const LEVELS: LevelDef[] = [
   {
@@ -109,7 +121,7 @@ export const LEVELS: LevelDef[] = [
     // 0 B, 1 panel, 2 manager, 3 switch
     units: [B, CP('A', 12), B, SW('S', 12), B, B],
     cables: 4, wrong: 0, loose: 1, slack: [0.12, 0.2], mess: 1,
-    maxCuts: 1,
+    downtime: 40, cords: [[0.5, 1], [1, 1]],
     labels: false, services: 1, types: ['CU'], colorByService: true,
     inventory: { velcro: 2 },
     preinstalled: [M(2)],
@@ -118,7 +130,7 @@ export const LEVELS: LevelDef[] = [
     tips: [
       'Glissez un câble avec le clic gauche pour le déplacer. Maj en tirant : le pousser vers le fond ou le ramener vers vous.',
       'Le bout qui pend : saisissez son connecteur et relâchez-le devant le port entouré du plan (survolez sa ligne).',
-      'Outil Chemin (C) : partez d\'un câble et tracez son chemin par-dessus le guide-câbles, jusqu\'à un port libre si besoin : il y est posé, et branché.',
+      'Tirez un câble par-dessus le guide-câbles : il s\'encadre de vert. Relâchez : le câble s\'y couche. Relâché devant un port libre, son connecteur s\'y branche.',
       'Clic droit + glisser pour tourner la vue, glisser dans le vide pour la déplacer, molette pour zoomer.',
     ],
   },
@@ -129,7 +141,7 @@ export const LEVELS: LevelDef[] = [
     // 1 panel, 2 manager, 6 manager (to place), 7 switch
     units: [B, CP('A', 12), B, B, B, B, B, SW('S', 12), B, B],
     cables: 6, wrong: 1, loose: 0, slack: [0.6, 1.0], mess: 2,
-    maxCuts: 1,
+    downtime: 60, cords: [[0.5, 3], [0.75, 2], [1, 2]],
     labels: false, services: 2, types: ['CU'], colorByService: true,
     inventory: { hmgr: 1, duct: 2, vring: 2, velcro: 3 },
     preinstalled: [M(2)],
@@ -148,7 +160,7 @@ export const LEVELS: LevelDef[] = [
     units: [B, CP('A', 12), B, B, SW('S', 24), B, FW, B, B],
     cables: 8, wrong: 2, loose: 1, slack: [0.25, 0.5], mess: 2,
     links: [{ a: 'S23', b: 'F1' }, { a: 'S24', b: 'F2' }],
-    maxCuts: 2,
+    downtime: 120, bypass: 1, cords: [[0.75, 2], [1, 2], [1.5, 1]],
     labels: false, services: 2, types: ['CU'], colorByService: true,
     inventory: { hmgr: 1, duct: 2, vring: 3, velcro: 4 },
     preinstalled: [M(2), M(5)],
@@ -156,7 +168,7 @@ export const LEVELS: LevelDef[] = [
     par: 300,
     tips: [
       'Saisissez un connecteur et tirez pour le débrancher, relâchez-le devant un port libre pour le brancher. Ctrl+Z annule le dernier geste.',
-      'Outil Traceur (8) : cliquez un câble, il clignote et ses deux ports s\'entourent.',
+      'Traceur : survolez un câble et appuyez sur T, il clignote et ses deux ports s\'entourent.',
       'Survolez une ligne du plan pour voir ses deux ports.',
     ],
   },
@@ -168,13 +180,13 @@ export const LEVELS: LevelDef[] = [
     units: [B, CP('A', 12), B, B, SW('S', 24), B, FW, B, RT, B, B],
     cables: 10, wrong: 1, loose: 1, slack: [0.3, 0.6], mess: 2,
     links: [{ a: 'S23', b: 'F1' }, { a: 'S24', b: 'R1', service: 2 }, { a: 'F8', b: 'R8', service: 2 }],
-    maxCuts: 2,
+    downtime: 120, bypass: 1, cords: [[1, 2], [1.5, 2], [2, 1]],
     labels: true, services: 3, types: ['CU'], colorByService: true,
     inventory: { hmgr: 1, duct: 2, vring: 3, velcro: 5 },
     preinstalled: [M(2), M(5), M(7)],
     seed: 41,
     par: 420,
-    tips: ['Outil Étiquette : choisissez une couleur, puis cliquez près d\'un connecteur.', LENGTH_TIP],
+    tips: ['Chaque liaison appartient à un service (sa couleur dans le plan). Un cordon branché comme prévu reçoit son étiquette tout seul. Couper la Voix ou l\'Admin coûte bien plus cher que les Données.', LENGTH_TIP],
   },
   {
     id: 'l5',
@@ -184,7 +196,7 @@ export const LEVELS: LevelDef[] = [
     units: [B, P('A', 12), B, CP('B', 12), B, B, B, SW('S', 24), B, FW, B, SV('X', 0.03), SV('Y', 0.09), UPS, B],
     cables: 12, wrong: 2, loose: 2, slack: [0.3, 0.7], mess: 3,
     links: [{ a: 'S22', b: 'F1' }, { a: 'F7', b: 'X1', service: 4 }, { a: 'F8', b: 'Y1', service: 4 }],
-    maxCuts: 2,
+    downtime: 150, bypass: 1, cords: [[1, 2], [1.5, 2], [2, 2]],
     labels: true, services: 3, types: ['OS2', 'CU'], colorByService: true,
     inventory: { hmgr: 2, duct: 4, vring: 4, velcro: 6 },
     preinstalled: [M(2), M(4), M(8), M(10)],
@@ -203,7 +215,7 @@ export const LEVELS: LevelDef[] = [
       { a: 'S23', b: 'X1', service: 4 }, { a: 'T23', b: 'Y1', service: 4 },
     ],
     pairing: true,
-    maxCuts: 3,
+    downtime: 240, bypass: 2, cords: [[1, 3], [1.5, 3], [2, 2]],
     labels: true, services: 5, types: ['CU'], colorByService: true,
     inventory: { hmgr: 1, duct: 4, vring: 2, velcro: 8 },
     preinstalled: [M(3), M(6), M(9), M(11)],
@@ -211,7 +223,7 @@ export const LEVELS: LevelDef[] = [
     bundles: 3,
     par: 900,
     tips: [
-      'Outil Déposer (9) : le câble est débranché et jeté dans le bac. Le Stock (0) fournit des cordons neufs.',
+      'Suppr sur un câble : il est débranché et jeté dans le bac. Le Stock (0) fournit des cordons neufs, en nombre limité.',
       '<b>Faisceaux</b> : pour ★★★, au moins 3 velcros qui serrent chacun 3 câbles ou plus, dans un guide-câbles ou une goulotte.',
       'Seulement 4 goulottes : choisissez les couloirs où elles servent le plus.',
     ],
@@ -219,7 +231,7 @@ export const LEVELS: LevelDef[] = [
   {
     id: 'l7',
     title: 'Migration',
-    brief: 'Trois panneaux et trois switchs, une fibre vers l\'opérateur, beaucoup de ports à corriger. La migration se fait en production : une seule liaison coupée à la fois.',
+    brief: 'Trois panneaux et trois switchs, une fibre vers l\'opérateur, beaucoup de ports à corriger. La migration se fait en production, avec un budget d\'interruption serré.',
     // 1 fibre, 2 mgr, 3 free (the fibres lying in the drawer's manager would hang in front of A's ports),
     // 4 A, 5 S, 6 mgr, 7 B, 8 T, 9 mgr, 10 C, 11 U, 12 mgr, 13 firewall, 14 mgr, 15 router
     units: [B, P('O', 12), B, B, CP('A', 24), SW('S', 24), B, CP('B', 24), SW('T', 24), B, CP('C', 24), SW('U', 24), B, FW, B, RT, B, SVd, SVd, UPS, B],
@@ -229,14 +241,14 @@ export const LEVELS: LevelDef[] = [
       { a: 'S23', b: 'R1', service: 2 }, { a: 'T23', b: 'R2', service: 2 }, { a: 'F8', b: 'R8', service: 2 },
     ],
     pairing: true,
-    maxCuts: 1,
+    downtime: 120, bypass: 3, cords: [[1, 3], [1.5, 3], [2, 3]],
     labels: true, services: 5, types: ['OS2', 'CU'], colorByService: true,
     inventory: { hmgr: 2, duct: 8, vring: 4, velcro: 10 },
     preinstalled: [M(6), M(9), M(12), M(14)],
     seed: 79,
     bundles: 3,
     par: 1200,
-    tips: ['Une seule coupure à la fois : rangez d\'abord les liaisons en production sans les débrancher, puis corrigez les erreurs une par une.'],
+    tips: ['Budget serré : rangez d\'abord les liaisons en production sans les débrancher. Avant de couper une liaison chère (Admin, Voix), posez-lui une dérivation (cliquez son ⚡ dans le plan).'],
   },
   {
     id: 'l8',
@@ -250,7 +262,7 @@ export const LEVELS: LevelDef[] = [
       { a: 'F8', b: 'R1', service: 2 }, { a: 'R7', b: 'X1', service: 4 }, { a: 'R8', b: 'Y1', service: 4 }, { a: 'S23', b: 'X2', service: 4 },
     ],
     pairing: true,
-    maxCuts: 2,
+    downtime: 300, bypass: 2, cords: [[1, 4], [1.5, 4], [2, 3], [3, 1]],
     labels: true, services: 6, types: ['CU'], colorByService: true,
     inventory: { hmgr: 2, duct: 6, vring: 4, velcro: 12 },
     preinstalled: [M(3), M(6), M(9), M(12)],
@@ -258,7 +270,7 @@ export const LEVELS: LevelDef[] = [
     bundles: 4,
     blind: true,
     par: 1500,
-    tips: ['Cordons sans marque : survolés, ils ne disent pas où ils vont. Le Traceur (8) le révèle, et un cordon branché comme prévu se reconnaît tout seul.'],
+    tips: ['Cordons sans marque : survolés, ils ne disent pas où ils vont. Le Traceur (T sur un câble) le révèle, et un cordon branché comme prévu se reconnaît tout seul.'],
   },
 ];
 
@@ -417,7 +429,8 @@ export function freeLevel(cables: number, seed: number): LevelDef {
     wrong: Math.round(cables * 0.15), loose: Math.round(cables * 0.1),
     slack: [0.25, 0.6], mess: Math.min(5, 1 + Math.round(cables / 10)),
     labels: true, services: Math.min(6, 1 + Math.round(cables / 8)), types: ['CU'], colorByService: true,
-    maxCuts: 3,
+    downtime: 200, bypass: 2,
+    cords: [[1, Math.ceil(cables / 6)], [1.5, Math.ceil(cables / 6)], [2, Math.ceil(cables / 8)]],
     inventory: { hmgr: panels + switches, duct: 6, vring: 6, velcro: Math.ceil(cables / 3) },
     preinstalled: [],
     seed,
