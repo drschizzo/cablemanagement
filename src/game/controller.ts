@@ -364,7 +364,7 @@ export class Controller {
     g[0] = d.target.x; g[1] = d.target.y; g[2] = d.target.z;
     d.node = n0;
     d.end = p.end;
-    this.events.onHint('Relâchez le connecteur devant un port libre (surligné en jaune) pour le brancher.');
+    this.events.onHint('Relâchez le connecteur devant un port libre (surligné en jaune) pour le brancher. Lâché en l\'air, il y reste accroché ; avec <b>Alt</b>, il pend.');
   }
 
   private pointerOnPlane(plane: THREE.Plane, depth: number): THREE.Vector3 | null {
@@ -717,8 +717,8 @@ export class Controller {
   /** how far the hand had travelled when the current drag began (a mere click is not worth an undo) */
   private dragStartedAt = 0;
 
-  /** `hook`: a loose connector let go in the air stays hooked there (not when the other hand takes the cord) */
-  private onUp(_e: PointerEvent | null, hook = true): void {
+  /** `hook`: a loose connector let go in the air stays hooked there (not when the other hand takes the cord, nor with Alt held: it hangs) */
+  private onUp(e: PointerEvent | null, hook = true): void {
     if (this.pan) { this.pan = null; this.stage.renderer.domElement.style.cursor = 'default'; return; }
     if (this.stroke) { this.endStroke(); return; }
     if (this.band) { this.endBand(); return; }
@@ -739,7 +739,7 @@ export class Controller {
         this.counters.plugged++;
         this.reevaluate();
         sfx.plug(this.circuitOkAt(port));
-      } else if (hook && this.canHook(d.target)) {
+      } else if (hook && !e?.altKey && this.canHook(d.target)) {
         // let go in front of the cabinet, a connector stays hooked where it is
         this.world.park(d.cable, d.end);
         sfx.grab();

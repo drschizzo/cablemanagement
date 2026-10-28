@@ -140,7 +140,7 @@ La **partie libre** génère une baie au hasard, de 4 à 48 câbles.
 | Passer le câble à l'autre main, qui le tient sur place | **E** pendant qu'on tire ; **E** main libre pour qu'elle le lâche |
 | Débrancher | saisir un connecteur et tirer de quelques centimètres |
 | Brancher | relâcher un connecteur devant un port libre (surligné en jaune) |
-| Accrocher un connecteur en l'air | le relâcher devant la baie, loin d'un port : il y reste (lueur ambrée) |
+| Accrocher un connecteur en l'air | le relâcher devant la baie, loin d'un port : il y reste (lueur ambrée) ; Alt en lâchant : il pend |
 | Sortir un bout libre du tas | cliquer la ligne du plan : il s'accroche sous son port |
 | Tracer un câble | survoler le câble, **T** : il clignote et ses deux ports s'entourent |
 | Jeter un câble au bac | survoler le câble, **Suppr** |

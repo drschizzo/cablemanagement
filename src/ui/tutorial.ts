@@ -101,7 +101,7 @@ const STEPS: Step[] = [
   },
   {
     title: 'Débrancher, rebrancher',
-    text: 'Une liaison est sur le mauvais port : son voyant est orange et ses deux bons ports sont entourés. Saisissez le <b>connecteur</b> et <b>tirez-le de quelques centimètres</b> : il se débranche. Amenez-le devant le port entouré : le port se surligne en jaune quand il est à portée, et le connecteur s\'y enfiche quand vous le relâchez. Lâché ailleurs, en l\'air, il reste <b>accroché</b> là (une lueur ambrée) ; un bout tombé dans le tas brille en bleu. Un clic sur une ligne du plan sort son bout libre du tas et l\'accroche sous son port. Une erreur ? <b>Ctrl+Z</b>.',
+    text: 'Une liaison est sur le mauvais port : son voyant est orange et ses deux bons ports sont entourés. Saisissez le <b>connecteur</b> et <b>tirez-le de quelques centimètres</b> : il se débranche. Amenez-le devant le port entouré : le port se surligne en jaune quand il est à portée, et le connecteur s\'y enfiche quand vous le relâchez. Lâché ailleurs, en l\'air, il reste <b>accroché</b> là (une lueur ambrée), sauf si vous tenez <b>Alt</b> en le lâchant : il pend alors librement ; un bout tombé dans le tas brille en bleu. Un clic sur une ligne du plan sort son bout libre du tas et l\'accroche sous son port. Une erreur ? <b>Ctrl+Z</b>.',
     task: 'Branchez toutes les liaisons du plan',
     tool: 'hand',
     enter: (c) => {
