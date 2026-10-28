@@ -7,7 +7,8 @@ import { shared } from './dispose';
 import { tintable } from './batch';
 import { bevelBox } from './bevel';
 import { ledLit, type LedGlow } from './ledGlow';
-import { JACKET_KIND, jacketed } from './jacket';
+import { JACKET_KIND, jacketMaterial, jacketed } from './jacket';
+import { Straps } from './straps';
 
 export const FIBRE_COLORS = { OS2: '#f2c12e', OM4: '#3cc9cf', CU: '#3d7fe0' } as const;
 
@@ -41,7 +42,6 @@ interface Plugs {
   tint: THREE.InstancedBufferAttribute;
 }
 
-const strapGeo = shared(new THREE.TorusGeometry(1, 0.22, 8, 20));
 const pinchGeo = shared(new THREE.TorusGeometry(1, 0.22, 6, 14));
 /** the rings of a pinch: barely pinched, at its firmest, under the pointer (about to be let go) */
 const PINCH_SOFT = new THREE.Color('#2f5866'), PINCH_FIRM = new THREE.Color('#6fe3ff'), PINCH_HOVER = new THREE.Color('#ff8a4c');
@@ -62,8 +62,7 @@ export class CableView {
   private nodes: TubeNodes;
   private sync: TubeSync;
   private plugs: { fibre: Plugs; copper: Plugs };
-  private straps: THREE.InstancedMesh | null = null;
-  private strapMat = new THREE.MeshStandardMaterial({ color: '#1b2a4a', roughness: 0.9 });
+  private straps = new Straps(new THREE.MeshStandardMaterial({ color: '#1b2a4a', roughness: 0.9 }));
   /** a ring round every pinched node */
   private pinchMarks: THREE.InstancedMesh | null = null;
   private pinchMat = new THREE.MeshBasicMaterial({ color: '#ffffff' });
@@ -94,7 +93,7 @@ export class CableView {
     this.sync = new TubeSync(this.nodes, world.radius);
     this.shown = this.cables.length;
     // (tintable reads the glow as `emissiveTint`, as on the plugs)
-    const mat = jacketed(tintable(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, metalness: 0.0 })));
+    const mat = jacketed(tintable(jacketMaterial()));
     this.tube = new TubeMesh(segments, mat, this.nodes, { aliases: { emissiveTint: 'tubeTint' } });
     let at = 0;
     world.cables.forEach((cb, k) => {
@@ -104,7 +103,7 @@ export class CableView {
     });
     this.tube.castShadow = true;
     this.tube.receiveShadow = true;
-    this.group.add(this.tube);
+    this.group.add(this.tube, this.straps.mesh);
 
     const n = 2 * world.cables.length;
     const make = (copper: boolean, housingMat: THREE.Material): Plugs => {
@@ -171,7 +170,7 @@ export class CableView {
     // a clear plug costs the frame a pass of its own (the scene behind it, drawn again):
     // not worth it on cords a pixel or two wide
     (this.plugs.copper.housing.material as THREE.MeshPhysicalMaterial).transmission = this.tube.level === 2 ? 0 : CLEAR;
-    this.updateStraps();
+    this.straps.update(this.world);
     this.updatePinches();
   }
 
@@ -212,38 +211,6 @@ export class CableView {
     if (this.recoloured.delete(im)) im.instanceColor!.needsUpdate = true;
   }
 
-  /** velcro straps */
-  private updateStraps(): void {
-    const sim = this.world.sim, x = sim.x;
-    const list = this.world.straps;
-    if (list.length > (this.straps?.instanceMatrix.count ?? 0)) {
-      if (this.straps) { this.group.remove(this.straps); this.straps.dispose(); }
-      this.straps = new THREE.InstancedMesh(strapGeo, this.strapMat, Math.max(16, 2 * list.length));
-      this.straps.castShadow = true;
-      this.straps.frustumCulled = false;
-      this.group.add(this.straps);
-    }
-    if (!this.straps) return;
-    this.straps.count = list.length;
-    list.forEach((s, k) => {
-      const [cx, cy, cz] = this.world.strapCentre(s);
-      // orient the loop around the mean direction of the cords
-      let dx = 0, dy = 0, dz = 0;
-      for (const i of s.nodes) {
-        const j = sim.segOK[i] ? i + 1 : i - 1;
-        const sg = j > i ? 1 : -1;
-        let ex = (x[3 * j] - x[3 * i]) * sg, ey = (x[3 * j + 1] - x[3 * i + 1]) * sg, ez = (x[3 * j + 2] - x[3 * i + 2]) * sg;
-        if (ex * dx + ey * dy + ez * dz < 0) { ex = -ex; ey = -ey; ez = -ez; }
-        dx += ex; dy += ey; dz += ez;
-      }
-      this.q.setFromUnitVectors(Z, this.tmp.set(dx, dy, dz).normalize());
-      const r = sim.bundles[s.bundle].r + 0.0025;
-      this.m4.compose(this.tmp.set(cx, cy, cz), this.q, this.scale.set(r, r, r * 1.8));
-      this.putMatrix(this.straps!, k, this.m4);
-    });
-    if (this.moved.delete(this.straps)) this.straps.instanceMatrix.needsUpdate = true;
-  }
-
   /** sets one instance's matrix, and remembers its mesh for the upload if it changed */
   private putMatrix(im: THREE.InstancedMesh, i: number, m: THREE.Matrix4): void {
     const a = im.instanceMatrix.array, e = m.elements, o = 16 * i;
@@ -265,7 +232,7 @@ export class CableView {
     if (cm.visible !== on) this.shown += on ? 1 : -1;
     cm.visible = on;
     // none left: the tubes and plugs of radius and scale 0 would still be run through the GPU
-    for (const o of this.group.children) if (o !== this.straps && o !== this.pinchMarks) o.visible = this.shown > 0;
+    for (const o of this.group.children) if (o !== this.straps.mesh && o !== this.pinchMarks) o.visible = this.shown > 0;
     if (on) { this.sync.cable(this.world.sim, c, true); this.updateEnds(c); }
     else {
       // a tube of radius 0: nothing left to draw

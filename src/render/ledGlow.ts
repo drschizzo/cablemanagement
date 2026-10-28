@@ -154,10 +154,10 @@ export class LedGlow {
 export const ledGlows = new Set<LedGlow>();
 
 /** how much of the light a cord takes (shared by every cord): a little, as LEDs light little */
-export const ledLight = { value: 3 };
+export const ledLight = { value: 4 };
 
 /** how much of it the cabinet and its equipment take */
-export const ledLightRack = { value: 5 };
+export const ledLightRack = { value: 6.5 };
 
 /**
  * Lights a material with a cabinet's glow (added to its own glow); `gain`:

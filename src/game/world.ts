@@ -494,8 +494,12 @@ export class World {
 
   // ------------------------------------------------------------- velcro
 
-  /** straps the cords passing within reach of a point; needs two of them */
-  addStrap(px: number, py: number, pz: number, reach = 0.03): Strap | null {
+  /**
+   * straps the cords passing within reach of a point; needs two of them.
+   * `along`: only those running that way there (a unit vector), not those
+   * leaving the bundle for a port, which a band round them all would cut across
+   */
+  addStrap(px: number, py: number, pz: number, reach = 0.03, along?: [number, number, number]): Strap | null {
     if (this.inventory.velcro <= 0) return null;
     const x = this.sim.x;
     const best = new Map<number, { node: number; d: number }>();
@@ -503,6 +507,10 @@ export class World {
       const cb = this.cables[c];
       for (let i = cb.start + 2; i < cb.start + cb.count - 2; i++) {
         if (this.sim.bundleOf[i] >= 0) continue;
+        if (along) {
+          const ex = x[3 * i + 3] - x[3 * i - 3], ey = x[3 * i + 4] - x[3 * i - 2], ez = x[3 * i + 5] - x[3 * i - 1];
+          if (Math.abs(ex * along[0] + ey * along[1] + ez * along[2]) < 0.9 * Math.hypot(ex, ey, ez)) continue;
+        }
         const d = Math.hypot(x[3 * i] - px, x[3 * i + 1] - py, x[3 * i + 2] - pz);
         if (d < reach && (!best.has(c) || best.get(c)!.d > d)) best.set(c, { node: i, d });
       }

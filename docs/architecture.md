@@ -25,6 +25,7 @@ src/
     rackView.ts     la baie, ses équipements, ports et éléments de rangement
     cableView.ts    les câbles (tubes de three-cable-tubes), leurs connecteurs et étiquettes
     jacket.ts       la gaine vue de près (paires torsadées, grain, marquage), estompée de loin
+    straps.ts       les velcros : une bande fine ajustée au faisceau qu'ils serrent, une instance par velcro
     leds.ts         voyants d'état et d'activité, clignotants sur le GPU (horloge partagée ledClock)
     ledGlow.ts      la lumière des voyants sur les câbles et la baie, par une carte de la façade de chaque baie
     bevel.ts        boîte biseautée légère, pour les milliers de petites pièces

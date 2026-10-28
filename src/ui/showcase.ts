@@ -363,12 +363,12 @@ class Closet {
       },
       done: () => {
         later(250, () => {
-          // velcro all along the ducts
+          // velcro all along the ducts, round the cords running down them
           const ducts = w.rack.items.filter((it) => it.kind === 'duct' && it.side === 1);
           const top = w.rack.topY - Math.min(...ducts.map((d) => d.unit)) * U;
           const bottom = w.rack.topY - Math.max(...ducts.map((d) => d.unit + d.span)) * U;
           for (const side of [-1, 1]) {
-            for (let y = top - 0.04; y > bottom + 0.02; y -= 0.09) w.addStrap(side * 0.318, y, 0.006, 0.08);
+            for (let y = top - 0.04; y > bottom + 0.02; y -= 0.09) w.addStrap(side * 0.318, y, 0.006, 0.08, [0, 1, 0]);
           }
           sfx.velcro();
         });

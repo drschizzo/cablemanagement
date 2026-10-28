@@ -71,6 +71,10 @@ export interface RackParams extends SimParams {
 export function defaultRackParams(p: Partial<RackParams> = {}): RackParams {
   return {
     ...defaultSimParams(),
+    // stretch warm start as before cable-kit 48f59ca (0.4 there): at 0.4 a cord
+    // plugged along a manager slipped between its fingers far more often, and a
+    // pinched elbow held the cord up against its weight
+    lamWarmS: 0.8,
     grabK: 0.4, grabLead: 0.06, goalK: 6, goalLead: 0.05,
     pinchSpan: 3, pinchStart: 0.15, pinchGrow: 0.6,
     keepHand: 2, keepZip: 10, keepK: 16, keepTol: 0.002, keepPeel: 0.003,

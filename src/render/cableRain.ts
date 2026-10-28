@@ -16,7 +16,7 @@ import { CABLE_R } from '../game/rack';
 import { SERVICES } from '../game/levels';
 import { rng } from '../game/tangle';
 import { FIBRE_COLORS, connectorGeos } from './cableView';
-import { JACKET_KIND, jacketed } from './jacket';
+import { JACKET_KIND, jacketMaterial, jacketed } from './jacket';
 
 /** cords at most (on screen at once): past it, the oldest, deep in the heap, makes room */
 const POOL = 240;
@@ -123,7 +123,7 @@ export class CableRain {
     this.bumps = [0, 0, 0, 0].map(() => this.r() * 2 * Math.PI);
     this.racks = o.racks.map((p) => ({ x: p.x, z: p.z, c: Math.cos(p.yaw), s: Math.sin(p.yaw) }));
 
-    this.tube = new TubeMesh(POOL * (NODES - 1), jacketed(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, metalness: 0 })), this.nodes);
+    this.tube = new TubeMesh(POOL * (NODES - 1), jacketed(jacketMaterial()), this.nodes);
     this.tube.castShadow = this.tube.receiveShadow = true;
     this.tube.setDrawn(0);
     this.group.add(this.tube);

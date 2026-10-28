@@ -48,6 +48,16 @@ function printAtlas(): THREE.CanvasTexture {
 }
 
 /**
+ * The material of the cords' tubes, before the jacket: the colour of each cord
+ * comes from its vertices, darkened here so that under the lamp a yellow cord
+ * reads yellow rather than cream, and the room reflected faintly, so that a
+ * cord shades round under the lamp rather than evenly lit all over.
+ */
+export function jacketMaterial(): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({ vertexColors: true, color: new THREE.Color(0.55, 0.55, 0.55), roughness: 0.55, metalness: 0, envMapIntensity: 0.3 });
+}
+
+/**
  * Adds the jacket to the material of the cords' tubes (three-cable-tubes),
  * from their `tubeCoord`: length along the cord (m, at rest, so the print
  * moves with it), cos and sin of the angle around it, and its kind (the tag
