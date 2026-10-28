@@ -860,28 +860,32 @@ export class World {
         segs.push({ c, ax: x[3 * i], ay: x[3 * i + 1], bx: x[3 * i + 3], by: x[3 * i + 4] });
       }
     });
-    // a grid of 5 cm cells, each pair tested once
-    const cell = 0.05, grid = new Map<string, number[]>();
+    // a grid of 5 cm cells, each segment in every cell its box covers; a pair of cords counted once
+    const cell = 0.05, cols = 64, grid = new Map<number, number[]>();
     segs.forEach((s, j) => {
-      const key = `${Math.floor((s.ax + s.bx) / 2 / cell)},${Math.floor((s.ay + s.by) / 2 / cell)}`;
-      (grid.get(key) ?? grid.set(key, []).get(key)!).push(j);
+      const x0 = Math.floor(Math.min(s.ax, s.bx) / cell), x1 = Math.floor(Math.max(s.ax, s.bx) / cell);
+      const y0 = Math.floor(Math.min(s.ay, s.by) / cell), y1 = Math.floor(Math.max(s.ay, s.by) / cell);
+      for (let gx = x0; gx <= x1; gx++) {
+        for (let gy = y0; gy <= y1; gy++) {
+          const key = (gy + cols) * 4 * cols + gx + cols;
+          const list = grid.get(key);
+          if (list) list.push(j); else grid.set(key, [j]);
+        }
+      }
     });
-    const pairs = new Set<string>();
-    for (const [key, list] of grid) {
-      const [gx, gy] = key.split(',').map(Number);
-      const near: number[] = [];
-      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) near.push(...(grid.get(`${gx + dx},${gy + dy}`) ?? []));
-      for (const j of list) {
-        for (const k of near) {
-          if (k <= j) continue;
-          const p = segs[j], q = segs[k];
-          if (p.c === q.c) continue;
-          const key2 = p.c < q.c ? `${p.c}:${q.c}` : `${q.c}:${p.c}`;
-          if (!pairs.has(key2) && cross(p, q)) pairs.add(key2);
+    const n = this.cables.length, seen = new Uint8Array(n * n);
+    let pairs = 0;
+    for (const list of grid.values()) {
+      for (let a = 0; a < list.length; a++) {
+        const p = segs[list[a]];
+        for (let b = a + 1; b < list.length; b++) {
+          const q = segs[list[b]];
+          if (p.c === q.c || seen[p.c * n + q.c]) continue;
+          if (cross(p, q)) { seen[p.c * n + q.c] = seen[q.c * n + p.c] = 1; pairs++; }
         }
       }
     }
-    return pairs.size;
+    return pairs;
   }
 
   /** straps round three cords or more, lying in a manager or a duct */
