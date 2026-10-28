@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { closest, segSeg } from 'avbd-cables';
-import { CableSim, type StaticShape } from '../src/physics/cableSim';
+import { CableSim, closest, segSeg, type StaticShape } from 'avbd-cables';
 
 // The solver on its own, without the cabinet: cords, boxes and rods.
 

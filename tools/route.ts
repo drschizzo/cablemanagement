@@ -12,7 +12,7 @@ import { World } from '../src/game/world';
 import { type LevelDef } from '../src/game/levels';
 import { planRoute, RouteRun } from '../src/game/route';
 import type { Guide } from '../src/game/rack';
-import type { StaticCapsule } from '../src/physics/cableSim';
+import type { StaticCapsule } from 'avbd-cables';
 
 const params = JSON.parse(process.env.PARAMS ?? '{}');
 const seeds = (process.env.SEEDS ?? '1,2,3,4,5,6,7,8').split(',').map(Number);

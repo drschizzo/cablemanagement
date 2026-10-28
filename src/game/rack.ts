@@ -6,7 +6,7 @@
 // of the equipment are at z = 0; everything lives at z > 0 in front of them,
 // and in the two side channels (x beyond ±0.25) which go 6 cm deeper.
 
-import type { StaticBox, StaticCapsule } from '../physics/cableSim';
+import type { StaticBox, StaticCapsule } from 'avbd-cables';
 import type { RackShape } from './rackSim';
 
 export const U = 0.04445;

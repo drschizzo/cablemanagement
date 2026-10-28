@@ -37,7 +37,7 @@
 // a subclass sets the targets and flags at the start of every step, and may
 // add its own pull on the nodes it holds (`prepare`, `nodeTerm`, `keepHeld`).
 
-import { boxHit, closest, segBox, segSeg, solveSym3, sol } from 'avbd-cables';
+import { boxHit, closest, segBox, segSeg, solveSym3, sol } from './geom';
 
 export interface StaticCapsule {
   kind: 'capsule';
@@ -258,8 +258,38 @@ const CONTACT = { parallel: 0.06, overlap: 0.05, dip: 5e-4, edge: 0.05 };
 /** a connector and the next node are heavier than the cord, and its boot (2 nodes, then 2 more) stiffer: × bend */
 const BOOT = { stiff: 3, firm: 1.8 };
 
+/**
+ * What a worker needs to carry on from where a simulation is (see
+ * `snapshot`); a subclass adds what it keeps of its own.
+ */
+export interface SimSnapshot {
+  params: SimParams;
+  defs: CableInit[];
+  x: Float64Array; v: Float64Array; rest: Float64Array;
+  pins: number[];
+  statics: unknown[];
+  heldBy: Int32Array;
+  target: Float64Array; targetK: Float64Array; targetLead: Float64Array; targetHeavy: Uint8Array;
+  pinches: Pinch[];
+  bundles: { nodes: number[]; r: number; alive: boolean }[];
+}
+
 export class CableSim {
+  /**
+   * The methods that change the simulation, called in the page and repeated
+   * in the worker in the same order (see `threaded`). A subclass lists its own
+   * after these. `restarts`: those after which the positions the worker
+   * computed before are out of date.
+   */
+  static mirrored: readonly string[] = [
+    'setStatics', 'moveNodes', 'teleport', 'pin', 'unpin', 'setTarget', 'clearTarget',
+    'firmPinch', 'unpinch', 'setPinches', 'loadPinches', 'addBundle', 'removeBundle',
+  ];
+  static restarts: readonly string[] = ['moveNodes', 'teleport'];
+
   P: SimParams;
+  /** the cables as built */
+  defs: CableInit[] = [];
   n = 0;
   x = new Float64Array(0);
   x0 = new Float64Array(0);
@@ -463,6 +493,7 @@ export class CableSim {
   // ------------------------------------------------------------ building
 
   build(defs: CableInit[]): number[] {
+    this.defs = defs;
     let total = 0;
     for (const d of defs) total += d.points.length / 3;
     this.n = total;
@@ -709,6 +740,14 @@ export class CableSim {
     return c;
   }
 
+  /** takes the pinches of the worker as they are (nothing to wake or forward); `held`: the one being made, or −1 */
+  adoptPinches(list: Pinch[], held: number): void {
+    this.pinches = list;
+    this.pinchHeld = held >= 0 ? list[held] : null;
+    this.pinchOf.fill(-1);
+    list.forEach((p, k) => { for (let i = p.a; i < p.a + p.n; i++) this.pinchOf[i] = k; });
+  }
+
   /** the centre of the nodes of a pinch, into `drift` */
   private centreOf(p: Pinch): void {
     const x = this.x;
@@ -842,6 +881,52 @@ export class CableSim {
       }
     }
   }
+
+  // ---------------------------------------------------------- worker
+
+  /** the state a worker starts from (see `restore`) */
+  snapshot(): SimSnapshot {
+    const pins: number[] = [];
+    for (let i = 0; i < this.n; i++) if (this.pinned[i]) pins.push(i);
+    return {
+      params: this.P, defs: this.defs, x: this.x, v: this.v, rest: this.rest, pins, statics: this.statics, heldBy: this.heldBy,
+      target: this.target, targetK: this.targetK, targetLead: this.targetLead, targetHeavy: this.targetHeavy,
+      pinches: this.pinches, bundles: this.bundles.map((b) => ({ nodes: b.nodes, r: b.r, alive: b.alive })),
+    };
+  }
+
+  /** carries on from a snapshot, in a new simulation built with its parameters */
+  restore(s: SimSnapshot): void {
+    this.build(s.defs);
+    this.x.set(s.x);
+    this.x0.set(s.x);
+    this.v.set(s.v);
+    for (const i of s.pins) this.pin(i, s.x[3 * i], s.x[3 * i + 1], s.x[3 * i + 2]);
+    this.setStatics(s.statics as StaticShape[]);
+    this.rest.set(s.rest);
+    this.heldBy.set(s.heldBy);
+    this.target.set(s.target);
+    this.targetK.set(s.targetK);
+    this.targetLead.set(s.targetLead);
+    this.targetHeavy.set(s.targetHeavy);
+    this.loadPinches(s.pinches);
+    this.takePinchChange();
+    // the straps that were let go too, so that their ids stay the same
+    for (const b of s.bundles) {
+      const id = this.addBundle(b.nodes, b.r);
+      if (!b.alive) this.removeBundle(id);
+    }
+  }
+
+  /**
+   * What changes every frame without a call (a hand following the pointer),
+   * sent with every step to the worker and set there before each frame.
+   */
+  stepInput(): unknown {
+    return undefined;
+  }
+
+  setStepInput(input: unknown): void {}
 
   // ---------------------------------------------------------------- step
 

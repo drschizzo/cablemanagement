@@ -2,8 +2,8 @@
 // cords with their ends and labels, the velcro straps, the inventory, and the
 // evaluation of how tidy it all is.
 
+import type { Pinch } from 'avbd-cables';
 import { ThreadedSim } from './threadedSim';
-import type { Pinch } from '../physics/cableSim';
 import { CABLE_R, CONNECTOR, Rack, SEG, insideBox, type Item, type ItemKind } from './rack';
 import { SERVICES, type FibreType, type LevelDef } from './levels';
 import { makeCables, makeSchedule, rng, type CableStart, type Circuit } from './tangle';

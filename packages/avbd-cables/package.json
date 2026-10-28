@@ -4,7 +4,7 @@
   "private": true,
   "license": "MIT",
   "type": "module",
-  "description": "Moteur de câbles AVBD (Augmented Vertex Block Descent) : nœuds, contacts, frottement, veille ; sans dépendance ni DOM",
+  "description": "Moteur de câbles AVBD (Augmented Vertex Block Descent) : nœuds, contacts, frottement, cibles, veille, et son Web Worker ; sans dépendance ni DOM",
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts"

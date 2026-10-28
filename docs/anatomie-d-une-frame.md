@@ -4,7 +4,7 @@
 
 Pour afficher une image, Brassage lit la souris, fait avancer la physique des câbles dans un Web Worker, envoie à la carte graphique les nœuds des câbles qui ont bougé, puis lui demande de dessiner la scène en plusieurs passes. Ce document décrit chacune de ces étapes, dans l'ordre où elles s'exécutent, avec les fichiers du dépôt qui les réalisent.
 
-Brassage est un jeu de rangement de câbles dans une baie réseau. Le rendu utilise [three.js](https://threejs.org/), une bibliothèque qui simplifie l'usage de WebGL. La physique des câbles est écrite pour le projet, dans `src/physics/cableSim.ts`, sans bibliothèque externe.
+Brassage est un jeu de rangement de câbles dans une baie réseau. Le rendu utilise [three.js](https://threejs.org/), une bibliothèque qui simplifie l'usage de WebGL. La physique des câbles est écrite pour le projet, dans `packages/avbd-cables/src/cableSim.ts`, sans bibliothèque externe.
 
 ![Image finale d'un niveau](frame/image-finale.jpg)
 
@@ -162,7 +162,7 @@ Les règles du jeu vivent dans `src/game/world.ts`, sans three.js ni DOM. `World
 
 ## Moteur physique
 
-Le moteur représente chaque câble par une chaîne de points pesants et calcule, à chaque pas de 1/60 s, la position de ces points qui respecte au mieux la gravité, la longueur des câbles, leur raideur et les contacts. Il utilise la méthode AVBD (*Augmented Vertex Block Descent*, Giles, Diaz et Yuksel, SIGGRAPH 2025) et tourne dans un Web Worker. Le solveur est dans `src/physics/cableSim.ts`, qui ne connaît pas la baie. `src/game/rackSim.ts` le mène comme le jeu en a besoin (les mains, le chemin, les connecteurs, le creux des guides), et `src/game/threadedSim.ts` et `sim.worker.ts` le déplacent hors du fil principal.
+Le moteur représente chaque câble par une chaîne de points pesants et calcule, à chaque pas de 1/60 s, la position de ces points qui respecte au mieux la gravité, la longueur des câbles, leur raideur et les contacts. Il utilise la méthode AVBD (*Augmented Vertex Block Descent*, Giles, Diaz et Yuksel, SIGGRAPH 2025) et tourne dans un Web Worker. Le solveur est dans `packages/avbd-cables/src/cableSim.ts`, qui ne connaît pas la baie. `src/game/rackSim.ts` le mène comme le jeu en a besoin (les mains, le chemin, les connecteurs, le creux des guides), et `src/game/threadedSim.ts` et `sim.worker.ts` le déplacent hors du fil principal.
 
 Cette section est la plus longue du document. Pour une première lecture, le modèle, « La méthode, en trois idées », l'exemple chiffré et le schéma du déroulé d'un pas suffisent à comprendre le principe.
 
@@ -202,7 +202,7 @@ Le moteur combine plusieurs contributions sur chaque nœud :
 | Chemin tracé | ressort, en laisse (cible) | pendant qu'un câble est posé le long de son chemin, chaque nœud est mené vers sa place, à travers les autres câbles |
 | Épingle | nœud fixe | un connecteur branché ne bouge plus |
 
-Un **coude pincé** (Espace ou clic droit maintenu pendant qu'on tient le câble) garde la forme qu'avaient ses nœuds quand le joueur a cessé de pincer. À chaque sous-pas, le moteur cherche la rotation et le déplacement de cette forme qui vont le mieux aux nœuds, et tire chaque nœud vers sa place dans la forme ainsi posée. Le coude peut donc tourner et voyager avec le câble sans se déformer. Comme la forme posée est celle qui rend la traction la plus faible, cette traction se comporte comme un vrai ressort et n'ajoute pas d'énergie. Plus le pincement a duré, plus le ressort est raide (voir `pinchGoals` dans `src/physics/cableSim.ts`).
+Un **coude pincé** (Espace ou clic droit maintenu pendant qu'on tient le câble) garde la forme qu'avaient ses nœuds quand le joueur a cessé de pincer. À chaque sous-pas, le moteur cherche la rotation et le déplacement de cette forme qui vont le mieux aux nœuds, et tire chaque nœud vers sa place dans la forme ainsi posée. Le coude peut donc tourner et voyager avec le câble sans se déformer. Comme la forme posée est celle qui rend la traction la plus faible, cette traction se comporte comme un vrai ressort et n'ajoute pas d'énergie. Plus le pincement a duré, plus le ressort est raide (voir `pinchGoals` dans `packages/avbd-cables/src/cableSim.ts`).
 
 Une **contrainte dure** doit être respectée exactement (à la précision du calcul près). Une **énergie souple** est un ressort : elle tire dans une direction sans rien imposer. La baie, ses équipements et les guide-câbles forment des **formes statiques** (boîtes et gélules) décrites par `Rack.statics()` dans `src/game/rack.ts`.
 
@@ -326,9 +326,9 @@ Le coût de la physique suit donc ce qui bouge. Au moment des captures, les 13 c
 
 JavaScript exécute le code d'une page sur un seul fil. Si la physique y prenait 10 ms, il ne resterait que 6 ms pour le reste de la frame. Un Web Worker est un second fil d'exécution, sans accès au DOM, qui communique avec la page par messages (`postMessage`).
 
-`ThreadedSim` (dans `src/game/threadedSim.ts`) hérite de `RackSim`, donc de `CableSim`, et garde dans la page une copie complète de la simulation : la topologie, et un miroir des positions. Le jeu lit `sim.x` comme si la physique tournait sur place. Le fonctionnement est le suivant :
+`ThreadedSim` (dans `src/game/threadedSim.ts`) est un `RackSim` passé par `threaded()` (`packages/avbd-cables/src/threaded.ts`), et garde dans la page une copie complète de la simulation : la topologie, et un miroir des positions. Le jeu lit `sim.x` comme si la physique tournait sur place. Le fonctionnement est le suivant :
 
-- Toute modification (épingler, saisir, poser un velcro, changer la baie) est appliquée à la copie locale, puis envoyée au Worker sous forme de message. Les messages arrivent dans l'ordre d'envoi.
+- Toute modification (épingler, saisir, poser un velcro, changer la baie) est appliquée à la copie locale, puis envoyée au Worker sous forme de message : le nom de la méthode et ses arguments, que le Worker rejoue (`hostSimWorker`). Les messages arrivent dans l'ordre d'envoi.
 - `advance(k)` demande k pas. Une seule demande est en cours à la fois. Si le Worker n'a pas fini, les pas sont mis de côté, deux au plus ; au-delà, ils sont abandonnés et comptés dans `dropped`.
 - Le Worker répond avec les positions et les câbles endormis. Le tableau de positions est *transféré* (deuxième argument de `postMessage`) : sa mémoire change de propriétaire au lieu d'être copiée.
 - Un compteur `gen` augmente à chaque déplacement forcé (annulation, nouveau câble). Une réponse calculée avant ce déplacement porte l'ancien numéro et est ignorée.
@@ -644,9 +644,9 @@ Le tableau suit une frame de bout en bout, dans l'ordre d'exécution. La colonne
 | 1 | Le navigateur appelle la boucle | principal | `controller.ts`, `frame` | chaque rafraîchissement | — |
 | 2 | Mesure de `dt`, animations d'interface | principal | `controller.ts`, `tick` | chaque frame | négligeable |
 | 3 | La main avance vers la souris | principal | `controller.ts`, `stepHand` | par pas de physique (0 à 2) | un rayon, quelques calculs |
-| 4 | Demande de pas au Worker | principal → Worker | `threadedSim.ts`, `advance` | chaque frame qui a un pas | un message |
+| 4 | Demande de pas au Worker | principal → Worker | `threaded.ts`, `advance` | chaque frame qui a un pas | un message |
 | 5 | Collisions, 3 sous-pas × 6 itérations, sommeil | Worker | `cableSim.ts`, `step` | par pas, pendant les étapes 6 à 18 | 0,2 ms au repos ; 0,6 à 16 ms en mouvement selon la taille |
-| 6 | Réception des positions (frame précédente ou en cours) | Worker → principal | `threadedSim.ts`, `receive` | quand la réponse arrive | un tableau transféré, sans copie |
+| 6 | Réception des positions (frame précédente ou en cours) | Worker → principal | `threaded.ts`, `receive` | quand la réponse arrive | un tableau transféré, sans copie |
 | 7 | Repères et texture des nœuds des câbles qui ont bougé | principal | `cableView.ts`, `update` | chaque frame | jusqu'à 667 nœuds, 32 Ko envoyés |
 | 8 | Matrices des connecteurs | principal | `cableView.ts`, `updateEnds` | chaque frame | 26 extrémités × 4 pièces |
 | 9 | Mise à jour de la baie si un élément a changé | principal | `rackView.ts`, `syncItems` | si changement | — |

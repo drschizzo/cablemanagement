@@ -1,4 +1,4 @@
-// The cable solver as the game drives it (physics/cableSim.ts knows nothing
+// The cable solver as the game drives it (avbd-cables knows nothing
 // of the cabinet): the hands, the route goals, the connectors pushed into
 // their ports, and the keepers of the finger managers.
 //
@@ -11,7 +11,7 @@
 // once in it, until the hand pulls it out or a route leads it elsewhere. It
 // never draws a cord in: laying a cord in the guides is the route's job.
 
-import { CableSim, type CableInit, type NodeSystem, type Pinch, type StaticShape } from '../physics/cableSim';
+import { CableSim, type CableInit, type NodeSystem, type Pinch, type SimSnapshot, type StaticShape } from 'avbd-cables';
 
 /**
  * A channel that keeps what is left in it (the trough of a finger manager):
@@ -38,7 +38,18 @@ export type RackShape = StaticShape | StaticKeeper;
  */
 const PLUG_STROKE = { speed: 0.6, least: 0.1, most: 0.35, lead: 0.03, seat: 0.005, seatBehind: 0.01, giveUp: 0.5, free: 3 };
 
+/** what a worker needs of a RackSim's own, beyond the solver's (see `snapshot`) */
+interface RackSnapshot extends SimSnapshot {
+  handled: Uint8Array;
+  lastHand: Int32Array;
+  goal: Float64Array;
+  goalW: Float64Array;
+  plugs: { i0: number; i1: number; a: number[]; b: number[] }[];
+}
+
 export class RackSim extends CableSim {
+  static mirrored = [...CableSim.mirrored, 'pinEnd', 'grab', 'release', 'holdStill', 'letGoStill', 'pinch', 'setGoals'];
+
   /** the shapes of the cabinet as given, keepers included (the solver gets the others) */
   shapes: RackShape[] = [];
   private keepers: StaticKeeper[] = [];
@@ -292,6 +303,37 @@ export class RackSim extends CableSim {
     for (const q of this.plugs) { this.handTarget(q.i0, this.plugAt, 3 * q.i0); this.handTarget(q.i1, this.plugAt, 3 * q.i1); }
     if (this.holdNode >= 0) this.handTarget(this.holdNode, this.holdTarget, 0);
     if (this.grabNode >= 0) this.handTarget(this.grabNode, this.grabTarget, 0);
+  }
+
+  // ---------------------------------------------------------- worker
+
+  snapshot(): RackSnapshot {
+    // (the hands and the plugs set their targets again in the worker, at every step)
+    this.unaim();
+    return {
+      ...super.snapshot(), statics: this.shapes, handled: this.handled, lastHand: this.lastHand, goal: this.goal, goalW: this.goalW,
+      plugs: this.plugs.map((q) => ({ i0: q.i0, i1: q.i1, a: q.a, b: q.b })),
+    };
+  }
+
+  restore(s: SimSnapshot): void {
+    super.restore(s);
+    const r = s as RackSnapshot;
+    this.handled.set(r.handled);
+    this.lastHand.set(r.lastHand);
+    this.goal.set(r.goal);
+    this.goalW.set(r.goalW);
+    // connectors on their way into a port go on from where they are
+    for (const q of r.plugs) this.pinEnd(q.i0, q.i1, q.a, q.b);
+  }
+
+  /** the hand, where the pointer has taken it this frame */
+  stepInput(): number[] {
+    return [this.grabTarget[0], this.grabTarget[1], this.grabTarget[2]];
+  }
+
+  setStepInput(t: number[]): void {
+    this.grabTarget[0] = t[0]; this.grabTarget[1] = t[1]; this.grabTarget[2] = t[2];
   }
 
   // ---------------------------------------------------------------- step

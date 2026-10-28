@@ -156,8 +156,7 @@ tourne dans le navigateur.
 
 | Dossier | Contenu |
 |---|---|
-| `src/physics/` | le moteur de câbles, qui tourne dans un Web Worker |
-| `packages/` | ce qui peut servir hors du jeu : les noyaux géométriques du moteur (`avbd-cables`), les tubes des câbles construits par le GPU (`three-cable-tubes`) |
+| `packages/` | ce qui peut servir hors du jeu : le moteur de câbles et son Web Worker (`avbd-cables`), les tubes des câbles construits par le GPU (`three-cable-tubes`) |
 | `src/game/` | la baie, les niveaux, le plan de brassage, les règles et le score |
 | `src/render/` | la scène three.js : baie, câbles, connecteurs |
 | `src/ui/` | l'interface, le tutoriel, la démonstration avant / après |
@@ -194,7 +193,7 @@ que dans le Worker, ce qui rend les tests automatisés reproductibles.
 
 ### Le moteur physique
 
-`src/physics/cableSim.ts` s'inspire d'*Augmented Vertex Block Descent* (Giles,
+`packages/avbd-cables/src/cableSim.ts` s'inspire d'*Augmented Vertex Block Descent* (Giles,
 Diaz, Yuksel, SIGGRAPH 2025). Chaque câble est une chaîne de nœuds ; le
 solveur traite l'inextensibilité et les contacts (câble contre câble, câble
 contre baie) comme des contraintes dures, et la flexion, le frottement, la
@@ -202,7 +201,7 @@ main, le velcro et les coudes pincés comme des énergies. Un coude pincé garde
 sa forme par *shape matching* : ses nœuds sont tirés vers cette forme,
 tournée et déplacée pour leur aller au mieux. Les câbles immobiles se mettent en
 veille pour que les grosses baies restent fluides. Le moteur tourne dans un
-Web Worker (`src/game/sim.worker.ts`, piloté par `threadedSim.ts`) : l'affichage
+Web Worker (`src/game/sim.worker.ts`, piloté par `threadedSim.ts`, tous deux bâtis sur `threaded.ts` du moteur) : l'affichage
 n'attend jamais la physique.
 
 ## Licence
