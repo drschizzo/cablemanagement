@@ -112,18 +112,20 @@ const STEPS: Step[] = [
   },
 
   {
-    title: 'Ranger en passant par les guides',
-    text: 'Pour ranger un câble, on décide par où il passe. Tirez-le <b>par-dessus les guides</b> qu\'il doit traverser, dans l\'ordre : chacun s\'encadre de vert. Quand vous le lâchez, le câble <b>s\'y couche</b>, en entrant dans chaque guide par son ouverture, sans traverser la baie ; lâché devant un port libre, son connecteur s\'y branche. Pour lâcher un câble sans le coucher dans les guides survolés, maintenez <b>Alt</b>.',
+    title: 'Tracer un chemin',
+    text: 'Pour ranger un câble, on décide par où il passe. Outil <b>Chemin</b> (touche C) : appuyez sur un câble, puis <b>tracez un trait par-dessus les guides</b> qu\'il doit traverser, dans l\'ordre. Chaque guide retenu s\'encadre de vert. Si le trait se termine sur un port libre, le bout libre du câble s\'y branche. Au relâcher, le câble est posé le long du chemin, en entrant dans chaque guide par son ouverture, sans traverser la baie. À la Main, tout se fait aussi câble par câble, à votre façon.',
   },
+
 
   {
     title: 'Le guide-câbles',
-    text: 'Ce panneau <b>1U à doigts</b> se pose sous le tiroir. Les câbles passent entre les doigts et courent à l\'horizontale jusqu\'aux côtés de la baie, au lieu de pendre devant les ports. Saisissez un câble, passez-le par-dessus le guide-câbles, puis lâchez-le. Une fois posé, le câble se colore un moment par portion : <span class="ok">vert</span> là où un support le tient, <span class="warn">orange</span> là où il pend de plus de 20 cm, rouge là où il traîne au sol.',
+    text: 'Ce panneau <b>1U à doigts</b> se pose sous le tiroir. Les câbles passent entre les doigts et courent à l\'horizontale jusqu\'aux côtés de la baie, au lieu de pendre devant les ports. Un câble y entre par l\'avant, au-dessus des pointes des doigts. Tracez le chemin d\'un câble par-dessus le guide-câbles. Une fois posé, le câble se colore un moment par portion : <span class="ok">vert</span> là où un support le tient, <span class="warn">orange</span> là où il pend de plus de 20 cm, rouge là où il traîne au sol.',
     task: 'Rangez un câble dans le guide-câbles',
     spot: mgrBox,
-    tool: 'hand',
+    tool: 'route',
     done: (c) => held(c, 'hmgr') >= 6,
   },
+
 
   {
     title: 'Pincer un coude',
@@ -151,11 +153,12 @@ const STEPS: Step[] = [
 
   {
     title: 'Ranger dans la goulotte',
-    text: 'À la Main, passez un câble par-dessus le guide-câbles, puis le long de la goulotte, et lâchez-le devant son port. Le câble entre dans la goulotte par la <b>fente</b> de sa face avant, et sa longueur en trop y pend en boucle.',
+    text: 'Avec l\'outil <b>Chemin</b>, tracez le chemin d\'un câble par le guide-câbles, puis le long de la goulotte, jusqu\'à son port. Le câble entre dans la goulotte par la <b>fente</b> de sa face avant, et sa longueur en trop y pend en boucle.',
     task: 'Mettez un câble dans la goulotte',
-    tool: 'hand',
+    tool: 'route',
     done: (c) => held(c, 'duct') >= 4,
   },
+
 
   {
     title: 'La seconde main',

@@ -679,10 +679,10 @@ export class World {
 
   // ---------------------------------------------------------- evaluation
 
-  /** ports of the lines connected as planned (their LEDs are green) */
-  okPorts(ev: Evaluation): Set<string> {
+  /** ports of the lines connected as planned (their LEDs are green); without an evaluation, from the plugs alone */
+  okPorts(ev?: Evaluation): Set<string> {
     const ok = new Set<string>();
-    ev.circuits.forEach((s, i) => { if (s.connected) ok.add(this.circuits[i].a).add(this.circuits[i].b); });
+    this.circuits.forEach((ci, i) => { if (ev ? ev.circuits[i].connected : this.circuitUp(i)) ok.add(ci.a).add(ci.b); });
     return ok;
   }
 

@@ -9,7 +9,8 @@ import { load, save } from '../storage';
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector(sel) as T;
 
 const TOOLS: { tool: Tool; key: string; name: string; icon: string; help: string }[] = [
-  { tool: 'hand', key: '1', name: 'Main', icon: iconHand(), help: 'Saisir, tirer, débrancher et brancher. Passé par-dessus des guides, le câble s\'y couche au relâcher (Alt : non) ; un connecteur lâché en l\'air y reste accroché. Survol d\'un câble : <b>T</b> le trace, <b>Suppr</b> le jette au bac. Maj : profondeur ; Espace : pincer un coude ; E : l\'autre main. Glisser dans le vide : déplacer la vue.' },
+  { tool: 'hand', key: '1', name: 'Main', icon: iconHand(), help: 'Saisir, tirer, débrancher et brancher ; un connecteur lâché en l\'air y reste accroché. Survol d\'un câble : <b>T</b> le trace, <b>Suppr</b> le jette au bac. Maj : profondeur ; Espace : pincer un coude ; E : l\'autre main. Glisser dans le vide : déplacer la vue.' },
+  { tool: 'route', key: 'c', name: 'Chemin', icon: iconRoute(), help: 'Partez d\'un câble et tracez son chemin par-dessus les guides, dans l\'ordre où il doit les traverser ; finissez sur un port libre pour l\'y brancher. Relâchez : le câble est posé le long du chemin, par l\'ouverture de chaque guide.' },
   { tool: 'supports', key: '2', name: 'Supports', icon: iconHmgr(), help: 'Cliquez une unité vide : un guide-câbles. Un couloir latéral : une goulotte (Maj : un anneau). Cliquez un support posé pour le retirer.' },
   { tool: 'velcro', key: '3', name: 'Velcro', icon: iconVelcro(), help: 'Cliquez sur des câbles qui se touchent pour les attacher en faisceau (un seul service par faisceau, c\'est plus lisible). Cliquez sur un velcro pour l\'enlever.' },
 ];
@@ -103,7 +104,7 @@ export class Hud {
       b.className = 'tool';
       b.dataset.tool = t.tool;
       b.title = `${t.name} (${t.key}) — ${t.help}`;
-      b.innerHTML = `${t.icon}<span class="name">${t.name}</span><span class="key">${t.key}</span>${t.tool !== 'hand' ? '<span class="count"></span>' : ''}`;
+      b.innerHTML = `${t.icon}<span class="name">${t.name}</span><span class="key">${t.key}</span>${t.tool === 'supports' || t.tool === 'velcro' ? '<span class="count"></span>' : ''}`;
       b.onclick = () => this.selectTool(t.tool);
       bar.appendChild(b);
     }
@@ -167,7 +168,7 @@ export class Hud {
     const sup = $('.tool[data-tool="supports"]'), vel = $('.tool[data-tool="velcro"]');
     const parts = ([['hmgr', 'guide-câbles'], ['duct', 'goulottes'], ['vring', 'anneaux']] as const).filter(([k]) => (this.level!.inventory[k] ?? 0) > 0);
     sup.querySelector('.count')!.textContent = parts.map(([k]) => inv[k]).join('·');
-    sup.title = `Supports (2) — en stock : ${parts.map(([k, n]) => `${inv[k]} ${n}`).join(', ') || 'aucun'}. ${TOOLS[1].help}`;
+    sup.title = `Supports (2) — en stock : ${parts.map(([k, n]) => `${inv[k]} ${n}`).join(', ') || 'aucun'}. ${TOOLS.find((t) => t.tool === 'supports')!.help}`;
     const removable = this.ctl!.world.rack.items.some((i) => !i.locked);
     sup.classList.toggle('empty', parts.every(([k]) => inv[k] <= 0) && !removable);
     sup.style.display = parts.length || removable ? '' : 'none';
@@ -299,7 +300,7 @@ export class Hud {
     if (ev.stars < 3) lines.push(ev.stars === 1 ? '★★ : rangez au moins 70 % des liaisons, façade dégagée à 85 %.' : '★★★ : tout rangé, façade entièrement dégagée, aucun cordon tendu ni plié' + (ev.bundlesNeeded ? `, ${ev.bundlesNeeded} faisceaux` : '') + (lv.downtime !== undefined ? ', budget d\'interruption tenu' : '') + '.');
     if (lv.par) lines.push(parWon ? `⏱ Défi chrono réussi : ★★★ en moins de ${fmtTime(lv.par)} !` : `⏱ Défi chrono : ★★★ en moins de ${fmtTime(lv.par)}${this.progress.challenges[lv.id] ? ' (déjà réussi)' : ''}.`);
     $('#result-lines').innerHTML = lines.map((l) => `<li>${l}</li>`).join('');
-    $('#result-note').innerHTML = `<div class="grade"><b>${note}</b><span>Lisibilité${bestNote !== undefined ? ` · record ${Math.max(bestNote, note)}${note > bestNote ? ' — nouveau record !' : ''}` : ''}</span></div>`
+    $('#result-note').innerHTML = `<div class="grade"><s>${ctl.startNote}</s><span class="to">→</span><b>${note}</b><span>Lisibilité${bestNote !== undefined ? ` · record ${Math.max(bestNote, note)}${note > bestNote ? ' — nouveau record !' : ''}` : ''}</span></div>`
       + ev.readability.parts.map((p) => `<div class="part"><span>${p.name}</span><div class="bar"><div class="fill" style="width:${Math.round(p.value * 100)}%"></div></div><i>${p.tip}</i></div>`).join('');
     const idx = LEVELS.findIndex((l) => l.id === lv.id);
     const next = idx >= 0 && idx + 1 < LEVELS.length ? LEVELS[idx + 1] : null;
@@ -356,9 +357,8 @@ export class Hud {
 
   private onKey(e: KeyboardEvent): void {
     if (!this.ctl || document.querySelector('.overlay.on')) return;
-    const t = TOOLS.find((x) => x.key === e.key);
+    const t = TOOLS.find((x) => x.key === e.key.toLowerCase());
     if (t) { this.selectTool(t.tool); return; }
-    if (e.key === 'c' || e.key === 'C') { this.selectTool('hand'); return; }
     if (e.key === '0') { this.showStock(); return; }
     if (e.key === 'Escape') this.selectTool('hand');
     else if (e.key === 'r' || e.key === 'R') this.ctl.stage.resetView();
@@ -403,6 +403,7 @@ export function fmtTime(t: number): string {
 function svg(body: string): string {
   return `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
 }
+function iconRoute(): string { return svg('<circle cx="5" cy="5" r="2"/><path d="M5 7v4a3 3 0 0 0 3 3h8a3 3 0 0 1 3 3v2"/><path d="M16 17l3 3 3-3"/>'); }
 function iconHand(): string { return svg('<path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V11m0-1V4.5a1.5 1.5 0 0 1 3 0V11m0-5.5a1.5 1.5 0 0 1 3 0V12m0-4.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-1.5a6 6 0 0 1-4.9-2.6L4.3 14a1.6 1.6 0 0 1 2.6-1.8L8 13.5"/>'); }
 function iconHmgr(): string { return svg('<rect x="2" y="9" width="20" height="6" rx="1"/><path d="M5 9V6h3v3M10.5 9V6h3v3M16 9V6h3v3"/>'); }
 function iconVelcro(): string { return svg('<path d="M4 8c3-3 13-3 16 0M4 16c3 3 13 3 16 0"/><path d="M4 8v8M20 8v8"/><path d="M9 10.5v3M12 10v4M15 10.5v3"/>'); }

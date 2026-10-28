@@ -208,7 +208,7 @@ class Bay {
   }
 
   leds(): void {
-    this.rackView?.showLeds(this.world.okPorts(this.world.evaluate()));
+    this.rackView?.showLeds(this.world.okPorts());
   }
 }
 

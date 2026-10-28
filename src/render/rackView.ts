@@ -397,22 +397,28 @@ export class RackView {
     this.group.add(m);
   }
 
-  /** every port LED: off when free, green on a line connected as planned, orange otherwise */
-  showLeds(okPorts: Set<string>): void {
-    for (const p of this.rack.ports) this.setLed(p, p.plug < 0 ? 'off' : okPorts.has(p.id) ? 'ok' : 'wrong');
+  /**
+   * Every port LED: off when free, green on a line connected as planned,
+   * orange otherwise. The ports of a production line cut blink red, fast
+   * (`down`); on a bypass, amber, its traffic going elsewhere (`bypass`).
+   */
+  showLeds(okPorts: Set<string>, down = new Set<string>(), bypass = new Set<string>()): void {
+    for (const p of this.rack.ports) {
+      this.setLed(p, bypass.has(p.id) && !okPorts.has(p.id) ? 'bypass' : down.has(p.id) ? 'down' : p.plug < 0 ? 'off' : okPorts.has(p.id) ? 'ok' : 'wrong');
+    }
   }
 
-  setLed(port: Port, state: 'off' | 'ok' | 'wrong'): void {
+  setLed(port: Port, state: 'off' | 'ok' | 'wrong' | 'down' | 'bypass'): void {
     const i = this.ledOf.get(port.id);
     if (i === undefined) return;
-    const c = state === 'ok' ? '#39ff6a' : state === 'wrong' ? '#ffae1f' : '#000000';
+    const c = state === 'ok' ? '#39ff6a' : state === 'wrong' ? '#ffae1f' : state === 'down' ? '#ff3b2f' : state === 'bypass' ? '#ffcf4a' : '#000000';
     const col = state === 'off' ? new THREE.Color(0, 0, 0) : ledGlow(new THREE.Color(c));
     col.toArray(this.ledTint.array, 3 * i);
     this.ledTint.needsUpdate = true;
     // a good line carries traffic (only active equipment shows it: a patch panel is passive);
     // a wrong one blinks slowly, as a fault does
     const active = this.rack.units[port.unit].kind !== 'panel';
-    const b = state === 'wrong' ? pulse(1.2, 0.6) : state === 'ok' && active ? activity(this.seed + i, 0.8) : STEADY;
+    const b = state === 'wrong' ? pulse(1.2, 0.6) : state === 'down' ? pulse(3, 0.5) : (state === 'ok' || state === 'bypass') && active ? activity(this.seed + i, state === 'ok' ? 0.8 : 0.4) : STEADY;
     this.ledBlink.setXYZ(i, b.rate, b.duty, b.phase);
     this.ledBlink.needsUpdate = true;
     this.leds.setColorAt(i, col.set(state === 'off' ? '#202020' : c));
