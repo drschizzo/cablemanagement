@@ -141,7 +141,9 @@ export class Stage {
     this.ssr.resolutionScale = 0.5;
     this.ssr.opacity = 0.2;
     this.ssr.maxDistance = 0.5;
-    this.ssr.thickness = 0.02;
+    // (m) how far behind a surface a ray still counts as hitting it: about a cord's radius; at 2 cm
+    // every ray passing under a cord took its colour, and its reflection spread into a flat ribbon
+    this.ssr.thickness = 0.003;
     this.ssr.blur = true;
     // the reflections are computed at half resolution and blurred: they bled over the edges of
     // the cords and units, so the overlay is cut by the full-resolution mask of the floor
