@@ -12,7 +12,8 @@ import { RouteRun, planRoute } from './route';
 import { FIBRE_NAMES, SERVICES, type FibreType, type LevelDef } from './levels';
 import { sfx } from '../audio/sfx';
 
-export type Tool = 'hand' | 'route' | ItemKind | 'velcro' | 'label' | 'trace' | 'deposit';
+/** the hand (which also lays a cord in the guides it is carried over), the supports, the velcro */
+export type Tool = 'hand' | 'supports' | 'velcro';
 
 export interface ControllerEvents {
   onEval(ev: Evaluation): void;
@@ -37,15 +38,13 @@ const MAX_TARGET_STEP = 0.035; // m per frame the hand may move
 const UNPLUG_PULL = 0.04;
 /** glow of a stretch of the carried cord: held by the management, hanging too long, on the floor */
 const HOLD_TINT = [null, new THREE.Color('#1f9a45'), new THREE.Color('#c06800'), new THREE.Color('#b01c1c')];
-const CORD_TOOLS = new Set<Tool>(['hand', 'route', 'label', 'velcro', 'trace', 'deposit']);
+const CORD_TOOLS = new Set<Tool>(['hand', 'velcro']);
 
 export class Controller {
   world: World;
   rackView: RackView;
   cableView: CableView;
   tool: Tool = 'hand';
-  /** colour the label tool puts on (−1: the service of the cord's line, on both ends) */
-  labelColor = -1;
   elapsed = 0;
   running = true;
   lastEval: Evaluation;
@@ -66,8 +65,16 @@ export class Controller {
     /** when the current pinch began (clock), or −1 */
     pinchSince: number;
   } | null = null;
-  /** the way being drawn (route tool): its cord, the guides passed over in order, the line outside them (one leg before each guide, one after the last), the port it ends on */
-  private stroke: { cable: number; guides: Guide[]; legs: [number, number, number][][]; over: number; pts: THREE.Vector3[]; port: Port | null; last: { x: number; y: number } } | null = null;
+  /**
+   * The way the hand carries a cord: the guides it passed over in order, the
+   * line outside them (one leg before each guide, one after the last). Let
+   * go, the cord is laid in those guides (unless Alt is held).
+   */
+  private stroke: { cable: number; guides: Guide[]; legs: [number, number, number][][]; over: number; pts: THREE.Vector3[]; last: { x: number; y: number } } | null = null;
+  /** Shift and Alt held (Shift: a ring rather than a duct; Alt: the hand does not lay the cord in the guides) */
+  private keys = { shift: false, alt: false };
+  /** glows on the free connectors: cyan when lying loose, amber when hooked in the air */
+  private ends: THREE.Group;
   /** the line drawn, and a frame round each guide it takes */
   private strokeView: THREE.Group;
   /** a cord being laid along its way */
@@ -130,6 +137,8 @@ export class Controller {
     stage.scene.add(this.otherHand);
     this.strokeView = new THREE.Group();
     stage.scene.add(this.strokeView);
+    this.ends = new THREE.Group();
+    stage.scene.add(this.ends);
     this.cableView = new CableView(this.world);
     this.cableView.lightBy(this.rackView.glow);
     stage.scene.add(this.rackView.group, this.cableView.group);
@@ -150,7 +159,7 @@ export class Controller {
     this.world.dispose();
     for (const off of this.unbind) off();
     this.spotlight(null);
-    for (const g of [this.rackView.group, this.cableView.group, this.guide, this.otherHand, this.strokeView, this.ghost]) {
+    for (const g of [this.rackView.group, this.cableView.group, this.guide, this.otherHand, this.strokeView, this.ends, this.ghost]) {
       if (!g) continue;
       this.stage.scene.remove(g);
       disposeTree(g);
@@ -162,6 +171,7 @@ export class Controller {
     this.tool = t;
     this.updateGhost();
     this.stage.renderer.domElement.style.cursor = t === 'hand' ? 'grab' : 'crosshair';
+    if (t !== 'hand' && this.hover) this.setHover(null);
   }
 
   /** highlights the cords and ports of one line of the schedule (−1: none) */
@@ -246,6 +256,7 @@ export class Controller {
     }
     this.updateGlows();
     this.updateHoldView();
+    this.updateEnds();
     // the other hand, where it holds (it lets go when the cords are rebuilt)
     const sim = this.world.sim;
     this.otherHand.visible = sim.holdNode >= 0;
@@ -266,6 +277,7 @@ export class Controller {
     const guide = this.guide.visible, other = this.otherHand.visible;
     this.guide.visible = false;
     this.otherHand.visible = false;
+    this.ends.visible = false;
     this.stage.resetView();
     this.stage.render();
     const src = this.stage.renderer.domElement;
@@ -283,6 +295,7 @@ export class Controller {
     ctl.update();
     this.guide.visible = guide;
     this.otherHand.visible = other;
+    this.ends.visible = true;
     this.stage.render();
     return out.toDataURL('image/jpeg', 0.85);
   }
@@ -373,6 +386,24 @@ export class Controller {
     this.unbind.push(() => this.stage.controls.removeEventListener('start', onOrbit));
     on(window, 'keydown', (e: KeyboardEvent) => { if (e.key === 'Shift' && this.drag && !this.drag.depthMode) this.setDepthMode(true); });
     on(window, 'keyup', (e: KeyboardEvent) => { if (e.key === 'Shift' && this.drag && this.drag.depthMode) this.setDepthMode(false); });
+    const mods = (e: KeyboardEvent) => {
+      const k = { shift: e.shiftKey, alt: e.altKey };
+      if (k.shift === this.keys.shift && k.alt === this.keys.alt) return;
+      this.keys = k;
+      this.updateGhost(true);
+      if (this.stroke) this.drawStroke();
+    };
+    on(window, 'keydown', mods);
+    on(window, 'keyup', mods);
+    on(window, 'keydown', (e: KeyboardEvent) => {
+      if (e.repeat || e.ctrlKey || e.metaKey || document.querySelector('.overlay.on')) return;
+      const p = this.drag ? null : this.hover;
+      if (e.code === 'KeyT' && p) this.trace(p.cable);
+      else if ((e.key === 'Delete' || e.key === 'Backspace') && p) {
+        e.preventDefault();
+        this.deposit(p.cable);
+      }
+    });
     on(window, 'keydown', (e: KeyboardEvent) => {
       if (e.code !== 'Space' || document.querySelector('.overlay.on')) return;
       // not a click on whatever button has the focus
@@ -415,9 +446,9 @@ export class Controller {
       this.pan = { mx: e.clientX, my: e.clientY };
       return;
     }
-    if (this.stroke) { this.extendStroke(); return; }
     if (this.drag && e.shiftKey !== this.drag.depthMode) this.setDepthMode(e.shiftKey);
     if (this.drag) {
+      if (this.stroke) this.extendStroke();
       // the right button pressed while the left one holds the cord: a chord,
       // which comes as a move with the new buttons rather than a pointerdown
       this.setPinch('right', (e.buttons & 2) !== 0);
@@ -444,16 +475,7 @@ export class Controller {
     this.setMouse(e);
     // any gesture stops a cord being laid where it is
     this.stopRoute();
-    if (this.tool === 'route') {
-      const p = this.pick();
-      if (!p) {
-        this.pan = { mx: e.clientX, my: e.clientY };
-        this.stage.renderer.domElement.style.cursor = 'move';
-        return;
-      }
-      this.startStroke(p.cable);
-      this.stage.renderer.domElement.setPointerCapture(e.pointerId);
-    } else if (this.tool === 'hand') {
+    if (this.tool === 'hand') {
       const p = this.pick();
       if (!p) {
         // nothing under the pointer: drag the view
@@ -464,29 +486,27 @@ export class Controller {
       this.remember();
       this.dragStartedAt = this.counters.dragged;
       this.startDrag(p);
+      this.startStroke(p.cable);
       this.stage.renderer.domElement.setPointerCapture(e.pointerId);
-    } else if (this.tool === 'label') {
-      const p = this.pick();
-      if (p) this.applyLabel(p);
     } else if (this.tool === 'velcro') {
       this.applyVelcro();
-    } else if (this.tool === 'trace') {
-      const p = this.pick();
-      if (p) this.trace(p.cable);
-    } else if (this.tool === 'deposit') {
-      const p = this.pick();
-      if (p) {
-        const cut = this.liveLinksOf(p.cable);
-        this.remember();
-        this.world.depositCable(p.cable);
-        this.sayCut(cut);
-        this.counters.deposited++;
-        sfx.unplug();
-        this.afterRewire();
-      }
     } else {
-      this.applyItem(this.tool);
+      this.applySupport();
     }
+  }
+
+  /** unplugs a cord, coils it and throws it in the crate (Delete over it) */
+  private deposit(c: number): void {
+    this.stopRoute();
+    const cut = this.liveLinksOf(c);
+    this.remember();
+    this.world.depositCable(c);
+    this.counters.deposited++;
+    sfx.unplug();
+    this.sayCut(cut);
+    this.setHover(null);
+    this.events.onHover(null, 0, 0);
+    this.afterRewire();
   }
 
   /** remembers the cabinet before a gesture, for Ctrl+Z */
@@ -647,10 +667,12 @@ export class Controller {
   /** how far the hand had travelled when the current drag began (a mere click is not worth an undo) */
   private dragStartedAt = 0;
 
-  private onUp(_e: PointerEvent | null): void {
+  /** `lay`: a cord carried over guides is laid in them (not when the other hand takes it) */
+  private onUp(_e: PointerEvent | null, lay = true): void {
     if (this.pan) { this.pan = null; this.stage.renderer.domElement.style.cursor = 'default'; return; }
-    if (this.stroke) { this.endStroke(); return; }
     if (!this.drag) return;
+    const st = this.stroke;
+    this.clearStroke();
     if (this.counters.dragged - this.dragStartedAt < 0.002 && !this.portHint && !(this.drag.end >= 0) && !this.drag.pinched) this.history.pop();
     this.guide.visible = false;
     this.events.onHint(null);
@@ -660,6 +682,13 @@ export class Controller {
     this.world.sim.release();
     // the cord settles: its held and hanging stretches stay in view a little longer
     if (this.holdView) this.holdView.until = this.clock + 1.6;
+    // carried over guides: laid in them, and plugged where it was let go
+    if (lay && st && st.guides.length && !this.keys.alt && !d.pull && this.layAlong(st, d.end >= 0 ? this.portHint : null)) {
+      this.setPortHint(null);
+      this.stage.renderer.domElement.style.cursor = 'grab';
+      this.refreshHighlights();
+      return;
+    }
     if (d.end >= 0) {
       const port = this.portHint;
       if (port) {
@@ -667,6 +696,10 @@ export class Controller {
         this.counters.plugged++;
         this.reevaluate();
         sfx.plug(this.circuitOkAt(port));
+      } else if (lay && this.canHook(d.target)) {
+        // let go in front of the cabinet, a connector stays hooked where it is
+        this.world.park(d.cable, d.end);
+        sfx.grab();
       }
     }
     this.setPortHint(null);
@@ -676,25 +709,20 @@ export class Controller {
 
   // ------------------------------------------------------------ routes
 
-  /** the route tool takes a cord: the way starts there */
+  /** the hand takes a cord: the way it carries it starts there */
   private startStroke(cable: number): void {
-    this.stroke = { cable, guides: [], legs: [[]], over: -1, pts: [], port: null, last: { x: -1e9, y: -1e9 } };
-    this.cableView.setHighlight(cable, true, '#7ee0ff');
-    this.events.onHover(null, 0, 0);
-    this.events.onHint('Tracez le chemin du câble <b>par-dessus les guides</b>, dans l\'ordre où il doit les traverser (guide-câbles, anneaux, goulottes), et finissez sur un <b>port libre</b> pour l\'y brancher. Relâchez : le câble est posé le long du chemin.');
-    sfx.grab();
-    this.extendStroke();
+    this.stroke = { cable, guides: [], legs: [[]], over: -1, pts: [], last: { x: -1e9, y: -1e9 } };
   }
 
-  /** the pointer moved while drawing: the line grows, the guides under it join the way in order */
+  /** the hand moved: the guides under it join the way, in order */
   private extendStroke(): void {
     const st = this.stroke!;
     if (Math.hypot(this.mousePx.x - st.last.x, this.mousePx.y - st.last.y) < 4) return;
     st.last = { x: this.mousePx.x, y: this.mousePx.y };
     const p = this.pointerOnPlane(new THREE.Plane(new THREE.Vector3(0, 0, 1), -0.09), 0);
     if (p) st.pts.push(p);
-    // a guide joins the way when the line enters it; entered again later,
-    // it moves to that later place (the line crossed it on the way), the
+    // a guide joins the way when the hand enters it; entered again later,
+    // it moves to that later place (the hand crossed it on the way), the
     // legs either side of where it was joined
     const g = this.guideUnderPointer();
     if (g && g.item !== st.over) {
@@ -707,62 +735,58 @@ export class Controller {
         }
         st.guides.push(g);
         st.legs.push([]);
-        sfx.label();
+        if (!this.keys.alt) sfx.label();
       }
     }
     if (!g && p) st.legs[st.legs.length - 1].push([p.x, p.y, p.z]);
     st.over = g?.item ?? -1;
-    // a port only when the line ends on it, not on a guide next to it
-    st.port = g ? null : this.portUnderPointer();
-    this.setPortHint(st.port);
+    if (st.guides.length && this.drag) this.events.onHint(this.keys.alt
+      ? '<b>Alt</b> : le câble reste où vous le lâchez, sans se coucher dans les guides.'
+      : `Relâchez : le câble se couche dans ${st.guides.length > 1 ? `les ${st.guides.length} guides encadrés` : 'le guide encadré'}, dans l'ordre${this.drag.end >= 0 ? ', et se branche s\'il est lâché devant un port libre' : ''}. Maintenez <b>Alt</b> pour le lâcher sans l'y coucher.`);
     this.drawStroke();
   }
 
-  /** let go: the way is planned, and the cord laid along it (or the player told why not) */
-  private endStroke(): void {
-    const st = this.stroke!;
-    this.clearStroke();
-    const res = planRoute(this.world, st.cable, st.guides, st.port, st.legs);
+  /** the cord carried over guides is laid in them; false when it cannot be (the player is told why) */
+  private layAlong(st: NonNullable<Controller['stroke']>, port: Port | null): boolean {
+    const res = planRoute(this.world, st.cable, st.guides, port, st.legs);
     if ('error' in res) {
       this.events.onToast(res.error);
       sfx.error();
-      return;
+      return false;
     }
     const b = 1 - res.plan.a, end = this.world.cables[st.cable].ends[b];
     if (res.plan.portB && end.port) this.sayCut(this.liveLinksOf(st.cable));
-    this.remember();
+    this.world.unpark(st.cable, b);
     this.routing = new RouteRun(this.world, res.plan);
     this.counters.routed++;
     if (res.plan.slack > 0.2) this.events.onToast(`Ce cordon a ${Math.round(res.plan.slack * 100)} cm de trop pour ce chemin : le mou est rangé dans les guides, ou pend (un cordon plus court se prend au Stock).`);
     sfx.whoosh();
+    return true;
+  }
+
+  /** a connector let go there stays hooked: in front of the cabinet, not over the crate nor on the floor */
+  private canHook(t: THREE.Vector3): boolean {
+    const r = this.world.rack;
+    return t.z > 0 && Math.abs(t.x) < WALL_X && t.y > r.floorY + 0.06;
   }
 
   private clearStroke(): void {
-    const st = this.stroke;
     this.stroke = null;
-    if (st) this.cableView.setHighlight(st.cable, false);
-    this.setPortHint(null);
-    this.events.onHint(null);
     for (const o of [...this.strokeView.children]) { this.strokeView.remove(o); disposeTree(o); }
-    this.refreshHighlights();
   }
 
-  /** the line drawn so far, and a numbered frame round each guide it takes */
+  /** a frame round each guide the hand passed over (grey while Alt is held: it will not be used) */
   private drawStroke(): void {
     const st = this.stroke!;
     for (const o of [...this.strokeView.children]) { this.strokeView.remove(o); disposeTree(o); }
-    if (st.pts.length > 1) {
-      const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(st.pts), new THREE.LineBasicMaterial({ color: '#7ee0ff', transparent: true, opacity: 0.9, depthTest: false }));
-      line.renderOrder = 30;
-      this.strokeView.add(line);
-    }
+    const col = this.keys.alt ? ['#8a8a8a', '#bdbdbd'] : ['#3fbf6a', '#7dff9a'];
     for (const g of st.guides) {
       const b = g.reach;
       const size = new THREE.Vector3(b.max[0] - b.min[0], b.max[1] - b.min[1], b.max[2] - b.min[2]);
       const geo = new THREE.BoxGeometry(size.x, size.y, size.z);
       const box = new THREE.Group();
-      box.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: '#3fbf6a', transparent: true, opacity: 0.14, depthWrite: false })));
-      const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: '#7dff9a', transparent: true, opacity: 0.9, depthTest: false }));
+      box.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: col[0], transparent: true, opacity: 0.14, depthWrite: false })));
+      const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: col[1], transparent: true, opacity: 0.9, depthTest: false }));
       edges.renderOrder = 25;
       box.add(edges);
       box.position.set((b.max[0] + b.min[0]) / 2, (b.max[1] + b.min[1]) / 2, (b.max[2] + b.min[2]) / 2);
@@ -846,6 +870,8 @@ export class Controller {
       } else {
         end = eo.end;
         node = n0;
+        // a hooked connector is taken off its hook
+        w.unpark(eo.cable, eo.end);
       }
     } else sfx.grab();
     // taking the cord where the other hand holds it: it lets go
@@ -863,7 +889,7 @@ export class Controller {
     this.cableView.pinchShown = p.cable;
     this.events.onHint(pull
       ? '<b>Tirez</b> le connecteur de quelques centimètres pour le débrancher ; sinon vous rangez simplement le câble.'
-      : 'Maintenez <b>Maj</b> pour pousser le câble vers le fond (souris vers le haut) ou le ramener vers vous (vers le bas). Maintenez <b>Espace</b> (ou le clic droit) pour pincer : le câble garde le coude qu\'il fait sous la main, d\'autant plus fermement que vous pincez longtemps. <b>E</b> : l\'autre main tient le câble ici, et la vôtre est libre. <span class="ok">Vert</span> : tenu, <span class="warn">orange</span> : pend trop.');
+      : 'Passez le câble <b>par-dessus les guides</b> : ils s\'encadrent de vert et le câble s\'y couche quand vous le lâchez (<b>Alt</b> : non). <b>Maj</b> : profondeur. <b>Espace</b> (ou clic droit) : pincer un coude. <b>E</b> : l\'autre main tient le câble ici. <span class="ok">Vert</span> : tenu, <span class="warn">orange</span> : pend trop.');
     this.stage.controls.enableZoom = false;
     this.stage.renderer.domElement.style.cursor = 'grabbing';
     this.events.onHover(null, 0, 0);
@@ -908,7 +934,7 @@ export class Controller {
     this.counters.handedOver++;
     // no plugging on the way: the cord stays where the other hand holds it
     this.setPortHint(null);
-    this.onUp(null);
+    this.onUp(null, false);
     sfx.grab();
   }
 
@@ -1212,43 +1238,20 @@ export class Controller {
     const ci = this.lastEval.circuits.findIndex((s) => s.cable === p.cable);
     // an unmarked cord says where it goes once traced, or once it makes its line
     const known = !w.level.blind || this.traced.has(p.cable) || (ci >= 0 && this.lastEval.circuits[ci].connected);
-    const ends = (known ? cb.ends.map((e) => e.port ?? '—').join(' ↔ ') : 'sans marque — Traceur (8) pour le suivre') + ` · ${this.world.cableLength(p.cable).toFixed(2).replace('.', ',')} m`;
+    const ends = (known ? cb.ends.map((e) => e.port ?? '—').join(' ↔ ') : 'sans marque — <b>T</b> pour le tracer') + ` · ${this.world.cableLength(p.cable).toFixed(2).replace('.', ',')} m`;
     let what = `<b>${FIBRE_NAMES[cb.type]}</b> · ${ends}`;
     if (ci >= 0) what += ` · <span class="ok">liaison ${ci + 1} ✓</span>`;
+    const strain = this.lastEval.cableStrain[p.cable];
+    if (strain) what += ` · <span class="warn">${strain}</span>`;
     if (this.tool === 'hand' && (p.end >= 0 || w.endOfNode(p.node))) {
       const plugged = cb.ends[p.end >= 0 ? p.end : w.endOfNode(p.node)!.end].port;
       what += plugged ? '<br><i>connecteur : saisir et tirer pour débrancher</i>' : '<br><i>connecteur : relâchez-le devant un port pour le brancher</i>';
     }
+    if (this.tool === 'hand') what += '<br><i>T : tracer · Suppr : au bac</i>';
     return what;
   }
 
   // ------------------------------------------------------------- tools
-
-  private applyLabel(p: Pick): void {
-    const cb = this.world.cables[p.cable];
-    if (this.labelColor < 0) {
-      // the service of the line this cord makes, on both ends at once
-      const line = this.lastEval.circuits.find((s) => s.connected && s.cable === p.cable);
-      if (!line) {
-        this.events.onToast('Étiquette auto : branchez d\'abord ce cordon sur les deux ports de sa liaison, ou choisissez une couleur.');
-        sfx.error();
-        return;
-      }
-      this.remember();
-      const svc = this.world.circuits[this.lastEval.circuits.indexOf(line)].service;
-      const done = cb.ends.every((e) => e.label === svc);
-      for (const e of cb.ends) e.label = done ? null : svc;
-    } else {
-      this.remember();
-      const k = p.node - cb.start;
-      const end = cb.ends[k < cb.count / 2 ? 0 : 1];
-      end.label = end.label === this.labelColor ? null : this.labelColor;
-    }
-    sfx.label();
-    this.lastEval = this.world.evaluate();
-    this.events.onEval(this.lastEval);
-    this.cableView.update(true);
-  }
 
   private applyVelcro(): void {
     // remove a strap under the pointer
@@ -1277,58 +1280,107 @@ export class Controller {
     this.events.onInventory();
   }
 
-  /** slot under the pointer for a rack item */
-  private slot(kind: ItemKind): { unit: number; side: number } | null {
+  /**
+   * What the supports tool would do under the pointer: in an empty unit, a
+   * finger manager; in a side channel, a duct (a ring with Shift, or when no
+   * duct is left); on an item already there, take it off.
+   */
+  private supportSlot(): { kind: ItemKind; unit: number; side: number; existing?: Item } | null {
     this.ray.setFromCamera(this.mouse, this.stage.camera);
     const p = new THREE.Vector3();
     if (!this.ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 0, 1), -0.03), p)) return null;
     const r = this.world.rack;
     const unit = Math.floor((r.topY - p.y) / U);
     if (unit < 0 || unit >= r.units.length) return null;
-    if (kind === 'hmgr') return Math.abs(p.x) < COLUMN_X ? { unit, side: 0 } : null;
+    if (Math.abs(p.x) < COLUMN_X) {
+      const existing = r.itemAt('hmgr', unit, 0);
+      return { kind: 'hmgr', unit, side: 0, existing };
+    }
     if (Math.abs(p.x) < COLUMN_X - 0.03 || Math.abs(p.x) > WALL_X + 0.04) return null;
-    return { unit, side: Math.sign(p.x) };
+    const side = Math.sign(p.x);
+    const existing = r.itemAt('duct', unit, side);
+    if (existing) return { kind: existing.kind, unit, side, existing };
+    const kind: ItemKind = this.keys.shift || this.world.inventory.duct <= 0 ? 'vring' : 'duct';
+    return { kind, unit, side };
   }
 
-  private applyItem(kind: ItemKind): void {
-    const s = this.slot(kind);
+  private applySupport(): void {
+    const s = this.supportSlot();
     if (!s) return;
     const w = this.world;
-    const existing = w.rack.itemAt(kind, s.unit, s.side);
-    if (existing) {
-      if (existing.locked) { this.events.onToast('Cet élément est fixé à la baie.'); sfx.error(); return; }
-      if (existing.kind !== kind) { this.events.onToast('Emplacement occupé.'); sfx.error(); return; }
-      w.removeItem(existing);
+    if (s.existing) {
+      if (s.existing.locked) { this.events.onToast('Cet élément est fixé à la baie.'); sfx.error(); return; }
+      w.removeItem(s.existing);
       sfx.remove();
     } else {
-      if (w.inventory[kind] <= 0) { this.events.onToast('Plus aucun élément de ce type en stock.'); sfx.error(); return; }
-      if (!w.placeItem(kind, s.unit, s.side)) { this.events.onToast(kind === 'hmgr' ? 'Un guide-câbles se pose dans une unité vide.' : 'Emplacement occupé.'); sfx.error(); return; }
+      const names = { hmgr: 'guide-câbles', duct: 'goulotte', vring: 'anneau' };
+      if (w.inventory[s.kind] <= 0) { this.events.onToast(`Plus de ${names[s.kind]} en stock.`); sfx.error(); return; }
+      if (!w.placeItem(s.kind, s.unit, s.side)) { this.events.onToast(s.kind === 'hmgr' ? 'Un guide-câbles se pose dans une unité vide.' : 'Emplacement occupé.'); sfx.error(); return; }
       sfx.place();
     }
-    this.ghostKey = '';
-    this.updateGhost();
+    this.updateGhost(true);
     this.events.onInventory();
   }
 
-  private updateGhost(): void {
-    const kind = this.tool;
+  private updateGhost(force = false): void {
     let key = '';
-    let s: { unit: number; side: number } | null = null;
-    if (kind === 'hmgr' || kind === 'duct' || kind === 'vring') {
-      s = this.slot(kind);
-      if (s) key = `${kind}:${s.unit}:${s.side}:${this.world.itemsVersion}`;
-    }
-    if (key === this.ghostKey) return;
+    const s = this.tool === 'supports' ? this.supportSlot() : null;
+    if (s) key = `${s.kind}:${s.unit}:${s.side}:${this.world.itemsVersion}`;
+    if (key === this.ghostKey && !force) return;
     this.ghostKey = key;
     if (this.ghost) { this.stage.scene.remove(this.ghost); disposeTree(this.ghost); this.ghost = null; }
-    if (!s || !key) return;
-    const k = kind as ItemKind;
-    const rack = this.world.rack;
-    const existing = rack.itemAt(k, s.unit, s.side);
-    const ok = existing ? !existing.locked && existing.kind === k : rack.canPlace(k, s.unit, s.side) && this.world.inventory[k] > 0;
-    const it: Item = existing ?? { id: -99, kind: k, unit: k === 'duct' ? rack.ductStart(s.unit) : s.unit, side: s.side, span: k === 'duct' ? 4 : 1, locked: false };
-    this.ghost = buildItem(rack, { ...it, id: -99 }, null, existing ? ghostBadMat : ok ? ghostMat : ghostBadMat);
+    if (!s) return;
+    const rack = this.world.rack, k = s.kind;
+    const ok = s.existing ? !s.existing.locked : rack.canPlace(k, s.unit, s.side) && this.world.inventory[k] > 0;
+    const it: Item = s.existing ?? { id: -99, kind: k, unit: k === 'duct' ? rack.ductStart(s.unit) : s.unit, side: s.side, span: k === 'duct' ? 4 : 1, locked: false };
+    this.ghost = buildItem(rack, { ...it, id: -99 }, null, s.existing || !ok ? ghostBadMat : ghostMat);
     this.stage.scene.add(this.ghost);
+  }
+
+  /** a glow on every free connector: loose (cyan) or hooked in the air (amber), so that none is lost in the heap */
+  private updateEnds(): void {
+    const want: { at: [number, number, number]; hooked: boolean }[] = [];
+    this.world.cables.forEach((cb, c) => cb.ends.forEach((e, k) => {
+      if (e.port || (this.drag && this.drag.cable === c && this.drag.end === k)) return;
+      want.push({ at: this.world.connectorTip(c, k), hooked: !!e.parked });
+    }));
+    const g = this.ends;
+    while (g.children.length < want.length) g.add(makeEndGlow());
+    g.children.forEach((o, i) => {
+      o.visible = i < want.length;
+      if (!o.visible) return;
+      const w = want[i];
+      o.position.set(w.at[0], w.at[1], w.at[2]);
+      const pulse = 1 + 0.25 * Math.sin(this.clock * 4 + i);
+      o.scale.setScalar(pulse);
+      ((o as THREE.Mesh).material as THREE.MeshBasicMaterial).color.set(w.hooked ? '#ffb347' : '#5cd8ff');
+    });
+  }
+
+  /**
+   * A line of the schedule clicked: the loose end of its cord is brought out
+   * of the heap and hooked just under the port it belongs in.
+   */
+  fetchEnd(circuit: number): void {
+    const w = this.world, ci = w.circuits[circuit];
+    const free = [ci.a, ci.b].map((id) => w.rack.port(id)).filter((p) => p.plug < 0);
+    if (!free.length) { this.events.onToast('Ses deux ports sont occupés.'); return; }
+    // its own cord first (the one made for it), else any cord of its type with a loose end
+    const loose = (c: number) => w.cables[c].ends.findIndex((e) => !e.port);
+    const plugged = [ci.a, ci.b].map((id) => w.rack.port(id).plug).find((pl) => pl >= 0);
+    const order = [...(plugged !== undefined ? [plugged >> 1] : []), circuit, ...w.cables.map((_, c) => c)];
+    const c = order.find((k) => k < w.cables.length && w.cables[k].type === ci.type && loose(k) >= 0);
+    if (c === undefined) {
+      this.events.onToast('Aucun cordon de ce type n\'a de bout libre : débranchez celui qui est sur un mauvais port.');
+      sfx.error();
+      return;
+    }
+    const e = loose(c), p = free[0];
+    this.remember();
+    this.stopRoute();
+    w.park(c, e, [[p.x, p.y - 0.035, 0.09], [p.x, p.y - 0.035 - w.seg, 0.09]]);
+    this.holdView = { cable: c, until: this.clock + 1.6, next: 0 };
+    sfx.whoosh();
   }
 
   private refreshLeds(): void {
@@ -1339,6 +1391,13 @@ export class Controller {
 /** downtime per second, as the budget counts it */
 export function fmtCost(v: number): string {
   return `${Number.isInteger(v) ? v : v.toFixed(2).replace(/0$/, '').replace('.', ',')} pt${v > 1 ? 's' : ''}`;
+}
+
+/** the glow on a free connector */
+function makeEndGlow(): THREE.Mesh {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(0.008, 16, 10), new THREE.MeshBasicMaterial({ color: '#5cd8ff', transparent: true, opacity: 0.35, depthTest: false }));
+  m.renderOrder = 29;
+  return m;
 }
 
 /** the depth cue while carrying a cord: plumb line, ring on the floor, tick on the rack */

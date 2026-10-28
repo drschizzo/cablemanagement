@@ -101,7 +101,7 @@ const STEPS: Step[] = [
   },
   {
     title: 'Débrancher, rebrancher',
-    text: 'Une liaison est sur le mauvais port : son voyant est orange et ses deux bons ports sont entourés. Saisissez le <b>connecteur</b> et <b>tirez-le de quelques centimètres</b> : il se débranche (un geste plus court le déplace sans le débrancher). Amenez-le devant le port entouré : le port se surligne en jaune quand il est à portée, et le connecteur s\'y enfiche quand vous le relâchez. Une erreur ? <b>Ctrl+Z</b> annule le dernier geste.',
+    text: 'Une liaison est sur le mauvais port : son voyant est orange et ses deux bons ports sont entourés. Saisissez le <b>connecteur</b> et <b>tirez-le de quelques centimètres</b> : il se débranche. Amenez-le devant le port entouré : le port se surligne en jaune quand il est à portée, et le connecteur s\'y enfiche quand vous le relâchez. Lâché ailleurs, en l\'air, il reste <b>accroché</b> là (une lueur ambrée) ; un bout tombé dans le tas brille en bleu. Un clic sur une ligne du plan sort son bout libre du tas et l\'accroche sous son port. Une erreur ? <b>Ctrl+Z</b>.',
     task: 'Branchez toutes les liaisons du plan',
     tool: 'hand',
     enter: (c) => {
@@ -110,18 +110,21 @@ const STEPS: Step[] = [
     },
     done: (c) => c.world.evaluate().circuits.every((s) => s.connected),
   },
+
   {
-    title: 'Tracer un chemin',
-    text: 'Pour ranger un câble, on décide par où il passe. Outil <b>Chemin</b> (touche C) : appuyez sur un câble, puis <b>tracez un trait par-dessus les guides</b> qu\'il doit traverser, dans l\'ordre. Chaque guide retenu s\'encadre de vert. Si le trait se termine sur un port libre, le bout libre du câble s\'y branche. Au relâcher, le câble est posé le long du chemin : il passe où passe le trait et entre dans chaque guide par son ouverture, du côté d\'où vient le trait, sans traverser la baie. Un cordon trop court pour passer par les guides est refusé, avec la longueur qui manque.',
+    title: 'Ranger en passant par les guides',
+    text: 'Pour ranger un câble, on décide par où il passe. Tirez-le <b>par-dessus les guides</b> qu\'il doit traverser, dans l\'ordre : chacun s\'encadre de vert. Quand vous le lâchez, le câble <b>s\'y couche</b>, en entrant dans chaque guide par son ouverture, sans traverser la baie ; lâché devant un port libre, son connecteur s\'y branche. Pour lâcher un câble sans le coucher dans les guides survolés, maintenez <b>Alt</b>.',
   },
+
   {
     title: 'Le guide-câbles',
-    text: 'Ce panneau <b>1U à doigts</b> se pose sous le tiroir. Les câbles passent entre les doigts et courent à l\'horizontale jusqu\'aux côtés de la baie, au lieu de pendre devant les ports. Un câble y entre par l\'avant, au-dessus des pointes des doigts. Tracez le chemin d\'un câble par-dessus le guide-câbles. Une fois posé, le câble se colore un moment par portion : <span class="ok">vert</span> là où un support le tient, <span class="warn">orange</span> là où il pend de plus de 20 cm, rouge là où il traîne au sol.',
+    text: 'Ce panneau <b>1U à doigts</b> se pose sous le tiroir. Les câbles passent entre les doigts et courent à l\'horizontale jusqu\'aux côtés de la baie, au lieu de pendre devant les ports. Saisissez un câble, passez-le par-dessus le guide-câbles, puis lâchez-le. Une fois posé, le câble se colore un moment par portion : <span class="ok">vert</span> là où un support le tient, <span class="warn">orange</span> là où il pend de plus de 20 cm, rouge là où il traîne au sol.',
     task: 'Rangez un câble dans le guide-câbles',
     spot: mgrBox,
-    tool: 'route',
+    tool: 'hand',
     done: (c) => held(c, 'hmgr') >= 6,
   },
+
   {
     title: 'Pincer un coude',
     text: 'À la main, on peut aussi donner sa forme à un câble. Sans pli, un câble sort de son port droit vers vous ; <b>plié juste après le connecteur</b>, il descend droit vers le guide-câbles. Saisissez le câble à quelques centimètres de son connecteur et amenez-le dans le guide-câbles. Puis, sans lâcher le câble, <b>maintenez Espace</b> (ou le clic droit) : la portion sous votre main garde la forme qu\'elle a. Plus vous maintenez, plus le coude est ferme (environ une seconde et demie pour un coude bien ferme). Relâchez Espace, puis le câble : le coude garde sa forme.',
@@ -139,19 +142,21 @@ const STEPS: Step[] = [
   },
   {
     title: 'La goulotte',
-    text: 'La <b>goulotte</b> se fixe dans un couloir latéral. Elle descend les câbles le long des montants et cache le <b>mou</b> (la longueur en trop). Prenez l\'outil Goulotte (touche 3) et cliquez dans le couloir entouré.',
+    text: 'La <b>goulotte</b> se fixe dans un couloir latéral. Elle descend les câbles le long des montants et cache le <b>mou</b> (la longueur en trop). Prenez l\'outil <b>Supports</b> (touche 2) et cliquez dans le couloir entouré : dans un couloir, il pose une goulotte ; dans une unité vide, un guide-câbles.',
     task: 'Posez une goulotte',
     spot: sideBox,
-    tool: 'duct',
+    tool: 'supports',
     done: (c) => c.world.rack.items.some((i) => i.kind === 'duct'),
   },
+
   {
     title: 'Ranger dans la goulotte',
-    text: 'Avec l\'outil <b>Chemin</b>, tracez le chemin d\'un câble par le guide-câbles, puis le long de la goulotte, jusqu\'à son port. Le câble entre dans la goulotte par la <b>fente</b> de sa face avant, et sa longueur en trop y pend en boucle. Si le cordon est trop court, l\'outil Longueur en fournit un autre.',
+    text: 'À la Main, passez un câble par-dessus le guide-câbles, puis le long de la goulotte, et lâchez-le devant son port. Le câble entre dans la goulotte par la <b>fente</b> de sa face avant, et sa longueur en trop y pend en boucle.',
     task: 'Mettez un câble dans la goulotte',
-    tool: 'route',
+    tool: 'hand',
     done: (c) => held(c, 'duct') >= 4,
   },
+
   {
     title: 'La seconde main',
     text: 'À la main, il faut parfois tenir un câble à deux endroits : avec une seule main, tirer le bout défait ce qu\'on vient de poser. Tenez le câble là où il doit rester et appuyez sur <b>E</b> : <b>l\'autre main</b> le tient sur place (une lueur ambrée la signale) et la vôtre est libre. Saisissez le câble plus loin, amenez-le dans la goulotte et pincez le virage avec <b>Espace</b>. Enfin, sans rien tenir, appuyez sur <b>E</b> : l\'autre main lâche le câble.',
@@ -165,15 +170,17 @@ const STEPS: Step[] = [
   },
   {
     title: 'L\'anneau',
-    text: 'Plus léger qu\'une goulotte, l\'<b>anneau</b> (touche 4) guide un câble vertical dans un couloir latéral. C\'est un crochet ouvert à l\'avant, côté extérieur : le Chemin y fait entrer le câble par cette ouverture. Pratique pour quelques câbles ; au-delà, la goulotte tient mieux le mou.',
+    text: 'Plus léger qu\'une goulotte, l\'<b>anneau</b> guide un câble vertical dans un couloir latéral : outil Supports, <b>Maj</b> + clic dans un couloir (ou un simple clic quand il n\'y a plus de goulotte). C\'est un crochet ouvert à l\'avant, côté extérieur. Pratique pour quelques câbles ; au-delà, la goulotte tient mieux le mou.',
   },
+
   {
     title: 'Le velcro',
-    text: 'Le <b>velcro</b> (touche 5) serre en faisceau les câbles qui se touchent. Cliquez là où deux câbles sont côte à côte ; recliquez sur un velcro pour l\'enlever. Jamais de collier serré sur une fibre : il l\'écrase !',
+    text: 'Le <b>velcro</b> (touche 3) serre en faisceau les câbles qui se touchent. Cliquez là où deux câbles sont côte à côte ; recliquez sur un velcro pour l\'enlever. Un faisceau d\'un seul service se lit mieux. Jamais de collier serré sur une fibre : il l\'écrase !',
     task: 'Posez un velcro',
     tool: 'velcro',
     done: (c) => c.world.straps.length > 0,
   },
+
   {
     title: 'Le bon cordon',
     text: 'Un rangement parfait passe par des cordons <b>à la bonne longueur</b> : trop longs, ils font du mou partout ; trop courts, ils sont <b>tendus</b> et ne valent pas ★★★. Le <b>Stock</b> (touche 0) fournit des cordons neufs, en nombre limité par longueur : ils arrivent dans le bac. Pour remplacer un cordon branché, il faut le débrancher, et donc couper sa liaison le temps de changer.',
@@ -181,24 +188,24 @@ const STEPS: Step[] = [
     done: (c) => c.world.cablesVersion > 0,
   },
   {
-    title: 'Le bac, le stock, le traceur',
-    text: 'Comme un vrai technicien, on peut tout <b>débrancher et déposer</b> dans le bac au sol (outil Déposer, 9), puis rebrasser proprement. Le <b>Stock</b> (0) fournit des cordons neufs, livrés dans le bac. Le <b>Traceur</b> (8) fait clignoter un câble et ses deux ports, pour savoir où il va.',
+    title: 'Le bac et le traceur',
+    text: 'Comme un vrai technicien, on peut tout <b>débrancher et déposer</b> dans le bac au sol : survolez un câble et appuyez sur <b>Suppr</b>. Reprenez-le à la main quand vous voulez. Pour savoir où va un câble dans le tas, survolez-le et appuyez sur <b>T</b> : il clignote et ses deux ports s\'entourent.',
     spot: (c) => { const k = c.world.rack.crate(); return { min: k.min, max: k.max }; },
-    task: 'Déposez un câble dans le bac',
-    tool: 'deposit',
+    task: 'Déposez un câble dans le bac (Suppr)',
+    tool: 'hand',
     done: (c) => c.counters.deposited > 0,
   },
+
   {
-    title: 'Les étiquettes',
-    text: 'Chaque liaison appartient à un <b>service</b> (sa couleur dans le plan). Outil Étiquette (touche 6) : en mode <b>A</b> (auto), un clic sur un cordon bien branché étiquette ses <b>deux bouts</b> à la couleur de son service. Ou choisissez une couleur et cliquez près d\'un connecteur.',
-    task: 'Posez une étiquette',
-    tool: 'label',
-    done: (c) => c.world.cables.some((cb) => cb.ends.some((e) => e.label !== null)),
+    title: 'Les services',
+    text: 'Chaque liaison appartient à un <b>service</b> (sa couleur dans le plan ; survolez-le pour savoir ce qu\'il porte). Un cordon branché comme prévu reçoit tout seul son <b>étiquette</b>. Dans une baie en production (⚡), chaque seconde où une liaison est coupée coûte le poids de son service sur un <b>budget d\'interruption</b> : l\'Admin ×4, la Voix et le Stockage ×3, la Vidéo ×2, les Données ×1, les Invités presque rien. Une <b>dérivation</b> (clic sur le ⚡ d\'une ligne du plan) porte le trafic d\'une liaison pendant qu\'on la recâble.',
   },
+
   {
     title: 'Le score',
-    text: 'Quatre critères, dans le panneau de droite : les <b>connexions</b> conformes au plan (obligatoires pour valider), le <b>rangement</b> (aucune portion de plus de 20 cm ne pend hors d\'un support), la <b>façade dégagée</b> (aucun câble devant le port d\'un autre) et les <b>étiquettes</b>. De une à trois étoiles ; il en faut <b>deux</b> pour ouvrir le niveau suivant. Le secret d\'une baie soignée : un chemin bien pensé pour chaque câble, à la bonne longueur, le mou dans la goulotte. À vous !',
+    text: 'Quatre critères, dans le panneau de droite : les <b>connexions</b> conformes au plan (obligatoires pour valider), le <b>rangement</b> (aucune portion de plus de 20 cm ne pend hors d\'un support), la <b>façade dégagée</b> (aucun câble devant le port d\'un autre) et l\'absence de <b>tension</b> (aucun cordon tendu, aucune fibre pliée). De une à trois étoiles ; il en faut <b>deux</b> pour ouvrir le niveau suivant. La <b>lisibilité</b>, sur 100, départage les baies parfaites : le mou juste, les couleurs, les faisceaux, les croisements. À vous !',
   },
+
 ];
 
 export class Tutorial {

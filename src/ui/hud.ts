@@ -8,16 +8,10 @@ import { load, save } from '../storage';
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector(sel) as T;
 
-const TOOLS: { tool: Tool; key: string; name: string; icon: string; stock?: 'hmgr' | 'duct' | 'vring' | 'velcro'; help: string }[] = [
-  { tool: 'hand', key: '1', name: 'Main', icon: iconHand(), help: 'Saisir, tirer, débrancher et brancher les câbles (Maj en tirant : profondeur ; Espace ou clic droit maintenu en tirant : pincer un coude, qui garde sa forme ; Espace sur un coude pincé : le relâcher ; E en tirant : l\'autre main tient le câble sur place, E pour qu\'elle le lâche). Glisser dans le vide : déplacer la vue.' },
-  { tool: 'route', key: 'c', name: 'Chemin', icon: iconRoute(), help: 'Partez d\'un câble et tracez son chemin par-dessus les guides, dans l\'ordre où il doit les traverser ; finissez sur un port libre pour l\'y brancher. Relâchez : le câble est posé le long du chemin, par l\'ouverture de chaque guide.' },
-  { tool: 'hmgr', key: '2', name: 'Guide-câbles 1U', icon: iconHmgr(), stock: 'hmgr', help: 'Panneau à anneaux, dans une unité vide de la baie. Cliquez à nouveau pour le retirer.' },
-  { tool: 'duct', key: '3', name: 'Goulotte', icon: iconDuct(), stock: 'duct', help: 'Goulotte verticale de 4U dans un couloir latéral. Cliquez à nouveau pour la retirer.' },
-  { tool: 'vring', key: '4', name: 'Anneau', icon: iconRing(), stock: 'vring', help: 'Anneau de passage vertical dans un couloir latéral.' },
-  { tool: 'velcro', key: '5', name: 'Velcro', icon: iconVelcro(), stock: 'velcro', help: 'Cliquez sur des câbles qui se touchent pour les attacher en faisceau. Cliquez sur un velcro pour l\'enlever.' },
-  { tool: 'label', key: '6', name: 'Étiquette', icon: iconLabel(), help: 'Auto : cliquez un cordon branché sur sa liaison, ses deux bouts prennent la couleur de son service. Ou choisissez une couleur et cliquez près d\'un connecteur (re-cliquez pour l\'enlever).' },
-  { tool: 'trace', key: '8', name: 'Traceur', icon: iconTrace(), help: 'Cliquez sur un câble : il clignote en rouge et ses deux ports s\'entourent, pour savoir où il va vraiment.' },
-  { tool: 'deposit', key: '9', name: 'Déposer', icon: iconBin(), help: 'Cliquez sur un câble : il est débranché, enroulé et jeté dans le bac au sol. Reprenez-le à la main quand vous voulez.' },
+const TOOLS: { tool: Tool; key: string; name: string; icon: string; help: string }[] = [
+  { tool: 'hand', key: '1', name: 'Main', icon: iconHand(), help: 'Saisir, tirer, débrancher et brancher. Passé par-dessus des guides, le câble s\'y couche au relâcher (Alt : non) ; un connecteur lâché en l\'air y reste accroché. Survol d\'un câble : <b>T</b> le trace, <b>Suppr</b> le jette au bac. Maj : profondeur ; Espace : pincer un coude ; E : l\'autre main. Glisser dans le vide : déplacer la vue.' },
+  { tool: 'supports', key: '2', name: 'Supports', icon: iconHmgr(), help: 'Cliquez une unité vide : un guide-câbles. Un couloir latéral : une goulotte (Maj : un anneau). Cliquez un support posé pour le retirer.' },
+  { tool: 'velcro', key: '3', name: 'Velcro', icon: iconVelcro(), help: 'Cliquez sur des câbles qui se touchent pour les attacher en faisceau (un seul service par faisceau, c\'est plus lisible). Cliquez sur un velcro pour l\'enlever.' },
 ];
 
 const fmtLen = (m: number) => (m < 1 ? `${Math.round(m * 100)} cm` : `${m.toFixed(m % 1 ? 2 : 0).replace('.', ',')} m`);
@@ -95,7 +89,6 @@ export class Hud {
     this.hide('#result');
     this.clean = -1;
     this.buildPlan();
-    this.buildSwatches();
     this.refreshInventory();
     this.selectTool('hand');
     this.onEval(ctl.lastEval);
@@ -110,13 +103,10 @@ export class Hud {
       b.className = 'tool';
       b.dataset.tool = t.tool;
       b.title = `${t.name} (${t.key}) — ${t.help}`;
-      b.innerHTML = `${t.icon}<span class="name">${t.name}</span><span class="key">${t.key}</span>${t.stock ? '<span class="count"></span>' : ''}`;
+      b.innerHTML = `${t.icon}<span class="name">${t.name}</span><span class="key">${t.key}</span>${t.tool !== 'hand' ? '<span class="count"></span>' : ''}`;
       b.onclick = () => this.selectTool(t.tool);
       bar.appendChild(b);
     }
-    const sw = document.createElement('div');
-    sw.id = 'swatches';
-    bar.appendChild(sw);
     const stock = document.createElement('button');
     stock.className = 'tool stock';
     stock.title = 'Stock (0) — prendre un cordon neuf, il arrive dans le bac au sol';
@@ -165,54 +155,25 @@ export class Hud {
     m.classList.toggle('on');
   }
 
-  private buildSwatches(): void {
-    const sw = $('#swatches');
-    sw.innerHTML = '';
-    const pick = (i: number) => { this.ctl!.labelColor = i; this.selectTool('label'); this.markSwatch(); };
-    const auto = document.createElement('button');
-    auto.className = 'swatch auto';
-    auto.textContent = 'A';
-    auto.title = 'Auto : la couleur du service de la liaison, aux deux bouts';
-    auto.onclick = () => pick(-1);
-    sw.appendChild(auto);
-    const n = Math.max(1, this.level!.services);
-    for (let i = 0; i < n; i++) {
-      const b = document.createElement('button');
-      b.className = 'swatch';
-      b.style.background = SERVICES[i].color;
-      b.title = SERVICES[i].name;
-      b.onclick = () => pick(i);
-      sw.appendChild(b);
-    }
-    this.ctl!.labelColor = -1;
-    this.markSwatch();
-  }
-
-  private markSwatch(): void {
-    // the first swatch is Auto (−1)
-    [...$('#swatches').children].forEach((c, i) => c.classList.toggle('on', i - 1 === this.ctl!.labelColor));
-  }
-
   selectTool(t: Tool): void {
     this.ctl?.setTool(t);
     document.querySelectorAll<HTMLElement>('.tool').forEach((b) => b.classList.toggle('on', b.dataset.tool === t));
-    $('#swatches').classList.toggle('open', t === 'label');
-    const info = TOOLS.find((x) => x.tool === t)!;
-    $('#hint').textContent = info.help;
+    $('#hint').innerHTML = TOOLS.find((x) => x.tool === t)!.help;
   }
 
   refreshInventory(): void {
     const inv = this.ctl?.world.inventory;
     if (!inv) return;
-    document.querySelectorAll<HTMLElement>('.tool').forEach((b) => {
-      const t = TOOLS.find((x) => x.tool === b.dataset.tool);
-      if (!t?.stock) return;
-      const n = inv[t.stock];
-      const total = this.level!.inventory[t.stock] ?? 0;
-      b.querySelector('.count')!.textContent = String(n);
-      b.classList.toggle('empty', n <= 0);
-      b.style.display = total > 0 || t.stock === 'hmgr' && this.ctl!.world.rack.items.some((i) => i.kind === 'hmgr' && !i.locked) ? '' : 'none';
-    });
+    const sup = $('.tool[data-tool="supports"]'), vel = $('.tool[data-tool="velcro"]');
+    const parts = ([['hmgr', 'guide-câbles'], ['duct', 'goulottes'], ['vring', 'anneaux']] as const).filter(([k]) => (this.level!.inventory[k] ?? 0) > 0);
+    sup.querySelector('.count')!.textContent = parts.map(([k]) => inv[k]).join('·');
+    sup.title = `Supports (2) — en stock : ${parts.map(([k, n]) => `${inv[k]} ${n}`).join(', ') || 'aucun'}. ${TOOLS[1].help}`;
+    const removable = this.ctl!.world.rack.items.some((i) => !i.locked);
+    sup.classList.toggle('empty', parts.every(([k]) => inv[k] <= 0) && !removable);
+    sup.style.display = parts.length || removable ? '' : 'none';
+    vel.querySelector('.count')!.textContent = String(inv.velcro);
+    vel.classList.toggle('empty', inv.velcro <= 0);
+    vel.style.display = (this.level!.inventory.velcro ?? 0) > 0 ? '' : 'none';
   }
 
   // -------------------------------------------------------------- plan
@@ -236,7 +197,9 @@ export class Hud {
         <td class="st"><i class="s-conn" title="Branchée"></i><i class="s-route" title="Rangée"></i><i class="s-clear" title="Façade dégagée"></i><i class="s-relax" title="Ni tendu ni plié"></i></td>`;
       tr.onmouseenter = () => this.ctl?.focus(i);
       tr.onmouseleave = () => this.ctl?.focus(-1);
-      tr.querySelector<HTMLButtonElement>('.bypass')?.addEventListener('click', () => this.ctl?.toggleBypass(i));
+      tr.title = 'Cliquez : son bout libre sort du tas et s\'accroche sous son port';
+      tr.onclick = () => this.ctl?.fetchEnd(i);
+      tr.querySelector<HTMLButtonElement>('.bypass')?.addEventListener('click', (e) => { e.stopPropagation(); this.ctl?.toggleBypass(i); });
       tb.appendChild(tr);
       return tr;
     });
@@ -395,6 +358,7 @@ export class Hud {
     if (!this.ctl || document.querySelector('.overlay.on')) return;
     const t = TOOLS.find((x) => x.key === e.key);
     if (t) { this.selectTool(t.tool); return; }
+    if (e.key === 'c' || e.key === 'C') { this.selectTool('hand'); return; }
     if (e.key === '0') { this.showStock(); return; }
     if (e.key === 'Escape') this.selectTool('hand');
     else if (e.key === 'r' || e.key === 'R') this.ctl.stage.resetView();
@@ -441,11 +405,5 @@ function svg(body: string): string {
 }
 function iconHand(): string { return svg('<path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V11m0-1V4.5a1.5 1.5 0 0 1 3 0V11m0-5.5a1.5 1.5 0 0 1 3 0V12m0-4.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-1.5a6 6 0 0 1-4.9-2.6L4.3 14a1.6 1.6 0 0 1 2.6-1.8L8 13.5"/>'); }
 function iconHmgr(): string { return svg('<rect x="2" y="9" width="20" height="6" rx="1"/><path d="M5 9V6h3v3M10.5 9V6h3v3M16 9V6h3v3"/>'); }
-function iconDuct(): string { return svg('<path d="M7 2v20M17 2v20"/><path d="M7 5h4M7 9h4M7 13h4M7 17h4M13 5h4M13 9h4M13 13h4M13 17h4"/>'); }
-function iconRing(): string { return svg('<path d="M6 4v9a6 6 0 0 0 12 0V4"/><path d="M4 4h4M16 4h4"/>'); }
 function iconVelcro(): string { return svg('<path d="M4 8c3-3 13-3 16 0M4 16c3 3 13 3 16 0"/><path d="M4 8v8M20 8v8"/><path d="M9 10.5v3M12 10v4M15 10.5v3"/>'); }
-function iconLabel(): string { return svg('<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.5"/>'); }
-function iconTrace(): string { return svg('<path d="M3 21l6-6"/><path d="M9 15l2-6 6-6 4 4-6 6-6 2z"/><path d="M17 3l4 4"/><circle cx="20" cy="20" r="1.5"/>'); }
-function iconRoute(): string { return svg('<circle cx="5" cy="5" r="2"/><path d="M5 7v4a3 3 0 0 0 3 3h8a3 3 0 0 1 3 3v2"/><path d="M16 17l3 3 3-3"/>'); }
-function iconBin(): string { return svg('<path d="M3 8h18l-2 12H5z"/><ellipse cx="12" cy="8" rx="5" ry="2"/><path d="M8 13c2 1.5 6 1.5 8 0"/>'); }
 function iconStock(): string { return svg('<path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/>'); }
