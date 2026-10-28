@@ -1,0 +1,15 @@
+{
+  "name": "three-cable-tubes",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Des milliers de tubes lissés, construits par le GPU à partir de leurs seuls nœuds, pour three.js",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "peerDependencies": {
+    "three": ">=0.183.0"
+  }
+}

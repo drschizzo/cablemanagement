@@ -12,5 +12,5 @@
     "noEmit": true,
     "types": ["vite/client", "vitest/importMeta"]
   },
-  "include": ["src", "tools", "tests", "vite.config.ts"]
+  "include": ["src", "packages", "tools", "tests", "vite.config.ts"]
 }

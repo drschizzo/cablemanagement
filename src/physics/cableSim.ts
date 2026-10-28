@@ -39,7 +39,7 @@
 // once in it, until the hand pulls it out or a route leads it elsewhere. It
 // never draws a cord in: laying a cord in the guides is the route's job.
 
-import { boxHit, closest, segBox, segSeg, solveSym3, sol } from './geom';
+import { boxHit, closest, segBox, segSeg, solveSym3, sol } from 'avbd-cables';
 
 export interface StaticCapsule {
   kind: 'capsule';

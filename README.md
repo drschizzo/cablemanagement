@@ -157,6 +157,7 @@ tourne dans le navigateur.
 | Dossier | Contenu |
 |---|---|
 | `src/physics/` | le moteur de câbles, qui tourne dans un Web Worker |
+| `packages/` | ce qui peut servir hors du jeu : les noyaux géométriques du moteur (`avbd-cables`), les tubes des câbles construits par le GPU (`three-cable-tubes`) |
 | `src/game/` | la baie, les niveaux, le plan de brassage, les règles et le score |
 | `src/render/` | la scène three.js : baie, câbles, connecteurs |
 | `src/ui/` | l'interface, le tutoriel, la démonstration avant / après |

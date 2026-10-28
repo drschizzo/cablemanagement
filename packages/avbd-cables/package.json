@@ -1,0 +1,12 @@
+{
+  "name": "avbd-cables",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Moteur de câbles AVBD (Augmented Vertex Block Descent) : nœuds, contacts, frottement, veille ; sans dépendance ni DOM",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

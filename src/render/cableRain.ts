@@ -11,11 +11,11 @@
 // physics and the nodes sent each frame are those of the few in the air.
 
 import * as THREE from 'three';
+import { TubeMesh, TubeNodes } from 'three-cable-tubes';
 import { CABLE_R } from '../game/rack';
 import { SERVICES } from '../game/levels';
 import { rng } from '../game/tangle';
 import { FIBRE_COLORS, connectorGeos } from './cableView';
-import { TubeMesh, TubeNodes } from './tube';
 import { JACKET_KIND, jacketed } from './jacket';
 
 /** cords at most (on screen at once): past it, the oldest, deep in the heap, makes room */

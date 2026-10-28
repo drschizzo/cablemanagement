@@ -19,5 +19,15 @@ export default tseslint.config(
   },
   { files: ['src/**/*.ts'], languageOptions: { globals: globals.browser } },
   { files: ['src/**/*.worker.ts'], languageOptions: { globals: globals.worker } },
+  // les paquets ne dépendent pas du jeu : rien hors de leur dossier, et pas de three.js pour le moteur
+  { files: ['packages/**/*.ts'], languageOptions: { globals: globals.browser }, rules: { 'no-restricted-imports': ['error', packageBounds()] } },
+  {
+    files: ['packages/avbd-cables/**/*.ts'],
+    rules: { 'no-restricted-imports': ['error', { ...packageBounds(), paths: [{ name: 'three', message: 'avbd-cables reste sans dépendance.' }] }] },
+  },
   { files: ['tools/**/*.ts', 'tests/**/*.ts', '*.config.{js,ts}'], languageOptions: { globals: globals.node } },
 );
+
+function packageBounds() {
+  return { patterns: [{ group: ['../../*', '**/src/*'], message: 'Un paquet n\'importe rien hors de son dossier (ni le jeu ni un autre paquet par chemin relatif).' }] };
+}

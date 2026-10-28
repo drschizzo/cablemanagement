@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { TubeMesh, TubeNodes } from 'three-cable-tubes';
 import type { World } from '../game/world';
 import { CONNECTOR } from '../game/rack';
 import { SERVICES } from '../game/levels';
@@ -7,7 +8,6 @@ import { tintable } from './batch';
 import { bevelBox } from './bevel';
 import { ledLit, type LedGlow } from './ledGlow';
 import { JACKET_KIND, jacketed } from './jacket';
-import { TubeMesh, TubeNodes } from './tube';
 
 export const FIBRE_COLORS = { OS2: '#f2c12e', OM4: '#3cc9cf', CU: '#3d7fe0' } as const;
 

@@ -5,8 +5,11 @@ Ce document décrit comment le code est organisé, et où ajouter une évolution
 ## Vue d'ensemble
 
 ```
+packages/    ce qui peut servir hors du jeu (workspaces npm), sans rien importer du jeu
+  avbd-cables/        noyaux géométriques du moteur (segment–segment, segment–boîte, système 3×3)   sans dépendance
+  three-cable-tubes/  les tubes des câbles, construits par le GPU à partir de leurs nœuds (TubeNodes, TubeMesh, swept)   three.js
 src/
-  physics/   moteur de câbles AVBD, géométrie, Worker                       pur · sans DOM
+  physics/   moteur de câbles AVBD, Worker                                  pur · sans DOM
     cableSim.ts     le solveur (nœuds, contraintes, contacts, veille)
     threadedSim.ts  le même, dont les pas tournent dans sim.worker.ts
   game/      la baie et ses règles                                            sans DOM ni three.js (sauf controller)
@@ -20,7 +23,7 @@ src/
   render/    three.js : scène et post-traitement, baie, câbles (tubes lissés), connecteurs
     stage.ts        renderer, caméra, lumières et passes (reflets SSR, occlusion GTAO, bloom, cinema)
     rackView.ts     la baie, ses équipements, ports et éléments de rangement
-    cableView.ts    les câbles, leurs connecteurs et étiquettes
+    cableView.ts    les câbles (tubes de three-cable-tubes), leurs connecteurs et étiquettes
     jacket.ts       la gaine vue de près (paires torsadées, grain, marquage), estompée de loin
     leds.ts         voyants d'état et d'activité, clignotants sur le GPU (horloge partagée ledClock)
     ledGlow.ts      la lumière des voyants sur les câbles et la baie, par une carte de la façade de chaque baie
@@ -40,10 +43,15 @@ tools/     bancs sans navigateur : moteur, précision des gestes, niveaux, vitri
 ### Sens des dépendances
 
 ```
-physics  ←  game  ←  ui
-             ↑  ↖     ↓
-           render ←── main
+avbd-cables  ←  physics  ←  game  ←  ui
+                             ↑  ↖     ↓
+three-cable-tubes  ←───── render ←── main
 ```
+
+- `packages/` n'importe rien du jeu ni, par chemin relatif, d'un autre paquet ; `avbd-cables` n'importe pas
+  three.js. ESLint le vérifie (`no-restricted-imports`, `eslint.config.js`). Le jeu les importe par leur nom
+  (`'avbd-cables'`, `'three-cable-tubes'`) : `npm install` les relie dans `node_modules`, et Vite, Vitest et
+  TypeScript lisent directement leurs sources.
 
 - `physics/` ne connaît ni la baie ni le jeu : des nœuds, des broches, des formes statiques, des faisceaux.
   Il tourne aussi bien dans la page, dans le Worker et dans les tests.
@@ -114,7 +122,7 @@ par niveau) et tutoriel terminé. Les clés sont celles des versions précédent
 |---|---|
 | `npm run lint` | erreurs probables (ESLint) |
 | `npm run typecheck` | types (TypeScript strict) |
-| `npm test` | géométrie, baie, stockage, règles d'une partie (branchement, fenêtre de maintenance, étiquettes, velcro, longueurs, bac), niveaux (plan, emmêlage stable, 3 étoiles possibles), salle d'accueil précalculée à jour |
+| `npm test` | moteur seul (chute, traversée, câble suspendu, empilement, main, déterminisme), géométrie, baie, stockage, règles d'une partie (branchement, fenêtre de maintenance, étiquettes, velcro, longueurs, bac), niveaux (plan, emmêlage stable, 3 étoiles possibles), salle d'accueil précalculée à jour |
 | `npm run check` | les trois à la suite |
 | `npm run bake` | précalcule le désordre de la salle d'accueil par défaut (à relancer quand le test `baked` le demande) |
 | `npm run bench` · `precision` · `levels` · `solvable` · `showcase` · `free` · `pinch` · `route` | bancs du moteur et des niveaux, sans navigateur (`tools/`) ; `free` : partie libre de 48 câbles (stabilisation, cordon tiré à travers les autres) ; `pinch` : un coude pincé, ce qu'il en reste une fois lâché ; `route` : des câbles posés le long d'un chemin tracé (branchés, dans leurs guides, au repos, sans traverser la baie, et ce qu'ils déplacent des autres câbles) |

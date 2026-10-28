@@ -253,7 +253,7 @@ Le premier terme mesure l'écart à la prédiction x̃, pondéré par les masses
 H\,\Delta x = -g
 ```
 
-qui donne le déplacement Δx vers le minimum. C'est un système de 3 équations à 3 inconnues, résolu directement par `solveSym3` dans `geom.ts`. Traiter un nœud à la fois en réutilisant aussitôt les nouvelles positions s'appelle la méthode de Gauss-Seidel. Le déplacement est limité à 1,2 cm par résolution (`maxMove`), ce qui évite qu'un cas extrême projette un nœud loin de sa position.
+qui donne le déplacement Δx vers le minimum. C'est un système de 3 équations à 3 inconnues, résolu directement par `solveSym3` dans `packages/avbd-cables/src/geom.ts`. Traiter un nœud à la fois en réutilisant aussitôt les nouvelles positions s'appelle la méthode de Gauss-Seidel. Le déplacement est limité à 1,2 cm par résolution (`maxMove`), ce qui évite qu'un cas extrême projette un nœud loin de sa position.
 
 ### Changer le nombre de sous-pas
 
@@ -356,7 +356,7 @@ La grosse pile dépasse le budget d'une frame : c'est précisément le cas que l
 
 ## Préparation de la scène
 
-Le GPU ne connaît ni les câbles ni les nœuds : il dessine des triangles à partir de tableaux de nombres stockés dans sa propre mémoire. Entre la physique et le dessin, le CPU envoie donc au GPU les positions des nœuds, place les connecteurs, et n'envoie que les données qui ont changé. Le *vertex shader* des câbles transforme ensuite les nœuds en triangles. Ce travail est fait par `src/render/cableView.ts` et `tube.ts` pour les câbles et `rackView.ts` pour la baie.
+Le GPU ne connaît ni les câbles ni les nœuds : il dessine des triangles à partir de tableaux de nombres stockés dans sa propre mémoire. Entre la physique et le dessin, le CPU envoie donc au GPU les positions des nœuds, place les connecteurs, et n'envoie que les données qui ont changé. Le *vertex shader* des câbles transforme ensuite les nœuds en triangles. Ce travail est fait par `src/render/cableView.ts` et `packages/three-cable-tubes/src/tube.ts` pour les câbles et `rackView.ts` pour la baie.
 
 ### Le graphe de scène
 
@@ -366,7 +366,7 @@ Dans un niveau, la scène contient la baie (`rackView.group`), les câbles (`cab
 
 ### Les câbles : un tube calculé par le GPU
 
-Tous les câbles d'un niveau sont dessinés par **un seul mesh**, en *instanciation* : chaque segment de chaque câble (d'un nœud au suivant) est une instance du même bout de tube, 9 anneaux de 16 sommets. Un sommet ne porte pas sa position : il sait seulement à quel anneau du bout de tube il appartient et à quelle place autour de lui ; son instance lui dit sur quel segment de quel câble il se trouve. À chaque frame, le CPU envoie au GPU les nœuds des câbles qui ont bougé, et c'est le *vertex shader* (`src/render/tube.ts`) qui calcule où se trouve chaque sommet.
+Tous les câbles d'un niveau sont dessinés par **un seul mesh**, en *instanciation* : chaque segment de chaque câble (d'un nœud au suivant) est une instance du même bout de tube, 9 anneaux de 16 sommets. Un sommet ne porte pas sa position : il sait seulement à quel anneau du bout de tube il appartient et à quelle place autour de lui ; son instance lui dit sur quel segment de quel câble il se trouve. À chaque frame, le CPU envoie au GPU les nœuds des câbles qui ont bougé, et c'est le *vertex shader* (`packages/three-cable-tubes/src/tube.ts`) qui calcule où se trouve chaque sommet.
 
 ![Des nœuds au tube de triangles](frame/schema-tube.png)
 
@@ -494,7 +494,7 @@ Pour ajouter un comportement sans réécrire ce shader, le projet utilise `onBef
 | `blinkable` | `leds.ts` | le clignotement des voyants à partir de l'horloge partagée ; une taille minimale de 3 pixels à l'écran |
 | `jacketed` | `jacket.ts` | la gaine des câbles vue de près (voir ci-dessous) |
 | `ledLit` | `ledGlow.ts` | la lumière des voyants sur les câbles, leurs connecteurs et les pièces de la baie (voir plus bas) |
-| `swept` | `tube.ts` | la position et la normale de chaque sommet des câbles, calculées à partir de la texture des nœuds |
+| `swept` | `three-cable-tubes` | la position et la normale de chaque sommet des câbles, calculées à partir de la texture des nœuds |
 
 Voici la partie fragment de `tintable`, raccourcie. Elle ajoute une ligne juste après le bloc qui calcule la lueur du matériau :
 
