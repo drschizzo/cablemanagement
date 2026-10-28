@@ -79,11 +79,38 @@ export class Hud {
     $('#brief-inv').textContent = parts.length ? `Matériel : ${parts.join(', ')}.` : '';
     // the clock waits for the player to read
     if (this.ctl) this.ctl.running = false;
-    $('#brief-go').onclick = () => { this.hide('#brief'); if (this.ctl) this.ctl.running = true; };
+    $('#brief-go').onclick = () => {
+      this.hide('#brief');
+      const ctl = this.ctl;
+      if (!ctl) return;
+      // a first reading of a level with supports to place: the preparation
+      if (!this.prepared && !level.tutorial && (['hmgr', 'duct', 'vring'] as const).some((k) => (level.inventory[k] ?? 0) > 0)) this.prepare();
+      else if (!ctl.preparing) ctl.running = true;
+      this.prepared = true;
+    };
     this.show('#brief');
   }
 
+  /** the preparation was offered for this level already */
+  private prepared = false;
+
+  /** the cabinet stands still and the clock waits while the supports are placed */
+  private prepare(): void {
+    const ctl = this.ctl!;
+    ctl.preparing = true;
+    ctl.running = false;
+    this.selectTool('supports');
+    $('#prep').classList.add('on');
+    $('#prep-go').onclick = () => {
+      ctl.startWork();
+      $('#prep').classList.remove('on');
+      this.selectTool('hand');
+    };
+  }
+
   attach(ctl: Controller, level: LevelDef): void {
+    this.prepared = false;
+    $('#prep').classList.remove('on');
     this.ctl = ctl;
     this.level = level;
     $('#level-title').textContent = level.title;

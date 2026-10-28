@@ -47,6 +47,11 @@ export class Controller {
   tool: Tool = 'hand';
   elapsed = 0;
   running = true;
+  /**
+   * Preparation: before the work starts, the cabinet stands still and the
+   * clock waits; only the supports may be placed (the plan is made first).
+   */
+  preparing = false;
   lastEval: Evaluation;
   debug = false;
   private hover: Pick | null = null;
@@ -224,7 +229,7 @@ export class Controller {
     }
     this.firmPinch();
     const h = this.world.sim.P.dt;
-    this.acc += dt;
+    this.acc += this.preparing ? 0 : dt;
     let steps = 0;
     while (this.acc >= h && steps < 2) {
       this.stepHand();
@@ -471,6 +476,12 @@ export class Controller {
     this.setMouse(e);
     // any gesture stops a cord being laid where it is
     this.stopRoute();
+    if (this.preparing && this.tool !== 'supports') {
+      // the cabinet stands still: the view moves, the cords wait
+      this.pan = { mx: e.clientX, my: e.clientY };
+      this.stage.renderer.domElement.style.cursor = 'move';
+      return;
+    }
     if (this.tool === 'hand') {
       const p = this.pick();
       if (!p) {
@@ -511,6 +522,13 @@ export class Controller {
     this.setHover(null);
     this.events.onHover(null, 0, 0);
     this.afterRewire();
+  }
+
+  /** the preparation is over: the cords move, the clock and the downtime run */
+  startWork(): void {
+    this.preparing = false;
+    this.running = true;
+    this.last = performance.now();
   }
 
   /** remembers the cabinet before a gesture, for Ctrl+Z */
