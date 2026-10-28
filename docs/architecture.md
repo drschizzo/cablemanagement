@@ -81,7 +81,7 @@ n'est plus celui du fichier (le code a changé depuis) retombe comme avant, et u
 salle est à l'écran, la suivante, tirée au hasard, se construit et tombe en fond (`prepareNext()`) : « une autre
 salle » l'affiche aussitôt. `?seed=N` tire toujours la même salle, `?bays=N` choisit
 son nombre de baies (5 par défaut, 32 au plus), `?pairs=N` la hauteur de chacune en paires panneau / switch (16 au
-plus ; sans lui, 10, 8, 10, 8, 10 pour la première salle, puis tirée entre 5 et 12 pour chaque baie des suivantes ; voir « Jusqu'où va l'écran d'accueil » dans `anatomie-d-une-frame.md`). Une allée de 5 baies
+plus ; sans lui, 10, 8, 10, 8, 10 pour la première salle, puis tirée entre 5 et 12 pour chaque baie des suivantes ; voir « L'écran d'accueil » dans `anatomie-d-une-frame.md`). Une allée de 5 baies
 est vue de plus près et plus bas que son cadrage (`Stage.view`, réglé dans `main.ts`), cadrée sur sa baie la plus haute. Chaque chargement
 passe par `loadScene()` :
 
