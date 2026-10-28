@@ -4,10 +4,11 @@
   "private": true,
   "license": "MIT",
   "type": "module",
-  "description": "Des milliers de tubes lissés, construits par le GPU à partir de leurs seuls nœuds, pour three.js",
+  "description": "Des milliers de tubes lissés, construits par le GPU à partir de leurs seuls nœuds, pour three.js (WebGLRenderer, ou WebGPURenderer avec three-cable-tubes/webgpu)",
   "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./webgpu": "./src/webgpu.ts"
   },
   "peerDependencies": {
     "three": ">=0.183.0"

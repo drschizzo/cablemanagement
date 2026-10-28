@@ -156,7 +156,7 @@ tourne dans le navigateur.
 
 | Dossier | Contenu |
 |---|---|
-| `packages/` | ce qui peut servir hors du jeu : le moteur de câbles et son Web Worker (`avbd-cables`), les tubes des câbles construits par le GPU (`three-cable-tubes`) |
+| `packages/` | ce qui peut servir hors du jeu : le moteur de câbles et son Web Worker (`avbd-cables`), les tubes des câbles construits par le GPU (`three-cable-tubes`, pour WebGLRenderer et WebGPURenderer) |
 | `src/game/` | la baie, les niveaux, le plan de brassage, les règles et le score |
 | `src/render/` | la scène three.js : baie, câbles, connecteurs |
 | `src/ui/` | l'interface, le tutoriel, la démonstration avant / après |
