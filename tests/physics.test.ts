@@ -157,21 +157,39 @@ describe('cable solver', () => {
     expect(sim.x[3 * last + 1]).toBeLessThan(R + 0.002);
   });
 
-  it('a target out of reach pulls on its leash, and does not stretch the cord like an elastic', () => {
-    /** the worst stretch of a segment in the 4th second, a cord pinned at one end led 2 m away by the other */
-    const worst = (lead: number) => {
+  it('a target out of reach of a pinned cord draws it taut, without stretching it nor making it whip', () => {
+    // pinned at one end, led 2 m away by the other, heavy as by a hand: the target
+    // is brought back within reach of the 0.5 m of cord
+    for (const [pinAt, led] of [[0, -1], [-1, 0]]) {
       const sim = new CableSim();
       sim.build([{ points: cord([0, 0.5, 0], [0.5, 0.5, 0]), radius: R }]);
-      sim.pin(0, 0, 0.5, 0);
-      sim.setTarget(sim.n - 1, 2, 0.5, 0, 1.6, lead, true);
-      let w = 0;
-      for (let k = 0; k < 240; k++) { sim.step(); if (k >= 180) w = Math.max(w, stretch(sim)); }
-      return w;
-    };
-    // the cord whips about in the leash (as in the hand), but the pull stays bounded:
-    // without it, the cord would stretch to reach the target
-    expect(worst(0.05)).toBeLessThan(0.6);
-    expect(worst(10)).toBeGreaterThan(1.5);
+      const p = pinAt < 0 ? sim.n - 1 : pinAt, l = led < 0 ? sim.n - 1 : led;
+      sim.pin(p, sim.x[3 * p], 0.5, 0);
+      sim.setTarget(l, sim.x[3 * l] + (l > p ? 1.5 : -1.5), 0.5, 0, 1.6, 0.06, true);
+      let worst = 0;
+      for (let k = 0; k < 240; k++) { sim.step(); worst = Math.max(worst, stretch(sim)); }
+      expect(worst).toBeLessThan(0.03);
+      expect(Math.abs(sim.x[3 * l] - sim.x[3 * p])).toBeGreaterThan(0.49);
+      let v = 0;
+      for (let i = 0; i < sim.n; i++) v = Math.max(v, Math.hypot(sim.v[3 * i], sim.v[3 * i + 1], sim.v[3 * i + 2]));
+      expect(v).toBeLessThan(0.05);
+    }
+  });
+
+  it('a target between two pins stays within reach of both', () => {
+    const sim = new CableSim();
+    sim.build([{ points: cord([0, 0.5, 0], [0.6, 0.5, 0]), radius: R }]);
+    const last = sim.n - 1, mid = last >> 1;
+    sim.pin(0, 0, 0.5, 0);
+    sim.pin(last, 0.4, 0.5, 0);
+    sim.setTarget(mid, 0.2, 2, 0, 1.6, 0.06, true);
+    // (after the first frames: the pin moved the end 0.2 m at once)
+    let worst = 0;
+    for (let k = 0; k < 240; k++) { sim.step(); if (k >= 30) worst = Math.max(worst, stretch(sim)); }
+    expect(worst).toBeLessThan(0.03);
+    // up to 0.22 m, as high as 0.3 m of cord either side of 0.2 m reaches (√(0.3² − 0.2²)):
+    // the target goes to a point within reach of both, not always the highest
+    expect(sim.x[3 * mid + 1] - 0.5).toBeGreaterThan(0.15);
   });
 
   it('is deterministic: the same start gives the same positions, bit for bit', () => {

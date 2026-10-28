@@ -418,6 +418,11 @@ export class CableSim {
   targetHeavy = new Uint8Array(0);
   /** nodes the hands and plugs led at the last step (see `aim`) */
   private aimed: number[] = [];
+  /** where each target pulls this step: the target, brought within reach of the cord (see `reach`) */
+  private targetAt = new Float64Array(0);
+  /** the nearest pinned node before each target, and the length of cord to it (scratch of `reach`) */
+  private reachPin = new Int32Array(0);
+  private reachLen = new Float64Array(0);
 
   // hand
   grabNode = -1;
@@ -520,6 +525,9 @@ export class CableSim {
     this.targetK = new Float64Array(N);
     this.targetLead = new Float64Array(N);
     this.targetHeavy = new Uint8Array(N);
+    this.targetAt = new Float64Array(3 * N);
+    this.reachPin = new Int32Array(N);
+    this.reachLen = new Float64Array(N);
     this.aimed = [];
     this.goal = new Float64Array(3 * N);
     this.goalW = new Float64Array(N);
@@ -1020,6 +1028,48 @@ export class CableSim {
     if (this.grabNode >= 0) this.handTarget(this.grabNode, this.grabTarget, 0);
   }
 
+  /**
+   * Start of a step: where each target pulls, within reach of the cord. A
+   * node cannot go further from a pinned node of its cord than the length of
+   * cord between them: a target beyond is brought back onto that sphere (onto
+   * where the spheres of the pins on either side meet, if both are pinned).
+   * Out of reach, the spring pulled the cord taut against the pin with all
+   * its strength, a heavy node at one end and a fixed one at the other: the
+   * length passes could not take the stretch out of the light nodes between,
+   * and the cord whipped about like a stretched elastic.
+   */
+  private reach(): void {
+    const x = this.x, t = this.target, at = this.targetAt, K = this.targetK, rest = this.rest, pinned = this.pinned;
+    for (const cb of this.cables) {
+      const end = cb.start + cb.count;
+      let any = false;
+      for (let i = cb.start; i < end; i++) if (K[i] > 0) { any = true; break; }
+      if (!any) continue;
+      // the nearest pinned node before each node, and the length of cord to it (−1: none)
+      let pin = -1, arc = 0;
+      for (let i = cb.start; i < end; i++) {
+        if (i > cb.start) arc += rest[i - 1];
+        if (pinned[i]) { pin = i; arc = 0; }
+        if (K[i] <= 0) continue;
+        at[3 * i] = t[3 * i]; at[3 * i + 1] = t[3 * i + 1]; at[3 * i + 2] = t[3 * i + 2];
+        this.reachPin[i] = pinned[i] ? -1 : pin;
+        this.reachLen[i] = arc;
+      }
+      // then after it, and the target onto the spheres of both
+      pin = -1; arc = 0;
+      for (let i = end - 1; i >= cb.start; i--) {
+        if (i < end - 1) arc += rest[i];
+        if (pinned[i]) { pin = i; arc = 0; }
+        if (K[i] <= 0 || pinned[i]) continue;
+        const a = this.reachPin[i], ra = this.reachLen[i];
+        for (let it = 0; it < (a >= 0 && pin >= 0 ? 4 : 1); it++) {
+          if (a >= 0) within(at, 3 * i, x, 3 * a, ra);
+          if (pin >= 0) within(at, 3 * i, x, 3 * pin, arc);
+        }
+      }
+    }
+  }
+
   // ---------------------------------------------------------------- step
 
   step(): void {
@@ -1028,6 +1078,7 @@ export class CableSim {
     const h = P.dt / P.substeps;
     this.strokePlugs(P.dt);
     this.aim();
+    this.reach();
     this.markDrawn();
     this.convert(h);
     this.markKept();
@@ -1451,7 +1502,7 @@ export class CableSim {
     const tk = this.targetK[i];
     if (tk > 0) {
       const k = tk * mh;
-      leash(xi, yi, zi, this.target, j, this.targetLead[i]);
+      leash(xi, yi, zi, this.targetAt, j, this.targetLead[i]);
       gx += k * pull.x; gy += k * pull.y; gz += k * pull.z;
       h00 += k; h11 += k; h22 += k;
     }
@@ -2181,6 +2232,15 @@ function leash(x: number, y: number, z: number, t: ArrayLike<number>, o: number,
   const el = Math.sqrt(ex * ex + ey * ey + ez * ez);
   if (el > lead) { const f = lead / el; ex *= f; ey *= f; ez *= f; }
   pull.x = ex; pull.y = ey; pull.z = ez;
+}
+
+/** brings p[o..o+2] within r of c[oc..oc+2] */
+function within(p: Float64Array, o: number, c: ArrayLike<number>, oc: number, r: number): void {
+  const dx = p[o] - c[oc], dy = p[o + 1] - c[oc + 1], dz = p[o + 2] - c[oc + 2];
+  const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+  if (d <= r) return;
+  const f = r / d;
+  p[o] = c[oc] + dx * f; p[o + 1] = c[oc + 1] + dy * f; p[o + 2] = c[oc + 2] + dz * f;
 }
 
 function cellKey(x: number, y: number, z: number): number {

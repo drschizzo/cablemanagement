@@ -135,6 +135,8 @@ Le solveur ne téléporte pas le nœud sur la cible : il le tire vers elle avec 
 
 Ce ressort en laisse est la **cible** du moteur (`setTarget`) : un point, une raideur, une longueur de laisse, et un drapeau qui rend le nœud lourd dans les passes de longueur, pour que le câble suive la main plutôt que l'inverse. Chaque nœud a au plus une cible. La main, l'autre main, le connecteur poussé dans son port et le chemin tracé posent la leur au début de chaque pas (`aim`) ; sur un même nœud, la main l'emporte sur l'autre main, qui l'emporte sur le connecteur, qui l'emporte sur le chemin.
 
+Une cible ne tire jamais un nœud plus loin que le câble ne le permet. Au début de chaque pas, `reach` la ramène à moins d'une longueur de câble des nœuds épinglés du même câble, de part et d'autre : sur la sphère centrée sur l'épingle, ou là où les sphères des deux épingles se rejoignent. Sans cela, une main tirée au-delà tendait le câble de toute sa force contre l'épingle. Les passes de longueur, qui ne déplacent ni l'épingle ni (presque) la main, ne pouvaient pas reprendre l'allongement des nœuds légers entre les deux, et le câble fouettait comme un élastique.
+
 ### Le chemin tracé
 
 Avec l'outil Chemin, le joueur part d'un câble et trace un trait à l'écran. Chaque guide que le trait traverse (un rayon par le pointeur, contre la zone du guide) rejoint le chemin, dans l'ordre du passage ; un guide traversé de nouveau prend sa place au dernier passage. Si le trait finit sur un port libre, le bout libre du câble y sera branché. Au relâcher, `planRoute` (`src/game/route.ts`) calcule le chemin :
