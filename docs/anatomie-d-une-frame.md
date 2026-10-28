@@ -110,7 +110,7 @@ En général, une frame fait un pas. Une frame en retard en fait deux. Au-delà,
 
 ### 2.3 L'ordre des opérations dans `tick`
 
-1. Les animations d'interface : clignotement d'un câble tracé (outil Tracer), pulsation du repère qui montre où poser un élément.
+1. Les animations d'interface : clignotement d'un câble tracé (touche T), pulsation du repère qui montre où poser un élément. Le budget d'interruption avance aussi : chaque seconde où une liaison en production est coupée coûte le poids de son service (`World.tickDowntime`).
 2. L'accumulateur et `sim.advance(steps)`, décrits plus haut. `advance` envoie la demande au Worker et rend la main aussitôt.
 3. `cableView.update()` : les nœuds des câbles qui ont bougé partent vers le GPU (partie 7).
 4. `rackView.syncItems(...)` : si le joueur a posé ou retiré un élément de rangement, la baie est reconstruite.
@@ -170,6 +170,7 @@ Les autres outils agissent sur le monde physique par des appels ponctuels, appli
 | --- | --- | --- |
 | Brancher un connecteur | `pinEnd` | le connecteur est poussé jusqu'au port, puis épinglé (section 5.1) |
 | Autre main (touche E) | `holdStill` | un nœud est tenu là où le joueur l'a laissé |
+| Accrocher un connecteur en l'air, ou le sortir du tas (clic sur le plan) | `pinEnd` | le connecteur est mené là, puis épinglé jusqu'à ce qu'on le reprenne (`World.park`) |
 | Pincer un coude (Espace ou clic droit maintenu) | `pinch` | la portion pincée garde sa forme (section 4.2) |
 | Velcro | `addBundle` | des nœuds de plusieurs câbles sont serrés ensemble |
 | Poser un élément de rangement | `setStatics` | les formes de collision de la baie changent |

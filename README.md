@@ -54,30 +54,65 @@ Chaque niveau fournit un **plan de brassage** : la liste des liaisons à établi
 2. ranger les câbles : aucune portion de plus de 20 cm ne doit pendre hors d'un
    guide-câbles, d'une goulotte ou d'un anneau ;
 3. dégager la façade : aucun câble ne doit passer devant le port d'un autre ;
-4. quand le niveau le demande, étiqueter les deux bouts de chaque câble à la
-   couleur de son service (Données, Voix, Vidéo…) ;
+4. ne rien tendre ni plier : un cordon bien plus court que son chemin rangé
+   est tendu, une fibre en angle vif est pliée ;
 5. quand le niveau le demande, serrer les câbles en faisceaux : des velcros qui
    tiennent chacun au moins trois câbles, dans un guide-câbles ou une goulotte.
+
+Un cordon branché comme prévu reçoit tout seul l'étiquette de son service.
 
 | Étoiles | Condition |
 |---|---|
 | ★ | toutes les liaisons du plan sont branchées |
 | ★★ | et au moins 70 % des câbles rangés, 85 % de la façade dégagée |
-| ★★★ | tout est rangé, dégagé, étiqueté (et serré en faisceaux si demandé) |
+| ★★★ | tout est rangé, dégagé, sans tension (et serré en faisceaux si demandé), dans le budget d'interruption |
 
 Il faut **★★** pour ouvrir le niveau suivant : brancher ne suffit pas, il faut
 ranger. La jauge **Propreté** résume les critères ; un câble qui devient propre
-s'allume en vert avec une note, et l'écran de fin montre la baie avant et
-après. Chaque niveau propose aussi un **défi chrono** (★★★ en moins
-d'un temps donné).
+s'allume en vert avec une note. Chaque niveau propose aussi un **défi chrono**
+(★★★ en moins d'un temps donné).
 
-### Fenêtre de maintenance
+La note de **lisibilité**, sur 100, départage les baies à ★★★ : le mou juste
+(ni tendu, ni plus de 50 cm de trop), chaque cordon cuivre de la couleur de son
+service, des faisceaux d'un seul service, la fibre et le cuivre dans des
+supports séparés, pas de câbles qui se croisent devant la baie. L'écran de fin
+montre la baie et sa note avant et après, et le record du niveau.
+
+### Préparation
+
+Dans un niveau qui fournit des supports, le chantier commence par une
+**préparation** : la baie est figée et le chrono arrêté. On lit le plan, on pose
+guide-câbles, goulottes et anneaux là où les câbles passeront, puis on lance le
+chantier.
+
+### Fenêtre de maintenance et services
 
 La baie est en production : les liaisons qui fonctionnent au départ (marquées
-⚡ dans le plan) ne doivent pas être coupées toutes à la fois. Le compteur
-**Coupures**, en haut de l'écran, indique combien on peut en couper en même
-temps (1 à 4 selon le niveau). Au-delà, le jeu refuse de débrancher : on
-recâble une liaison à la fois.
+⚡ dans le plan) portent du trafic. Chaque seconde où l'une d'elles est coupée
+coûte le **poids de son service** sur un **budget d'interruption**, affiché en
+haut de l'écran :
+
+| Service | Ce qu'il porte | Poids |
+|---|---|---|
+| Admin | pare-feu, routeur, supervision | ×4 |
+| Voix | téléphones IP | ×3 |
+| Stockage | serveurs et disques | ×3 |
+| Vidéo | caméras | ×2 |
+| Données | postes de travail | ×1 |
+| Invités | Wi-Fi des visiteurs | ×0,25 |
+
+On peut toujours débrancher, pour démêler par exemple ; au-delà du budget, un
+incident est déclaré et ★★★ n'est plus possible. Une **dérivation** (clic sur
+le ⚡ d'une ligne du plan) porte le trafic d'une liaison pendant qu'on la
+recâble, puis revient au stock quand la liaison est rétablie. Les voyants d'une
+liaison coupée clignotent en rouge, ceux d'une liaison dérivée en ambre.
+
+### Cordons neufs
+
+Le **Stock** fournit des cordons neufs, comptés par longueur ; ils arrivent
+enroulés dans le bac au pied de la baie. Remplacer un cordon branché, c'est le
+débrancher, donc couper sa liaison le temps de changer : savoir qui reçoit quel
+cordon, et dans quel ordre, fait partie du plan.
 
 ### Niveaux
 
@@ -86,10 +121,10 @@ recâble une liaison à la fois.
 | 1 | Premier brassage | 4 |
 | 2 | Le mou | 6 |
 | 3 | Erreurs de brassage | 8 |
-| 4 | Étiquetage | 10 |
+| 4 | Étiquetage | 10 · trois services |
 | 5 | Fibre et cuivre | 12 |
 | 6 | Salle serveurs | 20 · faisceaux, goulottes comptées |
-| 7 | Migration | 24 · une seule coupure à la fois |
+| 7 | Migration | 24 · budget d'interruption serré |
 | 8 | Le plat de spaghettis | 28 · cordons sans marque, à tracer |
 
 La **partie libre** génère une baie au hasard, de 4 à 48 câbles.
@@ -98,7 +133,6 @@ La **partie libre** génère une baie au hasard, de 4 à 48 câbles.
 
 | Action | Geste |
 |---|---|
-| Tracer le chemin d'un câble | outil **Chemin** (C) : partir du câble, passer par-dessus les guides dans l'ordre, finir sur un port libre |
 | Saisir et tirer un câble | clic gauche + glisser |
 | Pousser vers le fond / ramener vers soi | **Maj** + souris vers le haut / le bas pendant qu'on tire (ou la molette) |
 | Pincer un coude, qui garde sa forme | maintenir **Espace** (ou le clic droit) pendant qu'on tient le câble : plus longtemps, plus ferme |
@@ -106,6 +140,11 @@ La **partie libre** génère une baie au hasard, de 4 à 48 câbles.
 | Passer le câble à l'autre main, qui le tient sur place | **E** pendant qu'on tire ; **E** main libre pour qu'elle le lâche |
 | Débrancher | saisir un connecteur et tirer de quelques centimètres |
 | Brancher | relâcher un connecteur devant un port libre (surligné en jaune) |
+| Accrocher un connecteur en l'air | le relâcher devant la baie, loin d'un port : il y reste (lueur ambrée) |
+| Sortir un bout libre du tas | cliquer la ligne du plan : il s'accroche sous son port |
+| Tracer un câble | survoler le câble, **T** : il clignote et ses deux ports s'entourent |
+| Jeter un câble au bac | survoler le câble, **Suppr** |
+| Dériver une liaison en production | cliquer son ⚡ dans le plan |
 | Attraper le câble du dessous | **Tab** |
 | Annuler le dernier geste | **Ctrl+Z** (⌘Z) |
 | Tourner la vue | clic droit + glisser, sans tenir de câble |
@@ -115,20 +154,12 @@ La **partie libre** génère une baie au hasard, de 4 à 48 câbles.
 
 ### Les outils
 
-On les choisit dans la barre d'outils ou au clavier.
-
 | Touche | Outil | Usage |
 |---|---|---|
-| 1 | Main | saisir, tirer, brancher, débrancher |
+| 1 | Main | saisir, tirer, brancher, débrancher, pincer |
 | C | Chemin | tracer le chemin d'un câble à travers les guides ; il y est posé, et branché au port où finit le trait |
-| 2 | Guide-câbles 1U | barre horizontale à doigts, entre deux équipements |
-| 3 | Goulotte | conduit vertical sur le côté de la baie |
-| 4 | Anneau | petit passe-câble |
-| 5 | Velcro | attache ensemble les câbles d'un faisceau |
-| 6 | Étiquette | en mode A (auto), étiquette les deux bouts d'un cordon bien branché à la couleur de son service ; sinon un bout à la couleur choisie |
-| 7 | Longueur | remplace un câble par un cordon plus court ou plus long, sans le débrancher ; « Ajuster au rangement » propose la longueur de sa route rangée |
-| 8 | Traceur | fait clignoter un câble et montre ses deux ports, pour l'identifier |
-| 9 | Déposer | débranche un câble, l'enroule et le jette dans le bac au pied de la baie |
+| 2 | Supports | dans une unité vide, un guide-câbles ; dans un couloir latéral, une goulotte (**Maj** : un anneau) ; sur un support posé, le retirer |
+| 3 | Velcro | attache ensemble les câbles d'un faisceau |
 | 0 | Stock | prend un cordon neuf (type, couleur, longueur), livré dans le bac |
 
 ### Ranger un câble
@@ -147,8 +178,8 @@ trait (par une extrémité du guide-câbles plutôt qu'entre ses doigts, par exe
   il n'est refusé, avec la longueur qui manque, que s'il ne peut pas passer par
   les guides.
 - La longueur en trop est rangée en boucle dans la goulotte, sinon repliée dans
-  le guide-câbles ; ce qui ne tient pas pend. L'outil Longueur fournit alors
-  un cordon plus court.
+  le guide-câbles ; ce qui ne tient pas pend. Un cordon plus court se prend au
+  Stock.
 
 Tout peut aussi se faire à la main, câble par câble. Après un geste, le câble
 se colore un moment par portion : vert là où un support le tient, orange là où
@@ -184,7 +215,7 @@ physique des câbles, la préparation de la scène et le pipeline de rendu.
 | `npm run dev` | serveur de développement |
 | `npm run build` | version de production dans `dist/` (publiée sur GitHub Pages à chaque push sur `main`) |
 | `npm run check` | lint, types et tests, à lancer avant de pousser |
-| `npm run solvable` | vérifie que chaque niveau peut atteindre 3 étoiles, avec son seul inventaire |
+| `npm run solvable` | vérifie que chaque niveau peut atteindre 3 étoiles avec son seul inventaire ; puis, depuis l'emmêlement de départ, combien de liaisons en production il faudra débrancher, ce que cela coûte face au budget d'interruption, et les cordons neufs qu'il faut |
 | `npm run bench` | performance et stabilité du moteur physique |
 | `npm run precision` | gestes délicats : entrer dans une goulotte, coucher un câble dans un guide-câbles… |
 | `npm run levels` | coût et mise au repos de chaque niveau |
