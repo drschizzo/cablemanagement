@@ -1,3 +1,11 @@
+/* IBM Plex, served with the game (latin only: no request to Google Fonts before the first paint) */
+@import '@fontsource/ibm-plex-sans/latin-400.css';
+@import '@fontsource/ibm-plex-sans/latin-500.css';
+@import '@fontsource/ibm-plex-sans/latin-600.css';
+@import '@fontsource/ibm-plex-mono/latin-400.css';
+@import '@fontsource/ibm-plex-mono/latin-500.css';
+@import '@fontsource/ibm-plex-mono/latin-600.css';
+
 :root {
   --bg: #0a0b0c;
   --panel: rgba(11, 12, 13, 0.9);
