@@ -9,6 +9,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { CinemaPass } from './cinema';
 import { ledClock, ledViewHeight } from './leds';
 import { ledGlows } from './ledGlow';
+import { gpuAdvice, gpuInfo, showNotice, type GpuInfo } from './gpu';
 
 /** colour of the backdrop where the floor fades out (also the fog) */
 const HORIZON = '#1a1e21';
@@ -49,11 +50,37 @@ export class Stage {
   private lastFrame = -Infinity;
   private lastInput = performance.now();
 
+  /** the GPU the browser draws with (see gpu.ts) */
+  readonly gpu: GpuInfo;
+  /** index in QUALITY: steps down while the frames come too late (see adapt()) */
+  quality = 0;
+  /** ?quality=N: held at that level, never adapted */
+  private qualityHeld = false;
+  /** the intervals between the frames of the sample under way (ms), and how many samples in a row were too slow */
+  private sample: number[] = [];
+  private slowSamples = 0;
+  /**
+   * Work under way on the main thread (a load, an aisle built in the
+   * background): the frames come late then, and no lower image would make them
+   * come sooner, so they are not measured. A long task (50 ms and more: a
+   * collection of the garbage, a cabinet rebuilt) throws the sample away too.
+   */
+  busy = 0;
+  private longTask = false;
+  /** the reflections computed (off: the pass draws the scene alone, still multisampled) */
+  private reflect = true;
+
   constructor(host: HTMLElement) {
     // no multisampling on the canvas: it only takes the full-screen quad of the last pass
     // (the scene is multisampled in the reflection pass, see below)
-    this.renderer = new THREE.WebGLRenderer({ antialias: false });
-    this.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
+    // only a hint: on Windows the GPU is chosen for the whole browser (see gpu.ts)
+    this.renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+    this.gpu = gpuInfo(this.renderer);
+    // (the GPU's own clock, EXT_disjoint_timer_query, would measure the GPU alone; but through ANGLE on
+    // Metal it read 33 ms a frame for frames that came at 60 a second)
+    try {
+      new PerformanceObserver(() => { this.longTask = true; }).observe({ type: 'longtask' });
+    } catch { /* no long tasks reported (Safari, Firefox): the busy flag alone */ }
     this.renderer.shadowMap.enabled = true;
     // PCF in three r183 samples a rotated Vogel disk of `shadow.radius` (PCFSoft is deprecated into it)
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -125,6 +152,19 @@ export class Stage {
       .replace('uniform sampler2D tDiffuse;', 'uniform sampler2D tDiffuse;\nuniform sampler2D tMask;\nuniform float masked;')
       .replace(/}\s*$/, '\tif ( masked > 0.5 ) gl_FragColor.a *= texture2D( tMask, vUv ).r;\n}');
     this.composer.addPass(this.ssr);
+    // the reflections cut (see QUALITY): the pass still draws the scene, multisampled, and only copies it on;
+    // its own output modes all compute the normals, the reflections and their blur first
+    const reflected = this.ssr.render.bind(this.ssr);
+    const renderPass = (ssr as unknown as { _renderPass(r: THREE.WebGLRenderer, m: THREE.Material, t: THREE.WebGLRenderTarget | null): void })._renderPass.bind(ssr);
+    this.ssr.render = (renderer, writeBuffer, ...rest) => {
+      if (this.reflect) return reflected(renderer, writeBuffer, ...rest);
+      renderer.setRenderTarget(ssr.beautyRenderTarget);
+      renderer.clear();
+      renderer.render(this.scene, this.camera);
+      copy.uniforms.tDiffuse.value = ssr.beautyRenderTarget.texture;
+      copy.blending = THREE.NoBlending;
+      renderPass(renderer, copy, ssr.renderToScreen ? null : writeBuffer);
+    };
     this.ao = new GTAOPass(this.scene, this.camera, 1, 1);
     // metres: a short reach darkens the corners, the ports and under the cords;
     // longer, a tangle of cords goes muddy and loses its colours
@@ -156,7 +196,14 @@ export class Stage {
     for (const e of ['pointermove', 'pointerdown', 'wheel', 'keydown']) {
       window.addEventListener(e, () => { this.lastInput = performance.now(); }, { capture: true, passive: true });
     }
-    this.resize();
+    const held = new URLSearchParams(location.search).get('quality');
+    if (held !== null) {
+      this.qualityHeld = true;
+      this.quality = THREE.MathUtils.clamp(Math.round(Number(held)) || 0, 0, QUALITY.length - 1);
+    }
+    this.applyQuality();
+    const advice = gpuAdvice(this.gpu, false);
+    if (advice) showNotice(advice);
   }
 
   /**
@@ -171,8 +218,55 @@ export class Stage {
     const idle = !document.hasFocus() || (!this.swaying && now - this.lastInput > 4000);
     // a few ms of slack: the calls of a 60 Hz screen come a little early or late
     if (now - this.lastFrame < (idle ? 1000 / 30 : 1000 / 60) - 4) return false;
+    // only the frames in play: not the 30 a second of an idle page, nor the pauses of a hidden page,
+    // nor the frames that the main thread made late (see busy)
+    if (idle || this.busy > 0 || this.longTask || now - this.lastFrame > 250) {
+      this.sample.length = 0;
+      this.longTask = false;
+    } else {
+      this.adapt(now - this.lastFrame);
+    }
     this.lastFrame = now;
     return true;
+  }
+
+  /**
+   * Steps the image down a level when the frames keep coming late: over two
+   * samples of 90 frames in a row, fewer than 45 a second where 60 were asked.
+   * It never steps back up: a GPU that could not keep up will not later, and
+   * the image going back and forth would show. On a built-in GPU, the player
+   * is told how to give the browser the other one.
+   */
+  private adapt(interval: number): void {
+    if (this.qualityHeld || this.quality === QUALITY.length - 1) return;
+    this.sample.push(interval);
+    if (this.sample.length < 90) return;
+    const mean = this.sample.reduce((a, b) => a + b, 0) / this.sample.length;
+    this.sample.length = 0;
+    this.slowSamples = mean > 1000 / 45 ? this.slowSamples + 1 : 0;
+    if (this.slowSamples < 2) return;
+    this.slowSamples = 0;
+    // down to the next level that changes something on this screen (at 1 px a pixel, the first ones are alike)
+    const from = settings(QUALITY[this.quality]);
+    do this.quality++; while (this.quality < QUALITY.length - 1 && settings(QUALITY[this.quality]) === from);
+    this.applyQuality();
+    console.info(`Image abaissée au niveau ${this.quality} de qualité (${mean.toFixed(1)} ms par image, ${this.gpu.name})`);
+    const advice = gpuAdvice(this.gpu, true);
+    if (advice) showNotice(advice);
+  }
+
+  private applyQuality(): void {
+    const q = QUALITY[this.quality];
+    this.renderer.setPixelRatio(Math.min(q.ratio, window.devicePixelRatio));
+    this.ao.enabled = q.ao;
+    this.reflect = q.ssr;
+    if (this.key.shadow.mapSize.x !== q.shadow) {
+      this.key.shadow.mapSize.set(q.shadow, q.shadow);
+      // rebuilt at the new size on the next frame
+      this.key.shadow.map?.dispose();
+      this.key.shadow.map = null;
+    }
+    this.resize();
   }
 
   /**
@@ -265,7 +359,14 @@ export class Stage {
     this.bloom.strength = THREE.MathUtils.lerp(near.strength, far.strength, t);
     this.bloom.radius = THREE.MathUtils.lerp(near.radius, far.radius, t);
     const mips = this.bloom.compositeMaterial.uniforms.bloomFactors.value as number[];
-    for (let i = 0; i < mips.length; i++) mips[i] = THREE.MathUtils.lerp(near.mips[i], far.mips[i], t);
+    // the blur of each mip spans a set number of its pixels: at fewer pixels than the 2 a point it was
+    // tuned at (see QUALITY), mip i covers the screen that mip i + shift did, and takes its weight
+    const shift = Math.log2(2 / this.renderer.getPixelRatio());
+    const at = (i: number) => (i < mips.length ? THREE.MathUtils.lerp(near.mips[i], far.mips[i], t) : 0);
+    for (let i = 0; i < mips.length; i++) {
+      const j = i + shift, k = Math.floor(j);
+      mips[i] = THREE.MathUtils.lerp(at(k), at(k + 1), j - k);
+    }
   }
 
   render(): void {
@@ -301,6 +402,25 @@ export class Stage {
     this.composer.render();
   }
 }
+
+/**
+ * The levels the image steps down through when the GPU cannot keep up (see
+ * Stage.adapt()), from the full image: the pixel density first (the cost of
+ * every pass scales with it), then the ambient occlusion, the reflections on
+ * the floor, the resolution of the shadows, and last below 1 px a pixel.
+ */
+const QUALITY = [
+  { ratio: 2, ao: true, ssr: true, shadow: 2048 },
+  { ratio: 1.5, ao: true, ssr: true, shadow: 2048 },
+  { ratio: 1, ao: true, ssr: true, shadow: 2048 },
+  { ratio: 1, ao: false, ssr: true, shadow: 2048 },
+  { ratio: 1, ao: false, ssr: false, shadow: 2048 },
+  { ratio: 1, ao: false, ssr: false, shadow: 1024 },
+  { ratio: 0.75, ao: false, ssr: false, shadow: 1024 },
+];
+
+/** a level as it applies on this screen, to compare */
+const settings = (q: (typeof QUALITY)[number]) => `${Math.min(q.ratio, window.devicePixelRatio)} ${q.ao} ${q.ssr} ${q.shadow}`;
 
 /**
  * The glow of the lights, close to the cabinet and from afar. The bloom spreads

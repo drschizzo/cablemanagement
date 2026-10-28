@@ -53,10 +53,12 @@ let loads = 0;
 
 function loadStarted(): void {
   loads++;
+  stage.busy++;
   veil.classList.add('on');
 }
 
 function loadEnded(): void {
+  if (loads > 0) stage.busy--;
   loads = Math.max(0, loads - 1);
   if (loads > 0) return;
   veil.classList.remove('on');
@@ -158,6 +160,10 @@ function prepareNext(): void {
   const n: NextAisle = { aisle: null!, progress: () => {}, done: 0, ready: false };
   n.aisle = Showcase.create(stage, !syncPhysics, { another: startShowcase }, (f) => { n.done = f; n.progress(f); },
     { bays: showcaseBays, pairs: anotherPairs(), background: true });
+  // its pieces are built between the frames, which come late meanwhile (see Stage.busy)
+  stage.busy++;
+  const done = () => { stage.busy--; };
+  n.aisle.then(done, done);
   void n.aisle.then(() => { n.ready = true; });
   next = n;
 }

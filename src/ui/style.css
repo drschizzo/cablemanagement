@@ -434,3 +434,12 @@ button.link:hover { color: var(--text); }
 .popmenu .colors { display: flex; gap: 6px; margin-bottom: 8px; }
 .popmenu .colors button { width: 22px; height: 22px; border-radius: 2px; padding: 0; }
 .popmenu .colors button.cur { outline: 1px solid var(--text); outline-offset: 2px; }
+
+/* ---- the GPU notice (render/gpu.ts): drawn in software, or on the built-in GPU and too slow */
+#gpu-notice {
+  position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 30; display: flex; gap: 12px; align-items: flex-start;
+  max-width: min(640px, calc(100vw - 32px)); padding: 10px 12px 10px 14px; border-radius: 2px; font-size: 13px; line-height: 1.45;
+  background: rgba(20, 16, 9, 0.96); border: 1px solid rgba(233, 182, 92, 0.45); border-left: 2px solid var(--warn); color: #f1d6a2;
+}
+#gpu-notice p { margin: 0; }
+#gpu-notice button { flex: none; color: inherit; }
