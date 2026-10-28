@@ -159,7 +159,7 @@ La **partie libre** génère une baie au hasard, de 4 à 48 câbles.
 | 1 | Main | saisir, tirer, brancher, débrancher, pincer |
 | C | Chemin | tracer le chemin d'un câble à travers les guides ; il y est posé, et branché au port où finit le trait |
 | 2 | Supports | dans une unité vide, un guide-câbles ; dans un couloir latéral, une goulotte (**Maj** : un anneau) ; sur un support posé, le retirer |
-| 3 | Velcro | attache ensemble les câbles d'un faisceau |
+| 3 | Velcro | tracer un trait en travers des câbles à serrer : le velcro serre ceux que le trait croise, s'ils sont côte à côte ; un clic sur un velcro l'enlève |
 | 0 | Stock | prend un cordon neuf (type, couleur, longueur), livré dans le bac |
 
 ### Ranger un câble

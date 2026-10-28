@@ -94,6 +94,17 @@ describe('plugging and the maintenance window', () => {
 });
 
 describe('labels, straps and cord lengths', () => {
+  it('a strap drawn across cords holds the nodes it was given, one velcro each', () => {
+    const w = new World(L1);
+    const before = w.inventory.velcro;
+    const nodes = [w.cables[0].start + 6, w.cables[1].start + 6];
+    expect(w.strapNodes(nodes.slice(0, 1))).toBeNull(); // one cord: nothing to strap
+    const s = w.strapNodes(nodes)!;
+    expect(s.nodes).toEqual(nodes);
+    expect(nodes.every((i) => w.sim.bundleOf[i] === s.bundle)).toBe(true);
+    expect(w.inventory.velcro).toBe(before - 1);
+  });
+
   it('a cord plugged as planned takes the label of its service, at both ends', () => {
     const w = new World({ ...L1, labels: true });
     const svc = w.circuits[0].service;

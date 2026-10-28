@@ -653,7 +653,12 @@ export class World {
       }
     }
     if (best.size < 2) return null;
-    const nodes = [...best.values()].map((b) => b.node);
+    return this.strapNodes([...best.values()].map((b) => b.node));
+  }
+
+  /** straps these nodes together (one of each cord); needs two of them, and a velcro left */
+  strapNodes(nodes: number[]): Strap | null {
+    if (this.inventory.velcro <= 0 || nodes.length < 2) return null;
     // the strap holds the bundle as tight as the cords allow
     const r = Math.max(this.radius * 2, Math.sqrt(nodes.length) * this.radius * 1.25);
     const bundle = this.sim.addBundle(nodes, r);

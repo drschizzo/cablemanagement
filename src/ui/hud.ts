@@ -12,7 +12,7 @@ const TOOLS: { tool: Tool; key: string; name: string; icon: string; help: string
   { tool: 'hand', key: '1', name: 'Main', icon: iconHand(), help: 'Saisir, tirer, débrancher et brancher ; un connecteur lâché en l\'air y reste accroché. Survol d\'un câble : <b>T</b> le trace, <b>Suppr</b> le jette au bac. Maj : profondeur ; Espace : pincer un coude ; E : l\'autre main. Glisser dans le vide : déplacer la vue.' },
   { tool: 'route', key: 'c', name: 'Chemin', icon: iconRoute(), help: 'Partez d\'un câble et tracez son chemin par-dessus les guides, dans l\'ordre où il doit les traverser ; finissez sur un port libre pour l\'y brancher. Relâchez : le câble est posé le long du chemin, par l\'ouverture de chaque guide.' },
   { tool: 'supports', key: '2', name: 'Supports', icon: iconHmgr(), help: 'Cliquez une unité vide : un guide-câbles. Un couloir latéral : une goulotte (Maj : un anneau). Cliquez un support posé pour le retirer.' },
-  { tool: 'velcro', key: '3', name: 'Velcro', icon: iconVelcro(), help: 'Cliquez sur des câbles qui se touchent pour les attacher en faisceau (un seul service par faisceau, c\'est plus lisible). Cliquez sur un velcro pour l\'enlever.' },
+  { tool: 'velcro', key: '3', name: 'Velcro', icon: iconVelcro(), help: 'Tracez un trait <b>en travers</b> des câbles à serrer : ceux qu\'il croise s\'allument, et le velcro les serre là où le trait les croise. Il se place là où le plus de câbles passent côte à côte ; un seul service par faisceau, c\'est plus lisible. Cliquez sur un velcro pour l\'enlever.' },
 ];
 
 const fmtLen = (m: number) => (m < 1 ? `${Math.round(m * 100)} cm` : `${m.toFixed(m % 1 ? 2 : 0).replace('.', ',')} m`);

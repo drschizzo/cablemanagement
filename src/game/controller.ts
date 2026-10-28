@@ -38,7 +38,7 @@ const MAX_TARGET_STEP = 0.035; // m per frame the hand may move
 const UNPLUG_PULL = 0.04;
 /** glow of a stretch of the carried cord: held by the management, hanging too long, on the floor */
 const HOLD_TINT = [null, new THREE.Color('#1f9a45'), new THREE.Color('#c06800'), new THREE.Color('#b01c1c')];
-const CORD_TOOLS = new Set<Tool>(['hand', 'route', 'velcro']);
+const CORD_TOOLS = new Set<Tool>(['hand', 'route']);
 
 export class Controller {
   world: World;
@@ -72,6 +72,11 @@ export class Controller {
   } | null = null;
   /** the way being drawn (route tool): its cord, the guides passed over in order, the line outside them (one leg before each guide, one after the last), the port it ends on */
   private stroke: { cable: number; guides: Guide[]; legs: [number, number, number][][]; over: number; pts: THREE.Vector3[]; port: Port | null; last: { x: number; y: number } } | null = null;
+  /**
+   * The velcro being drawn: a line across the cords to strap, from where the
+   * button went down to the pointer (px), and the node of each cord it crosses.
+   */
+  private band: { a: { x: number; y: number }; b: { x: number; y: number }; nodes: number[]; lit: Set<number> } | null = null;
   /** Shift held: the supports tool puts a ring rather than a duct */
   private keys = { shift: false };
   /** glows on the free connectors: cyan when lying loose, amber when hooked in the air */
@@ -448,6 +453,7 @@ export class Controller {
       return;
     }
     if (this.stroke) { this.extendStroke(); return; }
+    if (this.band) { this.extendBand(); return; }
     if (this.drag && e.shiftKey !== this.drag.depthMode) this.setDepthMode(e.shiftKey);
     if (this.drag) {
       // the right button pressed while the left one holds the cord: a chord,
@@ -504,7 +510,9 @@ export class Controller {
       this.startStroke(p.cable);
       this.stage.renderer.domElement.setPointerCapture(e.pointerId);
     } else if (this.tool === 'velcro') {
-      this.applyVelcro();
+      if (this.removeStrapUnderPointer()) return;
+      this.band = { a: { ...this.mousePx }, b: { ...this.mousePx }, nodes: [], lit: new Set() };
+      this.stage.renderer.domElement.setPointerCapture(e.pointerId);
     } else {
       this.applySupport();
     }
@@ -713,6 +721,7 @@ export class Controller {
   private onUp(_e: PointerEvent | null, hook = true): void {
     if (this.pan) { this.pan = null; this.stage.renderer.domElement.style.cursor = 'default'; return; }
     if (this.stroke) { this.endStroke(); return; }
+    if (this.band) { this.endBand(); return; }
     if (!this.drag) return;
     if (this.counters.dragged - this.dragStartedAt < 0.002 && !this.portHint && !(this.drag.end >= 0) && !this.drag.pinched) this.history.pop();
     this.guide.visible = false;
@@ -1189,17 +1198,13 @@ export class Controller {
     this.events.onHover(`${this.describe(p)}<br><i>${this.cycle + 1}/${list.length} sous le curseur — Tab : suivant</i>`, r.left + this.mousePx.x, r.top + this.mousePx.y);
   }
 
-  private pickAll(): Pick[] {
-    const sim = this.world.sim;
+  /** a point to the screen (px), and its depth, into out[o..o+2] */
+  private projector(): (px: number, py: number, pz: number, out: Float32Array, o: number) => void {
     const cam = this.stage.camera;
     const rect = this.stage.renderer.domElement.getBoundingClientRect();
-    const N = sim.n;
-    if (this.screen.length < N * 3) this.screen = new Float32Array(N * 3);
     const m = new THREE.Matrix4().multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse).elements;
-    const S = this.screen;
-    const x = sim.x;
     const W = rect.width, H = rect.height;
-    const project = (px: number, py: number, pz: number, out: Float32Array, o: number) => {
+    return (px, py, pz, out, o) => {
       const cx = m[0] * px + m[4] * py + m[8] * pz + m[12];
       const cy = m[1] * px + m[5] * py + m[9] * pz + m[13];
       const cw = m[3] * px + m[7] * py + m[11] * pz + m[15];
@@ -1207,7 +1212,23 @@ export class Controller {
       out[o + 1] = (-cy / cw * 0.5 + 0.5) * H;
       out[o + 2] = cw;
     };
-    for (let i = 0; i < N; i++) project(x[3 * i], x[3 * i + 1], x[3 * i + 2], S, 3 * i);
+  }
+
+  /** every node on the screen (px) with its depth, three numbers a node */
+  private projectNodes(): Float32Array {
+    const sim = this.world.sim, N = sim.n, x = sim.x;
+    if (this.screen.length < N * 3) this.screen = new Float32Array(N * 3);
+    const project = this.projector();
+    for (let i = 0; i < N; i++) project(x[3 * i], x[3 * i + 1], x[3 * i + 2], this.screen, 3 * i);
+    return this.screen;
+  }
+
+  private pickAll(): Pick[] {
+    const cam = this.stage.camera;
+    const H = this.stage.renderer.domElement.getBoundingClientRect().height;
+    const S = this.projectNodes();
+    const project = this.projector();
+    const x = this.world.sim.x;
     const mx = this.mousePx.x, my = this.mousePx.y;
     // tolerance: the projected cable radius plus a few pixels
     const pxPerM = H / (2 * Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)));
@@ -1304,8 +1325,8 @@ export class Controller {
 
   // ------------------------------------------------------------- tools
 
-  private applyVelcro(): void {
-    // remove a strap under the pointer
+  /** a click on a strap takes it off; false when there is none under the pointer */
+  private removeStrapUnderPointer(): boolean {
     const cam = this.stage.camera;
     const rect = this.stage.renderer.domElement.getBoundingClientRect();
     const v = new THREE.Vector3();
@@ -1316,19 +1337,122 @@ export class Controller {
       const sx = (v.x * 0.5 + 0.5) * rect.width, sy = (-v.y * 0.5 + 0.5) * rect.height;
       if (Math.hypot(sx - this.mousePx.x, sy - this.mousePx.y) < 14) hit = s;
     }
-    if (hit) {
-      this.world.removeStrap(hit);
-      sfx.remove();
-      this.events.onInventory();
+    if (!hit) return false;
+    this.world.removeStrap(hit);
+    sfx.remove();
+    this.events.onInventory();
+    return true;
+  }
+
+  /** the line of the velcro grew: the cords it crosses light up */
+  private extendBand(): void {
+    const band = this.band!;
+    band.b = { ...this.mousePx };
+    band.nodes = this.bandNodes(band.a, band.b);
+    const now = new Set(band.nodes.map((i) => this.world.sim.cableOf[i]));
+    for (const c of band.lit) if (!now.has(c)) this.cableView.setHighlight(c, false);
+    const ok = band.nodes.length >= 2;
+    for (const c of now) this.cableView.setHighlight(c, true, '#7a5a10');
+    band.lit = now;
+    this.drawBand(ok);
+    const n = band.nodes.length;
+    this.events.onHint(ok
+      ? `<b>${n} câbles</b> : relâchez, le velcro les serre là où le trait les croise.`
+      : 'Tracez le trait <b>en travers</b> des câbles à serrer, là où ils passent côte à côte : ceux qu\'il prend s\'allument.');
+  }
+
+  /** let go: the velcro straps the cords the line crossed, if they lie close together */
+  private endBand(): void {
+    const band = this.band!;
+    this.band = null;
+    for (const c of band.lit) this.cableView.setHighlight(c, false);
+    for (const o of [...this.strokeView.children]) { this.strokeView.remove(o); disposeTree(o); }
+    this.events.onHint(null);
+    this.refreshHighlights();
+    if (Math.hypot(band.b.x - band.a.x, band.b.y - band.a.y) < 6) {
+      this.events.onToast('Velcro : tracez un trait en travers des câbles à serrer (un clic sur un velcro l\'enlève).');
       return;
     }
-    const p = this.pick();
-    if (!p) return;
     if (this.world.inventory.velcro <= 0) { this.events.onToast('Plus de velcro.'); sfx.error(); return; }
-    const s = this.world.addStrap(p.point.x, p.point.y, p.point.z);
-    if (!s) { this.events.onToast('Le velcro doit serrer au moins deux câbles qui se touchent.'); sfx.error(); return; }
+    if (band.nodes.length < 2) { this.events.onToast('Le trait doit croiser au moins deux câbles qui passent côte à côte.'); sfx.error(); return; }
+    this.world.strapNodes(band.nodes);
     sfx.velcro();
     this.events.onInventory();
+  }
+
+  /** a strap closes round the cords that pass within this of where it goes (m): about a unit across */
+  private static readonly BAND_REACH = 0.045;
+
+  /**
+   * The nodes the velcro drawn from a to b (screen px) would strap: where
+   * the line crosses the cords (away from their connectors, not strapped
+   * already), the strap goes where most cords cross close together, and takes
+   * the crossing of each cord nearest there, if close enough. A cord crossed
+   * twice (a loop hanging in front of a manager) is strapped where the
+   * others are, and one crossed far from the bundle is left out.
+   */
+  private bandNodes(a: { x: number; y: number }, b: { x: number; y: number }): number[] {
+    const S = this.projectNodes();
+    const sim = this.world.sim, x = sim.x;
+    const hits: { c: number; node: number; w: number }[] = [];
+    const dx = b.x - a.x, dy = b.y - a.y;
+    this.world.cables.forEach((cb, c) => {
+      for (let i = cb.start + 2; i < cb.start + cb.count - 3; i++) {
+        const px = S[3 * i], py = S[3 * i + 1], ex = S[3 * i + 3] - px, ey = S[3 * i + 4] - py;
+        const den = dx * ey - dy * ex;
+        if (Math.abs(den) < 1e-9) continue;
+        const t = ((px - a.x) * ey - (py - a.y) * ex) / den;
+        const u = ((px - a.x) * dy - (py - a.y) * dx) / den;
+        if (t < 0 || t > 1 || u < 0 || u > 1) continue;
+        const near = u < 0.5 ? i : i + 1, far = u < 0.5 ? i + 1 : i;
+        const node = sim.bundleOf[near] < 0 ? near : sim.bundleOf[far] < 0 ? far : -1;
+        if (node >= 0) hits.push({ c, node, w: S[3 * i + 2] + (S[3 * i + 5] - S[3 * i + 2]) * u });
+      }
+    });
+    if (!hits.length) return [];
+    const d = (i: number, j: number) => Math.hypot(x[3 * i] - x[3 * j], x[3 * i + 1] - x[3 * j + 1], x[3 * i + 2] - x[3 * j + 2]);
+    const R = Controller.BAND_REACH;
+    // the crossing with the most other cords crossed close to it (the frontmost, between equals)
+    const around = (h: (typeof hits)[number]) => new Set(hits.filter((q) => d(q.node, h.node) <= R).map((q) => q.c)).size;
+    let anchor = hits[0], most = -1;
+    for (const h of hits) {
+      const n = around(h);
+      if (n > most || (n === most && h.w < anchor.w)) { anchor = h; most = n; }
+    }
+    const best = new Map<number, { node: number; d: number }>();
+    for (const h of hits) {
+      const e = d(h.node, anchor.node);
+      if (e > R) continue;
+      const old = best.get(h.c);
+      if (!old || e < old.d) best.set(h.c, { node: h.node, d: e });
+    }
+    return [...best.values()].map((v) => v.node);
+  }
+
+  /** the line of the velcro, drawn where it crosses the cords (green: it will hold; grey: fewer than two cords) */
+  private drawBand(ok: boolean): void {
+    const band = this.band!;
+    for (const o of [...this.strokeView.children]) { this.strokeView.remove(o); disposeTree(o); }
+    const x = this.world.sim.x;
+    const z = band.nodes.length ? band.nodes.reduce((s, i) => s + x[3 * i + 2], 0) / band.nodes.length : 0.06;
+    const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -z);
+    const at = (p: { x: number; y: number }) => {
+      const r = this.stage.renderer.domElement.getBoundingClientRect();
+      this.ray.setFromCamera(new THREE.Vector2((p.x / r.width) * 2 - 1, -(p.y / r.height) * 2 + 1), this.stage.camera);
+      return this.ray.ray.intersectPlane(plane, new THREE.Vector3());
+    };
+    const pa = at(band.a), pb = at(band.b);
+    if (!pa || !pb) return;
+    const col = ok ? '#7dff9a' : '#9a9a9a';
+    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([pa, pb]), new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0.95, depthTest: false }));
+    line.renderOrder = 30;
+    this.strokeView.add(line);
+    for (const i of band.nodes) {
+      const dot = new THREE.Mesh(new THREE.SphereGeometry(0.004, 10, 8), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.9, depthTest: false }));
+      dot.position.set(x[3 * i], x[3 * i + 1], x[3 * i + 2]);
+      dot.renderOrder = 31;
+      this.strokeView.add(dot);
+    }
   }
 
   /**

@@ -178,7 +178,7 @@ const STEPS: Step[] = [
 
   {
     title: 'Le velcro',
-    text: 'Le <b>velcro</b> (touche 3) serre en faisceau les câbles qui se touchent. Cliquez là où deux câbles sont côte à côte ; recliquez sur un velcro pour l\'enlever. Un faisceau d\'un seul service se lit mieux. Jamais de collier serré sur une fibre : il l\'écrase !',
+    text: 'Le <b>velcro</b> (touche 3) serre en faisceau des câbles côte à côte. <b>Tracez un trait en travers</b> des câbles à serrer : ceux qu\'il croise s\'allument, et au relâcher le velcro les serre là où le trait les croise. Il se place là où le plus de câbles passent côte à côte, et laisse de côté un câble croisé plus loin. Cliquez sur un velcro pour l\'enlever. Un faisceau d\'un seul service se lit mieux. Jamais de collier serré sur une fibre : il l\'écrase !',
     task: 'Posez un velcro',
     tool: 'velcro',
     done: (c) => c.world.straps.length > 0,
