@@ -10,6 +10,8 @@ export type ToWorker =
     type: 'init'; params: SimParams; defs: CableInit[]; x: Float64Array; v: Float64Array; pins: number[]; statics: StaticShape[]; pinches: Pinch[];
     /** what the points alone do not tell: the rest lengths, and what the keepers know of the cords */
     rest: Float64Array; handled: Uint8Array; lastHand: Int32Array; keepOf: Int32Array;
+    /** the targets set by hand (`setTarget`) or by the route goals, and those goals */
+    target: Float64Array; targetK: Float64Array; targetLead: Float64Array; targetHeavy: Uint8Array; goal: Float64Array; goalW: Float64Array;
   }
   | { type: 'pin'; i: number; p: [number, number, number] }
   | { type: 'unpin'; i: number }
@@ -23,6 +25,8 @@ export type ToWorker =
   | { type: 'firmPinch'; s: number }
   | { type: 'pinches'; list: Pinch[] }
   | { type: 'goals'; start: number; pos: Float64Array; w: Float64Array }
+  | { type: 'target'; i: number; p: [number, number, number]; k: number; lead: number; heavy: boolean }
+  | { type: 'clearTarget'; i: number }
   | { type: 'statics'; statics: StaticShape[] }
   | { type: 'addBundle'; nodes: number[]; r: number }
   | { type: 'removeBundle'; id: number }
@@ -58,6 +62,12 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
     sim.handled.set(m.handled);
     sim.lastHand.set(m.lastHand);
     sim.keepOf.set(m.keepOf);
+    sim.target.set(m.target);
+    sim.targetK.set(m.targetK);
+    sim.targetLead.set(m.targetLead);
+    sim.targetHeavy.set(m.targetHeavy);
+    sim.goal.set(m.goal);
+    sim.goalW.set(m.goalW);
     sim.loadPinches(m.pinches);
     sim.takePinchChange();
     return;
@@ -76,6 +86,8 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
     case 'firmPinch': sim.firmPinch(m.s); break;
     case 'pinches': sim.loadPinches(m.list); sim.takePinchChange(); break;
     case 'goals': sim.setGoals(m.start, m.pos, m.w); break;
+    case 'target': sim.setTarget(m.i, ...m.p, m.k, m.lead, m.heavy); break;
+    case 'clearTarget': sim.clearTarget(m.i); break;
     case 'statics': sim.setStatics(m.statics); break;
     case 'addBundle': sim.addBundle(m.nodes, m.r); break;
     case 'removeBundle': sim.removeBundle(m.id); break;

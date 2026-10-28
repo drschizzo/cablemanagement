@@ -133,6 +133,8 @@ Au clic, `startDrag` appelle `sim.grab(nœud)` : le nœud saisi devient la « ma
 
 Le solveur ne téléporte pas le nœud sur la cible : il le tire vers elle avec un ressort, d'au plus 6 cm (`grabLead`). Un câble coincé ne s'étire donc pas à l'infini, et il ne rebondit pas quand on le lâche.
 
+Ce ressort en laisse est la **cible** du moteur (`setTarget`) : un point, une raideur, une longueur de laisse, et un drapeau qui rend le nœud lourd dans les passes de longueur, pour que le câble suive la main plutôt que l'inverse. Chaque nœud a au plus une cible. La main, l'autre main, le connecteur poussé dans son port et le chemin tracé posent la leur au début de chaque pas (`aim`) ; sur un même nœud, la main l'emporte sur l'autre main, qui l'emporte sur le connecteur, qui l'emporte sur le chemin.
+
 ### Le chemin tracé
 
 Avec l'outil Chemin, le joueur part d'un câble et trace un trait à l'écran. Chaque guide que le trait traverse (un rayon par le pointeur, contre la zone du guide) rejoint le chemin, dans l'ordre du passage ; un guide traversé de nouveau prend sa place au dernier passage. Si le trait finit sur un port libre, le bout libre du câble y sera branché. Au relâcher, `planRoute` (`src/game/route.ts`) calcule le chemin :
@@ -192,10 +194,10 @@ Le moteur combine plusieurs contributions sur chaque nœud :
 | Flexion | énergie souple | le câble résiste à la courbure, plus fort près des connecteurs |
 | Contact câble–câble et câble–baie | contrainte dure, d'un seul côté | deux gélules ne s'interpénètrent pas ; un câble ne traverse pas la baie |
 | Frottement | contrainte dure, bornée | un câble posé ne glisse pas tant que la force tangentielle reste sous μ × la force normale |
-| Main | ressort | le nœud saisi est tiré vers la cible de la souris ; l'autre main (touche E) tient un nœud là où le joueur l'a laissé |
+| Main | ressort, en laisse (cible) | le nœud saisi est tiré vers la cible de la souris ; l'autre main (touche E) tient un nœud là où le joueur l'a laissé |
 | Velcro | ressort d'un seul côté | les nœuds serrés restent à moins d'un rayon du centre du faisceau |
 | Coude pincé | ressort | les nœuds pincés gardent la forme qu'ils avaient ensemble |
-| Chemin tracé | ressort, en laisse | pendant qu'un câble est posé le long de son chemin, chaque nœud est mené vers sa place, à travers les autres câbles |
+| Chemin tracé | ressort, en laisse (cible) | pendant qu'un câble est posé le long de son chemin, chaque nœud est mené vers sa place, à travers les autres câbles |
 | Épingle | nœud fixe | un connecteur branché ne bouge plus |
 
 Un **coude pincé** (Espace ou clic droit maintenu pendant qu'on tient le câble) garde la forme qu'avaient ses nœuds quand le joueur a cessé de pincer. À chaque sous-pas, le moteur cherche la rotation et le déplacement de cette forme qui vont le mieux aux nœuds, et tire chaque nœud vers sa place dans la forme ainsi posée. Le coude peut donc tourner et voyager avec le câble sans se déformer. Comme la forme posée est celle qui rend la traction la plus faible, cette traction se comporte comme un vrai ressort et n'ajoute pas d'énergie. Plus le pincement a duré, plus le ressort est raide (voir `pinchGoals` dans `src/physics/cableSim.ts`).

@@ -19,9 +19,11 @@
 // friction (a tangential λ clamped to the Coulomb cone, §3.3 of the paper).
 // The multipliers are carried from substep to substep, so that a loaded
 // contact or a taut cord keeps its force instead of rebuilding it by sinking.
-// Soft energies: bending (second difference), the hand that drags a cable
-// and the other hand that holds one still, the velcro straps, the pinches,
-// and the route goals that lead a cord along a drawn route (`setGoals`).
+// Soft energies: bending (second difference), the targets (a node led towards
+// a point by a spring on a leash: `setTarget`), the velcro straps and the
+// pinches. The game's springs are targets: the hand that drags a cable, the
+// other hand that holds one still, a connector pushed into its port and the
+// route goals that lead a cord along a drawn route (`setGoals`).
 // A cord led along a route passes through the other cords (not through the
 // cabinet), and becomes solid again where it is clear of them once let go.
 //
@@ -404,6 +406,19 @@ export class CableSim {
   private staticBounds = new Float64Array(0);
   private readonly SCELL = 0.05;
 
+  /**
+   * Targets: a node led towards a point by a spring on a leash (see
+   * `setTarget`), one per node. `targetK`: its stiffness (× M/h² of the
+   * reference substep; 0: none), `targetLead`: its leash (m), `targetHeavy`:
+   * the cord follows it rather than the opposite, as a hand.
+   */
+  target = new Float64Array(0);
+  targetK = new Float64Array(0);
+  targetLead = new Float64Array(0);
+  targetHeavy = new Uint8Array(0);
+  /** nodes the hands and plugs led at the last step (see `aim`) */
+  private aimed: number[] = [];
+
   // hand
   grabNode = -1;
   grabTarget = [0, 0, 0];
@@ -501,6 +516,11 @@ export class CableSim {
     this.radius = new Float64Array(N);
     this.bundleOf = new Int32Array(N).fill(-1);
     this.pinchOf = new Int32Array(N).fill(-1);
+    this.target = new Float64Array(3 * N);
+    this.targetK = new Float64Array(N);
+    this.targetLead = new Float64Array(N);
+    this.targetHeavy = new Uint8Array(N);
+    this.aimed = [];
     this.goal = new Float64Array(3 * N);
     this.goalW = new Float64Array(N);
     this.plugging = new Uint8Array(N);
@@ -612,6 +632,7 @@ export class CableSim {
     }
     if (this.holdNode >= start && this.holdNode < start + n) this.holdNode = -1;
     this.goalW.fill(0, start, Math.min(this.n, start + n));
+    this.targetK.fill(0, start, Math.min(this.n, start + n));
     for (let i = start; i < Math.min(this.n, start + n); i++) if (this.ghost[i] < 0) this.ghost[i] = this.P.ghostFrames;
     // a cord put somewhere else (coiled in the crate) lets go of its pinches
     const kept = this.pinches.filter((p) => p.a + p.n <= start || p.a >= start + n);
@@ -664,6 +685,29 @@ export class CableSim {
       return false;
     });
     this.pinned[i] = 0;
+    this.wakeCable(this.cableOf[i]);
+  }
+
+  /**
+   * Leads node i towards (x, y, z): a spring of stiffness k (× M/h² of the
+   * reference substep) that pulls from at most `lead` away, so that a cord
+   * caught on something is held back rather than stretched like an elastic
+   * (nor snaps back when let go). `heavy`: the cord follows the node rather
+   * than the opposite, as it follows a hand. One target per node: this one
+   * replaces any other. The hands, the plugs and the route goals of the game
+   * set theirs before every step (see `aim`), and come first.
+   */
+  setTarget(i: number, x: number, y: number, z: number, k: number, lead: number, heavy = false): void {
+    this.target[3 * i] = x; this.target[3 * i + 1] = y; this.target[3 * i + 2] = z;
+    this.targetK[i] = k;
+    this.targetLead[i] = lead;
+    this.targetHeavy[i] = heavy ? 1 : 0;
+    this.wakeCable(this.cableOf[i]);
+  }
+
+  clearTarget(i: number): void {
+    this.targetK[i] = 0;
+    this.targetHeavy[i] = 0;
     this.wakeCable(this.cableOf[i]);
   }
 
@@ -931,10 +975,49 @@ export class CableSim {
       const i = start + k;
       this.goal[3 * i] = pos[3 * k]; this.goal[3 * i + 1] = pos[3 * k + 1]; this.goal[3 * i + 2] = pos[3 * k + 2];
       this.goalW[i] = w[k];
+      this.goalTarget(i);
       if (w[k] > 0) { this.ghost[i] = -1; this.handled[this.cableOf[i]] = 1; }
       else if (this.ghost[i] < 0) this.ghost[i] = this.P.ghostFrames;
     }
     if (n > 0) this.wakeCable(this.cableOf[start]);
+  }
+
+  /** node i's target from its route goal, or none (until a hand or a plug takes it: see `aim`) */
+  private goalTarget(i: number): void {
+    const P = this.P, w = this.goalW[i];
+    if (w <= 0) { this.targetK[i] = 0; this.targetHeavy[i] = 0; return; }
+    this.target[3 * i] = this.goal[3 * i]; this.target[3 * i + 1] = this.goal[3 * i + 1]; this.target[3 * i + 2] = this.goal[3 * i + 2];
+    this.targetK[i] = P.goalK * w;
+    this.targetLead[i] = P.goalLead;
+    this.targetHeavy[i] = 0;
+  }
+
+  /** node i is led as by the hand towards t[o..o+2] */
+  private handTarget(i: number, t: ArrayLike<number>, o: number): void {
+    this.target[3 * i] = t[o]; this.target[3 * i + 1] = t[o + 1]; this.target[3 * i + 2] = t[o + 2];
+    this.targetK[i] = this.P.grabK * 4;
+    this.targetLead[i] = this.P.grabLead;
+    this.targetHeavy[i] = 1;
+    this.aimed.push(i);
+  }
+
+  /** the nodes the hands and the plugs led go back to their route goal, or to no target */
+  protected unaim(): void {
+    for (const i of this.aimed) this.goalTarget(i);
+    this.aimed.length = 0;
+  }
+
+  /**
+   * Start of a step: the targets of the game's springs, from where they are
+   * now. The nodes the hands or the plugs led go back to their route goal,
+   * if any; then the plugs, the other hand and the hand, in that order: on
+   * one node, the last of them wins.
+   */
+  private aim(): void {
+    this.unaim();
+    for (const q of this.plugs) { this.handTarget(q.i0, this.plugAt, 3 * q.i0); this.handTarget(q.i1, this.plugAt, 3 * q.i1); }
+    if (this.holdNode >= 0) this.handTarget(this.holdNode, this.holdTarget, 0);
+    if (this.grabNode >= 0) this.handTarget(this.grabNode, this.grabTarget, 0);
   }
 
   // ---------------------------------------------------------------- step
@@ -944,6 +1027,7 @@ export class CableSim {
     const P = this.P;
     const h = P.dt / P.substeps;
     this.strokePlugs(P.dt);
+    this.aim();
     this.markDrawn();
     this.convert(h);
     this.markKept();
@@ -1363,23 +1447,11 @@ export class CableSim {
       h01 -= kt2 * nx * ny; h02 -= kt2 * nx * nz; h12 -= kt2 * ny * nz;
     }
 
-    // --- springs on a leash, each pulling from at most its lead away: the
-    // hands (the one that drags, the other that holds), a connector pushed
-    // into its port as by the hand, a route goal
-    const gw = this.goalW[i];
-    for (let s = 0; s < 3; s++) {
-      let t: ArrayLike<number>, o = j, k = P.grabK * mh * 4, lead = P.grabLead;
-      if (s === 0) {
-        if (i !== this.grabNode && i !== this.holdNode) continue;
-        t = i === this.grabNode ? this.grabTarget : this.holdTarget; o = 0;
-      } else if (s === 1) {
-        if (!this.plugging[i]) continue;
-        t = this.plugAt;
-      } else {
-        if (gw <= 0) continue;
-        t = this.goal; k = P.goalK * gw * mh; lead = P.goalLead;
-      }
-      leash(xi, yi, zi, t, o, lead);
+    // --- target: a spring on a leash, pulling from at most its lead away
+    const tk = this.targetK[i];
+    if (tk > 0) {
+      const k = tk * mh;
+      leash(xi, yi, zi, this.target, j, this.targetLead[i]);
       gx += k * pull.x; gy += k * pull.y; gz += k * pull.z;
       h00 += k; h11 += k; h22 += k;
     }
@@ -1444,22 +1516,18 @@ export class CableSim {
     }
   }
 
-  /** node i is moved as by a hand: one of the two hands, or a connector on its way into a port */
-  private byHand(i: number): boolean {
-    return i === this.grabNode || i === this.holdNode || this.plugging[i] === 1;
-  }
-
   /**
    * Position projection of the segment lengths (PBD), one sweep along every
    * cord: what the block descent leaves of a stretch under load (a heap, the
    * hand) is taken out here. Pins and sleeping nodes do not move; the nodes
-   * of the hands are heavy, so the cord follows them rather than the opposite.
+   * of heavy targets (the hands) weigh more, so the cord follows them rather
+   * than the opposite.
    */
   private inextensible(forward: boolean): void {
     const x = this.x;
-    // the hands' nodes are heavy; a node a keeper holds does not move for its
+    // a node led by a heavy target weighs more; a node a keeper holds does not move for its
     // free neighbour (between two kept nodes, both do)
-    const w = (i: number) => (this.fixed[i] ? 0 : this.byHand(i) ? this.P.handWeight / this.mass[i] : 1 / this.mass[i]);
+    const w = (i: number) => (this.fixed[i] ? 0 : this.targetHeavy[i] ? this.P.handWeight / this.mass[i] : 1 / this.mass[i]);
     const kept = this.keepOf;
     for (let q = 0; q < this.nAwake; q++) {
       const cb = this.cables[this.awake[forward ? q : this.nAwake - 1 - q]];

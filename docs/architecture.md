@@ -122,7 +122,7 @@ par niveau) et tutoriel terminé. Les clés sont celles des versions précédent
 |---|---|
 | `npm run lint` | erreurs probables (ESLint) |
 | `npm run typecheck` | types (TypeScript strict) |
-| `npm test` | moteur seul (chute, traversée, câble suspendu, empilement, main, déterminisme), géométrie, baie, stockage, règles d'une partie (branchement, fenêtre de maintenance, étiquettes, velcro, longueurs, bac), niveaux (plan, emmêlage stable, 3 étoiles possibles), salle d'accueil précalculée à jour |
+| `npm test` | moteur seul (chute, traversée, câble suspendu, empilement, main, cible et sa laisse, déterminisme), géométrie, baie, stockage, règles d'une partie (branchement, fenêtre de maintenance, étiquettes, velcro, longueurs, bac), niveaux (plan, emmêlage stable, 3 étoiles possibles), salle d'accueil précalculée à jour |
 | `npm run check` | les trois à la suite |
 | `npm run bake` | précalcule le désordre de la salle d'accueil par défaut (à relancer quand le test `baked` le demande) |
 | `npm run bench` · `precision` · `levels` · `solvable` · `showcase` · `free` · `pinch` · `route` | bancs du moteur et des niveaux, sans navigateur (`tools/`) ; `free` : partie libre de 48 câbles (stabilisation, cordon tiré à travers les autres) ; `pinch` : un coude pincé, ce qu'il en reste une fois lâché ; `route` : des câbles posés le long d'un chemin tracé (branchés, dans leurs guides, au repos, sans traverser la baie, et ce qu'ils déplacent des autres câbles) |

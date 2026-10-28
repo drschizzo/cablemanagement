@@ -142,6 +142,38 @@ describe('cable solver', () => {
     expect(stretch(sim)).toBeLessThan(0.02);
   });
 
+  it('a target leads a node to its point; cleared, the node falls back', () => {
+    const sim = new CableSim();
+    sim.build([{ points: cord([-0.3, 0.1, 0], [0.3, 0.1, 0]), radius: R }]);
+    sim.setStatics([floor]);
+    run(sim, 1);
+    const last = sim.n - 1;
+    sim.setTarget(last, 0.25, 0.2, 0.05, 2, 0.05);
+    run(sim, 2);
+    expect(Math.hypot(sim.x[3 * last] - 0.25, sim.x[3 * last + 1] - 0.2, sim.x[3 * last + 2] - 0.05)).toBeLessThan(0.01);
+    expect(stretch(sim)).toBeLessThan(0.01);
+    sim.clearTarget(last);
+    run(sim, 2);
+    expect(sim.x[3 * last + 1]).toBeLessThan(R + 0.002);
+  });
+
+  it('a target out of reach pulls on its leash, and does not stretch the cord like an elastic', () => {
+    /** the worst stretch of a segment in the 4th second, a cord pinned at one end led 2 m away by the other */
+    const worst = (lead: number) => {
+      const sim = new CableSim();
+      sim.build([{ points: cord([0, 0.5, 0], [0.5, 0.5, 0]), radius: R }]);
+      sim.pin(0, 0, 0.5, 0);
+      sim.setTarget(sim.n - 1, 2, 0.5, 0, 1.6, lead, true);
+      let w = 0;
+      for (let k = 0; k < 240; k++) { sim.step(); if (k >= 180) w = Math.max(w, stretch(sim)); }
+      return w;
+    };
+    // the cord whips about in the leash (as in the hand), but the pull stays bounded:
+    // without it, the cord would stretch to reach the target
+    expect(worst(0.05)).toBeLessThan(0.6);
+    expect(worst(10)).toBeGreaterThan(1.5);
+  });
+
   it('is deterministic: the same start gives the same positions, bit for bit', () => {
     const go = () => {
       const sim = new CableSim();

@@ -41,9 +41,12 @@ export class ThreadedSim extends CableSim {
     this.worker = w;
     const pins: number[] = [];
     for (let i = 0; i < this.n; i++) if (this.pinned[i]) pins.push(i);
+    // (the hands and the plugs set their targets again in the worker, at every step)
+    this.unaim();
     this.post({
       type: 'init', params: this.P, defs: this.defs, x: this.x, v: this.v, pins, statics: this.statics, pinches: this.pinches,
       rest: this.rest, handled: this.handled, lastHand: this.lastHand, keepOf: this.keepOf,
+      target: this.target, targetK: this.targetK, targetLead: this.targetLead, targetHeavy: this.targetHeavy, goal: this.goal, goalW: this.goalW,
     });
     for (const b of this.bundles) if (b.alive) this.post({ type: 'addBundle', nodes: b.nodes, r: b.r });
     // connectors on their way into a port go on from where they are
@@ -154,6 +157,16 @@ export class ThreadedSim extends CableSim {
   unpin(i: number): void {
     super.unpin(i);
     this.post({ type: 'unpin', i });
+  }
+
+  setTarget(i: number, x: number, y: number, z: number, k: number, lead: number, heavy = false): void {
+    super.setTarget(i, x, y, z, k, lead, heavy);
+    this.post({ type: 'target', i, p: [x, y, z], k, lead, heavy });
+  }
+
+  clearTarget(i: number): void {
+    super.clearTarget(i);
+    this.post({ type: 'clearTarget', i });
   }
 
   pinEnd(i0: number, i1: number, a: ArrayLike<number>, b: ArrayLike<number>): void {
