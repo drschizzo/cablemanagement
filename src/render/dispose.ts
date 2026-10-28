@@ -4,7 +4,7 @@
 // it would only force three.js to upload or compile it again on its next use.
 
 import * as THREE from 'three';
-import type { TubeMesh } from 'three-cable-tubes';
+import type { TubeMesh } from '@drschizzo/three-cable-tubes';
 
 type Resource = THREE.BufferGeometry | THREE.Material | THREE.Texture;
 

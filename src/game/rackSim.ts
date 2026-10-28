@@ -11,7 +11,7 @@
 // once in it, until the hand pulls it out or a route leads it elsewhere. It
 // never draws a cord in: laying a cord in the guides is the route's job.
 
-import { CableSim, defaultSimParams, type CableInit, type NodeSystem, type Pinch, type SimParams, type SimSnapshot, type StaticShape } from 'avbd-cables';
+import { CableSim, defaultSimParams, type CableInit, type NodeSystem, type Pinch, type SimParams, type SimSnapshot, type StaticShape } from '@drschizzo/avbd-cables';
 
 /**
  * A channel that keeps what is left in it (the trough of a finger manager):

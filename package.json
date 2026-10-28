@@ -5,7 +5,7 @@
   "version": "0.1.0",
   "type": "module",
   "workspaces": [
-    "packages/*"
+    "vendor/cable-kit/packages/*"
   ],
   "description": "Baie de brassage : jeu de cable management en 3D (three.js), moteur de câbles AVBD dans un Web Worker",
   "scripts": {
@@ -29,8 +29,7 @@
     "route": "vite-node tools/route.ts",
     "plug": "vite-node tools/plug.ts",
     "plugin": "vite-node tools/plugin.ts",
-    "bake": "vite-node tools/bake.ts",
-    "presets": "vite-node tools/presets.ts"
+    "bake": "vite-node tools/bake.ts"
   },
   "dependencies": {
     "three": "^0.183.2"

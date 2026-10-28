@@ -11,7 +11,7 @@
 // physics and the nodes sent each frame are those of the few in the air.
 
 import * as THREE from 'three';
-import { TubeMesh, TubeNodes } from 'three-cable-tubes';
+import { TubeMesh, TubeNodes } from '@drschizzo/three-cable-tubes';
 import { CABLE_R } from '../game/rack';
 import { SERVICES } from '../game/levels';
 import { rng } from '../game/tangle';

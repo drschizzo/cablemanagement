@@ -2,7 +2,7 @@
 // cords with their ends and labels, the velcro straps, the inventory, and the
 // evaluation of how tidy it all is.
 
-import { CABLES, type CableInit, type Pinch } from 'avbd-cables';
+import { CABLES, type CableInit, type Pinch } from '@drschizzo/avbd-cables';
 import { ThreadedSim } from './threadedSim';
 import { CABLE_R, CONNECTOR, Rack, SEG, insideBox, type Item, type ItemKind } from './rack';
 import { SERVICES, type FibreType, type LevelDef } from './levels';

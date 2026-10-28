@@ -11,7 +11,7 @@
 // its nodes' velocity over the next three seconds, and when it falls asleep.
 //   PARAMS='{"pinchK":8}' npm run pinch
 declare const process: { env: Record<string, string | undefined> };
-import { CABLES } from 'avbd-cables';
+import { CABLES } from '@drschizzo/avbd-cables';
 import { RackSim } from '../src/game/rackSim';
 import { World } from '../src/game/world';
 import { LEVELS } from '../src/game/levels';

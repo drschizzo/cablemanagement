@@ -18,7 +18,13 @@ installer (un navigateur récent avec WebGL 2 suffit).
 
 ## Lancer le jeu en local
 
-Il faut Node.js 20 ou plus récent.
+Il faut Node.js 20 ou plus récent. Le moteur de câbles et le rendu des tubes viennent d'un sous-module git
+([cable-kit](https://github.com/drschizzo/cable-kit)) : clonez avec `--recurse-submodules`, ou récupérez-le
+après coup.
+
+```bash
+git submodule update --init
+```
 
 ```bash
 npm install
@@ -156,7 +162,7 @@ tourne dans le navigateur.
 
 | Dossier | Contenu |
 |---|---|
-| `packages/` | ce qui peut servir hors du jeu : le moteur de câbles et son Web Worker (`avbd-cables`), les tubes des câbles construits par le GPU (`three-cable-tubes`, pour WebGLRenderer et WebGPURenderer) |
+| `vendor/cable-kit/` | sous-module git, le dépôt [cable-kit](https://github.com/drschizzo/cable-kit) : le moteur de câbles et son Web Worker (`@drschizzo/avbd-cables`), les tubes construits par le GPU (`@drschizzo/three-cable-tubes`) |
 | `src/game/` | la baie, les niveaux, le plan de brassage, les règles et le score |
 | `src/render/` | la scène three.js : baie, câbles, connecteurs |
 | `src/ui/` | l'interface, le tutoriel, la démonstration avant / après |
@@ -193,7 +199,7 @@ que dans le Worker, ce qui rend les tests automatisés reproductibles.
 
 ### Le moteur physique
 
-`packages/avbd-cables/src/cableSim.ts` s'inspire d'*Augmented Vertex Block Descent* (Giles,
+`vendor/cable-kit/packages/avbd-cables/src/cableSim.ts` s'inspire d'*Augmented Vertex Block Descent* (Giles,
 Diaz, Yuksel, SIGGRAPH 2025). Chaque câble est une chaîne de nœuds ; le
 solveur traite l'inextensibilité et les contacts (câble contre câble, câble
 contre baie) comme des contraintes dures, et la flexion, le frottement, la

@@ -9,7 +9,7 @@ declare const process: { env: Record<string, string | undefined> };
 import { World } from '../src/game/world';
 import { type LevelDef } from '../src/game/levels';
 import { CONNECTOR } from '../src/game/rack';
-import type { StaticCapsule } from 'avbd-cables';
+import type { StaticCapsule } from '@drschizzo/avbd-cables';
 
 /** closest distance between segments p0p1 and q0q1 */
 function segSeg(p0: number[], p1: number[], q0: number[], q1: number[]): number {

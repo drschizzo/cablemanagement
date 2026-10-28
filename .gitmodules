@@ -1,0 +1,3 @@
+[submodule "vendor/cable-kit"]
+	path = vendor/cable-kit
+	url = https://github.com/drschizzo/cable-kit.git

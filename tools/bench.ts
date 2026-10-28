@@ -1,7 +1,7 @@
 // Headless checks of the cable solver: run with
 declare const process: { env: Record<string, string | undefined> };
 //   npx esbuild tools/bench.ts --bundle --platform=node --format=esm --outfile=/tmp/bench.mjs && node /tmp/bench.mjs
-import { CABLES, CableSim, closest, segSeg, type CableInit, type StaticShape } from 'avbd-cables';
+import { CABLES, CableSim, closest, segSeg, type CableInit, type StaticShape } from '@drschizzo/avbd-cables';
 
 const SEG = 0.025;
 /** patch cords, connectors at both ends */

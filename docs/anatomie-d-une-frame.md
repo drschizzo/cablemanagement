@@ -4,7 +4,7 @@
 
 Pour afficher une image, Brassage lit la souris, fait avancer la physique des câbles dans un Web Worker, envoie à la carte graphique les nœuds des câbles qui ont bougé, puis lui demande de dessiner la scène en plusieurs passes. Ce document décrit chacune de ces étapes, dans l'ordre où elles s'exécutent, avec les fichiers du dépôt qui les réalisent.
 
-Brassage est un jeu de rangement de câbles dans une baie réseau. Le rendu utilise [three.js](https://threejs.org/), une bibliothèque qui simplifie l'usage de WebGL. La physique des câbles est écrite pour le projet, dans `packages/avbd-cables/src/cableSim.ts`, sans bibliothèque externe.
+Brassage est un jeu de rangement de câbles dans une baie réseau. Le rendu utilise [three.js](https://threejs.org/), une bibliothèque qui simplifie l'usage de WebGL. La physique des câbles est écrite pour le projet, dans `vendor/cable-kit/packages/avbd-cables/src/cableSim.ts`, sans bibliothèque externe.
 
 ![Image finale d'un niveau](frame/image-finale.jpg)
 
@@ -162,7 +162,7 @@ Les règles du jeu vivent dans `src/game/world.ts`, sans three.js ni DOM. `World
 
 ## Moteur physique
 
-Le moteur représente chaque câble par une chaîne de points pesants et calcule, à chaque pas de 1/60 s, la position de ces points qui respecte au mieux la gravité, la longueur des câbles, leur raideur et les contacts. Il utilise la méthode AVBD (*Augmented Vertex Block Descent*, Giles, Diaz et Yuksel, SIGGRAPH 2025) et tourne dans un Web Worker. Le solveur est dans `packages/avbd-cables/src/cableSim.ts`, qui ne connaît pas la baie. `src/game/rackSim.ts` le mène comme le jeu en a besoin (les mains, le chemin, les connecteurs, le creux des guides), et `src/game/threadedSim.ts` et `sim.worker.ts` le déplacent hors du fil principal.
+Le moteur représente chaque câble par une chaîne de points pesants et calcule, à chaque pas de 1/60 s, la position de ces points qui respecte au mieux la gravité, la longueur des câbles, leur raideur et les contacts. Il utilise la méthode AVBD (*Augmented Vertex Block Descent*, Giles, Diaz et Yuksel, SIGGRAPH 2025) et tourne dans un Web Worker. Le solveur est dans `vendor/cable-kit/packages/avbd-cables/src/cableSim.ts`, qui ne connaît pas la baie. `src/game/rackSim.ts` le mène comme le jeu en a besoin (les mains, le chemin, les connecteurs, le creux des guides), et `src/game/threadedSim.ts` et `sim.worker.ts` le déplacent hors du fil principal.
 
 Cette section est la plus longue du document. Pour une première lecture, le modèle, « La méthode, en trois idées », l'exemple chiffré et le schéma du déroulé d'un pas suffisent à comprendre le principe.
 
@@ -202,7 +202,7 @@ Le moteur combine plusieurs contributions sur chaque nœud :
 | Chemin tracé | ressort, en laisse (cible) | pendant qu'un câble est posé le long de son chemin, chaque nœud est mené vers sa place, à travers les autres câbles |
 | Épingle | nœud fixe | un connecteur branché ne bouge plus |
 
-Un **coude pincé** (Espace ou clic droit maintenu pendant qu'on tient le câble) garde la forme qu'avaient ses nœuds quand le joueur a cessé de pincer. À chaque sous-pas, le moteur cherche la rotation et le déplacement de cette forme qui vont le mieux aux nœuds, et tire chaque nœud vers sa place dans la forme ainsi posée. Le coude peut donc tourner et voyager avec le câble sans se déformer. Comme la forme posée est celle qui rend la traction la plus faible, cette traction se comporte comme un vrai ressort et n'ajoute pas d'énergie. Plus le pincement a duré, plus le ressort est raide (voir `pinchGoals` dans `packages/avbd-cables/src/cableSim.ts`).
+Un **coude pincé** (Espace ou clic droit maintenu pendant qu'on tient le câble) garde la forme qu'avaient ses nœuds quand le joueur a cessé de pincer. À chaque sous-pas, le moteur cherche la rotation et le déplacement de cette forme qui vont le mieux aux nœuds, et tire chaque nœud vers sa place dans la forme ainsi posée. Le coude peut donc tourner et voyager avec le câble sans se déformer. Comme la forme posée est celle qui rend la traction la plus faible, cette traction se comporte comme un vrai ressort et n'ajoute pas d'énergie. Plus le pincement a duré, plus le ressort est raide (voir `pinchGoals` dans `vendor/cable-kit/packages/avbd-cables/src/cableSim.ts`).
 
 Une **contrainte dure** doit être respectée exactement (à la précision du calcul près). Une **énergie souple** est un ressort : elle tire dans une direction sans rien imposer. La baie, ses équipements et les guide-câbles forment des **formes statiques** (boîtes et gélules) décrites par `Rack.statics()` dans `src/game/rack.ts`.
 
@@ -257,7 +257,7 @@ Le premier terme mesure l'écart à la prédiction x̃, pondéré par les masses
 H\,\Delta x = -g
 ```
 
-qui donne le déplacement Δx vers le minimum. C'est un système de 3 équations à 3 inconnues, résolu directement par `solveSym3` dans `packages/avbd-cables/src/geom.ts`. Traiter un nœud à la fois en réutilisant aussitôt les nouvelles positions s'appelle la méthode de Gauss-Seidel. Le déplacement est limité à 1,2 cm par résolution (`maxMove`), ce qui évite qu'un cas extrême projette un nœud loin de sa position.
+qui donne le déplacement Δx vers le minimum. C'est un système de 3 équations à 3 inconnues, résolu directement par `solveSym3` dans `vendor/cable-kit/packages/avbd-cables/src/geom.ts`. Traiter un nœud à la fois en réutilisant aussitôt les nouvelles positions s'appelle la méthode de Gauss-Seidel. Le déplacement est limité à 1,2 cm par résolution (`maxMove`), ce qui évite qu'un cas extrême projette un nœud loin de sa position.
 
 ### Changer le nombre de sous-pas
 
@@ -326,7 +326,7 @@ Le coût de la physique suit donc ce qui bouge. Au moment des captures, les 13 c
 
 JavaScript exécute le code d'une page sur un seul fil. Si la physique y prenait 10 ms, il ne resterait que 6 ms pour le reste de la frame. Un Web Worker est un second fil d'exécution, sans accès au DOM, qui communique avec la page par messages (`postMessage`).
 
-`ThreadedSim` (dans `src/game/threadedSim.ts`) est un `RackSim` passé par `threaded()` (`packages/avbd-cables/src/threaded.ts`), et garde dans la page une copie complète de la simulation : la topologie, et un miroir des positions. Le jeu lit `sim.x` comme si la physique tournait sur place. Le fonctionnement est le suivant :
+`ThreadedSim` (dans `src/game/threadedSim.ts`) est un `RackSim` passé par `threaded()` (`vendor/cable-kit/packages/avbd-cables/src/threaded.ts`), et garde dans la page une copie complète de la simulation : la topologie, et un miroir des positions. Le jeu lit `sim.x` comme si la physique tournait sur place. Le fonctionnement est le suivant :
 
 - Toute modification (épingler, saisir, poser un velcro, changer la baie) est appliquée à la copie locale, puis envoyée au Worker sous forme de message : le nom de la méthode et ses arguments, que le Worker rejoue (`hostSimWorker`). Les messages arrivent dans l'ordre d'envoi.
 - `advance(k)` demande k pas. Une seule demande est en cours à la fois. Si le Worker n'a pas fini, les pas sont mis de côté, deux au plus ; au-delà, ils sont abandonnés et comptés dans `dropped`.
@@ -360,7 +360,7 @@ La grosse pile dépasse le budget d'une frame : c'est précisément le cas que l
 
 ## Préparation de la scène
 
-Le GPU ne connaît ni les câbles ni les nœuds : il dessine des triangles à partir de tableaux de nombres stockés dans sa propre mémoire. Entre la physique et le dessin, le CPU envoie donc au GPU les positions des nœuds, place les connecteurs, et n'envoie que les données qui ont changé. Le *vertex shader* des câbles transforme ensuite les nœuds en triangles. Ce travail est fait par `src/render/cableView.ts` et `packages/three-cable-tubes/src/tube.ts` pour les câbles et `rackView.ts` pour la baie.
+Le GPU ne connaît ni les câbles ni les nœuds : il dessine des triangles à partir de tableaux de nombres stockés dans sa propre mémoire. Entre la physique et le dessin, le CPU envoie donc au GPU les positions des nœuds, place les connecteurs, et n'envoie que les données qui ont changé. Le *vertex shader* des câbles transforme ensuite les nœuds en triangles. Ce travail est fait par `src/render/cableView.ts` et `vendor/cable-kit/packages/three-cable-tubes/src/tube.ts` pour les câbles et `rackView.ts` pour la baie.
 
 ### Le graphe de scène
 
@@ -370,7 +370,7 @@ Dans un niveau, la scène contient la baie (`rackView.group`), les câbles (`cab
 
 ### Les câbles : un tube calculé par le GPU
 
-Tous les câbles d'un niveau sont dessinés par **un seul mesh**, en *instanciation* : chaque segment de chaque câble (d'un nœud au suivant) est une instance du même bout de tube, 9 anneaux de 16 sommets. Un sommet ne porte pas sa position : il sait seulement à quel anneau du bout de tube il appartient et à quelle place autour de lui ; son instance lui dit sur quel segment de quel câble il se trouve. À chaque frame, le CPU envoie au GPU les nœuds des câbles qui ont bougé, et c'est le *vertex shader* (`packages/three-cable-tubes/src/tube.ts`) qui calcule où se trouve chaque sommet.
+Tous les câbles d'un niveau sont dessinés par **un seul mesh**, en *instanciation* : chaque segment de chaque câble (d'un nœud au suivant) est une instance du même bout de tube, 9 anneaux de 16 sommets. Un sommet ne porte pas sa position : il sait seulement à quel anneau du bout de tube il appartient et à quelle place autour de lui ; son instance lui dit sur quel segment de quel câble il se trouve. À chaque frame, le CPU envoie au GPU les nœuds des câbles qui ont bougé, et c'est le *vertex shader* (`vendor/cable-kit/packages/three-cable-tubes/src/tube.ts`) qui calcule où se trouve chaque sommet.
 
 ![Des nœuds au tube de triangles](frame/schema-tube.png)
 
@@ -498,7 +498,7 @@ Pour ajouter un comportement sans réécrire ce shader, le projet utilise `onBef
 | `blinkable` | `leds.ts` | le clignotement des voyants à partir de l'horloge partagée ; une taille minimale de 3 pixels à l'écran |
 | `jacketed` | `jacket.ts` | la gaine des câbles vue de près (voir ci-dessous) |
 | `ledLit` | `ledGlow.ts` | la lumière des voyants sur les câbles, leurs connecteurs et les pièces de la baie (voir plus bas) |
-| `swept` | `three-cable-tubes` | la position et la normale de chaque sommet des câbles, calculées à partir de la texture des nœuds |
+| `swept` | `@drschizzo/three-cable-tubes` | la position et la normale de chaque sommet des câbles, calculées à partir de la texture des nœuds |
 
 Voici la partie fragment de `tintable`, raccourcie. Elle ajoute une ligne juste après le bloc qui calcule la lueur du matériau :
 
@@ -515,7 +515,7 @@ material.onBeforeCompile = (shader) => {
 
 `swept` procède autrement. Il insère son calcul au tout début de la fonction `main` du vertex shader, puis deux lignes `#define position tubePos` et `#define normal tubeNormal`. Tout le code qui suit, celui de three.js comme celui des autres extensions, lit alors la position et la normale calculées sans savoir qu'elles ne viennent pas de la géométrie. Le même ajout fonctionne donc pour n'importe quel matériau. Il laisse aussi deux valeurs aux extensions : `tubeCoord` (où est le sommet le long du câble et autour de lui, voir plus bas) et `tubeTint` (la lueur du nœud le plus proche), que l'option `aliases` donne sous un autre nom aux matériaux écrits pour d'autres géométries : celui des câbles la lit comme `emissiveTint`, comme les manchons des connecteurs.
 
-Le jeu dessine avec `WebGLRenderer`. Le paquet a aussi une version pour `WebGPURenderer` (`three-cable-tubes/webgpu`), écrite en TSL, le langage de nœuds de three.js, qui tourne en WebGPU ou, à défaut, en WebGL 2. Le calcul est le même ; il est donné au matériau par son `positionNode`, qui fixe aussi la normale, et `tubeCoord` et `tubeTint` y sont des *varyings* que les autres nœuds du matériau lisent. L'ombre et les passes de post-traitement dessinent le même matériau : pas de copie à tenir.
+Le jeu dessine avec `WebGLRenderer`. Le paquet a aussi une version pour `WebGPURenderer` (`@drschizzo/three-cable-tubes/webgpu`), écrite en TSL, le langage de nœuds de three.js, qui tourne en WebGPU ou, à défaut, en WebGL 2. Le calcul est le même ; il est donné au matériau par son `positionNode`, qui fixe aussi la normale, et `tubeCoord` et `tubeTint` y sont des *varyings* que les autres nœuds du matériau lisent. L'ombre et les passes de post-traitement dessinent le même matériau : pas de copie à tenir.
 
 C'est nécessaire parce que les câbles ne sont pas toujours dessinés avec leur propre matériau. L'ombre utilise un matériau de profondeur ; les reflets et l'occlusion ambiante redessinent la scène avec un matériau de normales, et les reflets avec un matériau de masque. Ces matériaux ignorent la texture des nœuds. `TubeMesh` en fournit donc des copies qui la lisent, créées une fois pour chacun : pour l'ombre par `customDepthMaterial`, pour les autres en remplaçant à la volée le matériau que la passe impose.
 

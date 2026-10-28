@@ -5,19 +5,9 @@ Ce document décrit comment le code est organisé, et où ajouter une évolution
 ## Vue d'ensemble
 
 ```
-packages/    ce qui peut servir hors du jeu (workspaces npm), sans rien importer du jeu
-  avbd-cables/        le moteur de câbles AVBD                                   sans dépendance · sans DOM
-    cableSim.ts       le solveur (nœuds, contraintes, contacts, cibles, veille), ses réglages, son instantané pour un Worker
-    presets.ts        CABLES : des sortes de câble (cordon de brassage, corde, tuyau) et les réglages qui leur vont
-    threaded.ts       threaded() : le même, dont les pas tournent dans un Worker ; hostSimWorker() : le Worker
-    geom.ts           noyaux géométriques (segment–segment, segment–boîte, système 3×3)
-  three-cable-tubes/  les tubes des câbles, construits par le GPU à partir de leurs nœuds   three.js
-    shared.ts         TubeNodes (les nœuds, rayon par nœud), TubeSync (n'écrire que ce qui a bougé), options, bout de tube
-    tube.ts           pour WebGLRenderer, en GLSL : TubeMesh (sommets, anneaux, niveaux de détail), swept (tout matériau ;
-                      tubeCoord, tubeTint et leurs alias)
-    webgpu.ts         pour WebGPURenderer, en TSL ('three-cable-tubes/webgpu') : TubeMesh, tubeCoord, tubeTint ; en
-                      WebGPU, ou en WebGL 2 à défaut
-    examples/webgpu/  des cordes du moteur en tas, sur WebGPURenderer (?webgl : son repli WebGL 2)
+vendor/cable-kit/   sous-module git : le dépôt https://github.com/drschizzo/cable-kit (en anglais)
+  packages/avbd-cables/        @drschizzo/avbd-cables : le moteur de câbles AVBD, son Web Worker, des sortes de câble
+  packages/three-cable-tubes/  @drschizzo/three-cable-tubes : les tubes construits par le GPU (WebGL et WebGPU)
 src/
   game/      la baie et ses règles                                            sans DOM ni three.js (sauf controller)
     rackSim.ts      le solveur tel que le jeu le mène : mains, buts du chemin, connecteur poussé dans son port, creux des
@@ -53,15 +43,18 @@ tools/     bancs sans navigateur : moteur, précision des gestes, niveaux, vitri
 ### Sens des dépendances
 
 ```
-avbd-cables  ←  game  ←  ui
-                 ↑  ↖     ↓
-three-cable-tubes  ←  render ←── main
+@drschizzo/avbd-cables  ←  game  ←  ui
+                            ↑  ↖     ↓
+@drschizzo/three-cable-tubes  ←  render ←── main
 ```
 
-- `packages/` n'importe rien du jeu ni, par chemin relatif, d'un autre paquet ; `avbd-cables` n'importe pas
-  three.js. ESLint le vérifie (`no-restricted-imports`, `eslint.config.js`). Le jeu les importe par leur nom
-  (`'avbd-cables'`, `'three-cable-tubes'`) : `npm install` les relie dans `node_modules`, et Vite, Vitest et
-  TypeScript lisent directement leurs sources.
+- Les deux paquets vivent dans leur propre dépôt, [cable-kit](https://github.com/drschizzo/cable-kit), que le jeu
+  inclut comme sous-module git (`vendor/cable-kit`, à une version figée). Les workspaces npm du jeu pointent vers
+  ses `packages/*` : `npm install` les relie dans `node_modules/@drschizzo/`. La condition d'export `source`
+  (`vite.config.ts`, `tsconfig.json`) fait lire leurs sources à Vite, Vitest et TypeScript, sans compiler leur
+  `dist/`. Leurs tests, leurs exemples, leur banc (`npm run presets`) et leur documentation sont là-bas.
+- Faire évoluer un paquet : le modifier dans `vendor/cable-kit` (un dépôt git à part entière), le committer et le
+  pousser dans cable-kit, puis committer dans le jeu la nouvelle version du sous-module.
 
 - `avbd-cables` ne connaît ni la baie ni le jeu : des nœuds, des broches, des formes statiques, des cibles, des
   faisceaux. Il tourne aussi bien dans la page, dans le Worker et dans les tests. Ce qui mène les câbles vit dans
@@ -132,7 +125,7 @@ par niveau) et tutoriel terminé. Les clés sont celles des versions précédent
 | une ressource three.js partagée par tous les niveaux | l'envelopper dans `shared()` (`render/dispose.ts`) |
 | un voyant qui clignote | une `LedSpec` (`render/leds.ts`), posée dans `render/rackView.ts` ; `ledGlow.ts` la reprend sur les câbles et la baie |
 | une passe de post-traitement | le `composer` de `Stage` (`render/stage.ts`) |
-| une sorte de câble pour le moteur | une entrée dans `CABLES` (`packages/avbd-cables/src/presets.ts`), vérifiée par `npm run presets` et le test « every kind of cable » |
+| une sorte de câble pour le moteur | une entrée dans `CABLES`, dans cable-kit (`packages/avbd-cables/src/presets.ts`) ; voir son README |
 | un réglage du moteur | `SimParams` et `defaultSimParams` (`cableSim.ts`) ; un réglage du jeu (main, chemin, creux des guides) : `RackParams` (`game/rackSim.ts`) |
 
 ## Vérifications
@@ -141,10 +134,10 @@ par niveau) et tutoriel terminé. Les clés sont celles des versions précédent
 |---|---|
 | `npm run lint` | erreurs probables (ESLint) |
 | `npm run typecheck` | types (TypeScript strict) |
-| `npm test` | moteur seul (chute, traversée, câble suspendu, empilement, main, cible, sa laisse et sa portée, déterminisme, chaque sorte de câble en tas), tubes (nœuds, rayon par nœud, réécriture, shader et ses options, maillage WebGPU), géométrie, baie, stockage, règles d'une partie (branchement, fenêtre de maintenance, étiquettes, velcro, longueurs, bac), niveaux (plan, emmêlage stable, 3 étoiles possibles), salle d'accueil précalculée à jour |
+| `npm test` | géométrie, baie, stockage, règles d'une partie (branchement, fenêtre de maintenance, étiquettes, velcro, longueurs, bac), niveaux (plan, emmêlage stable, 3 étoiles possibles), salle d'accueil précalculée à jour |
 | `npm run check` | les trois à la suite |
 | `npm run bake` | précalcule le désordre de la salle d'accueil par défaut (à relancer quand le test `baked` le demande) |
-| `npm run bench` · `precision` · `levels` · `solvable` · `showcase` · `free` · `pinch` · `route` · `presets` | bancs du moteur et des niveaux, sans navigateur (`tools/`) ; `presets` : chaque sorte de câble de `CABLES` posée au sol, sur une tige, en tas et traînée à travers le tas (allongement, chevauchement à la fin et au pire, mise en veille) ; `free` : partie libre de 48 câbles (stabilisation, cordon tiré à travers les autres) ; `pinch` : un coude pincé, ce qu'il en reste une fois lâché ; `route` : des câbles posés le long d'un chemin tracé (branchés, dans leurs guides, au repos, sans traverser la baie, et ce qu'ils déplacent des autres câbles) |
+| `npm run bench` · `precision` · `levels` · `solvable` · `showcase` · `free` · `pinch` · `route` | bancs du moteur et des niveaux, sans navigateur (`tools/`) ; `free` : partie libre de 48 câbles (stabilisation, cordon tiré à travers les autres) ; `pinch` : un coude pincé, ce qu'il en reste une fois lâché ; `route` : des câbles posés le long d'un chemin tracé (branchés, dans leurs guides, au repos, sans traverser la baie, et ce qu'ils déplacent des autres câbles) |
 
 Ces vérifications se lancent en local avant de pousser. La CI (`.github/workflows/ci.yml`) fait la même chose,
 plus la construction, mais seulement quand on la lance à la main (onglet *Actions* de GitHub).

@@ -3,6 +3,7 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
+    "customConditions": ["source"],
     "lib": ["ES2022", "DOM", "DOM.Iterable", "WebWorker"],
     "strict": true,
     "noUnusedLocals": false,
@@ -12,5 +13,5 @@
     "noEmit": true,
     "types": ["vite/client", "vitest/importMeta"]
   },
-  "include": ["src", "packages", "tools", "tests", "vite.config.ts"]
+  "include": ["src", "tools", "tests", "vite.config.ts"]
 }

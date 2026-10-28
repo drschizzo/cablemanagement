@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { TubeMesh, TubeNodes, TubeSync } from 'three-cable-tubes';
+import { TubeMesh, TubeNodes, TubeSync } from '@drschizzo/three-cable-tubes';
 import type { World } from '../game/world';
 import { CONNECTOR } from '../game/rack';
 import { SERVICES } from '../game/levels';

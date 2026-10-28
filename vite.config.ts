@@ -3,8 +3,13 @@
 //   npm run build   → dist/
 import { defineConfig } from 'vite';
 
+// the packages of cable-kit (vendor/, a git submodule) are read from their sources, not their dist/
+const conditions = ['source', 'module', 'browser', 'development|production'];
+
 export default defineConfig({
-  base: './', // chemins relatifs : le jeu marche aussi sous https://<compte>.github.io/cablemanagement/
+  base: './',
+  resolve: { conditions },
+  ssr: { resolve: { conditions: ['source'], externalConditions: ['source'] } }, // chemins relatifs : le jeu marche aussi sous https://<compte>.github.io/cablemanagement/
   worker: { format: 'es' },
   build: { target: 'es2022', chunkSizeWarningLimit: 900 }, // three.js
   test: {
