@@ -202,7 +202,7 @@ main, le velcro et les coudes pincés comme des énergies. Un coude pincé garde
 sa forme par *shape matching* : ses nœuds sont tirés vers cette forme,
 tournée et déplacée pour leur aller au mieux. Les câbles immobiles se mettent en
 veille pour que les grosses baies restent fluides. Le moteur tourne dans un
-Web Worker (`sim.worker.ts`, piloté par `threadedSim.ts`) : l'affichage
+Web Worker (`src/game/sim.worker.ts`, piloté par `threadedSim.ts`) : l'affichage
 n'attend jamais la physique.
 
 ## Licence

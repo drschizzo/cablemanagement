@@ -11,7 +11,7 @@
 // its nodes' velocity over the next three seconds, and when it falls asleep.
 //   PARAMS='{"pinchK":8}' npm run pinch
 declare const process: { env: Record<string, string | undefined> };
-import { CableSim } from '../src/physics/cableSim';
+import { RackSim } from '../src/game/rackSim';
 import { World } from '../src/game/world';
 import { LEVELS } from '../src/game/levels';
 
@@ -19,7 +19,7 @@ const params = JSON.parse(process.env.PARAMS ?? '{}');
 const SEG = 0.025, R = 0.0028;
 
 /** turning angle (degrees) between segments a → a+1 and b → b+1 */
-function angle(sim: CableSim, a: number, b: number): number {
+function angle(sim: RackSim, a: number, b: number): number {
   const x = sim.x;
   const u = [x[3 * a + 3] - x[3 * a], x[3 * a + 4] - x[3 * a + 1], x[3 * a + 5] - x[3 * a + 2]];
   const v = [x[3 * b + 3] - x[3 * b], x[3 * b + 4] - x[3 * b + 1], x[3 * b + 5] - x[3 * b + 2]];
@@ -28,7 +28,7 @@ function angle(sim: CableSim, a: number, b: number): number {
 }
 
 function run(label: string, pinch: boolean, n: number, shelf: boolean, extra: Record<string, number> = {}) {
-  const sim = new CableSim({ ...params, ...extra });
+  const sim = new RackSim({ ...params, ...extra });
   const pts: number[] = [];
   for (let k = 0; k < n; k++) pts.push(k * SEG, 1, 0);
   sim.build([{ points: pts, radius: R, bend: 12 }]);

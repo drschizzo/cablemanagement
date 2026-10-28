@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { COLUMN_X, FRONT_Z, Rack, SIDE_BACK, SIDE_IN, SIDE_OUT, U, WALL_X, type Item, type Port } from '../game/rack';
-import type { StaticShape } from '../physics/cableSim';
+import type { RackShape } from '../game/rackSim';
 import type { FibreType } from '../game/levels';
 import { disposeTree, shared } from './dispose';
 import { mergeStatic } from './batch';
@@ -435,7 +435,7 @@ export class RackView {
 }
 
 /** meshes of an item, built from its own collision shapes so that what you see is what holds */
-export function buildItem(rack: Rack, it: Item, statics: StaticShape[] | null, ghost: THREE.Material | null): THREE.Group {
+export function buildItem(rack: Rack, it: Item, statics: RackShape[] | null, ghost: THREE.Material | null): THREE.Group {
   const g = new THREE.Group();
   const shapes = (statics ?? itemShapes(rack, it)).filter((s) => s.owner === it.id && s.kind !== 'keeper');
   const ringMat = ghost ?? (it.kind === 'duct' ? mat.duct : mat.ring);
@@ -487,7 +487,7 @@ export function buildItem(rack: Rack, it: Item, statics: StaticShape[] | null, g
   return g;
 }
 
-function itemShapes(rack: Rack, it: Item): StaticShape[] {
+function itemShapes(rack: Rack, it: Item): RackShape[] {
   // a throw-away rack holding only this item gives its shapes
   const tmp = Object.create(Rack.prototype) as Rack;
   Object.assign(tmp, rack, { items: [it] });

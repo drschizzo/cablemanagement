@@ -3,11 +3,12 @@
 // request with the node positions, which cables are asleep and, when they
 // changed, the pinches.
 
-import { CableSim, type CableInit, type Pinch, type SimParams, type StaticShape } from './cableSim';
+import type { CableInit, Pinch, SimParams } from '../physics/cableSim';
+import { RackSim, type RackShape } from './rackSim';
 
 export type ToWorker =
   | {
-    type: 'init'; params: SimParams; defs: CableInit[]; x: Float64Array; v: Float64Array; pins: number[]; statics: StaticShape[]; pinches: Pinch[];
+    type: 'init'; params: SimParams; defs: CableInit[]; x: Float64Array; v: Float64Array; pins: number[]; statics: RackShape[]; pinches: Pinch[];
     /** what the points alone do not tell: the rest lengths, and what the keepers know of the cords */
     rest: Float64Array; handled: Uint8Array; lastHand: Int32Array; keepOf: Int32Array;
     /** the targets set by hand (`setTarget`) or by the route goals, and those goals */
@@ -27,7 +28,7 @@ export type ToWorker =
   | { type: 'goals'; start: number; pos: Float64Array; w: Float64Array }
   | { type: 'target'; i: number; p: [number, number, number]; k: number; lead: number; heavy: boolean }
   | { type: 'clearTarget'; i: number }
-  | { type: 'statics'; statics: StaticShape[] }
+  | { type: 'statics'; statics: RackShape[] }
   | { type: 'addBundle'; nodes: number[]; r: number }
   | { type: 'removeBundle'; id: number }
   | { type: 'teleport'; x: Float64Array }
@@ -46,12 +47,12 @@ export interface FromWorker {
   stats: { contacts: number; awake: number; ms: number };
 }
 
-let sim: CableSim | null = null;
+let sim: RackSim | null = null;
 
 self.onmessage = (e: MessageEvent<ToWorker>) => {
   const m = e.data;
   if (m.type === 'init') {
-    sim = new CableSim(m.params);
+    sim = new RackSim(m.params);
     sim.build(m.defs);
     sim.x.set(m.x);
     sim.x0.set(m.x);

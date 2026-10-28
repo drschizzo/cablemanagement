@@ -1,13 +1,14 @@
-// A CableSim whose stepping can run in a Web Worker. The local instance keeps
+// A RackSim whose stepping can run in a Web Worker. The local instance keeps
 // the topology and a mirror of the positions, so the game reads it as before;
 // every edit is applied here and forwarded to the worker, in order. Rendering
 // never waits for the physics: one step request is in flight at a time, and
 // if the worker falls behind, time is dropped rather than queued.
 
-import { CableSim, type CableInit, type Pinch, type StaticShape } from './cableSim';
+import type { CableInit, Pinch } from '../physics/cableSim';
+import { RackSim, type RackShape } from './rackSim';
 import type { FromWorker, ToWorker } from './sim.worker';
 
-export class ThreadedSim extends CableSim {
+export class ThreadedSim extends RackSim {
   private worker: Worker | null = null;
   private defs: CableInit[] = [];
   /** a regular step request is in flight (its id) */
@@ -44,7 +45,7 @@ export class ThreadedSim extends CableSim {
     // (the hands and the plugs set their targets again in the worker, at every step)
     this.unaim();
     this.post({
-      type: 'init', params: this.P, defs: this.defs, x: this.x, v: this.v, pins, statics: this.statics, pinches: this.pinches,
+      type: 'init', params: this.P, defs: this.defs, x: this.x, v: this.v, pins, statics: this.shapes, pinches: this.pinches,
       rest: this.rest, handled: this.handled, lastHand: this.lastHand, keepOf: this.keepOf,
       target: this.target, targetK: this.targetK, targetLead: this.targetLead, targetHeavy: this.targetHeavy, goal: this.goal, goalW: this.goalW,
     });
@@ -220,7 +221,7 @@ export class ThreadedSim extends CableSim {
     this.post({ type: 'goals', start, pos: Float64Array.from(pos), w: Float64Array.from(w) });
   }
 
-  setStatics(shapes: StaticShape[]): void {
+  setStatics(shapes: RackShape[]): void {
     super.setStatics(shapes);
     this.post({ type: 'statics', statics: shapes });
   }

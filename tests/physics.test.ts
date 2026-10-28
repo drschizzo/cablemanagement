@@ -123,22 +123,21 @@ describe('cable solver', () => {
     expect(stretch(sim)).toBeLessThan(0.01);
   });
 
-  it('the hand drags a cord along, and it follows', () => {
+  it('a heavy target moved along, as a hand, drags the cord after it', () => {
     const sim = new CableSim();
     sim.build([{ points: cord([-0.3, 0.1, 0], [0.3, 0.1, 0]), radius: R }]);
     sim.setStatics([floor]);
     run(sim, 1);
     const last = sim.n - 1;
-    sim.grab(last);
     for (let k = 0; k < 90; k++) {
-      sim.grabTarget[0] = 0.3 + (k / 90) * 0.3; sim.grabTarget[1] = 0.1; sim.grabTarget[2] = 0;
+      sim.setTarget(last, 0.3 + (k / 90) * 0.3, 0.1, 0, 1.6, 0.06, true);
       sim.step();
     }
     run(sim, 0.5);
     expect(Math.hypot(sim.x[3 * last] - 0.6, sim.x[3 * last + 1] - 0.1, sim.x[3 * last + 2])).toBeLessThan(0.02);
     // the rest of the cord came along
     expect(sim.x[0]).toBeGreaterThan(-0.25);
-    sim.release();
+    sim.clearTarget(last);
     expect(stretch(sim)).toBeLessThan(0.02);
   });
 

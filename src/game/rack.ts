@@ -6,7 +6,8 @@
 // of the equipment are at z = 0; everything lives at z > 0 in front of them,
 // and in the two side channels (x beyond ±0.25) which go 6 cm deeper.
 
-import type { StaticBox, StaticCapsule, StaticShape } from '../physics/cableSim';
+import type { StaticBox, StaticCapsule } from '../physics/cableSim';
+import type { RackShape } from './rackSim';
 
 export const U = 0.04445;
 export const COLUMN_X = 0.25; // half width of the equipment column (with its ears)
@@ -187,8 +188,8 @@ export class Rack {
 
   // ---------------------------------------------------- collision shapes
 
-  statics(): StaticShape[] {
-    const S: StaticShape[] = [];
+  statics(): RackShape[] {
+    const S: RackShape[] = [];
     const top = this.topY, bottom = 0;
     // equipment column (every unit, the blank ones have a blanking plate)
     S.push({ kind: 'box', min: [-COLUMN_X, bottom - 0.02, -0.5], max: [COLUMN_X, top + 0.02, 0] });
@@ -227,7 +228,7 @@ export class Rack {
 
   // Nothing lets a cord through: each guide has an opening a cord plugged at
   // both ends can be slid in by (see `guide`).
-  private itemStatics(it: Item, S: StaticShape[]): void {
+  private itemStatics(it: Item, S: RackShape[]): void {
     const r = FINGER_R;
     if (it.kind === 'hmgr') {
       // finger manager: rows of fingers above and below the channel. Cords

@@ -162,7 +162,7 @@ Les règles du jeu vivent dans `src/game/world.ts`, sans three.js ni DOM. `World
 
 ## Moteur physique
 
-Le moteur représente chaque câble par une chaîne de points pesants et calcule, à chaque pas de 1/60 s, la position de ces points qui respecte au mieux la gravité, la longueur des câbles, leur raideur et les contacts. Il utilise la méthode AVBD (*Augmented Vertex Block Descent*, Giles, Diaz et Yuksel, SIGGRAPH 2025) et tourne dans un Web Worker. Le code est dans `src/physics/cableSim.ts` ; `threadedSim.ts` et `sim.worker.ts` le déplacent hors du fil principal.
+Le moteur représente chaque câble par une chaîne de points pesants et calcule, à chaque pas de 1/60 s, la position de ces points qui respecte au mieux la gravité, la longueur des câbles, leur raideur et les contacts. Il utilise la méthode AVBD (*Augmented Vertex Block Descent*, Giles, Diaz et Yuksel, SIGGRAPH 2025) et tourne dans un Web Worker. Le solveur est dans `src/physics/cableSim.ts`, qui ne connaît pas la baie. `src/game/rackSim.ts` le mène comme le jeu en a besoin (les mains, le chemin, les connecteurs, le creux des guides), et `src/game/threadedSim.ts` et `sim.worker.ts` le déplacent hors du fil principal.
 
 Cette section est la plus longue du document. Pour une première lecture, le modèle, « La méthode, en trois idées », l'exemple chiffré et le schéma du déroulé d'un pas suffisent à comprendre le principe.
 
@@ -289,7 +289,7 @@ Le schéma est en deux dimensions pour la lisibilité ; le moteur fait la même 
 
 **Contre la baie.** Les formes statiques sont rangées une fois pour toutes dans une grille de cellules de 5 cm, à chaque appel de `setStatics()`. Contre une boîte, chaque nœud reçoit son propre contact, pour qu'un câble posé à plat sur une étagère ne s'enfonce pas entre deux points de contact. Aucune forme ne laisse passer un câble : chaque élément de rangement a une **ouverture** par où un câble branché à ses deux bouts peut entrer. Pour le guide-câbles, c'est l'avant, au-dessus des pointes de ses doigts ; pour la goulotte, la fente de sa face avant ; pour l'anneau, un crochet, le coin avant côté extérieur.
 
-**Le creux d'un guide-câbles** (`keeper`) n'est pas un obstacle mais une aide de jeu : un cordon que le joueur y a posé, à la main ou avec l'outil Chemin, y reste, libre de glisser dans sa longueur. Ses nœuds dans le creux y sont ramenés par un ressort raide pendant la résolution, si bien que le solveur porte aussi la partie qui pend hors du guide. Le creux n'attire rien : il ne retient qu'un nœud déjà entré, et lâche ceux qu'un chemin tracé emmène ailleurs. Faire entrer un câble dans les guides, c'est le rôle de l'outil Chemin.
+**Le creux d'un guide-câbles** (`keeper`, dans `src/game/rackSim.ts`) n'est pas un obstacle mais une aide de jeu : un cordon que le joueur y a posé, à la main ou avec l'outil Chemin, y reste, libre de glisser dans sa longueur. Ses nœuds dans le creux y sont ramenés par un ressort raide pendant la résolution, si bien que le solveur porte aussi la partie qui pend hors du guide. Le creux n'attire rien : il ne retient qu'un nœud déjà entré, et lâche ceux qu'un chemin tracé emmène ailleurs. Faire entrer un câble dans les guides, c'est le rôle de l'outil Chemin.
 
 Chaque contact porte une clé calculée à partir des deux segments. Au pas suivant, un contact de même clé reprend la raideur, le multiplicateur et le point d'ancrage du frottement du pas précédent. Enfin, `buildAdjacency()` construit, pour chaque nœud, la liste des contacts qui le concernent, au même format compact que la grille : `solveNode` n'a ainsi qu'à parcourir les contacts de son nœud.
 
@@ -326,7 +326,7 @@ Le coût de la physique suit donc ce qui bouge. Au moment des captures, les 13 c
 
 JavaScript exécute le code d'une page sur un seul fil. Si la physique y prenait 10 ms, il ne resterait que 6 ms pour le reste de la frame. Un Web Worker est un second fil d'exécution, sans accès au DOM, qui communique avec la page par messages (`postMessage`).
 
-`ThreadedSim` (dans `threadedSim.ts`) hérite de `CableSim` et garde dans la page une copie complète de la simulation : la topologie, et un miroir des positions. Le jeu lit `sim.x` comme si la physique tournait sur place. Le fonctionnement est le suivant :
+`ThreadedSim` (dans `src/game/threadedSim.ts`) hérite de `RackSim`, donc de `CableSim`, et garde dans la page une copie complète de la simulation : la topologie, et un miroir des positions. Le jeu lit `sim.x` comme si la physique tournait sur place. Le fonctionnement est le suivant :
 
 - Toute modification (épingler, saisir, poser un velcro, changer la baie) est appliquée à la copie locale, puis envoyée au Worker sous forme de message. Les messages arrivent dans l'ordre d'envoi.
 - `advance(k)` demande k pas. Une seule demande est en cours à la fois. Si le Worker n'a pas fini, les pas sont mis de côté, deux au plus ; au-delà, ils sont abandonnés et comptés dans `dropped`.

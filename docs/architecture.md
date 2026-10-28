@@ -9,10 +9,11 @@ packages/    ce qui peut servir hors du jeu (workspaces npm), sans rien importer
   avbd-cables/        noyaux géométriques du moteur (segment–segment, segment–boîte, système 3×3)   sans dépendance
   three-cable-tubes/  les tubes des câbles, construits par le GPU à partir de leurs nœuds (TubeNodes, TubeMesh, swept)   three.js
 src/
-  physics/   moteur de câbles AVBD, Worker                                  pur · sans DOM
-    cableSim.ts     le solveur (nœuds, contraintes, contacts, veille)
-    threadedSim.ts  le même, dont les pas tournent dans sim.worker.ts
+  physics/   moteur de câbles AVBD                                          pur · sans DOM
+    cableSim.ts     le solveur (nœuds, contraintes, contacts, cibles, veille)
   game/      la baie et ses règles                                            sans DOM ni three.js (sauf controller)
+    rackSim.ts      le solveur tel que le jeu le mène : mains, buts du chemin, connecteur poussé dans son port, creux des guides
+    threadedSim.ts  le même, dont les pas tournent dans sim.worker.ts
     rack.ts         baie 19", ports, éléments (guide-câbles, goulottes, anneaux), formes de collision, zones de rangement
     levels.ts       niveaux, services (couleurs d'étiquettes), partie libre, vitrine avant / après
     tangle.ts       plan de brassage, erreurs de départ, chemins emmêlés
@@ -53,8 +54,11 @@ three-cable-tubes  ←───── render ←── main
   (`'avbd-cables'`, `'three-cable-tubes'`) : `npm install` les relie dans `node_modules`, et Vite, Vitest et
   TypeScript lisent directement leurs sources.
 
-- `physics/` ne connaît ni la baie ni le jeu : des nœuds, des broches, des formes statiques, des faisceaux.
-  Il tourne aussi bien dans la page, dans le Worker et dans les tests.
+- `physics/` ne connaît ni la baie ni le jeu : des nœuds, des broches, des formes statiques, des cibles, des
+  faisceaux. Il tourne aussi bien dans la page, dans le Worker et dans les tests. Ce qui mène les câbles vit dans
+  `game/rackSim.ts`, une sous-classe de `CableSim` : elle pose les cibles et les drapeaux du pas (`prepare`),
+  ajoute la traction du creux des guides sur les nœuds qu'il tient (`nodeTerm`) et les y remet autour des passes
+  de longueur (`keepHeld`).
 - `game/` (hors `controller.ts`) n'importe ni three.js ni le DOM : `World` se construit et se teste sous Node,
   la physique tournant alors sur le fil du test (pas de Worker).
 - `game/controller.ts` ne touche pas au DOM de l'interface : il prévient le HUD par `ControllerEvents`
@@ -88,7 +92,7 @@ passe par `loadScene()` :
 
 ## La physique dans un Worker
 
-`ThreadedSim` garde la topologie et un miroir des positions : le jeu lit `sim.x` comme si la physique tournait
+`ThreadedSim` (`game/threadedSim.ts`, un `RackSim`) garde la topologie et un miroir des positions : le jeu lit `sim.x` comme si la physique tournait
 sur place. Chaque modification (broche, main, éléments, velcro) est appliquée localement puis transmise au Worker,
 dans l'ordre. Une seule demande de pas est en vol ; si le Worker prend du retard, du temps est perdu plutôt
 qu'accumulé. Chaque demande porte un `id`, et `settle()` attend la réponse à la sienne. Le compteur `gen` écarte
