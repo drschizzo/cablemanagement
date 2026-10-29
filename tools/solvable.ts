@@ -9,8 +9,8 @@
 // at their service's weight. Is the downtime budget enough for that?
 import { World } from '../src/game/world';
 import { CATALOGUE, LEVELS, SERVICES } from '../src/game/levels';
-import { polyLength, routePlan, strapBundles, tidyKit, tidyRoutes } from '../src/game/tidy';
-import { planRoute, RouteRun } from '../src/game/route';
+import { polyLength, routePlan, strapBundles, tidyKit, tidyRoutes } from '../src/game/idealRoutes';
+import { planRoute, RouteRun } from '../src/game/routeLaying';
 import type { Guide } from '../src/game/rack';
 
 declare const process: { env: Record<string, string | undefined> };

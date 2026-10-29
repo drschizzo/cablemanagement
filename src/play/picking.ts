@@ -8,7 +8,7 @@ import type { Guide, Port } from '../game/rack';
 import type { Pointer } from './pointer';
 
 /** a cord under the pointer */
-export interface Pick {
+export interface CordPick {
   cable: number;
   /** the node nearest the pointer */
   node: number;
@@ -34,7 +34,7 @@ export class CordPicker {
    * lying around them (a connector buried in a heap must stay reachable), or
    * the one Tab reached.
    */
-  pick(): Pick | null {
+  pick(): CordPick | null {
     const list = this.pickAll();
     if (list.length === 0) return null;
     this.resetCycleIfMoved();
@@ -42,7 +42,7 @@ export class CordPicker {
   }
 
   /** Tab: the next cord under the pointer, its place and how many there are (null: fewer than two) */
-  next(): { pick: Pick; index: number; count: number } | null {
+  next(): { pick: CordPick; index: number; count: number } | null {
     const list = this.pickAll();
     if (list.length < 2) return null;
     this.resetCycleIfMoved();
@@ -66,7 +66,7 @@ export class CordPicker {
   }
 
   /** the cords under the pointer, one pick each, best first */
-  pickAll(): Pick[] {
+  pickAll(): CordPick[] {
     const world = this.world;
     const cam = this.stage.camera;
     const H = this.stage.renderer.domElement.getBoundingClientRect().height;
@@ -76,7 +76,7 @@ export class CordPicker {
     const mx = this.pointer.px.x, my = this.pointer.px.y;
     // tolerance: the projected cable radius plus a few pixels
     const pxPerM = H / (2 * Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)));
-    const best = new Map<number, { score: number; pick: Pick }>();
+    const best = new Map<number, { score: number; pick: CordPick }>();
     const consider = (ax: number, ay: number, aw: number, bx: number, by: number, bw: number, cable: number, nodeA: number, nodeB: number, end: number, extra: number) => {
       const dx = bx - ax, dy = by - ay;
       const L2 = dx * dx + dy * dy;

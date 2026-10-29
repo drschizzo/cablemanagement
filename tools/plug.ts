@@ -8,7 +8,7 @@
 declare const process: { env: Record<string, string | undefined> };
 import { World } from '../src/game/world';
 import { type LevelDef } from '../src/game/levels';
-import { planRoute, RouteRun } from '../src/game/route';
+import { planRoute, RouteRun } from '../src/game/routeLaying';
 import { CONNECTOR, type Guide } from '../src/game/rack';
 
 const params = JSON.parse(process.env.PARAMS ?? '{}');

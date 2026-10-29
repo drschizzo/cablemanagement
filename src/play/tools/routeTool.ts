@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { sfx } from '../../audio/sfx';
 import { disposeTree } from '../../render/dispose';
-import { RouteRun, planRoute } from '../../game/route';
+import { RouteRun, planRoute } from '../../game/routeLaying';
 import type { Guide, Port } from '../../game/rack';
 import { SETTLE_SHOW } from '../feedback/holdView';
 import { freePortUnderPointer, guideUnderPointer } from '../picking';

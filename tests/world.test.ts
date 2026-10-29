@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { World } from '../src/game/world';
 import { HOLD } from '../src/game/evaluation';
 import { LEVELS, SERVICES, type LevelDef } from '../src/game/levels';
-import { planRoute, RouteRun } from '../src/game/route';
+import { planRoute, RouteRun } from '../src/game/routeLaying';
 
 // level 1, every cord on its planned ports: four copper cords, all in production
 const L1: LevelDef = { ...LEVELS[0], wrong: 0, loose: 0 };
@@ -132,8 +132,8 @@ describe('labels, straps and cord lengths', () => {
     const c = w.cables.findIndex((_, k) => w.minCableLength(k) < 0.65 * w.routeLength(k)!);
     expect(c).toBeGreaterThanOrEqual(0);
     w.setCableLength(c, w.minCableLength(c) + 0.01);
-    expect(w.strain(c)).toBe('tendu');
-    expect(w.evaluate().cableStrain[c]).toBe('tendu');
+    expect(w.strain(c)).toBe('taut');
+    expect(w.evaluate().cableStrain[c]).toBe('taut');
     w.setCableLength(c, w.tidyLength(c)!);
     expect(w.strain(c)).toBeNull();
   });

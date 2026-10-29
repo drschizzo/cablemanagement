@@ -82,7 +82,7 @@ export function defaultRackParams(p: Partial<RackParams> = {}): RackParams {
   };
 }
 
-/** what a worker needs of a RackSim's own, beyond the solver's (see `snapshot`) */
+/** what a worker needs of a RackCableSim's own, beyond the solver's (see `snapshot`) */
 interface RackSnapshot extends SimSnapshot {
   handled: Uint8Array;
   lastHand: Int32Array;
@@ -91,7 +91,7 @@ interface RackSnapshot extends SimSnapshot {
   plugs: { i0: number; i1: number; a: number[]; b: number[] }[];
 }
 
-export class RackSim extends CableSim {
+export class RackCableSim extends CableSim {
   declare P: RackParams;
   static mirrored = [...CableSim.mirrored, 'pinEnd', 'grab', 'release', 'holdStill', 'letGoStill', 'pinch', 'setGoals'];
 

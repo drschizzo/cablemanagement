@@ -8,7 +8,16 @@ import { ThreadedSim } from './threadedSim';
 import { CABLE_R, CONNECTOR, Rack, SEG, type Item, type ItemKind } from './rack';
 import { SERVICES, type FibreType, type LevelDef } from './levels';
 import { makeCables, makeSchedule, rng, type CableStart, type Circuit } from './tangle';
-import { pathToNodes, polyLength, resample, tidyRoutes, type V3 } from './tidy';
+import { pathToNodes, polyLength, resample, tidyRoutes, type V3 } from './idealRoutes';
+
+/** a cord: its place in World.cables */
+export type CableIndex = number;
+/** one of the two ends of a cord: 0 (at its first node) or 1 */
+export type EndIndex = number;
+/** a node of the solver: the nodes of every cord, in one array */
+export type NodeIndex = number;
+/** a line of the schedule: its place in World.circuits */
+export type CircuitIndex = number;
 
 export interface CableEnd {
   port: string | null;
@@ -19,7 +28,8 @@ export interface CableEnd {
 
 export interface Cable {
   type: FibreType;
-  start: number;
+  /** its first node; it has `count` */
+  start: NodeIndex;
   count: number;
   ends: [CableEnd, CableEnd];
   /** jacket colour, when it is not the fibre type's */
@@ -27,8 +37,10 @@ export interface Cable {
 }
 
 export interface Strap {
+  /** the solver's bundle that holds it */
   bundle: number;
-  nodes: number[];
+  /** one node of each cord it closes round */
+  nodes: NodeIndex[];
 }
 
 export interface Snapshot {
@@ -125,14 +137,14 @@ export class World {
   live = new Set<number>();
 
   /** a circuit carries traffic: one cord of the right type joins its two ports */
-  circuitUp(i: number): boolean {
+  circuitUp(i: CircuitIndex): boolean {
     const ci = this.circuits[i];
     const pa = this.rack.port(ci.a).plug, pb = this.rack.port(ci.b).plug;
     return pa >= 0 && pb >= 0 && pa >> 1 === pb >> 1 && this.cables[pa >> 1].type === ci.type;
   }
 
   /** the production links a cord carries now (unplugging it cuts them) */
-  liveLinksCarriedBy(c: number): number[] {
+  liveLinksCarriedBy(c: CableIndex): CircuitIndex[] {
     return [...this.live].filter((i) => this.circuitUp(i) && this.rack.port(this.circuits[i].a).plug >> 1 === c);
   }
 
@@ -171,7 +183,7 @@ export class World {
   }
 
   /** puts a bypass on a production link, or takes it off; false when there is none left or it is no production link */
-  toggleBypass(i: number): boolean {
+  toggleBypass(i: CircuitIndex): boolean {
     if (this.bypassed.has(i)) {
       this.bypassed.delete(i);
       this.inventory.bypass++;
@@ -184,7 +196,7 @@ export class World {
   }
 
   /** what a second of this link cut costs now (0: not in production, or on a bypass) */
-  cutCost(i: number): number {
+  cutCost(i: CircuitIndex): number {
     return this.live.has(i) && !this.bypassed.has(i) ? SERVICES[this.circuits[i].service].weight : 0;
   }
 
@@ -192,7 +204,7 @@ export class World {
   cablesVersion = 0;
 
   /** length of a cord (m) */
-  cableLength(c: number): number {
+  cableLength(c: CableIndex): number {
     const cb = this.cables[c];
     let L = 0;
     for (let k = 0; k < cb.count - 1; k++) L += this.sim.rest[cb.start + k];
@@ -200,13 +212,13 @@ export class World {
   }
 
   /** the shortest cord that still reaches from one end to the other */
-  minCableLength(c: number): number {
+  minCableLength(c: CableIndex): number {
     const q = this.cablePoints(c);
     const n = q.length;
     return dist3(q[0], q[1]) + dist3(q[1], q[n - 2]) + dist3(q[n - 2], q[n - 1]) + 0.02;
   }
 
-  private cablePoints(c: number): V3[] {
+  private cablePoints(c: CableIndex): V3[] {
     const cb = this.cables[c];
     const x = this.sim.x;
     const out: V3[] = [];
@@ -220,7 +232,7 @@ export class World {
    * and the straight line between its boots; longer, the extra hangs as a
    * belly. Returns false when the length cannot reach from one end to the other.
    */
-  setCableLength(c: number, L: number): boolean {
+  setCableLength(c: CableIndex, L: number): boolean {
     if (L < this.minCableLength(c)) return false;
     const q = this.cablePoints(c);
     const n = q.length;
@@ -259,13 +271,13 @@ export class World {
    * into, through the managers and ducts of the cabinet as it is now, rounded
    * up to 5 cm with a little play (null: it is not plugged at both ends).
    */
-  tidyLength(c: number): number | null {
+  tidyLength(c: CableIndex): number | null {
     const L = this.routeLength(c);
     return L === null ? null : Math.ceil((L + 0.03) / 0.05) * 0.05;
   }
 
   /** length of the tidy route between the two ports a cord is plugged into (null: not plugged at both ends) */
-  routeLength(c: number): number | null {
+  routeLength(c: CableIndex): number | null {
     const [pa, pb] = this.cables[c].ends.map((e) => e.port);
     if (!pa || !pb) return null;
     // the route starts from the upper port
@@ -327,7 +339,7 @@ export class World {
   }
 
   /** unplugs a cord, coils it and throws it in the crate (its straps come off) */
-  depositCable(c: number): void {
+  depositCable(c: CableIndex): void {
     for (const e of [0, 1]) { this.unplug(c, e); this.unpark(c, e); }
     const cb = this.cables[c];
     for (const st of [...this.straps]) if (st.nodes.some((i) => i >= cb.start && i < cb.start + cb.count)) this.removeStrap(st);
@@ -456,13 +468,13 @@ export class World {
   // --------------------------------------------------------------- ends
 
   /** the connector node and the next one, for end 0 or 1 of a cable */
-  endNodes(c: number, e: number): [number, number] {
+  endNodes(c: CableIndex, e: EndIndex): [NodeIndex, NodeIndex] {
     const cb = this.cables[c];
     return e === 0 ? [cb.start, cb.start + 1] : [cb.start + cb.count - 1, cb.start + cb.count - 2];
   }
 
   /** which end a node belongs to, if it is part of a connector */
-  endOfNode(node: number): { cable: number; end: number } | null {
+  endOfNode(node: NodeIndex): { cable: CableIndex; end: EndIndex } | null {
     const c = this.sim.cableOf[node];
     const cb = this.cables[c];
     const k = node - cb.start;
@@ -471,7 +483,7 @@ export class World {
     return null;
   }
 
-  plug(c: number, e: number, portId: string): boolean {
+  plug(c: CableIndex, e: EndIndex, portId: string): boolean {
     const port = this.rack.port(portId);
     if (port.plug >= 0) return false;
     const end = this.cables[c].ends[e];
@@ -486,7 +498,7 @@ export class World {
   }
 
   /** a cord plugged on both ports of a line of the schedule takes its service's label, at both ends */
-  private autoLabel(c: number): void {
+  private autoLabel(c: CableIndex): void {
     const cb = this.cables[c];
     const [pa, pb] = cb.ends.map((e) => e.port);
     if (!this.level.labels || !pa || !pb) return;
@@ -495,7 +507,7 @@ export class World {
   }
 
   /** a free connector let go in the air: it stays hooked there until taken again */
-  park(c: number, e: number, at?: [V3, V3]): void {
+  park(c: CableIndex, e: EndIndex, at?: [V3, V3]): void {
     const end = this.cables[c].ends[e];
     if (end.port) return;
     const [n0, n1] = this.endNodes(c, e);
@@ -506,7 +518,7 @@ export class World {
   }
 
   /** a hooked connector is taken again */
-  unpark(c: number, e: number): void {
+  unpark(c: CableIndex, e: EndIndex): void {
     const end = this.cables[c].ends[e];
     if (!end.parked) return;
     end.parked = null;
@@ -515,7 +527,7 @@ export class World {
     this.sim.unpin(n1);
   }
 
-  unplug(c: number, e: number): void {
+  unplug(c: CableIndex, e: EndIndex): void {
     const end = this.cables[c].ends[e];
     if (!end.port) return;
     this.rack.port(end.port).plug = -1;
@@ -526,7 +538,7 @@ export class World {
   }
 
   /** tip of the connector of an end (where it enters a port) */
-  connectorTip(c: number, e: number): [number, number, number] {
+  connectorTip(c: CableIndex, e: EndIndex): [number, number, number] {
     const [n0, n1] = this.endNodes(c, e);
     const x = this.sim.x;
     const dx = x[3 * n0] - x[3 * n1], dy = x[3 * n0 + 1] - x[3 * n1 + 1], dz = x[3 * n0 + 2] - x[3 * n1 + 2];
@@ -618,12 +630,12 @@ export class World {
   }
 
   /** how each node of a cord is held (see evaluation.ts) */
-  holdMap(c: number): Uint8Array {
+  holdMap(c: CableIndex): Uint8Array {
     return holdMap(this, c);
   }
 
   /** a cord pulled taut or a fibre kinked; null when neither */
-  strain(c: number): Strain | null {
+  strain(c: CableIndex): Strain | null {
     return cordStrain(this, c);
   }
 

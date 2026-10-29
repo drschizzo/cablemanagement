@@ -38,7 +38,7 @@ export interface Evaluation {
   liveDown: number;
   downtime: number;
   budget: number;
-  /** cords pulled taut ('tendu') or kinked ('plié'), per cable (null: neither) */
+  /** cords pulled taut or kinked, per cable (null: neither) */
   cableStrain: (Strain | null)[];
   relaxed: number;
   readability: Readability;
@@ -47,8 +47,10 @@ export interface Evaluation {
   bundlesNeeded: number;
 }
 
-/** the words the tooltip shows */
-export type Strain = 'tendu' | 'plié';
+export type Strain = 'taut' | 'kinked';
+
+/** a strain as the player reads it */
+export const STRAIN_LABELS: Record<Strain, string> = { taut: 'tendu', kinked: 'plié' };
 
 /**
  * A cord this much shorter than the tidy route between its ports is pulled
@@ -190,7 +192,7 @@ export function holdMap(w: World, c: number, supports = w.rack.supports(), floor
 export function cordStrain(w: World, c: number): Strain | null {
   const cb = w.cables[c];
   if (!cb.ends[0].port || !cb.ends[1].port) return null;
-  if (w.cableLength(c) < TAUT_SHORT * w.routeLength(c)!) return 'tendu';
+  if (w.cableLength(c) < TAUT_SHORT * w.routeLength(c)!) return 'taut';
   const x = w.sim.x;
   if (cb.type === 'CU') return null;
   // away from the boots (where the cord turns sharply on purpose), over two segments either side
@@ -200,7 +202,7 @@ export function cordStrain(w: World, c: number): Strain | null {
     const ux = x[3 * i] - x[3 * i - 6], uy = x[3 * i + 1] - x[3 * i - 5], uz = x[3 * i + 2] - x[3 * i - 4];
     const vx = x[3 * i + 6] - x[3 * i], vy = x[3 * i + 7] - x[3 * i + 1], vz = x[3 * i + 8] - x[3 * i + 2];
     const cos = (ux * vx + uy * vy + uz * vz) / (Math.hypot(ux, uy, uz) * Math.hypot(vx, vy, vz) || 1);
-    if (Math.acos(Math.max(-1, Math.min(1, cos))) > KINK) return 'plié';
+    if (Math.acos(Math.max(-1, Math.min(1, cos))) > KINK) return 'kinked';
   }
   return null;
 }

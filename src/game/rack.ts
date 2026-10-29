@@ -7,7 +7,7 @@
 // and in the two side channels (x beyond ±0.25) which go 6 cm deeper.
 
 import type { StaticBox, StaticCapsule } from '@drschizzo/avbd-cables';
-import type { RackShape } from './rackSim';
+import type { RackShape } from './rackCableSim';
 
 export const U = 0.04445;
 export const COLUMN_X = 0.25; // half width of the equipment column (with its ears)

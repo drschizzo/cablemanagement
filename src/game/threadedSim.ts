@@ -3,6 +3,6 @@
 // place (see `threaded`).
 
 import { threaded } from '@drschizzo/avbd-cables';
-import { RackSim } from './rackSim';
+import { RackCableSim } from './rackCableSim';
 
-export class ThreadedSim extends threaded(RackSim, () => new Worker(new URL('./sim.worker.ts', import.meta.url), { type: 'module' })) {}
+export class ThreadedSim extends threaded(RackCableSim, () => new Worker(new URL('./sim.worker.ts', import.meta.url), { type: 'module' })) {}

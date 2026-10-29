@@ -2,7 +2,7 @@
 // seen through the cords.
 
 import * as THREE from 'three';
-import type { RackSim } from '../../game/rackSim';
+import type { RackCableSim } from '../../game/rackCableSim';
 
 export class OtherHandMarker {
   readonly group = new THREE.Group();
@@ -15,7 +15,7 @@ export class OtherHandMarker {
   }
 
   /** where the other hand holds (it lets go when the cords are rebuilt) */
-  follow(sim: RackSim): void {
+  follow(sim: RackCableSim): void {
     this.group.visible = sim.holdNode >= 0;
     if (sim.holdNode >= 0) this.group.position.set(sim.holdTarget[0], sim.holdTarget[1], sim.holdTarget[2]);
   }

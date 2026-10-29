@@ -16,7 +16,7 @@ import { sfx } from '../audio/sfx';
 import { formatCost } from '../format';
 import type { ControllerEvents, GestureCounters, PlayContext, Tool, ToolHandler } from './context';
 import { Pointer } from './pointer';
-import { CordPicker, type Pick } from './picking';
+import { CordPicker, type CordPick } from './picking';
 import { UndoHistory } from './undoHistory';
 import { describeCord } from './cordTooltip';
 import { captureFront } from './frontImage';
@@ -87,7 +87,7 @@ export class Controller implements PlayContext {
   private tidyGlows = new TidyGlows();
 
   /** the cord under the pointer */
-  private hover: Pick | null = null;
+  private hover: CordPick | null = null;
   private lastHoveredCable = -1;
   /** the view being dragged: the pointer when it last moved */
   private pan: { mx: number; my: number } | null = null;
@@ -410,11 +410,11 @@ export class Controller implements PlayContext {
     this.events.onHover(`${this.describe(next.pick)}<br><i>${next.index + 1}/${next.count} sous le curseur — Tab : suivant</i>`, r.left + px.x, r.top + px.y);
   }
 
-  private describe(p: Pick): string {
+  private describe(p: CordPick): string {
     return describeCord(this.world, this.lastEval, this.tool, this.traced, p);
   }
 
-  private setHover(p: Pick | null): void {
+  private setHover(p: CordPick | null): void {
     const prev = this.hover?.cable ?? -1;
     if (p && p.cable !== this.lastHoveredCable) { this.counters.hovered++; this.lastHoveredCable = p.cable; }
     this.hover = p;

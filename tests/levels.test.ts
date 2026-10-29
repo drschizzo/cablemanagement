@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { World } from '../src/game/world';
 import { LEVELS, TUTORIAL, freeLevel, showcaseRack, type LevelDef } from '../src/game/levels';
-import { strapBundles, tidyKit } from '../src/game/tidy';
+import { strapBundles, tidyKit } from '../src/game/idealRoutes';
 
 const ALL: LevelDef[] = [...LEVELS, TUTORIAL, freeLevel(30, 1), showcaseRack('mess', 1), showcaseRack('tidy', 1)];
 

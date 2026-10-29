@@ -1,7 +1,7 @@
 import type { Controller, Tool } from '../play/controller';
 import { CATALOGUE, FIBRE_NAMES, LEVELS, SERVICES, UNLOCK_STARS, type LevelDef } from '../game/levels';
 import { formatCost, formatTime } from '../format';
-import { cleanliness, type Evaluation } from '../game/evaluation';
+import { STRAIN_LABELS, cleanliness, type Evaluation } from '../game/evaluation';
 import { FIBRE_COLORS } from '../render/cableView';
 import { isMuted, setMuted, sfx } from '../audio/sfx';
 import { load, save } from '../storage';
@@ -242,7 +242,7 @@ export class Hud {
       tr.querySelector('.s-route')!.className = 's-route' + (s.routed ? ' ok' : '');
       tr.querySelector('.s-clear')!.className = 's-clear' + (s.clear ? ' ok' : '');
       tr.querySelector('.s-relax')!.className = 's-relax' + (s.relaxed ? ' ok' : '');
-      tr.querySelector('.s-relax')!.setAttribute('title', s.cable >= 0 && ev.cableStrain[s.cable] ? `Cordon ${ev.cableStrain[s.cable]}` : 'Ni tendu ni plié');
+      tr.querySelector('.s-relax')!.setAttribute('title', s.cable >= 0 && ev.cableStrain[s.cable] ? `Cordon ${STRAIN_LABELS[ev.cableStrain[s.cable]!]}` : 'Ni tendu ni plié');
       tr.classList.toggle('done', s.connected && s.routed && s.clear && s.relaxed);
       const w = this.ctl?.world;
       tr.classList.toggle('cut', !!w && this.level!.downtime !== undefined && w.live.has(i) && !w.circuitUp(i));

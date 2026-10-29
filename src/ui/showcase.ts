@@ -20,10 +20,10 @@ import { CableRain } from '../render/cableRain';
 import { World } from '../game/world';
 import { SHOWCASE_SETTLE, showcaseRack, type FibreType } from '../game/levels';
 import { U } from '../game/rack';
-import { resample } from '../game/tidy';
+import { resample } from '../game/idealRoutes';
 import { rng } from '../game/tangle';
 import { printOf, type BakedBay } from '../game/baked';
-import { fall } from '../game/fall';
+import { fallInWorker } from '../game/fallWorkerClient';
 import type { CableStart } from '../game/tangle';
 
 /** waits a little, so that the page may draw (or not at all) */
@@ -449,7 +449,7 @@ export class Showcase {
     const pause: Pause = o.background ? frame : () => Promise.resolve();
     // nothing baked: every mess is drawn and falls in a worker of its own, all at once, and the
     // page builds each closet around it as soon as it is down
-    const falls = threaded && !o.baked ? places.map((_, k) => fall(seed + k, pairs(k), chunks, step)) : null;
+    const falls = threaded && !o.baked ? places.map((_, k) => fallInWorker(seed + k, pairs(k), chunks, step)) : null;
     for (let k = 0; k < places.length; k++) {
       const fallen = falls ? await falls[k] : undefined;
       sc.closets.push(await Closet.make(stage, seed + k, places[k], threaded, pairs(k), pause, fallen, o.baked?.[k]));

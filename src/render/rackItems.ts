@@ -3,7 +3,7 @@
 
 import * as THREE from 'three';
 import { COLUMN_X, Rack, SIDE_BACK, SIDE_IN, SIDE_OUT, U, type Item } from '../game/rack';
-import type { RackShape } from '../game/rackSim';
+import type { RackShape } from '../game/rackCableSim';
 import { bevelBox } from './bevel';
 import { rackMat } from './rackMaterials';
 import { roundedBox } from './shapes';

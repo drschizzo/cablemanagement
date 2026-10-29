@@ -11,7 +11,7 @@ import { COLUMN_X, FRONT_Z, ROOM_FLOOR, WALL_X, type Port } from '../../game/rac
 import { PlumbLine } from '../feedback/plumbLine';
 import { SETTLE_SHOW } from '../feedback/holdView';
 import type { PlayContext, ToolHandler } from '../context';
-import type { Pick } from '../picking';
+import type { CordPick } from '../picking';
 
 /** m per physics step the hand may move */
 const MAX_HAND_STEP = 0.035;
@@ -109,7 +109,7 @@ export class HandTool implements ToolHandler {
     if (this.carry && this.carry.depthMode !== down) this.setDepthMode(down);
   }
 
-  private take(p: Pick): void {
+  private take(p: CordPick): void {
     const ctx = this.ctx, w = ctx.world, stage = ctx.stage;
     let node = p.node;
     let end = -1;
@@ -324,7 +324,7 @@ export class HandTool implements ToolHandler {
   }
 
   /** Space over a pinch: the cord lets go of it */
-  unpinchAt(p: Pick): void {
+  unpinchAt(p: CordPick): void {
     const ctx = this.ctx, k = this.pinchNear(p.node);
     if (k < 0) return;
     ctx.history.remember();
