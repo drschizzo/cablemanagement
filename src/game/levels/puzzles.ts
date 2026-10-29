@@ -3,7 +3,7 @@
 // goal. Their words are in ui/levelTexts.ts.
 
 import type { PuzzleLevel } from './levelDef';
-import { BLANK, copperPanel, ethernetSwitch, fingerManager } from './equipment';
+import { BLANK, copperPanel, ethernetSwitch, fingerManager, pdu, poweredServer } from './equipment';
 
 /** a panel, a free unit for a manager, a switch: the cabinet most puzzles play in */
 const SMALL = [BLANK, copperPanel('A', 12), BLANK, ethernetSwitch('S', 12), BLANK, BLANK];
@@ -36,4 +36,11 @@ export const PUZZLES: PuzzleLevel[] = [
   { ...BASE, id: 'p8', units: SMALL, cables: 3, wrong: 2, seed: 108, moves: 6, blind: true },
   // a cord broken inside, a new one in stock: test, swap, lay
   { ...BASE, id: 'p9', units: SMALL, cables: 2, seed: 109, moves: 5, faults: 1, cords: [[0.5, 1], [0.75, 1]] },
+  // a server and its two power supplies: power and data each in their own supports
+  {
+    ...BASE, id: 'p10', cables: 2, loose: 1, seed: 110, moves: 7,
+    units: [BLANK, copperPanel('A', 12), BLANK, ethernetSwitch('S', 12), BLANK, poweredServer('X', 0.03), BLANK, BLANK, BLANK, pdu(), BLANK],
+    links: [{ a: 'S12', b: 'X1', service: 4 }, { a: 'P7', b: 'XP1', service: 4, type: 'PWR' }, { a: 'P8', b: 'XP2', service: 4, type: 'PWR' }],
+    preinstalled: [fingerManager(2), fingerManager(4), fingerManager(10)], inventory: { fingerManager: 2, duct: 2 },
+  },
 ];

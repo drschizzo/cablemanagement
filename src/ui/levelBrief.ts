@@ -80,6 +80,10 @@ function briefTips(level: LevelDef, ctl: Controller | null): string[] {
         + (n ? ` You have <b>${n} bypass${n > 1 ? 'es' : ''}</b>: put on a link (click its ⚡ on the schedule), it carries its traffic while it is recabled.` : ''),
     }));
   }
+  if (ctl?.world.circuits.some((c) => c.type === 'PWR')) tips.push(tr({
+    fr: '<b>Courant</b> : les cordons noirs vont du bandeau électrique aux alimentations des serveurs (couper l\'une, c\'est couper le service du serveur). On ne les range pas avec les données : chaque famille ses supports.',
+    en: '<b>Power</b>: the black cords run from the power strip to the servers\' supplies (cutting one cuts the server\'s service). They are not run with the data: each family its own supports.',
+  }));
   if (level.faults) tips.push(tr({
     fr: `<b>Pannes</b> : ${level.faults > 1 ? `${level.faults} vieux cordons sont coupés` : 'un vieux cordon est coupé'} à l'intérieur. Branché comme prévu, il ne porte rien et ses voyants clignotent en rouge. Le <b>Testeur</b> (4) le trouve d'un clic ; remplacez-le par un cordon neuf du Stock.`,
     en: `<b>Faults</b>: ${level.faults > 1 ? `${level.faults} old cords are` : 'an old cord is'} broken inside. Plugged as planned, it carries nothing and its LEDs blink red. The <b>Tester</b> (4) finds it in a click; swap it for a new cord from the Stock.`,

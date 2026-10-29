@@ -34,9 +34,11 @@ export interface UnitSpec {
   /** port name prefix: 'A' gives A1, A2… */
   name?: string;
   /** look of the front: copper patch panel, firewall, router, server, UPS… */
-  style?: 'fibre' | 'copper' | 'switch' | 'firewall' | 'router' | 'server' | 'ups';
+  style?: 'fibre' | 'copper' | 'switch' | 'firewall' | 'router' | 'server' | 'ups' | 'pdu';
   /** explicit port positions (x, m), e.g. the two NICs of a server */
   portsAt?: number[];
+  /** power inlets (x, m), at the right end of a server's face: ports named after the unit and P (XP1, XP2) */
+  inlets?: number[];
 }
 
 export interface Port {
@@ -47,6 +49,8 @@ export interface Port {
   y: number;
   /** the cord end plugged into it, or null */
   plugged: CordEnd | null;
+  /** a power socket (an outlet of a PDU, an inlet of a server): a power cord goes there */
+  power: boolean;
 }
 
 export interface Item {
@@ -131,9 +135,12 @@ export class Rack {
         const span = n <= 12 ? 0.3 : 0.38;
         for (let i = 0; i < n; i++) {
           const x = u.portsAt ? u.portsAt[i] : n === 1 ? 0 : -span / 2 + (span * i) / (n - 1);
-          this.ports.push({ id: `${u.name}${i + 1}`, unit: k, index: i, x, y: this.unitY(k), plugged: null });
+          this.ports.push({ id: `${u.name}${i + 1}`, unit: k, index: i, x, y: this.unitY(k), plugged: null, power: u.style === 'pdu' });
         }
       }
+      (u.inlets ?? []).forEach((x, i) => {
+        this.ports.push({ id: `${u.name}P${i + 1}`, unit: k, index: (u.portsAt?.length ?? 0) + i, x, y: this.unitY(k), plugged: null, power: true });
+      });
     });
   }
 

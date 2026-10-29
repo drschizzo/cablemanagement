@@ -3,7 +3,7 @@
 // readability note, the stars, and the Validate button.
 
 import type { Controller } from '../play/controller';
-import { FIBRE_COLORS } from '../game/cordTypes';
+import { CORD_KINDS, FIBRE_COLORS } from '../game/cordTypes';
 import { SERVICES } from '../game/services';
 import { cleanliness, type Evaluation } from '../game/evaluation';
 import { readabilityText, strainLabel } from './messages';
@@ -46,7 +46,7 @@ export class SchedulePanel {
         : `<span class="prod" title="${prodTip}">⚡</span>`;
       const cutTip = windowed ? tr({ fr: ` — coupée, ${cost} par seconde`, en: ` — cut, ${cost} per second` }) : '';
       row.innerHTML = `<td class="n">${i + 1}${prod}</td><td class="ports">${c.a} <span class="arrow">↔</span> ${c.b}</td>
-        <td><span class="chip" style="background:${FIBRE_COLORS[c.type]}" title="${fibreName(c.type)}">${c.type}</span></td>
+        <td><span class="chip" data-family="${CORD_KINDS[c.type].family}" style="background:${FIBRE_COLORS[c.type]}" title="${fibreName(c.type)}">${c.type}</span></td>
         <td class="svc" title="${serviceName(c.service)}${tr({ fr: ' : ', en: ': ' })}${serviceWhat(c.service)}${cutTip}"><span class="dot" style="background:${service.color}"></span>${serviceName(c.service)}</td>
         <td class="st"><i class="s-conn" title="${tr({ fr: 'Branchée', en: 'Plugged' })}"></i><i class="s-route" title="${tr({ fr: 'Rangée', en: 'Routed' })}"></i><i class="s-clear" title="${tr({ fr: 'Façade dégagée', en: 'Front clear' })}"></i><i class="s-relax" title="${relaxedTip()}"></i></td>`;
       row.onmouseenter = () => ctl.focus(i);

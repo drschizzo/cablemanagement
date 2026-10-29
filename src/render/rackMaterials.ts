@@ -28,6 +28,9 @@ export const rackMat = {
   firewall: new THREE.MeshStandardMaterial({ color: '#7a2020', roughness: 0.45, metalness: 0.5 }),
   router: new THREE.MeshStandardMaterial({ color: '#173c6e', roughness: 0.45, metalness: 0.5 }),
   ups: new THREE.MeshStandardMaterial({ color: '#2d2c30', roughness: 0.55, metalness: 0.4 }),
+  // the power strip, and its C13 sockets
+  pdu: new THREE.MeshStandardMaterial({ color: '#17181a', roughness: 0.6, metalness: 0.35 }),
+  socket: new THREE.MeshStandardMaterial({ color: '#0d0d0e', roughness: 0.7 }),
   crate: new THREE.MeshStandardMaterial({ color: '#2c2f32', roughness: 0.6, metalness: 0.0 }),
   // the core of the lamp passes the bloom threshold (see leds.ts); its lens and the screen, larger
   // surfaces, stay just below it: they would have spread into a blot

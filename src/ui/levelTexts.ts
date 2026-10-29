@@ -180,6 +180,10 @@ const PUZZLES: Record<string, Words<LevelText>> = {
     fr: { title: 'Le câble muet', brief: 'Tout est branché comme prévu, et pourtant une liaison reste rouge. Testez (4), jetez, remplacez.' },
     en: { title: 'The silent cord', brief: 'Everything is plugged as planned, and yet a link stays red. Test (4), bin, replace.' },
   },
+  p10: {
+    fr: { title: 'Le courant', brief: 'Un serveur, ses deux alimentations, le bandeau électrique en bas : courant et données, chacun dans ses supports.' },
+    en: { title: 'Power', brief: 'A server, its two power supplies, the power strip below: power and data, each in its own supports.' },
+  },
 };
 
 /** the career's tickets, in order: a title and what the client asks */

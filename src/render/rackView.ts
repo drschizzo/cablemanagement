@@ -6,6 +6,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { COLUMN_X, FRONT_Z, Rack, SIDE_BACK, U, WALL_X, type Port, type UnitSpec } from '../game/rack';
 import type { FibreType } from '../game/cordTypes';
 import { disposeTree, shared } from './dispose';
+import { assertNever } from '../lib/assertNever';
 import { mergeStatic } from './batch';
 import { bevelBox, bevelTemplate } from './bevel';
 import { LedGlow, ledGlows } from './ledGlow';
@@ -252,19 +253,23 @@ export class RackView {
       if (!u.portsAt) return;
     }
     const style = u.style ?? (u.kind === 'panel' ? 'fibre' : 'switch');
-    const face = style === 'fibre' ? rackMat.panel : style === 'copper' ? rackMat.copperFace : style === 'firewall' ? rackMat.firewall : style === 'router' ? rackMat.router : rackMat.switchFace;
-    if (u.kind !== 'server') this.add(roundedBox(w, U - 0.0012, 0.01, 0.0015), face, 0, y, -0.005);
+    if (u.kind !== 'server') this.add(roundedBox(w, U - 0.0012, 0.01, 0.0015), faceOf(style), 0, y, -0.005);
     // active equipment: power and a status light at the right end of its face
     if (u.kind === 'switch') {
       const s = this.seed + y * 1000, x = w / 2 - 0.016;
       this.light(x, y + U * 0.22, '#39ff6a');
       if (style === 'firewall') this.light(x, y, '#ff3b30', pulse(0.4, 0.5, fractOf(s * 1.7)));
-      else this.light(x, y, style === 'router' ? '#3aa8ff' : '#ffae1f', activity(s, 0.45));
+      // a power strip has its power light only
+      else if (style !== 'pdu') this.light(x, y, style === 'router' ? '#3aa8ff' : '#ffae1f', activity(s, 0.45));
     }
     // ears with the name of the equipment
     this.labels.push({ k, light: style === 'fibre' });
     for (const p of rack.ports.filter((q) => q.unit === k)) {
-      if (style === 'copper') {
+      if (p.power) {
+        // a C13 outlet or a C14 inlet: a black socket, its three pins in a keyed recess
+        this.part(bevelTemplate(0.017, 0.0125, 0.004, 0.0012), rackMat.socket, p.x, p.y - 0.002, 0.002);
+        this.part(bevelTemplate(0.013, 0.0085, 0.002, 0.0008), rackMat.hole, p.x, p.y - 0.002, 0.0042);
+      } else if (style === 'copper') {
         // white keystone jack with its RJ45 opening
         this.part(bevelTemplate(0.0135, 0.0135, 0.005, 0.0008), rackMat.keystone, p.x, p.y - 0.002, 0.0025);
         this.part(bevelTemplate(0.0115, 0.0085, 0.002, 0.0005), rackMat.hole, p.x, p.y - 0.003, 0.0052);
@@ -414,6 +419,22 @@ export class RackView {
     for (const it of this.rack.items) this.itemsGroup.add(buildItem(this.rack, it, statics, null));
     mergeStatic(this.itemsGroup);
     this.glow.light(this.itemsGroup);
+  }
+}
+
+/** the material of the face of a unit, by its look */
+function faceOf(style: NonNullable<UnitSpec['style']>): THREE.Material {
+  switch (style) {
+    case 'fibre': return rackMat.panel;
+    case 'copper': return rackMat.copperFace;
+    case 'firewall': return rackMat.firewall;
+    case 'router': return rackMat.router;
+    case 'switch': return rackMat.switchFace;
+    case 'pdu': return rackMat.pdu;
+    // a server draws its own front (buildServer, buildUps)
+    case 'server':
+    case 'ups': return rackMat.body;
+    default: return assertNever(style);
   }
 }
 

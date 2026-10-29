@@ -236,7 +236,8 @@ coupé. Les clés sont celles des versions précédentes.
 | Évolution | Où |
 |---|---|
 | un niveau | une entrée dans `LEVELS` (`game/levels/campaign.ts`), bâtie avec les équipements de `game/levels/equipment.ts`, et ses mots dans `ui/levelTexts.ts` (un test vérifie qu'aucun ne manque) ; un puzzle, de même dans `PUZZLES` (`game/levels/puzzles.ts`) ; `tests/game/levels/levels.test.ts` vérifie son plan, qu'il ne se gagne pas sans rien faire et qu'il peut atteindre 3 étoiles avec son seul inventaire (`tidyKit`) |
-| un équipement de baie | `UnitSpec` et le constructeur de `Rack` (`game/rack.ts`), son rendu dans `render/rackView.ts` |
+| un équipement de baie | `UnitSpec` et le constructeur de `Rack` (`game/rack.ts`), sa face dans `faceOf` et son rendu dans `render/rackView.ts`, son nom dans `unitLabel` (`ui/names.ts`) |
+| une sorte de cordon | une entrée dans `CORD_KINDS` (`game/cordTypes.ts`) ; le compilateur demande son nom (`ui/names.ts`), son marquage (`JACKET_KIND`, `render/jacket.ts`) et, s'il en a un nouveau, son connecteur (`plugShape`, `render/cableView.ts`) |
 | un élément de rangement | `ItemKind`, `canPlace`, `statics` et `supports` dans `game/rack.ts`, `buildItem` dans `render/rackItems.ts`, un outil dans `TOOLS` (`ui/toolbar.ts`) |
 | un outil | un `ToolHandler` dans `play/tools/`, son nom dans `Tool` (`play/context.ts`) et dans `Controller.tools`, son bouton dans `TOOLS` (`ui/toolbar.ts`) |
 | un repère visuel pendant un geste | une classe dans `play/feedback/`, mise à jour par l'outil ou par `Controller.tick` |

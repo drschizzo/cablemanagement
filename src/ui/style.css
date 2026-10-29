@@ -138,6 +138,8 @@ button:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
 #plan .svc .dot { margin-right: 3px; }
 #plan .st i { margin-right: 2px; }
 .chip { font: 600 10px var(--mono); color: #0b0b0b; border-radius: 2px; padding: 1px 4px; letter-spacing: 0.02em; }
+/* a power cord: a black chip, its letters light */
+.chip[data-family="power"] { color: #d9dcd9; }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 1px; margin-right: 5px; vertical-align: 0; border: 1px solid rgba(0, 0, 0, 0.5); }
 .st i, .legend i { display: inline-block; width: 8px; height: 8px; border-radius: 1px; margin-right: 3px; background: #262a27; vertical-align: 0; }
 .st i.ok.s-conn, .legend i.s-conn { background: var(--ok); }

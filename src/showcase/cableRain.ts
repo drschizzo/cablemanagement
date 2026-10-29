@@ -136,7 +136,7 @@ export class CableRain {
       { copper: true, housing: new THREE.MeshStandardMaterial({ color: '#cfd8dc', roughness: 0.18 }) },
     ];
     this.plugs = kinds.map(({ copper, housing }) => {
-      const g = connectorGeos(R, copper);
+      const g = connectorGeos(R, copper ? 'rj45' : 'lc');
       const inst = (geo: THREE.BufferGeometry, m: THREE.Material) => {
         const im = new THREE.InstancedMesh(geo, m, 2 * POOL);
         im.castShadow = true;

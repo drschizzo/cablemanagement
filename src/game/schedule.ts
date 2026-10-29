@@ -52,7 +52,7 @@ export function makeSchedule(level: LevelDef, rack: Rack, r: () => number): Circ
   }
   // the schedule reads best sorted by panel port
   out.sort((p, q) => rack.ports.indexOf(rack.port(p.a)) - rack.ports.indexOf(rack.port(q.a)));
-  // then the links between equipment: uplinks, firewall, router, servers
-  for (const l of links) out.push({ a: l.a, b: l.b, type: 'CU', service: l.service ?? 3 });
+  // then the links between equipment: uplinks, firewall, router, servers, their power
+  for (const l of links) out.push({ a: l.a, b: l.b, type: l.type ?? 'CU', service: l.service ?? 3 });
   return out;
 }

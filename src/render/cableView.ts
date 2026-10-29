@@ -15,7 +15,8 @@ import { JACKET_KIND, jacketMaterial, jacketed } from './jacket';
 import { Straps } from './straps';
 import { DEFAULT_LOOK } from './look';
 import type { CableIndex } from '../game/cables';
-import { CORD_KINDS, FIBRE_COLORS, type FibreType } from '../game/cordTypes';
+import { CORD_KINDS, FIBRE_COLORS, type CordPlug, type FibreType } from '../game/cordTypes';
+import { assertNever } from '../lib/assertNever';
 
 
 interface CableMesh {
@@ -24,18 +25,35 @@ interface CableMesh {
   color: THREE.Color;
 }
 
-/** connector meshes: an LC plug for fibre, a clear RJ45 plug for copper */
-export function connectorGeos(radius: number, copper: boolean) {
-  const housing = copper
-    ? bevelBox(0.0118, 0.0085, 0.022, 0.0008).translate(0, 0, CONNECTOR - 0.011)
-    : bevelBox(0.0062, 0.0082, 0.022, 0.0006).translate(0, 0, CONNECTOR - 0.011);
-  const latch = copper
-    ? bevelBox(0.005, 0.002, 0.014, 0.0004).translate(0, 0.0052, CONNECTOR - 0.016)
-    : bevelBox(0.003, 0.002, 0.012, 0.0004).translate(0, 0.005, CONNECTOR - 0.012);
-  const bootR = copper ? 0.0058 : 0.0036;
+/** connector meshes: an LC plug for fibre, a clear RJ45 plug for copper, a C13 for power */
+export function connectorGeos(radius: number, plug: CordPlug) {
+  const { housing, latch, bootR } = plugShape(plug);
   const boot = new THREE.CylinderGeometry(bootR, radius * 1.15, 0.03, 12).rotateX(Math.PI / 2).translate(0, 0, CONNECTOR - 0.022 - 0.015 + 0.004);
   const label = new THREE.CylinderGeometry(radius * 1.7, radius * 1.7, 0.016, 14).rotateX(Math.PI / 2).translate(0, 0, -0.022);
   return { housing, latch, boot, label };
+}
+
+/** the body of a connector, its latch, and the radius of its boot */
+function plugShape(plug: CordPlug): { housing: THREE.BufferGeometry; latch: THREE.BufferGeometry; bootR: number } {
+  switch (plug) {
+    case 'lc': return {
+      housing: bevelBox(0.0062, 0.0082, 0.022, 0.0006).translate(0, 0, CONNECTOR - 0.011),
+      latch: bevelBox(0.003, 0.002, 0.012, 0.0004).translate(0, 0.005, CONNECTOR - 0.012),
+      bootR: 0.0036,
+    };
+    case 'rj45': return {
+      housing: bevelBox(0.0118, 0.0085, 0.022, 0.0008).translate(0, 0, CONNECTOR - 0.011),
+      latch: bevelBox(0.005, 0.002, 0.014, 0.0004).translate(0, 0.0052, CONNECTOR - 0.016),
+      bootR: 0.0058,
+    };
+    // a C13: a squat black body, its grip ridged on top
+    case 'c13': return {
+      housing: bevelBox(0.016, 0.011, 0.026, 0.0015).translate(0, 0, CONNECTOR - 0.013),
+      latch: bevelBox(0.012, 0.0015, 0.016, 0.0005).translate(0, 0.0062, CONNECTOR - 0.018),
+      bootR: 0.0065,
+    };
+    default: return assertNever(plug);
+  }
 }
 
 /** the parts of one kind of connector, each instanced over every end of the cords (2c + e) */
@@ -68,7 +86,7 @@ export class CableView {
   private tube: TubeMesh;
   private nodes: TubeNodes;
   private sync: TubeSync;
-  private plugs: { fibre: Plugs; copper: Plugs };
+  private plugs: Record<CordPlug, Plugs>;
   private straps: Straps;
   /** a ring round every pinched node */
   private pinchMarks: THREE.InstancedMesh | null = null;
@@ -115,8 +133,8 @@ export class CableView {
     this.group.add(this.tube, this.straps.mesh);
 
     const n = 2 * world.cables.length;
-    const make = (copper: boolean, housingMat: THREE.Material): Plugs => {
-      const g = connectorGeos(world.radius, copper);
+    const make = (plug: CordPlug, housingMat: THREE.Material): Plugs => {
+      const g = connectorGeos(world.radius, plug);
       const tint = new THREE.InstancedBufferAttribute(new Float32Array(3 * n), 3).setUsage(THREE.DynamicDrawUsage);
       g.boot.setAttribute('emissiveTint', tint);
       const inst = (geo: THREE.BufferGeometry, m: THREE.Material) => {
@@ -139,8 +157,9 @@ export class CableView {
       };
     };
     this.plugs = {
-      fibre: make(false, new THREE.MeshStandardMaterial({ roughness: 0.4 })),
-      copper: make(true, new THREE.MeshPhysicalMaterial({ color: '#e8f0f4', roughness: 0.15, transmission: CLEAR, thickness: 0.004, transparent: true, opacity: 0.85 })),
+      lc: make('lc', new THREE.MeshStandardMaterial({ roughness: 0.4 })),
+      rj45: make('rj45', new THREE.MeshPhysicalMaterial({ color: '#e8f0f4', roughness: 0.15, transmission: CLEAR, thickness: 0.004, transparent: true, opacity: 0.85 })),
+      c13: make('c13', new THREE.MeshStandardMaterial({ color: '#141416', roughness: 0.55 })),
     };
     world.cables.forEach((cb, c) => {
       const p = this.plugOf(c);
@@ -163,7 +182,7 @@ export class CableView {
   private litBy: LedGlow | null = null;
 
   private plugOf(c: number): Plugs {
-    return CORD_KINDS[this.world.cables[c].type].plug === 'rj45' ? this.plugs.copper : this.plugs.fibre;
+    return this.plugs[CORD_KINDS[this.world.cables[c].type].plug];
   }
 
   /** `force`: rebuild every cord, or only those it picks (scripted motion) */
@@ -179,7 +198,7 @@ export class CableView {
     this.flush();
     // a clear plug costs the frame a pass of its own (the scene behind it, drawn again):
     // not worth it on cords a pixel or two wide
-    (this.plugs.copper.housing.material as THREE.MeshPhysicalMaterial).transmission = this.tube.level === 2 ? 0 : CLEAR;
+    (this.plugs.rj45.housing.material as THREE.MeshPhysicalMaterial).transmission = this.tube.level === 2 ? 0 : CLEAR;
     this.straps.update(this.world);
     this.updatePinches();
   }

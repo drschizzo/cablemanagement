@@ -55,7 +55,7 @@ interface LevelBase {
   /** one-to-one patching: each panel port to the same port of the switch right below */
   pairing?: boolean;
   /** links between equipment (switch uplinks, firewall, router, servers), on top of the panel cords */
-  links?: { a: string; b: string; service?: number }[];
+  links?: { a: string; b: string; service?: number; type?: FibreType }[];
   /** a hand-written patching schedule instead of a random one */
   schedule?: (rack: Rack) => Circuit[];
   /** where the cords lie at the start, when the level knows it already (a cabinet carried over: the career); otherwise drawn */

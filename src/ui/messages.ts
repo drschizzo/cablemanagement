@@ -147,7 +147,7 @@ export function readabilityText(part: ReadabilityPart): { name: string; tip: str
     case 'slack': return tr({ fr: { name: 'Le mou juste', tip: 'ni tendu ni plié, et pas plus de 50 cm de trop' }, en: { name: 'Just the slack', tip: 'neither taut nor kinked, and no more than 50 cm too long' } });
     case 'colours': return tr({ fr: { name: 'Couleurs', tip: 'chaque cordon cuivre de la couleur de son service' }, en: { name: 'Colours', tip: 'each copper cord in its service\'s colour' } });
     case 'bundles': return tr({ fr: { name: 'Faisceaux', tip: 'un seul service par velcro' }, en: { name: 'Bundles', tip: 'one service per velcro' } });
-    case 'separation': return tr({ fr: { name: 'Fibre et cuivre', tip: 'la fibre et le cuivre dans des supports séparés' }, en: { name: 'Fibre and copper', tip: 'fibre and copper in separate supports' } });
+    case 'separation': return tr({ fr: { name: 'Séparation', tip: 'la fibre, le cuivre et le courant dans des supports séparés' }, en: { name: 'Separation', tip: 'fibre, copper and power in separate supports' } });
     case 'crossings': return tr({
       fr: { name: 'Croisements', tip: `${part.crossings} croisement${part.crossings > 1 ? 's' : ''} hors des supports` },
       en: { name: 'Crossings', tip: `${part.crossings} crossing${part.crossings > 1 ? 's' : ''} outside the supports` },

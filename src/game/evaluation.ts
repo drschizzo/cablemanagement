@@ -254,7 +254,7 @@ function readability(w: World, circuits: CircuitStatus[], strain: (Strain | null
     const pure = straps.filter((st) => new Set(st.nodes.map((i) => serviceOf.get(w.sim.cableOf[i]) ?? -1)).size === 1).length;
     parts.push({ criterion: 'bundles', value: pure / straps.length });
   }
-  // fibre and copper in separate ducts and managers
+  // fibre, copper and power in separate ducts and managers
   const x = w.sim.x;
   if (new Set(w.cables.map((cb) => CORD_KINDS[cb.type].family)).size > 1) {
     let used = 0, mixed = 0;

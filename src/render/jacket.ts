@@ -7,15 +7,17 @@
 // same from afar (and do not shimmer).
 
 import * as THREE from 'three';
+import type { FibreType } from '../game/cordTypes';
 import { patchMaterial, type MaterialPatch } from './threeCompat/materialPatch';
 
 /** kinds of cord, the row of their marking in the atlas */
-export const JACKET_KIND = { CU: 0, OS2: 1, OM4: 2 } as const;
+export const JACKET_KIND = { CU: 0, OS2: 1, OM4: 2, PWR: 3 } as const satisfies Record<FibreType, number>;
 
 const PRINT = [
   'CAT6A U/FTP 4x2xAWG26/7 LSZH IEC 60332-1 500 MHz  ',
   'SM OS2 9/125 G.657.A2 LSZH 2.0 mm  ',
   'MM OM4 50/125 LSZH 2.0 mm  ',
+  'H05VV-F 3G1.0 mm² 10A 250V  ',
 ];
 /** length of cord over which the atlas repeats (m) */
 const PRINT_LEN = 0.11;

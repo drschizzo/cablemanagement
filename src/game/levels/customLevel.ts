@@ -4,15 +4,15 @@
 //
 // The code: the units, one letter each, then the cords, the difficulty, the
 // services, the maintenance window and the seed, apart with dots:
-// "bpsbbfbrbxu.12.n.3.1.k3x9z".
+// "bpsbbfbrbxu.12.n.3.1.k3x9z". A power strip (d) powers the servers.
 
 import type { CustomLevel } from './levelDef';
 import type { UnitSpec } from '../rack';
-import { BLANK, FIREWALL, ROUTER, SERVER, UPS, copperPanel, ethernetSwitch, opticalPanel, server } from './equipment';
+import { BLANK, FIREWALL, ROUTER, SERVER, UPS, copperPanel, ethernetSwitch, opticalPanel, pdu, poweredServer, server } from './equipment';
 
 /** what the editor offers, one letter each in the code */
 export const PALETTE = {
-  b: 'blank', p: 'copperPanel', o: 'fibrePanel', s: 'switch', f: 'firewall', r: 'router', x: 'server', u: 'ups',
+  b: 'blank', p: 'copperPanel', o: 'fibrePanel', s: 'switch', f: 'firewall', r: 'router', x: 'server', u: 'ups', d: 'pdu',
 } as const;
 export type PaletteLetter = keyof typeof PALETTE;
 export type PaletteItem = (typeof PALETTE)[PaletteLetter];
@@ -49,7 +49,7 @@ export type CustomError =
   | { kind: 'noSwitch' }
   | { kind: 'tooManyUnits'; most: number }
   | { kind: 'tooManyCords'; most: number }
-  | { kind: 'twice'; item: 'firewall' | 'router' }
+  | { kind: 'twice'; item: 'firewall' | 'router' | 'pdu' }
   | { kind: 'badCode' };
 
 /** the most cords the units of a spec can patch: as many as the panel ports, and as the switch ports */
@@ -63,7 +63,7 @@ export function checkSpec(spec: CustomSpec): CustomError | null {
   if (!spec.units.some((u) => u === 'copperPanel' || u === 'fibrePanel')) return { kind: 'noPanel' };
   if (!spec.units.includes('switch')) return { kind: 'noSwitch' };
   if (spec.units.length > MAX_UNITS) return { kind: 'tooManyUnits', most: MAX_UNITS };
-  for (const item of ['firewall', 'router'] as const) if (spec.units.filter((u) => u === item).length > 1) return { kind: 'twice', item };
+  for (const item of ['firewall', 'router', 'pdu'] as const) if (spec.units.filter((u) => u === item).length > 1) return { kind: 'twice', item };
   const most = mostCords(spec.units);
   if (spec.cables < 1 || spec.cables > most) return { kind: 'tooManyCords', most };
   return null;
@@ -83,8 +83,10 @@ function unitsOf(items: readonly PaletteItem[]): UnitSpec[] {
       case 'switch': return ethernetSwitch(String.fromCharCode(83 + switches++), SWITCH_PORTS);
       case 'firewall': return FIREWALL;
       case 'router': return ROUTER;
-      case 'server': return servers < SERVER_NAMES.length ? server(SERVER_NAMES[servers++], 0.03) : SERVER;
+      // with a power strip in the cabinet, a server is powered from it
+      case 'server': return servers < SERVER_NAMES.length ? (items.includes('pdu') ? poweredServer : server)(SERVER_NAMES[servers++], 0.03) : SERVER;
       case 'ups': return UPS;
+      case 'pdu': return pdu();
     }
   });
 }
@@ -93,12 +95,14 @@ function unitsOf(items: readonly PaletteItem[]): UnitSpec[] {
 export function customLevel(spec: CustomSpec): CustomLevel {
   const d = DIFFICULTIES[spec.difficulty];
   const n = spec.cables;
+  const units = unitsOf(spec.units);
   return {
     id: `custom-${encodeSpec(spec)}`,
     kind: 'custom',
     spec,
-    units: unitsOf(spec.units),
+    units,
     cables: n,
+    links: powerLinks(units),
     wrong: Math.round(n * d.wrong), loose: Math.round(n * d.loose), slack: d.slack, mess: d.mess,
     labels: true, services: spec.services, types: spec.units.includes('fibrePanel') ? ['OS2', 'CU'] : ['CU'], colorByService: true,
     downtime: spec.maintenance ? 40 + 15 * n : undefined, bypass: spec.maintenance ? 2 : undefined,
@@ -107,6 +111,14 @@ export function customLevel(spec: CustomSpec): CustomLevel {
     preinstalled: [],
     seed: spec.seed,
   };
+}
+
+/** the power cords of a cabinet: from the outlets of its strip, the last first, to the inlets of each server */
+function powerLinks(units: readonly UnitSpec[]): NonNullable<CustomLevel['links']> {
+  const strip = units.find((u) => u.style === 'pdu');
+  if (!strip) return [];
+  const inlets = units.flatMap((u) => (u.inlets ?? []).map((_, k) => `${u.name}P${k + 1}`));
+  return inlets.slice(0, strip.ports).map((inlet, k) => ({ a: `${strip.name}${strip.ports! - k}`, b: inlet, service: 4, type: 'PWR' as const }));
 }
 
 const LETTER_OF = Object.fromEntries(Object.entries(PALETTE).map(([letter, item]) => [item, letter])) as Record<PaletteItem, PaletteLetter>;
@@ -121,7 +133,7 @@ export function decodeSpec(code: string): CustomSpec | CustomError {
   const parts = code.trim().split('.');
   if (parts.length !== 6) return { kind: 'badCode' };
   const [letters, cables, difficulty, services, maintenance, seed] = parts;
-  if (!/^[bposfrxu]+$/.test(letters) || !/^\d+$/.test(cables) || !/^[1-6]$/.test(services) || !/^[01]$/.test(maintenance) || !/^[0-9a-z]+$/.test(seed)) return { kind: 'badCode' };
+  if (!/^[bposfrxud]+$/.test(letters) || !/^\d+$/.test(cables) || !/^[1-6]$/.test(services) || !/^[01]$/.test(maintenance) || !/^[0-9a-z]+$/.test(seed)) return { kind: 'badCode' };
   const level = (Object.keys(DIFFICULTIES) as Difficulty[]).find((k) => DIFFICULTIES[k].letter === difficulty);
   if (!level) return { kind: 'badCode' };
   const spec: CustomSpec = {

@@ -18,6 +18,10 @@ export const FIREWALL = firewall();
 export const ROUTER = router();
 /** a server with two network cards, `at` m from its left edge */
 export const server = (name: string, at: number): UnitSpec => ({ kind: 'server', name, portsAt: [at, at + 0.025], style: 'server' });
+/** a server with two network cards and two power supplies, their inlets at the right end of its face */
+export const poweredServer = (name: string, at: number): UnitSpec => ({ ...server(name, at), inlets: [0.17, 0.2] });
+/** a power distribution unit: a row of C13 outlets */
+export const pdu = (name = 'P', outlets = 8): UnitSpec => ({ kind: 'switch', name, ports: outlets, style: 'pdu' });
 /** a server whose ports are not patched */
 export const SERVER: UnitSpec = { kind: 'server', style: 'server' };
 export const UPS: UnitSpec = { kind: 'server', style: 'ups' };

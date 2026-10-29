@@ -73,6 +73,7 @@ const FIBRE_NAMES: Record<FibreType, Words> = {
   OS2: { fr: 'Monomode OS2', en: 'Single-mode OS2' },
   OM4: { fr: 'Multimode OM4', en: 'Multimode OM4' },
   CU: { fr: 'Cuivre RJ45', en: 'Copper RJ45' },
+  PWR: { fr: 'Alimentation C13', en: 'Power C13' },
 };
 
 export function fibreName(type: FibreType): string {
@@ -89,6 +90,7 @@ export function unitLabel(u: UnitSpec): string {
         case 'firewall': return tr({ fr: 'Pare-feu', en: 'Firewall' });
         case 'router': return tr({ fr: 'Routeur', en: 'Router' });
         case 'switch': return `Switch ${name}`;
+        case 'pdu': return tr({ fr: 'Bandeau électrique', en: 'Power strip' });
         default: return tr({ fr: `Commutateur ${name}`, en: `Switch ${name}` });
       }
     }

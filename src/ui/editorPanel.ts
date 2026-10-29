@@ -127,6 +127,7 @@ function itemName(item: PaletteItem): string {
     case 'router': return tr({ fr: 'Routeur', en: 'Router' });
     case 'server': return tr({ fr: 'Serveur', en: 'Server' });
     case 'ups': return tr({ fr: 'Onduleur', en: 'UPS' });
+    case 'pdu': return tr({ fr: 'Bandeau électrique', en: 'Power strip' });
     default: return assertNever(item);
   }
 }
@@ -147,7 +148,7 @@ export function customErrorText(e: CustomError): string {
     case 'noSwitch': return tr({ fr: 'Il faut au moins un switch.', en: 'It takes a switch at least.' });
     case 'tooManyUnits': return tr({ fr: `${e.most} unités au plus.`, en: `${e.most} units at most.` });
     case 'tooManyCords': return tr({ fr: `Entre 1 et ${e.most} câbles : autant que de ports de panneaux et de switchs.`, en: `Between 1 and ${e.most} cords: as many as the panel and switch ports.` });
-    case 'twice': return e.item === 'firewall' ? tr({ fr: 'Un seul pare-feu.', en: 'One firewall only.' }) : tr({ fr: 'Un seul routeur.', en: 'One router only.' });
+    case 'twice': return tr({ fr: 'Un seul exemplaire de chacun : pare-feu, routeur, bandeau électrique.', en: 'One of each only: firewall, router, power strip.' });
     case 'badCode': return tr({ fr: 'Ce code ne décrit pas une baie.', en: 'This code describes no cabinet.' });
     default: return assertNever(e);
   }

@@ -154,6 +154,13 @@ puzzle P9) cachent un **vieux cordon coupé à l'intérieur** : branché comme p
 ses voyants clignotent en rouge. Le **Testeur** (touche 4) dit d'un clic si un cordon laisse passer le
 signal ; un cordon coupé se jette au bac et se remplace par un neuf du Stock.
 
+### Courant
+
+Certaines baies (le puzzle P10, les baies de l'éditeur qui ont un bandeau électrique) alimentent
+leurs serveurs : des **cordons d'alimentation** noirs, raides, à fiche C13, vont des prises du
+**bandeau électrique** aux deux alimentations de chaque serveur. Couper l'une, c'est couper le service
+du serveur. La lisibilité demande de ranger fibre, cuivre et courant dans des supports séparés.
+
 ### Cordons neufs
 
 Le **Stock** fournit des cordons neufs, comptés par longueur ; ils arrivent

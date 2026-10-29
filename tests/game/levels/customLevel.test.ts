@@ -29,6 +29,15 @@ describe('a cabinet of the editor', () => {
     expect(mostCords(['copperPanel', 'copperPanel', 'switch', 'switch', 'switch'])).toBe(48);
   });
 
+  it('powers the servers from the power strip, when there is one', () => {
+    const level = customLevel({ ...spec, units: [...spec.units, 'pdu'] });
+    expect(level.links).toEqual([
+      { a: 'P8', b: 'XP1', service: 4, type: 'PWR' },
+      { a: 'P7', b: 'XP2', service: 4, type: 'PWR' },
+    ]);
+    expect(customLevel(spec).links).toEqual([]);
+  });
+
   it('makes a cabinet that can be played', () => {
     const w = new World(customLevel(spec));
     w.preroll(20);
