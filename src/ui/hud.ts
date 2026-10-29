@@ -23,7 +23,8 @@ import type { CordInfo, Hint, HoverNote } from '../play/messages';
 import { StockMenu } from './stockMenu';
 import { SchedulePanel } from './schedulePanel';
 import { LevelBrief } from './levelBrief';
-import { showResult } from './resultScreen';
+import { showResult, type Outcome } from './resultScreen';
+import { recordDaily, shareText, streak } from './daily';
 import { LevelMenu } from './levelMenu';
 import { PauseMenu } from './pauseMenu';
 import { SettingsPanel, type QualityControl } from './settingsPanel';
@@ -205,9 +206,7 @@ export class Hud {
     if (!ctl || !level) return;
     const ev = ctl.world.evaluate();
     if (ev.stars < 1 || document.body.classList.contains('touring')) return;
-    const challengeWonBefore = !!this.progress.challenges[level.id];
-    const result = recordResult(this.progress, level, ev.stars, ctl.elapsed, ev.readability.note);
-    save('progress', this.progress);
+    const outcome = this.record(level, ev, ctl.elapsed);
     sfx.win();
     // the panels step aside while the camera flies round the work
     document.body.classList.add('touring');
@@ -215,12 +214,26 @@ export class Hud {
       document.body.classList.remove('touring');
       // left meanwhile (the menu, another level): nothing more to show
       if (this.ctl !== ctl) return;
-      showResult(ctl, level, ev, result, challengeWonBefore, {
+      showResult(ctl, level, ev, outcome, {
         start: this.actions.start,
         showMenu: () => this.showMenu(() => show('#result')),
         home: this.actions.home,
       });
     });
+  }
+
+  /** keeps the result where its kind of level keeps it; what the result screen shows of it */
+  private record(level: LevelDef, ev: Evaluation, time: number): Outcome {
+    if (level.kind === 'daily') {
+      const days = load('daily');
+      const result = recordDaily(days, level, ev, time);
+      save('daily', days);
+      return { result, challengeWonBefore: false, share: shareText(level, days[level.date], streak(days, level.date)) };
+    }
+    const challengeWonBefore = !!this.progress.challenges[level.id];
+    const result = recordResult(this.progress, level, ev.stars, time, ev.readability.note);
+    save('progress', this.progress);
+    return { result, challengeWonBefore, share: null };
   }
 
   private openPause(): void {

@@ -35,8 +35,9 @@ src/
     physics/        le solveur tel que le jeu le mène (rackCableSim : mains, ports, creux des guides), et son Worker
     mess/           le désordre de départ : les chemins emmêlés des cordons (tangle), leur chute dans un Worker,
                     sa version précalculée pour l'écran titre (baked, showcase.bin)
-    levels/         ce qu'est un niveau (levelDef : une union par sorte, campagne, tutoriel, partie libre, vitrine,
-                    banc), les équipements nommés, la campagne et le tutoriel, la partie libre, les baies de la vitrine
+    levels/         ce qu'est un niveau (levelDef : une union par sorte, campagne, tutoriel, partie libre, baie du jour,
+                    vitrine, banc), les équipements nommés, la campagne et le tutoriel, la partie libre, la baie du jour
+                    (tirée de la date : la même pour tous), les baies de la vitrine
   play/         UNE PARTIE EN COURS : relie game, render et l'interface
     controller.ts   Controller : la boucle à pas fixe, ce que la baie montre de son état, les actions du HUD
     context.ts      PlayContext (ce que les outils voient du contrôleur), ToolHandler (l'interface d'un outil),
@@ -84,6 +85,7 @@ src/
                     paramètres, accueil ; confirmDialog.ts, la question avant de quitter une baie entamée
     settingsPanel.ts les paramètres : qualité de l'image (auto, préréglages, détails) et son
     progress.ts     la progression du joueur : meilleur score, niveau ouvert, niveau suivant (fonctions pures)
+    daily.ts        les baies du jour réussies : le meilleur de chaque jour, les jours de suite, le résultat à partager
     messages.ts     tous les textes d'une partie : messages, aides, bulle d'un cordon, critères de lisibilité
     keyHints.ts     les touches qui comptent à l'instant (outil en main, cordon survolé), en touches de clavier sous la baie
     language.ts     la langue parlée (français, anglais) : tr({ fr, en }) choisit les mots, onLanguageChange fait
@@ -202,7 +204,7 @@ sur le fil principal.
 ## Données dans le navigateur
 
 `ui/storage.ts` déclare chaque entrée (clé, valeur par défaut, validation) : progression (étoiles et meilleurs temps
-par niveau), tutoriel terminé, langue (celle du navigateur tant que le joueur n'en a pas choisi), qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu) et son
+par niveau), tutoriel terminé, baies du jour (le meilleur résultat de chaque date), langue (celle du navigateur tant que le joueur n'en a pas choisi), qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu) et son
 coupé. Les clés sont celles des versions précédentes.
 
 ## Ajouter…

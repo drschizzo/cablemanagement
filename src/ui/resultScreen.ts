@@ -13,6 +13,15 @@ import { levelAfter, type LevelResult } from './progress';
 import { readabilityText } from './messages';
 import { tr } from './language';
 
+/** what a signed-off cabinet left in the record */
+export interface Outcome {
+  result: LevelResult;
+  /** the time challenge was won before this result */
+  challengeWonBefore: boolean;
+  /** the result as lines to share (the cabinet of the day), or null */
+  share: string | null;
+}
+
 export interface ResultActions {
   start(level: LevelDef): void;
   showMenu(): void;
@@ -20,7 +29,8 @@ export interface ResultActions {
   home(): void;
 }
 
-export function showResult(ctl: Controller, level: LevelDef, ev: Evaluation, result: LevelResult, challengeWonBefore: boolean, actions: ResultActions): void {
+export function showResult(ctl: Controller, level: LevelDef, ev: Evaluation, outcome: Outcome, actions: ResultActions): void {
+  const { result, challengeWonBefore, share } = outcome;
   $('#result-stars').innerHTML = starsHtml(ev.stars, true);
   $('#result-time').textContent = tr({ fr: `Temps : ${formatTime(result.time)}`, en: `Time: ${formatTime(result.time)}` });
   $<HTMLImageElement>('#ba-before').src = ctl.before ?? '';
@@ -39,6 +49,7 @@ export function showResult(ctl: Controller, level: LevelDef, ev: Evaluation, res
   $('#result-again').onclick = () => { hide('#result'); ctl.resume(); };
   $('#result-menu').onclick = () => { hide('#result'); actions.showMenu(); };
   $('#result-home').onclick = () => { hide('#result'); actions.home(); };
+  showShare(share);
   show('#result');
 }
 
@@ -85,4 +96,20 @@ function noteHtml(startNote: number, ev: Evaluation, result: LevelResult): strin
   const record = previousNote !== undefined ? tr({ fr: ` · record ${best}${isNew ? ' — nouveau record !' : ''}`, en: ` · best ${best}${isNew ? ' — new best!' : ''}` }) : '';
   return `<div class="grade"><s>${startNote}</s><span class="to">→</span><b>${note}</b><span>${tr({ fr: 'Lisibilité', en: 'Readability' })}${record}</span></div>`
     + ev.readability.parts.map((p) => { const t = readabilityText(p); return `<div class="part"><span>${t.name}</span><div class="bar"><div class="fill" style="width:${Math.round(p.value * 100)}%"></div></div><i>${t.tip}</i></div>`; }).join('');
+}
+
+/** the button that copies the result to share, when there is one */
+function showShare(share: string | null): void {
+  const button = $<HTMLButtonElement>('#result-share');
+  button.style.display = share ? '' : 'none';
+  button.textContent = tr({ fr: 'Copier le résultat', en: 'Copy the result' });
+  if (!share) return;
+  button.title = share;
+  button.onclick = () => {
+    const copied = () => { button.textContent = tr({ fr: 'Copié ✓', en: 'Copied ✓' }); };
+    // the clipboard may be missing or refused (an insecure page, a browser's policy): the text then shows to copy by hand
+    const byHand = () => { window.prompt(tr({ fr: 'Résultat à partager', en: 'Result to share' }), share); };
+    if (navigator.clipboard) navigator.clipboard.writeText(share).then(copied, byHand);
+    else byHand();
+  };
 }

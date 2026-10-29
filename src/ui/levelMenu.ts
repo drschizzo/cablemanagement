@@ -1,9 +1,10 @@
-// The levels menu: the tutorial, then one card per level of the campaign with
-// its stars, its best time, and what opens it while it is locked; and a free
-// game of as many cords as asked.
+// The levels menu: the tutorial, the cabinet of the day, then one card per
+// level of the campaign with its stars, its best time, and what opens it
+// while it is locked; and a free game of as many cords as asked.
 
 import { LEVELS, TUTORIAL, UNLOCK_STARS } from '../game/levels/campaign';
 import { freeLevel } from '../game/levels/freeLevel';
+import { dailyLevel, dayKey } from '../game/levels/dailyLevel';
 import type { LevelDef } from '../game/levels/levelDef';
 import { load, type Progress } from './storage';
 import { formatTime } from './format';
@@ -34,6 +35,7 @@ export class LevelMenu {
     const box = $('#menu-levels');
     box.innerHTML = '';
     box.appendChild(this.tutorialCard());
+    box.appendChild(this.dailyCard());
     LEVELS.forEach((level, i) => box.appendChild(this.levelCard(progress, level, i)));
     show('#menu');
   }
@@ -49,6 +51,19 @@ export class LevelMenu {
     card.innerHTML = `<div class="num">0</div><div class="t">${tr({ fr: 'Tutoriel', en: 'Tutorial' })}</div>
       <div class="meta">${tr({ fr: 'Les équipements, les gestes, le score', en: 'The equipment, the gestures, the score' })}</div>${load('tutorialDone') ? `<div class="best">${tr({ fr: '✓ suivi', en: '✓ done' })}</div>` : ''}`;
     card.onclick = () => this.choose(TUTORIAL);
+    return card;
+  }
+
+  /** the cabinet of the day: its number, its size, and today's best if it is done */
+  private dailyCard(): HTMLElement {
+    const level = dailyLevel(dayKey(new Date()));
+    const best = load('daily')[level.date];
+    const card = document.createElement('button');
+    card.className = 'level-card daily';
+    card.innerHTML = `<div class="num">☀</div><div class="t">${levelTitle(level)}</div>
+      <div class="meta">${tr({ fr: `${level.cables} câbles · la même pour tous`, en: `${level.cables} cords · the same for all` })}</div>
+      <div class="stars">${starsHtml(best?.stars ?? 0)}</div>${best ? `<div class="best">${formatTime(best.time)}</div>` : ''}`;
+    card.onclick = () => this.choose(level);
     return card;
   }
 

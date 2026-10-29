@@ -13,6 +13,7 @@ import { unitLabel } from '../ui/names';
 import { nextLevelToPlay } from '../game/levels/campaign';
 import type { LevelDef } from '../game/levels/levelDef';
 import { SHOWCASE_DEFAULT } from '../game/levels/showcaseRack';
+import { dailyLevel, dayKey } from '../game/levels/dailyLevel';
 import type { BakedBay } from '../game/mess/baked';
 import { SceneLoader } from './sceneLoader';
 import { TitleScreen } from '../ui/titleScreen';
@@ -60,6 +61,7 @@ export class App {
       showSettings: () => this.hud.showSettings(),
       nextLevel: () => nextLevelToPlay(this.hud.progress.stars),
       hasProgress: () => Object.keys(this.hud.progress.stars).length > 0,
+      playDaily: () => this.startLevel(dailyLevel(dayKey(new Date()))),
     });
     this.showcaseSwitch = new ShowcaseSwitch({
       toggle: () => this.showcase?.toggle(),

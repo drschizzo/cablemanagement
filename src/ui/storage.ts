@@ -7,6 +7,20 @@
 import { AUTO_QUALITY, QUALITY, type QualityChoice } from '../render/quality';
 import { LANGUAGES, preferredLanguage, type Language } from './language';
 
+/** the best result of one cabinet of the day */
+export interface DailyResult {
+  stars: number;
+  /** s of play */
+  time: number;
+  /** readability note, 0..100 */
+  note: number;
+  /** downtime points spent, and the budget (0: none) */
+  downtime: number;
+  budget: number;
+  /** each line of the schedule: 2 tidy, 1 plugged only, 0 not plugged (the shared grid) */
+  lines: number[];
+}
+
 /** best result per level id: stars (1..3), time (s), readability note (0..100), and the time challenges won */
 export interface Progress {
   stars: Record<string, number>;
@@ -43,6 +57,14 @@ const ENTRIES = {
     format: (v: Progress) => JSON.stringify(v),
     valid: (v: Progress) => isRecord(v.stars) && isRecord(v.times) && isRecord(v.challenges) && isRecord(v.notes),
   } satisfies Entry<Progress>,
+  /** the cabinets of the day signed off, by date (YYYY-MM-DD) */
+  daily: {
+    key: 'cable.daily',
+    fallback: (): Record<string, DailyResult> => ({}),
+    parse: (raw: string): Record<string, DailyResult> => JSON.parse(raw),
+    format: (v: Record<string, DailyResult>) => JSON.stringify(v),
+    valid: (v: Record<string, DailyResult>) => isRecord(v) && Object.values(v).every((r) => isRecord(r) && typeof r.stars === 'number' && Array.isArray(r.lines)),
+  } satisfies Entry<Record<string, DailyResult>>,
   /** the tutorial was finished or skipped once */
   tutorialDone: {
     key: 'cable.tutorial',

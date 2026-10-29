@@ -6,6 +6,8 @@ import type { LevelDef } from '../game/levels/levelDef';
 import { load } from './storage';
 import { $ } from '../lib/page';
 import { levelTitle } from './levelTexts';
+import { dayKey } from '../game/levels/dailyLevel';
+import { streak } from './daily';
 import { onLanguageChange, tr } from './language';
 
 export interface TitleActions {
@@ -17,6 +19,8 @@ export interface TitleActions {
   nextLevel(): LevelDef | undefined;
   /** the player has stars in some level */
   hasProgress(): boolean;
+  /** the cabinet of the day */
+  playDaily(): void;
 }
 
 const byId = (id: string) => $('#' + id);
@@ -27,6 +31,7 @@ export class TitleScreen {
   constructor(private actions: TitleActions) {
     byId('title-play').onclick = () => { if (this.firstVisit()) actions.start(TUTORIAL); else actions.playNext(); };
     byId('title-tuto').onclick = () => actions.start(TUTORIAL);
+    byId('title-daily').onclick = () => actions.playDaily();
     byId('title-levels').onclick = () => actions.showMenu();
     byId('title-settings').onclick = () => actions.showSettings();
     onLanguageChange(() => this.refresh());
@@ -45,6 +50,17 @@ export class TitleScreen {
       : next && next !== LEVELS[0] ? tr({ fr: `Continuer · ${levelTitle(next)} →`, en: `Continue · ${levelTitle(next)} →` })
       : tr({ fr: 'Jouer →', en: 'Play →' });
     play.title = this.firstVisit() ? tr({ fr: 'Le tutoriel, puis le niveau 1', en: 'The tutorial, then level 1' }) : '';
+    this.refreshDaily();
+  }
+
+  /** the cabinet of the day: done today or not, and the run of days */
+  private refreshDaily(): void {
+    const today = dayKey(new Date());
+    const days = load('daily');
+    const run = streak(days, today);
+    const done = days[today] ? ` ${'★'.repeat(days[today].stars)}` : '';
+    byId('title-daily').textContent = tr({ fr: `Baie du jour${done}`, en: `Cabinet of the day${done}` }) + (run > 1 ? ` · 🔥 ${run}` : '');
+    byId('title-daily').title = run > 1 ? tr({ fr: `${run} jours de suite`, en: `${run} days in a row` }) : tr({ fr: 'La même baie pour tout le monde, chaque jour', en: 'The same cabinet for everyone, every day' });
   }
 
   /** a first visit starts with the tutorial; afterwards, where the player left off */

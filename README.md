@@ -144,6 +144,11 @@ cordon, et dans quel ordre, fait partie du plan.
 
 La **partie libre** génère une baie au hasard, de 4 à 48 câbles.
 
+La **baie du jour** est la même pour tout le monde à une date donnée : petite le lundi, plus grosse le
+week-end. Le jeu garde le meilleur résultat de chaque jour et compte les jours de suite ; l'écran de
+fin propose de **copier le résultat** (étoiles, temps, lisibilité, interruption, et une grille d'un
+carré par liaison : 🟩 rangée, 🟨 seulement branchée, ⬛ pas branchée) pour le partager.
+
 ## Commandes
 
 | Action | Geste |
