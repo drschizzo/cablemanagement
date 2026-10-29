@@ -10,7 +10,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { BloomPass, ReflectionPass, createAmbientOcclusionPass, type AmbientOcclusionPass } from './threeCompat/passes';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { CinemaPass } from './cinema';
-import { ledClock, ledViewHeight } from './leds';
+import { LED_CLOCK_WRAP, ledClock, ledViewHeight } from './leds';
 import { ledGlows } from './ledGlow';
 import { gpuAdvice, gpuInfo, type GpuAdvice, type GpuInfo } from './gpu';
 import { addLights, createControls, createRenderer } from './stageSetup';
@@ -382,7 +382,7 @@ export class Stage {
     this.fitBloom();
     this.cinema.frame(dt, window.innerWidth, window.innerHeight, this.panelMargins);
     // (wrapped, so that the GPU's hash of it keeps its precision)
-    ledClock.value = (ledClock.value + dt) % 600;
+    ledClock.value = (ledClock.value + dt) % LED_CLOCK_WRAP;
     // the light of the LEDs on the cords; not for a cabinet taken off the scene (an aisle set aside)
     for (const g of ledGlows) {
       let top: THREE.Object3D = g.root;

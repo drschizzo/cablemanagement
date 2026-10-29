@@ -3,7 +3,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { COLUMN_X, FRONT_Z, Rack, SIDE_BACK, U, WALL_X, type Port, type UnitSpec } from '../game/rack';
+import { COLUMN_X, FRONT_Z, ROOM_FLOOR, Rack, SIDE_BACK, U, WALL_X, type Port, type UnitSpec } from '../game/rack';
 import type { CordType } from '../game/cordTypes';
 import { disposeTree, shared } from './dispose';
 import { assertNever } from '../lib/assertNever';
@@ -15,6 +15,7 @@ import { rackMat } from './rackMaterials';
 import { buildItem } from './rackItems';
 import { crateWall, roundedBox } from './shapes';
 import { buildRoom } from './room';
+import { buildServerRoom } from './serverRoom/serverRoom';
 import { grilleMaterial, railMaterial, softShadow } from './rackTextures';
 
 const markerGeo = shared(new THREE.RingGeometry(0.0085, 0.0105, 24));
@@ -26,7 +27,7 @@ export type LedState = 'off' | 'ok' | 'wrong' | 'down' | 'bypass';
 export type UnitLabeller = (unit: UnitSpec) => string;
 
 export interface RackViewOptions {
-  /** the floor of the room under the cabinet (default: drawn) */
+  /** the room round the cabinet: its floor, and the racks of the room (default: drawn) */
   roomFloor?: boolean;
   /** the words on the face plates (default: none) */
   labelOf?: UnitLabeller;
@@ -94,6 +95,8 @@ export class RackView {
     this.glow = new LedGlow(this.group, [this.leds, lights], [-COLUMN_X - 0.05, rack.floorY, COLUMN_X + 0.05, rack.topY + 0.15]);
     ledGlows.add(this.glow);
     this.glow.light(this.group);
+    // after the light of the LEDs is given to the cabinet: the room stands too far to take it
+    if (opts.roomFloor !== false) this.group.add(buildServerRoom(rack.open ? rack.floorY : ROOM_FLOOR(rack), this.roomSeed()));
   }
 
   private light(x: number, y: number, color: THREE.ColorRepresentation, blink = STEADY, w = 0.0022, h = 0.0016, z = 0.0035): void {
@@ -214,6 +217,11 @@ export class RackView {
         softShadow(c.max[0] - c.min[0] + 0.07, c.max[2] - c.min[2] + 0.07, (c.min[0] + c.max[0]) / 2, bot - 0.03, (c.min[2] + c.max[2]) / 2, 0.6),
       );
     }
+  }
+
+  /** the same room round the same cabinet, whenever it is played again */
+  private roomSeed(): number {
+    return this.rack.units.length * 7919 + this.rack.ports.length * 104729 + Math.round(this.rack.topY * 1000);
   }
 
   /** the plastic crate for unplugged cords and spares: walls with a handle and vent slots, a rim on top */

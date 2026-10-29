@@ -1,9 +1,9 @@
 // The post-processing passes of the stage, from three.js's addons
-// (examples/jsm), with the changes the game needed. Two of them reach into
-// the passes' internals (fields and a private method of SSRPass, the shaders
-// and mip weights of UnrealBloomPass): they are subclasses here, the one place
-// that knows those internals, and tests/render/threeCompat/ checks that every
-// one of them still exists in the version of three.js installed.
+// (examples/jsm), with the changes the game needed. They reach into the
+// passes' internals (fields and private methods of SSRPass and GTAOPass, the
+// shaders and mip weights of UnrealBloomPass): they are subclasses here, the
+// one place that knows those internals, and tests/render/threeCompat/ checks
+// that every one of them still exists in the version of three.js installed.
 
 import * as THREE from 'three';
 import { SSRPass } from 'three/examples/jsm/postprocessing/SSRPass.js';
@@ -14,6 +14,35 @@ import { patchShader } from './shaderPatch';
 /** SSRPass's own method that draws a full-screen material (private: not in its typings) */
 interface SSRPassInternals {
   _renderPass(renderer: THREE.WebGLRenderer, material: THREE.Material, target: THREE.WebGLRenderTarget | null): void;
+}
+
+/**
+ * How SSRPass and GTAOPass draw the whole scene in a material of their own,
+ * for the normals and the depth they read, or the mask of the mirrors
+ * (private: not in their typings)
+ */
+type SceneOverride = (renderer: THREE.WebGLRenderer, material: THREE.Material, target: THREE.WebGLRenderTarget, clearColor?: THREE.ColorRepresentation, clearAlpha?: number) => void;
+
+/**
+ * Marks a mesh drawn over the image without standing in the scene (a shaft
+ * of light, added to the image): the passes leave it out of the normals and
+ * the depth they read, where it would have stood as a solid, shading and
+ * reflecting what lies behind it. (They leave points and lines out already.)
+ */
+export function keepOutOfDepth(o: THREE.Object3D): void {
+  o.userData.outOfDepth = true;
+}
+
+/** `draw` with the meshes marked by keepOutOfDepth hidden */
+function withoutOutOfDepth(scene: THREE.Object3D, draw: () => void): void {
+  const hidden: THREE.Object3D[] = [];
+  scene.traverseVisible((o) => { if (o.userData.outOfDepth) hidden.push(o); });
+  for (const o of hidden) o.visible = false;
+  try {
+    draw();
+  } finally {
+    for (const o of hidden) o.visible = true;
+  }
 }
 
 /**
@@ -46,6 +75,18 @@ export class ReflectionPass extends SSRPass {
     copy.fragmentShader = maskedCopy(copy.fragmentShader);
   }
 
+  /** the normals and the depth the reflections read: without what stands out of the depth */
+  _renderOverride(...args: Parameters<SceneOverride>): void {
+    const own = (SSRPass.prototype as unknown as { _renderOverride: SceneOverride })._renderOverride;
+    withoutOutOfDepth(this.scene, () => own.apply(this, args));
+  }
+
+  /** the mask of the mirrors: what stands out of the depth hides none of them */
+  _renderMetalness(...args: Parameters<SceneOverride>): void {
+    const own = (SSRPass.prototype as unknown as { _renderMetalness: SceneOverride })._renderMetalness;
+    withoutOutOfDepth(this.scene, () => own.apply(this, args));
+  }
+
   override render(...args: Parameters<SSRPass['render']>): void {
     if (this.reflecting) return super.render(...args);
     // the reflections cut: the pass still draws the scene, multisampled, and only copies it on
@@ -70,9 +111,17 @@ export class ReflectionPass extends SSRPass {
 /** the ambient occlusion pass, as Stage holds it */
 export type AmbientOcclusionPass = GTAOPass;
 
-/** ambient occlusion: the corners, the ports and under the cords darkened (public methods only) */
+/** GTAOPass, its normals and depth drawn without what stands out of the depth */
+class AmbientOcclusion extends GTAOPass {
+  _renderOverride(...args: Parameters<SceneOverride>): void {
+    const own = (GTAOPass.prototype as unknown as { _renderOverride: SceneOverride })._renderOverride;
+    withoutOutOfDepth(this.scene, () => own.apply(this, args));
+  }
+}
+
+/** ambient occlusion: the corners, the ports and under the cords darkened */
 export function createAmbientOcclusionPass(scene: THREE.Scene, camera: THREE.PerspectiveCamera): GTAOPass {
-  const ao = new GTAOPass(scene, camera, 1, 1);
+  const ao = new AmbientOcclusion(scene, camera, 1, 1);
   // metres: a short reach darkens the corners, the ports and under the cords;
   // longer, a tangle of cords goes muddy and loses its colours
   // 8 samples look the same as 16 once denoised, and save about 0.8 ms at 1800² px (what the bloom costs)

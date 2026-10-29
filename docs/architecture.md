@@ -81,8 +81,9 @@ src/
     stageSetup.ts   la construction du renderer, des contrôles et des lumières
     threeCompat/    TOUT CE QUI DÉPEND DES INTERNES DE THREE.JS, et nulle part ailleurs (règle ESLint) : les retouches
                     de shaders (materialPatch, shaderPatch), les passes de post-traitement retouchées (passes :
-                    ReflectionPass, BloomPass, l'occlusion) ; vérifié contre la version installée par
-                    tests/render/threeCompat/ (voir docs/mise-a-jour-three.md)
+                    ReflectionPass, BloomPass, l'occlusion, et keepOutOfDepth : une lumière ajoutée à l'image, comme
+                    un rai de lumière, que l'occlusion et les reflets ne prennent pas pour un solide) ; vérifié contre
+                    la version installée par tests/render/threeCompat/ (voir docs/mise-a-jour-three.md)
     gpu.ts          la carte graphique utilisée, et le conseil à donner quand elle dessine trop lentement
     frontImage.ts   l'image de face de la baie (avant / après de l'écran de résultat)
     frameGrab.ts    une copie de l'image qui vient d'être dessinée, sans les panneaux (une image du timelapse)
@@ -91,6 +92,13 @@ src/
     cameraTour.ts   le vol de la caméra autour d'une baie validée, puis retour de face (Stage.tour)
     rackView.ts     la baie, ses équipements, ports, plaques et voyants (sur un équipement actif, un second voyant par
                     port : le trafic d'une liaison, à la couleur de son service, que le contrôleur lui donne)
+    serverRoom/     le décor d'un niveau autour de la baie, où rien ne se joue (posé par rackView.ts, à côté du sol) :
+                    serverRoom.ts assemble la salle (des rangées pas tout à fait alignées, une lumière de contre-jour) ;
+                    roomRack.ts, une baie de la salle (ses équipements et leurs ports ; rangée, ses cordons passés
+                    dans les peignes, ou en désordre, d'un port à l'autre ; toujours devant les façades) ;
+                    roomProps.ts, ce qui traîne (chemins de câbles, cartons, couronnes, chariot, extincteur) ;
+                    roomHaze.ts, les rais de lumière et leur poussière ; roomParts.ts, les pièces réunies en
+                    quelques maillages
     rackItems.ts    les éléments de rangement, construits à partir de leurs formes de collision (buildItem)
     rackMaterials.ts, rackTextures.ts, shapes.ts, room.ts   matériaux, textures, formes, sol de la salle
     cableView.ts    les câbles (tubes de three-cable-tubes), leurs connecteurs et étiquettes

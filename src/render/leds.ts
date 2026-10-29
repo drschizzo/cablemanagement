@@ -10,6 +10,9 @@ import { patchMaterial, type MaterialPatch } from './threeCompat/materialPatch';
 /** seconds, advanced by the stage every frame; shared by every blinking material */
 export const ledClock = { value: 0 };
 
+/** when the clock wraps (s): kept small, so that the GPU's hash of it keeps its precision */
+export const LED_CLOCK_WRAP = 600;
+
 /** height of the drawing buffer (px), set by the stage: for the smallest size of a light on screen */
 export const ledViewHeight = { value: 1000 };
 

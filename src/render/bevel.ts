@@ -12,7 +12,8 @@ import * as THREE from 'three';
  * thousands of small parts of the ports can afford.
  */
 export function bevelBox(w: number, h: number, d: number, r: number): THREE.BufferGeometry {
-  return bevelTemplate(w, h, d, r).clone();
+  // built, not cloned from the templates: boxes of every size (the scenery of the room) would fill their cache
+  return build(w, h, d, r);
 }
 
 /** the same, made once for all its copies and shared by them: not to be changed */

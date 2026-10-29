@@ -121,4 +121,14 @@ describe('the post-processing passes (render/threeCompat/passes.ts)', () => {
     for (const key of Object.keys(AO_DENOISE)) expect(denoise, key).toContain(key);
     expect(GTAOPass.toString()).toContain('blendIntensity');
   });
+
+  it('SSRPass and GTAOPass: the scene drawn in their own materials goes through the methods the passes override', () => {
+    const own = (pass: { prototype: object }, name: string) => (pass.prototype as Record<string, unknown>)[name];
+    expect(typeof own(SSRPass, '_renderOverride')).toBe('function');
+    expect(typeof own(SSRPass, '_renderMetalness')).toBe('function');
+    expect(typeof own(GTAOPass, '_renderOverride')).toBe('function');
+    expect(SSRPass.prototype.render.toString()).toContain('this._renderOverride( renderer, this.normalMaterial');
+    expect(SSRPass.prototype.render.toString()).toContain('this._renderMetalness(');
+    expect(GTAOPass.prototype.render.toString()).toContain('this._renderOverride( renderer, this.normalMaterial');
+  });
 });
