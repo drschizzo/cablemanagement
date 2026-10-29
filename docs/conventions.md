@@ -103,7 +103,7 @@ les nommer. `planRoute` (`game/routeLaying.ts`) faisait 200 lignes ; c'est maint
 comme son commentaire (quel bout reste, le chemin en points, ajusté à la longueur du cordon, la place de chaque
 nœud, le trajet de chaque nœud), et chaque étape a son nom et sa documentation.
 
-**Ne pas recopier.** Une petite fonction utile partout a une seule maison : `dist`, `lerp` et `polyLength` sont
+**Ne pas recopier.** Une petite fonction utile partout a une seule maison : `dist`, `minus`, `dot`, `lerp` et `polyLength` sont
 dans `lib/vec3.ts`, `rng`, `shuffle` et `pick` dans `lib/random.ts`, et nulle part ailleurs.
 
 **Ne pas masquer un nom que tout le monde connaît.** Une interface `Pick` cachait le `Pick<>` de TypeScript : elle

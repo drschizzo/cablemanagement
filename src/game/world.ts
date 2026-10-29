@@ -1,7 +1,8 @@
 // The game state of one cabinet: the physics, the rack and its items, the
-// cords (cables.ts) with their ends and labels, the velcro straps, the crate
-// and the stock of new cords, the supports and velcros left, the maintenance window. How tidy it all is:
-// evaluation.ts.
+// cords (cables.ts) with their ends and labels (and those broken inside), the
+// velcro straps, the crate and the stock of new cords, the supports and
+// velcros left, the maintenance window and the incidents that play over it,
+// the find it hides. How tidy it all is: evaluation.ts.
 
 import { CABLES, type CableInit, type Pinch } from '@drschizzo/avbd-cables';
 import { bundleCount, cordStrain, evaluate, holdMap, okPorts, type Evaluation, type Strain } from './evaluation';

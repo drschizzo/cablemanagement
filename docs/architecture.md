@@ -106,13 +106,15 @@ src/
     progress.ts     la progression du joueur : meilleur score, défi réussi (chrono de la campagne, gestes d'un puzzle),
                     niveau ouvert, niveau suivant (fonctions pures)
     shop.ts         l'atelier : son catalogue, acheter et porter un look (fonctions pures) ; shopPanel.ts, son panneau
-    wallet.ts       le salaire encaissé : un niveau rejoué ne paie que ce qu'il ajoute à sa meilleure fiche de paie
+    wallet.ts       le salaire encaissé (un niveau rejoué ne paie que ce qu'il ajoute à sa meilleure fiche de paie) et les
+                    trouvailles gardées
     editorPanel.ts  l'éditeur de baie : la baie en élévation (une bande par unité, aux couleurs de son équipement), la
                     palette, les règles, jouer ou copier le lien (?rack=CODE)
     outcome.ts      ce que laisse une baie validée, selon sa sorte de niveau : record, salaire, partage, niveau suivant
     career.ts       la carrière : le ticket à jouer, le ticket validé (la baie gardée) ; careerPanel.ts, son panneau
     daily.ts        les baies du jour réussies : le meilleur de chaque jour, les jours de suite, le résultat à partager
-    messages.ts     tous les textes d'une partie : messages, aides, bulle d'un cordon, critères de lisibilité
+    messages.ts     tous les textes d'une partie : messages, aides, bulle d'un cordon, critères de lisibilité, et pourquoi
+                    une baie de l'éditeur ne se joue pas
     keyHints.ts     les touches qui comptent à l'instant (outil en main, cordon survolé), en touches de clavier sous la baie
     language.ts     la langue parlée (français, anglais) : tr({ fr, en }) choisit les mots, onLanguageChange fait
                     réécrire ce qui n'est écrit qu'une fois ; pageTexts.ts, les mots de index.html (data-i18n)
@@ -130,7 +132,8 @@ src/
                 audio qu'ils partagent (context.ts)
   lib/          DES OUTILS SANS RAPPORT AVEC LE JEU, que toutes les couches peuvent importer et qui n'importent rien
     assertNever.ts  le défaut d'un switch qui a traité tous les cas
-    vec3.ts         les points (V3) et la géométrie de base : distance, interpolation, longueur d'un chemin
+    vec3.ts         les points (V3) et la géométrie de base : distance, différence, produit scalaire, interpolation,
+                    longueur d'un chemin
     random.ts       tirages reproductibles : rng(seed), shuffle, pick
     page.ts         $ : un élément de index.html, ou une erreur claire s'il manque (game/ ne s'en sert pas)
   dev/          poignées de test, chargées en développement seulement

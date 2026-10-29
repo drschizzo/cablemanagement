@@ -1,9 +1,11 @@
 // The interface around the cabinet, put together from its panels: the
 // toolbar and the stock (toolbar.ts, stockMenu.ts), the patching schedule and
 // its scores (schedulePanel.ts), the brief (levelBrief.ts), the result screen
-// (resultScreen.ts), the pause menu (pauseMenu.ts), the levels menu
-// (levelMenu.ts), the settings (settingsPanel.ts); and the small things
-// (hint, tooltip, toast, timer, sound) and the interface's keys. It reads the
+// and its timelapse (resultScreen.ts, timelapsePlayer.ts), the pause menu
+// (pauseMenu.ts), the game modes and what they open (modesPanel.ts,
+// levelMenu.ts, careerPanel.ts, editorPanel.ts), the workshop (shopPanel.ts),
+// the settings (settingsPanel.ts); and the small things (hint, tooltip, toast,
+// timer, call, sound, a find picked up) and the interface's keys. It reads the
 // Controller's state and calls its actions; the Controller tells it what
 // changed through ControllerEvents.
 
