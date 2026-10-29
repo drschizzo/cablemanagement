@@ -11,7 +11,7 @@
 // contacts stay hard: a cord that meets something stops there.
 
 import {
-  CONNECTOR, COLUMN_X, WALL_X, DUCT_FRONT, DUCT_PITCH, DUCT_SLIT_X, FINGER_R, MANAGER_TIP, RING_FRONT, RING_GAP, SIDE_IN, SIDE_OUT,
+  CONNECTOR, COLUMN_X, FRONT_Z, WALL_X, DUCT_FRONT, DUCT_PITCH, DUCT_SLIT_X, FINGER_R, MANAGER_TIP, RING_FRONT, RING_GAP, SIDE_IN, SIDE_OUT,
   managerFingers, type Guide, type Port,
 } from './rack';
 import type { World } from './world';
@@ -27,6 +27,10 @@ const LANE = 0.007;
 const PLAY = 0.06;
 /** how far a node may be carried away from a plugged end, per metre of cord between them */
 const NEAR_PORT = 0.8;
+/** how far out of the cabinet the cord may bow while carried across (m), in how many waves at most, and how high over the floor the sill in front is (m) */
+const BOW_OUT = 0.25;
+const WAVES = 4;
+const SILL = 0.05;
 
 export interface RoutePlan {
   cable: CableIndex;
@@ -599,6 +603,10 @@ export class RouteRun {
       const p = along(path, this.prog[k]);
       this.pos[3 * i] = p[0]; this.pos[3 * i + 1] = p[1]; this.pos[3 * i + 2] = p[2];
     }
+    // across, the goals are in between two shapes, and shorter than the cord
+    // where they cross: spread along it at the cord's own pace, else the
+    // nodes bunch up there and the cord crumples
+    if (u > 0.25 && u < 0.6) this.evenOut(Math.sin(Math.PI * (u - 0.25) / 0.35));
     if (this.arrived < 0 && !behind) this.arrived = this.t;
     // held there a moment, then let go gently
     const weight = this.arrived < 0 ? 1 : Math.max(0, 1 - (this.t - this.arrived) / this.hold);
@@ -612,6 +620,51 @@ export class RouteRun {
     w.sim.setGoals(cb.start, this.pos, this.wt);
     if (weight <= 0) this.done = true;
     return this.done;
+  }
+
+  /**
+   * The goals of each stretch of led nodes moved (by f, 0 to 1) to where
+   * they would be along the line they make if spaced as the cord is.
+   */
+  private evenOut(f: number): void {
+    const { plan, w, pos } = this;
+    const cb = w.cables[plan.cable], rest = w.sim.rest;
+    const led = (i: number) => this.paths[plan.a === 0 ? i : cb.count - 1 - i] !== null;
+    for (let i0 = 0; i0 < cb.count; i0++) {
+      if (!led(i0)) continue;
+      let i1 = i0;
+      while (i1 + 1 < cb.count && led(i1 + 1)) i1++;
+      if (i1 - i0 >= 2) {
+        const flat: V3[] = [];
+        for (let i = i0; i <= i1; i++) flat.push([pos[3 * i], pos[3 * i + 1], pos[3 * i + 2]]);
+        let R = 0;
+        for (let i = i0; i < i1; i++) R += rest[cb.start + i];
+        // too short for the cord: bowed out towards the front, as a cord
+        // carried in two hands, until it is as long as the cord; in a few
+        // waves if it cannot bow out that far (over the sill, by the floor)
+        const sill = w.rack.floorY + SILL;
+        const cap = flat.map((p) => (p[1] < sill ? FRONT_Z - 0.03 : FRONT_Z + BOW_OUT));
+        const bowed = (h: number, m: number) => flat.map((p, k): V3 => [p[0], p[1], Math.max(p[2], Math.min(cap[k], p[2] + h * Math.sin(Math.PI * m * k / (flat.length - 1)) ** 2))]);
+        let line = flat;
+        if (polyLength(flat) < R) {
+          const hmax = FRONT_Z + BOW_OUT - Math.min(...flat.map((p) => p[2]));
+          let m = 1;
+          while (m < WAVES && polyLength(bowed(hmax, m)) < R) m++;
+          let lo = 0, hi = hmax;
+          if (polyLength(bowed(hi, m)) < R) lo = hi;
+          else for (let it = 0; it < 20; it++) { const h = (lo + hi) / 2; if (polyLength(bowed(h, m)) < R) lo = h; else hi = h; }
+          line = bowed(lo, m);
+        }
+        const L = polyLength(line);
+        let s = 0;
+        for (let i = i0 + 1; i < i1; i++) {
+          s += rest[cb.start + i - 1];
+          const p = lerp(line[i - i0], along(line, s / R * L), f);
+          pos[3 * i] = p[0]; pos[3 * i + 1] = p[1]; pos[3 * i + 2] = p[2];
+        }
+      }
+      i0 = i1;
+    }
   }
 
   /** stops leading the cord where it is */

@@ -5,7 +5,8 @@
 // there and plugged in, how much of it lies in its guides once let go and
 // settled, how calm it is, the worst it went into a part of the cabinet
 // (a cord must never pass through it), and how far it carried the other
-// cords (it passes through them while laid).
+// cords (it passes through them while laid), and how folded it is on its way
+// (sharp bends, by phase: out, across, in, held there).
 //   SEEDS=1,2 SLACK=0.5 ROWS=1 VIA=duct PARAMS='{"goalK":2}' npm run route
 import { World } from '../src/game/world';
 import type { LevelDef } from '../src/game/levels/levelDef';
@@ -59,7 +60,8 @@ function worstPen(w: World, c: number): number {
   return worst;
 }
 
-const tot = { moved: 0, movedMax: 0, penRest: 0, through: 0, guides: 0, runs: 0, planned: 0, plugged: 0, inGuides: 0, pen: 0, penMax: 0, calm: 0, ms: 0 };
+const phaseTot = [0, 0, 0, 0];
+const tot = { foldPeak: 0, foldMean: 0, foldRest: 0, moved: 0, movedMax: 0, penRest: 0, through: 0, guides: 0, runs: 0, planned: 0, plugged: 0, inGuides: 0, pen: 0, penMax: 0, calm: 0, ms: 0 };
 for (const seed of seeds) for (const c of [0, 1, 2, 3]) {
   const w = new World(bench(seed));
   Object.assign(w.sim.P, params);
@@ -83,11 +85,15 @@ for (const seed of seeds) for (const c of [0, 1, 2, 3]) {
   tot.planned++;
   const before = Float64Array.from(sim.x);
   const run = new RouteRun(w, res.plan);
-  let pen = 0, ms = 0;
+  const phasePeak = [0, 0, 0, 0];
+  let pen = 0, ms = 0, foldPeak = 0, foldSum = 0, foldN = 0;
   where = ''; deepest = 0;
   let lagged = '';
   for (let f = 0; f < 600 && !run.step(1 / 60); f++) {
     sim.step(); ms += sim.stats.ms; pen = Math.max(pen, worstPen(w, c));
+    const fo = folds(w, c);
+    foldPeak = Math.max(foldPeak, fo); foldSum += fo; foldN++;
+    { const u = run.t / run.duration, ph = u < 0.25 ? 0 : u < 0.6 ? 1 : u < 1 ? 2 : 3; phasePeak[ph] = Math.max(phasePeak[ph], fo); }
     if (env.LAG && run.t >= run.duration && !lagged) {
       const errs: string[] = [];
       for (let k = 0; k < cb.count; k++) { const i = cb.start + k; if (sim.goalW[i] <= 0) continue; const e = Math.hypot(sim.x[3 * i] - sim.goal[3 * i], sim.x[3 * i + 1] - sim.goal[3 * i + 1], sim.x[3 * i + 2] - sim.goal[3 * i + 2]); if (e > 0.02) errs.push(`${k}:${(e * 100).toFixed(0)}cm@(${[0, 1, 2].map((d) => sim.goal[3 * i + d].toFixed(3)).join(',')})`); }
@@ -117,12 +123,14 @@ for (const seed of seeds) for (const c of [0, 1, 2, 3]) {
     for (let i = cb.start; i < cb.start + cb.count; i++) peak = Math.max(peak, Math.hypot(sim.v[3 * i], sim.v[3 * i + 1], sim.v[3 * i + 2]));
   }
   const kept = nodesIn(w, c, order);
+  tot.foldPeak += foldPeak; phasePeak.forEach((v, k) => { phaseTot[k] += v; }); tot.foldMean += foldSum / (foldN || 1); tot.foldRest += folds(w, c);
   const through = kept.filter((k) => k > 0).length;
   if (env.WHERE) console.log('   deepest:', where);
   if (env.ROWS) console.log(`seed ${seed} cable ${c}: ${plugged ? 'plugged' : 'NOT PLUGGED'}, slack ${(res.plan.slack * 100).toFixed(0)} cm, through ${through}/${order.length} guides (nodes ${kept.join(' ')}), worst into a part ${(pen * 1000).toFixed(1)} mm, peak at rest ${peak.toFixed(3)} m/s, others carried ${(moved * 1000).toFixed(1)} mm (furthest ${(movedMax * 100).toFixed(0)} cm), ${run.duration.toFixed(1)} s`);
   tot.plugged += plugged ? 1 : 0; tot.through += through; tot.guides += order.length; tot.inGuides += inG / cb.count; tot.pen += pen; tot.penMax = Math.max(tot.penMax, pen); tot.calm += peak; tot.ms += ms;
 }
 const n = tot.planned || 1;
+console.log(`folds while laid: mean ${(tot.foldMean / n).toFixed(1)}, peak ${(tot.foldPeak / n).toFixed(1)}, at rest ${(tot.foldRest / n).toFixed(1)}; peak by phase out/across/in/held ${phaseTot.map((v) => (v / n).toFixed(1)).join(' / ')}`);
 console.log(`${tot.runs} routes (${via}), ${tot.planned} planned: plugged ${tot.plugged}/${tot.planned}, through ${tot.through}/${tot.guides} guides, cord in them ${(100 * tot.inGuides / n).toFixed(0)} %, into a part mean ${(tot.pen / n * 1000).toFixed(1)} mm worst ${(tot.penMax * 1000).toFixed(1)} mm (at rest ${(tot.penRest * 1000).toFixed(1)} mm), peak at rest ${(tot.calm / n).toFixed(3)} m/s, others carried ${(tot.moved / n * 1000).toFixed(1)} mm (furthest ${(tot.movedMax * 100).toFixed(0)} cm)`);
 
 function settleFor(w: World, f: number): void { for (let k = 0; k < f; k++) w.sim.step(); }
@@ -145,4 +153,16 @@ function nodesIn(w: World, c: number, order: Guide[]): number[] {
     }
     return n;
   });
+}
+
+/** the sharp bends of cable c: joints turned by more than 60° */
+function folds(w: World, c: number): number {
+  const x = w.sim.x, cb = w.cables[c];
+  let n = 0;
+  for (let i = cb.start + 1; i < cb.start + cb.count - 1; i++) {
+    const a = [0, 1, 2].map((d) => x[3 * i + d] - x[3 * i - 3 + d]), b = [0, 1, 2].map((d) => x[3 * i + 3 + d] - x[3 * i + d]);
+    const cos = (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]) / (Math.hypot(...a) * Math.hypot(...b) || 1);
+    if (cos < 0.5) n++;
+  }
+  return n;
 }
