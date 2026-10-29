@@ -16,7 +16,10 @@ import { load, save } from './storage';
 import { formatTime } from './format';
 import { hide, isDialogOpen, show } from './dom';
 import { $ } from '../lib/page';
-import { STOCK_KEY, Toolbar, toolForKey, toolHelp } from './toolbar';
+import { STOCK_KEY, Toolbar, toolForKey } from './toolbar';
+import { keysFor, keysHtml } from './keyHints';
+import { cordTooltipHtml, hintHtml } from './messages';
+import type { CordInfo, Hint, HoverNote } from '../play/messages';
 import { StockMenu } from './stockMenu';
 import { SchedulePanel } from './schedulePanel';
 import { LevelBrief } from './levelBrief';
@@ -53,6 +56,9 @@ export class Hud {
   private levelMenu = new LevelMenu();
   private settings: SettingsPanel;
   private toastTimer = 0;
+  /** the hint of the gesture under way, and the notes of the cord under the pointer (null: none) */
+  private liveHint: Hint | null = null;
+  private hoverNotes: HoverNote[] | null = null;
 
   constructor(private actions: HudActions, quality: QualityControl) {
     this.toolbar = new Toolbar((tool) => this.selectTool(tool), () => this.toggleStock());
@@ -94,6 +100,7 @@ export class Hud {
     this.brief.reset();
     this.ctl = ctl;
     this.level = level;
+    this.hoverNotes = null;
     $('#level-title').textContent = levelTitle(level);
     hide('#result');
     this.schedule.build(ctl, level);
@@ -131,7 +138,7 @@ export class Hud {
   selectTool(tool: Tool): void {
     this.ctl?.setTool(tool);
     this.toolbar.showChosen(tool);
-    $('#hint').innerHTML = toolHelp(tool);
+    this.hint(null);
   }
 
   refreshInventory(): void {
@@ -144,16 +151,28 @@ export class Hud {
     this.schedule.show(ev, this.ctl, this.level);
   }
 
-  /** a hint for the current action, or back to the tool's help */
-  hint(text: string | null): void {
-    $('#hint').innerHTML = text ?? toolHelp(this.ctl?.tool);
-    $('#hint').classList.toggle('live', !!text);
+  /** a hint for the gesture under way; null: back to the keys that matter now */
+  hint(hint: Hint | null): void {
+    this.liveHint = hint;
+    this.showHint();
   }
 
-  onHover(text: string | null, x: number, y: number): void {
+  /** the gesture's hint, or the keys of the tool and of the cord under the pointer */
+  private showHint(): void {
+    const el = $('#hint');
+    const tool = this.ctl?.tool;
+    el.innerHTML = this.liveHint ? hintHtml(this.liveHint) : tool ? keysHtml(keysFor({ tool, hover: this.hoverNotes })) : '';
+    el.classList.toggle('live', !!this.liveHint);
+    el.classList.toggle('keys', !this.liveHint);
+  }
+
+  /** the cord under the pointer (null: none) and its notes, at the pointer (px of the page) */
+  onHover(cord: CordInfo | null, notes: HoverNote[], x: number, y: number): void {
+    this.hoverNotes = cord ? notes : null;
+    if (!this.liveHint) this.showHint();
     const tip = $('#tooltip');
-    if (!text) { tip.style.display = 'none'; return; }
-    tip.innerHTML = text;
+    if (!cord) { tip.style.display = 'none'; return; }
+    tip.innerHTML = cordTooltipHtml(cord, notes);
     tip.style.display = 'block';
     tip.style.left = `${x + 16}px`;
     tip.style.top = `${y + 14}px`;

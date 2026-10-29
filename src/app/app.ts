@@ -7,7 +7,7 @@ import { Controller } from '../play/controller';
 import { Showcase } from '../showcase/showcase';
 import { Hud } from '../ui/hud';
 import { Tutorial } from '../ui/tutorial';
-import { cordTooltipHtml, hintHtml, statsText, toastText } from '../ui/messages';
+import { statsText, toastText } from '../ui/messages';
 import { isDialogOpen } from '../ui/dom';
 import { unitLabel } from '../ui/names';
 import { nextLevelToPlay } from '../game/levels/campaign';
@@ -79,10 +79,10 @@ export class App {
       const ctl = new Controller(this.stage, level, {
         onEval: (ev) => hud.onEval(ev),
         onInventory: () => hud.refreshInventory(),
-        onHover: (cord, notes, x, y) => hud.onHover(cord ? cordTooltipHtml(cord, notes) : null, x, y),
+        onHover: (cord, notes, x, y) => hud.onHover(cord, notes, x, y),
         onToast: (toast) => hud.toast(toastText(toast)),
         onStats: (stats) => hud.stats(statsText(stats)),
-        onHint: (hint) => hud.hint(hint ? hintHtml(hint) : null),
+        onHint: (hint) => hud.hint(hint),
         isDialogOpen,
         unitLabel,
       }, this.threaded);

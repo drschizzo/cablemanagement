@@ -85,6 +85,7 @@ src/
     settingsPanel.ts les paramètres : qualité de l'image (auto, préréglages, détails) et son
     progress.ts     la progression du joueur : meilleur score, niveau ouvert, niveau suivant (fonctions pures)
     messages.ts     tous les textes d'une partie : messages, aides, bulle d'un cordon, critères de lisibilité
+    keyHints.ts     les touches qui comptent à l'instant (outil en main, cordon survolé), en touches de clavier sous la baie
     language.ts     la langue parlée (français, anglais) : tr({ fr, en }) choisit les mots, onLanguageChange fait
                     réécrire ce qui n'est écrit qu'une fois ; pageTexts.ts, les mots de index.html (data-i18n)
     names.ts        le nom des choses : services (et ce qu'ils portent), fournitures, sortes de cordon, plaques des équipements
@@ -137,7 +138,7 @@ tourner sous Node, dans les tests et les bancs, et dans un Web Worker.
 
 Quand une couche basse doit prévenir une couche haute, elle ne l'importe pas : elle reçoit un **rappel**.
 `play/` prévient l'interface par `ControllerEvents` (`onEval`, `onToast`, `onHover`…), qu'`app/app.ts` relie à
-`ui/hud.ts`. Ces rappels portent des **données** (un `Toast`, un `Hint`, un `CordInfo`), jamais du texte :
+`ui/hud.ts`, qui reçoit les données telles quelles et les met en mots. Ces rappels portent des **données** (un `Toast`, un `Hint`, un `CordInfo`), jamais du texte :
 `ui/messages.ts` les met en mots. Dans l'autre sens, `ui/` lit l'état (`ctl.world`, `ctl.lastEval`) et appelle le contrôleur
 (`setTool`, `newCord`, `toggleBypass`, `fetchEnd`).
 

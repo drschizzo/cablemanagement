@@ -207,6 +207,13 @@ button:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
 #hint:empty { display: none; }
 #hint.live { border-color: rgba(233, 182, 92, 0.45); color: #f1d6a2; }
 #hint.live::before { color: var(--warn); }
+/* the keys that matter now: key caps and what they do */
+#hint.keys { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+#hint .cap { white-space: nowrap; color: var(--dim); }
+#hint kbd {
+  font-family: var(--mono); font-size: 11px; color: #e6ebe7; background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line-hi); border-bottom-width: 2px; border-radius: 3px; padding: 0 5px; margin-right: 6px;
+}
 #tooltip {
   position: fixed; display: none; z-index: 9; pointer-events: none; font-size: 12px; line-height: 1.45;
   background: rgba(8, 9, 10, 0.96); border: 1px solid var(--line-hi); border-radius: 2px; padding: 6px 9px; max-width: 320px;

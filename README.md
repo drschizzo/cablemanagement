@@ -169,6 +169,10 @@ La **partie libre** génère une baie au hasard, de 4 à 48 câbles.
 | Couper / remettre le son | **M** |
 | Statistiques de la physique | **F3** |
 
+Sous la baie, une bande rappelle les **touches du moment** : celles de l'outil en main et du
+câble survolé (T pour tracer, Suppr pour le bac, Tab pour le suivant…), et pendant un geste, ce
+qu'on peut faire en le tenant. L'aide complète d'un outil reste sur son bouton.
+
 ### Les outils
 
 | Touche | Outil | Usage |
