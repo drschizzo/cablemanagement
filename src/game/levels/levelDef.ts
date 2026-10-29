@@ -52,6 +52,10 @@ interface LevelBase {
   links?: { a: string; b: string; service?: number }[];
   /** a hand-written patching schedule instead of a random one */
   schedule?: (rack: Rack) => Circuit[];
+  /** three stars need this many velcro bundles: a strap round three cords or more, in a manager or a duct */
+  bundles?: number;
+  /** old unmarked cords: where one goes only shows once it is traced, or plugged as planned */
+  blind?: boolean;
 }
 
 /** a level of the campaign, in order */
@@ -59,10 +63,6 @@ export interface CampaignLevel extends LevelBase {
   kind: 'campaign';
   /** the time challenge: three stars in less than this (s) */
   par: number;
-  /** three stars need this many velcro bundles: a strap round three cords or more, in a manager or a duct */
-  bundles?: number;
-  /** old unmarked cords: where one goes only shows once it is traced, or plugged as planned */
-  blind?: boolean;
 }
 
 /** the guided tutorial, over a small cabinet */
