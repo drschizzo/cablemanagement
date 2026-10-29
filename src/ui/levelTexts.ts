@@ -46,12 +46,12 @@ const CAMPAIGN: Record<string, Words<LevelText>> = {
     fr: {
       title: 'Le mou',
       brief: 'Les cordons sont beaucoup trop longs, et l\'un d\'eux est sur le mauvais port. Corrigez-le, puis remplacez les cordons par d\'autres à la bonne longueur, ou rangez le surplus dans une goulotte.',
-      tips: [LENGTH_TIP.fr, 'Le guide-câbles se pose dans une unité vide ; la goulotte dans un couloir latéral.'],
+      tips: [LENGTH_TIP.fr, 'Un guide-câbles de plus se pose avec l\'outil Supports, dans une unité vide.'],
     },
     en: {
       title: 'Slack',
       brief: 'The cords are far too long, and one of them is in the wrong port. Fix it, then swap the cords for others of the right length, or stow the extra in a duct.',
-      tips: [LENGTH_TIP.en, 'A cable manager goes in an empty unit; a duct in a side channel.'],
+      tips: [LENGTH_TIP.en, 'One more cable manager is placed with the Supports tool, in an empty unit.'],
     },
   },
   l3: {

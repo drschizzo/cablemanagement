@@ -1,15 +1,19 @@
-// The guided tutorial: what each piece of the cabinet is for, and how to
-// handle the cords. A card walks through the steps; the 3D scene frames the
-// piece being described, and steps with a task tick themselves off when the
-// player has done it (any step can be skipped).
+// The guided tutorial: what the cabinet is, and the gestures the first level
+// needs; then, if the player wants them, the finer gestures. A card walks
+// through the steps; the 3D scene frames the piece being described, and steps
+// with a task tick themselves off when the player has done it (any step can
+// be skipped).
 
 import type { Controller, Tool } from '../play/controller';
 import { COLUMN_X, SIDE_BACK, SIDE_IN, SIDE_OUT, U, WALL_X, insideBox } from '../game/rack';
 import { sfx } from '../audio/sfx';
-import { save } from './storage';
+import { load, save } from './storage';
+import { TUTORIAL } from '../game/levels/campaign';
+import { levelRules } from '../game/levels/levelRules';
+import { withMet } from './progress';
 import { $ } from '../lib/page';
 import { onLanguageChange, tr, type Words } from './language';
-import { STOCK_KEY, toolKey } from './toolbar';
+import { toolKey } from './toolbar';
 
 type Box = { min: [number, number, number]; max: [number, number, number] };
 
@@ -66,36 +70,21 @@ function held(ctl: Controller, kind: 'fingerManager' | 'duct'): number {
   return best;
 }
 
-const STEPS: Step[] = [
+/** the basics: enough to play the first level */
+const BASICS: Step[] = [
   {
     title: { fr: 'Bienvenue dans la baie', en: 'Welcome to the cabinet' },
     text: {
-      fr: 'Voici une baie de brassage 19 pouces. Les équipements s\'y empilent en <b>unités</b> (1U = 4,45 cm). Votre métier : brancher chaque liaison sur les bons ports, puis ranger les câbles pour que la baie reste lisible et accessible.',
-      en: 'This is a 19-inch patching cabinet. The equipment is stacked in <b>units</b> (1U = 4.45 cm). Your job: plug each link into the right ports, then tidy the cords so the cabinet stays readable and accessible.',
+      fr: 'Voici une baie de brassage 19 pouces. En haut, le <b>tiroir optique</b> (« A ») reçoit les fibres du bâtiment ; en bas, le <b>switch</b> (« S ») est l\'équipement actif du réseau. Le <b>plan de brassage</b>, à droite, dit quel port relier à quel port. Le voyant d\'un port : <span class="ok">vert</span> = liaison conforme au plan, <span class="warn">orange</span> = mauvais port. Votre métier : brancher chaque liaison, puis ranger les câbles.',
+      en: 'This is a 19-inch patching cabinet. At the top, the <b>fibre panel</b> (“A”) takes the fibres from the building; below, the <b>switch</b> (“S”) is the active equipment of the network. The <b>patching schedule</b>, on the right, says which port goes to which. The LED of a port: <span class="ok">green</span> = link as planned, <span class="warn">orange</span> = wrong port. Your job: plug each link, then tidy the cords.',
     },
     spot: (ctl) => ({ min: [-WALL_X, ctl.world.rack.floorY, -0.06], max: [WALL_X, ctl.world.rack.topY, 0.09] }),
   },
   {
-    title: { fr: 'Le tiroir optique', en: 'The fibre panel' },
-    text: {
-      fr: 'Le <b>tiroir optique</b> (ici « A ») reçoit les fibres qui arrivent du bâtiment ou d\'une autre salle. Chaque port est l\'extrémité d\'une fibre, sur laquelle on branche une jarretière.',
-      en: 'The <b>fibre panel</b> (here “A”) takes the fibres coming from the building or another room. Each port is the end of a fibre, into which a patch cord is plugged.',
-    },
-    spot: (ctl) => unitBox(ctl, 'panel'),
-  },
-  {
-    title: { fr: 'Le switch', en: 'The switch' },
-    text: {
-      fr: 'Le <b>switch</b> (« S ») est l\'équipement actif du réseau. Le <b>plan de brassage</b>, à droite, dit quel port du tiroir relier à quel port du switch. Le voyant au-dessus d\'un port : <span class="ok">vert</span> = liaison conforme au plan, <span class="warn">orange</span> = mauvais port.',
-      en: 'The <b>switch</b> (“S”) is the active equipment of the network. The <b>patching schedule</b>, on the right, says which port of the panel goes to which port of the switch. The LED above a port: <span class="ok">green</span> = link as planned, <span class="warn">orange</span> = wrong port.',
-    },
-    spot: (ctl) => unitBox(ctl, 'switch'),
-  },
-  {
     title: { fr: 'Les jarretières', en: 'The patch cords' },
     text: {
-      fr: 'Ce sont des câbles optiques terminés par des connecteurs LC. <span class="os2">Jaune</span> : fibre monomode (OS2), <span class="om4">turquoise</span> : multimode (OM4) — on ne les mélange pas. Survolez un câble : sa bulle dit où il est branché.',
-      en: 'These are fibre cords ending in LC connectors. <span class="os2">Yellow</span>: single-mode fibre (OS2), <span class="om4">aqua</span>: multimode (OM4) — they are never mixed. Hover a cord: its tooltip says where it is plugged.',
+      fr: 'Ce sont des câbles optiques terminés par des connecteurs LC. <span class="os2">Jaune</span> : fibre monomode (OS2), <span class="om4">turquoise</span> : multimode (OM4) — on ne les mélange pas, et une fibre ne se plie jamais en angle vif. Survolez un câble : sa bulle dit où il est branché.',
+      en: 'These are fibre cords ending in LC connectors. <span class="os2">Yellow</span>: single-mode fibre (OS2), <span class="om4">aqua</span>: multimode (OM4) — they are never mixed, and a fibre is never bent at a sharp angle. Hover a cord: its tooltip says where it is plugged.',
     },
     task: { fr: 'Survolez deux câbles différents', en: 'Hover two different cords' },
     done: (ctl) => ctl.counters.hovered >= 2,
@@ -133,29 +122,31 @@ const STEPS: Step[] = [
     },
     done: (ctl) => ctl.world.evaluate().circuits.every((s) => s.connected),
   },
-
   {
-    title: { fr: 'Tracer un chemin', en: 'Draw a route' },
+    title: { fr: 'Ranger : l\'outil Chemin', en: 'Tidying: the Route tool' },
     text: {
-      fr: `Pour ranger un câble, on décide par où il passe. Outil <b>Chemin</b> (touche ${toolKey('route').toUpperCase()}) : appuyez sur un câble, puis <b>tracez un trait par-dessus les guides</b> qu'il doit traverser, dans l'ordre. Chaque guide retenu s'encadre de vert. Si le trait se termine sur un port libre, le bout libre du câble s'y branche. Au relâcher, le câble est posé le long du chemin, en entrant dans chaque guide par son ouverture, sans traverser la baie. À la Main, tout se fait aussi câble par câble, à votre façon.`,
-      en: `To tidy a cord, you decide where it runs. <b>Route</b> tool (key ${toolKey('route').toUpperCase()}): press on a cord, then <b>draw a line over the guides</b> it must go through, in order. Each guide taken is framed in green. If the line ends on a free port, the cord's loose end is plugged there. When you let go, the cord is laid along the route, entering each guide by its opening, without going through the cabinet. With the Hand, everything can also be done cord by cord, your own way.`,
-    },
-  },
-
-
-  {
-    title: { fr: 'Le guide-câbles', en: 'The cable manager' },
-    text: {
-      fr: 'Ce panneau <b>1U à doigts</b> se pose sous le tiroir. Les câbles passent entre les doigts et courent à l\'horizontale jusqu\'aux côtés de la baie, au lieu de pendre devant les ports. Un câble y entre par l\'avant, au-dessus des pointes des doigts. Tracez le chemin d\'un câble par-dessus le guide-câbles. Une fois posé, le câble se colore un moment par portion : <span class="ok">vert</span> là où un support le tient, <span class="warn">orange</span> là où il pend de plus de 20 cm, rouge là où il traîne au sol.',
-      en: 'This <b>1U finger panel</b> goes under the fibre panel. The cords pass between the fingers and run horizontally to the sides of the cabinet, instead of hanging in front of the ports. A cord goes in from the front, over the tips of the fingers. Draw a cord\'s route over the cable manager. Once laid, the cord is coloured stretch by stretch for a moment: <span class="ok">green</span> where a support holds it, <span class="warn">orange</span> where it hangs more than 20 cm, red where it lies on the floor.',
+      fr: `Pour ranger un câble, on décide par où il passe. Le <b>guide-câbles</b>, ce panneau 1U à doigts sous le tiroir, mène les câbles à l'horizontale jusqu'aux côtés de la baie au lieu de les laisser pendre devant les ports. Outil <b>Chemin</b> (touche ${toolKey('route').toUpperCase()}) : appuyez sur un câble, puis <b>tracez un trait par-dessus le guide-câbles</b> ; chaque guide retenu s'encadre de vert. Si le trait finit sur un port libre, le bout libre s'y branche. Au relâcher, le câble est posé le long du chemin, puis se colore un moment : <span class="ok">vert</span> là où un support le tient, <span class="warn">orange</span> là où il pend.`,
+      en: `To tidy a cord, you decide where it runs. The <b>cable manager</b>, this 1U finger panel under the fibre panel, takes the cords horizontally to the sides of the cabinet instead of letting them hang in front of the ports. <b>Route</b> tool (key ${toolKey('route').toUpperCase()}): press on a cord, then <b>draw a line over the cable manager</b>; each guide taken is framed in green. If the line ends on a free port, the loose end is plugged there. When you let go, the cord is laid along the route, then coloured for a moment: <span class="ok">green</span> where a support holds it, <span class="warn">orange</span> where it hangs.`,
     },
     task: { fr: 'Rangez un câble dans le guide-câbles', en: 'Route a cord into the cable manager' },
     spot: mgrBox,
     tool: 'route',
     done: (ctl) => held(ctl, 'fingerManager') >= 6,
   },
+  {
+    title: { fr: 'Les étoiles', en: 'The stars' },
+    text: {
+      fr: 'Sous le plan, l\'<b>étoile suivante</b> dit ce qui lui manque. ★ : toutes les liaisons branchées comme prévu. ★★ : la plupart des câbles rangés, la façade dégagée ; il en faut <b>deux</b> pour ouvrir le niveau suivant. ★★★ : tout rangé, et aucun cordon tendu ni fibre pliée. Chaque niveau ajoute ensuite une règle à la fois, annoncée dans son brief. À vous !',
+      en: 'Under the schedule, the <b>next star</b> says what it still needs. ★: every link plugged as planned. ★★: most cords routed, the front clear; it takes <b>two</b> to open the next level. ★★★: everything routed, and no cord taut nor fibre kinked. Each level then adds one rule at a time, told in its brief. Over to you!',
+    },
+  },
+];
 
-
+/**
+ * The finer gestures, after the basics if the player wants them (each level's
+ * brief also explains the supports it gives, the first time).
+ */
+const ADVANCED: Step[] = [
   {
     title: { fr: 'Pincer un coude', en: 'Pinch a bend' },
     text: {
@@ -188,7 +179,6 @@ const STEPS: Step[] = [
     tool: 'supports',
     done: (ctl) => ctl.world.rack.items.some((i) => i.kind === 'duct'),
   },
-
   {
     title: { fr: 'Ranger dans la goulotte', en: 'Route through the duct' },
     text: {
@@ -199,8 +189,6 @@ const STEPS: Step[] = [
     tool: 'route',
     done: (ctl) => held(ctl, 'duct') >= 4,
   },
-
-
   {
     title: { fr: 'La seconde main', en: 'The second hand' },
     text: {
@@ -222,7 +210,6 @@ const STEPS: Step[] = [
       en: 'Lighter than a duct, the <b>ring</b> guides a vertical cord in a side channel: Supports tool, <b>Shift</b> + click in a channel (or a plain click when there is no duct left). It is a hook open at the front, on the outer side. Handy for a few cords; beyond that, the duct holds the slack better.',
     },
   },
-
   {
     title: { fr: 'Le velcro', en: 'The velcro' },
     text: {
@@ -233,47 +220,11 @@ const STEPS: Step[] = [
     tool: 'velcro',
     done: (ctl) => ctl.world.straps.length > 0,
   },
-
-  {
-    title: { fr: 'Le bon cordon', en: 'The right cord' },
-    text: {
-      fr: `Un rangement parfait passe par des cordons <b>à la bonne longueur</b> : trop longs, ils font du mou partout ; trop courts, ils sont <b>tendus</b> et ne valent pas ★★★. Le <b>Stock</b> (touche ${STOCK_KEY}) fournit des cordons neufs, en nombre limité par longueur : ils arrivent dans le bac. Pour remplacer un cordon branché, il faut le débrancher, et donc couper sa liaison le temps de changer.`,
-      en: `A perfect job takes cords <b>of the right length</b>: too long, they leave slack everywhere; too short, they are <b>taut</b> and not worth ★★★. The <b>Stock</b> (key ${STOCK_KEY}) provides new cords, in limited numbers per length: they arrive in the crate. To swap a plugged cord, it must be unplugged, so its link is cut while it is changed.`,
-    },
-    task: { fr: 'Prenez un cordon neuf au Stock', en: 'Take a new cord from the Stock' },
-    done: (ctl) => ctl.world.cablesVersion > 0,
-  },
-  {
-    title: { fr: 'Le bac et le traceur', en: 'The crate and the tracer' },
-    text: {
-      fr: 'Comme un vrai technicien, on peut tout <b>débrancher et déposer</b> dans le bac au sol : survolez un câble et appuyez sur <b>Suppr</b>. Reprenez-le à la main quand vous voulez. Pour savoir où va un câble dans le tas, survolez-le et appuyez sur <b>T</b> : il clignote et ses deux ports s\'entourent.',
-      en: 'Like a real technician, you can <b>unplug and drop</b> anything into the crate on the floor: hover a cord and press <b>Delete</b>. Take it back by hand whenever you want. To find where a cord in the heap goes, hover it and press <b>T</b>: it blinks and its two ports are circled.',
-    },
-    spot: (ctl) => { const k = ctl.world.rack.crate(); return { min: k.min, max: k.max }; },
-    task: { fr: 'Déposez un câble dans le bac (Suppr)', en: 'Drop a cord into the crate (Delete)' },
-    tool: 'hand',
-    done: (ctl) => ctl.counters.deposited > 0,
-  },
-
-  {
-    title: { fr: 'Les services', en: 'The services' },
-    text: {
-      fr: 'Chaque liaison appartient à un <b>service</b> (sa couleur dans le plan ; survolez-le pour savoir ce qu\'il porte). Un cordon branché comme prévu reçoit tout seul son <b>étiquette</b>. Dans une baie en production (⚡), chaque seconde où une liaison est coupée coûte le poids de son service sur un <b>budget d\'interruption</b> : l\'Admin ×4, la Voix et le Stockage ×3, la Vidéo ×2, les Données ×1, les Invités presque rien. Une <b>dérivation</b> (clic sur le ⚡ d\'une ligne du plan) porte le trafic d\'une liaison pendant qu\'on la recâble.',
-      en: 'Each link belongs to a <b>service</b> (its colour on the schedule; hover it to see what it carries). A cord plugged as planned gets its <b>label</b> by itself. In a cabinet in production (⚡), every second a link is cut costs its service\'s weight off a <b>downtime budget</b>: Admin ×4, Voice and Storage ×3, Video ×2, Data ×1, Guests almost nothing. A <b>bypass</b> (click the ⚡ of a line of the schedule) carries a link\'s traffic while it is recabled.',
-    },
-  },
-
-  {
-    title: { fr: 'Le score', en: 'The score' },
-    text: {
-      fr: 'Quatre critères, dans le panneau de droite : les <b>connexions</b> conformes au plan (obligatoires pour valider), le <b>rangement</b> (aucune portion de plus de 20 cm ne pend hors d\'un support), la <b>façade dégagée</b> (aucun câble devant le port d\'un autre) et l\'absence de <b>tension</b> (aucun cordon tendu, aucune fibre pliée). De une à trois étoiles ; il en faut <b>deux</b> pour ouvrir le niveau suivant. La <b>lisibilité</b>, sur 100, départage les baies parfaites : le mou juste, les couleurs, les faisceaux, les croisements. À vous !',
-      en: 'Four criteria, in the panel on the right: the <b>connections</b> as planned (needed to sign off), the <b>routing</b> (no stretch longer than 20 cm hangs out of a support), the <b>clear front</b> (no cord in front of another\'s port) and no <b>strain</b> (no cord taut, no fibre kinked). One to three stars; it takes <b>two</b> to open the next level. The <b>readability</b>, out of 100, sets perfect cabinets apart: just the slack, the colours, the bundles, the crossings. Over to you!',
-    },
-  },
-
 ];
 
 export class Tutorial {
+  /** the chapter under way: the basics, then the finer gestures */
+  private steps = BASICS;
   private i = 0;
   private el: HTMLElement;
   private poll: number;
@@ -291,6 +242,7 @@ export class Tutorial {
     (this.el.querySelector('#tuto-skip') as HTMLElement).onclick = () => { this.markDone(); this.actions.play(); };
     (this.el.querySelector('#tuto-home') as HTMLElement).onclick = () => this.actions.home();
     (this.el.querySelector('#tuto-play') as HTMLElement).onclick = () => this.actions.play();
+    (this.el.querySelector('#tuto-more') as HTMLElement).onclick = () => { this.steps = ADVANCED; this.go(0); };
     this.poll = window.setInterval(() => this.check(), 200);
     this.stopRewriting = onLanguageChange(() => this.write());
     this.go(0);
@@ -308,14 +260,14 @@ export class Tutorial {
     this.ctl.focus(-1);
   }
 
+  /** the next step (go stays on the last one) */
   private next(): void {
-    if (this.i === STEPS.length - 1) this.finish();
-    else this.go(this.i + 1);
+    this.go(this.i + 1);
   }
 
   private go(i: number): void {
-    this.i = Math.max(0, Math.min(STEPS.length - 1, i));
-    const s = STEPS[this.i];
+    this.i = Math.max(0, Math.min(this.steps.length - 1, i));
+    const s = this.steps[this.i];
     clearTimeout(this.advance);
     this.doneAt = -1;
     this.ctl.focus(-1);
@@ -328,15 +280,19 @@ export class Tutorial {
     s.enter?.(this.ctl);
     (this.el.querySelector('#tuto-task') as HTMLElement).classList.remove('done');
     (this.el.querySelector('#tuto-prev') as HTMLButtonElement).disabled = this.i === 0;
-    const last = this.i === STEPS.length - 1;
+    const last = this.i === this.steps.length - 1;
     (this.el.querySelector('#tuto-end') as HTMLElement).style.display = last ? '' : 'none';
+    // the end of the basics: the tutorial is done, and the finer gestures are offered
+    (this.el.querySelector('#tuto-more') as HTMLElement).style.display = last && this.steps === BASICS ? '' : 'none';
+    if (last) this.markDone();
     this.write();
   }
 
   /** the step's words, in the language spoken */
   private write(): void {
-    const s = STEPS[this.i];
-    (this.el.querySelector('#tuto-n') as HTMLElement).textContent = `${this.i + 1} / ${STEPS.length}`;
+    const s = this.steps[this.i];
+    const chapter = this.steps === ADVANCED ? tr({ fr: 'Gestes avancés · ', en: 'Finer gestures · ' }) : '';
+    (this.el.querySelector('#tuto-n') as HTMLElement).textContent = `${chapter}${this.i + 1} / ${this.steps.length}`;
     (this.el.querySelector('#tuto-title') as HTMLElement).textContent = tr(s.title);
     (this.el.querySelector('#tuto-text') as HTMLElement).innerHTML = tr(s.text);
     const task = this.el.querySelector('#tuto-task') as HTMLElement;
@@ -346,17 +302,17 @@ export class Tutorial {
   }
 
   private setNext(): void {
-    const s = STEPS[this.i];
+    const s = this.steps[this.i];
     const b = this.el.querySelector('#tuto-next') as HTMLButtonElement;
     const pending = !!s.done && this.doneAt < 0;
-    b.style.display = this.i === STEPS.length - 1 ? 'none' : '';
+    b.style.display = this.i === this.steps.length - 1 ? 'none' : '';
     b.textContent = pending ? tr({ fr: 'Passer →', en: 'Skip →' }) : tr({ fr: 'Suivant →', en: 'Next →' });
     b.classList.toggle('primary', !pending);
     b.classList.toggle('ghost', pending);
   }
 
   private check(): void {
-    const s = STEPS[this.i];
+    const s = this.steps[this.i];
     if (!s.done || this.doneAt >= 0) return;
     if (!s.done(this.ctl)) return;
     this.doneAt = performance.now();
@@ -367,12 +323,9 @@ export class Tutorial {
     this.advance = window.setTimeout(() => this.next(), 1600);
   }
 
-  private finish(): void {
-    this.markDone();
-    this.go(STEPS.length - 1);
-  }
-
+  /** the tutorial is done once, and the rules it shows are met (the first level does not tell them again) */
   private markDone(): void {
     save('tutorialDone', true);
+    save('rules', withMet(load('rules'), levelRules(TUTORIAL)));
   }
 }

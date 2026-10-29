@@ -1,6 +1,6 @@
 // The player's progress, level by level: best stars, best time, best
 // readability note, challenge won (the time challenge of the campaign, the
-// gestures challenge of the puzzles); and the rules already met. Pure
+// gestures challenge of the puzzles); and the rules and gestures already met. Pure
 // functions over the saved record: saving it is the caller's business
 // (storage.ts).
 
@@ -9,6 +9,7 @@ import { LEVELS, UNLOCK_STARS } from '../game/levels/campaign';
 import { PUZZLES } from '../game/levels/puzzles';
 import type { LevelDef } from '../game/levels/levelDef';
 import { levelRules, type Rule } from '../game/levels/levelRules';
+import { levelGestures, type Gesture } from '../game/levels/levelGestures';
 
 /** a level just validated, and what the record said before it */
 export interface LevelResult {
@@ -65,16 +66,25 @@ export function levelAfter(level: LevelDef): LevelDef | null {
  * level and puzzle signed off (a save from before the rules were kept).
  */
 export function knownRules(saved: readonly Rule[], progress: Progress): Set<Rule> {
+  return knownOf(saved, progress, levelRules);
+}
+
+/** the gestures the player has been shown, as the rules */
+export function knownGestures(saved: readonly Gesture[], progress: Progress): Set<Gesture> {
+  return knownOf(saved, progress, levelGestures);
+}
+
+function knownOf<T>(saved: readonly T[], progress: Progress, of: (level: LevelDef) => T[]): Set<T> {
   const known = new Set(saved);
   for (const level of [...LEVELS, ...PUZZLES]) {
-    if ((progress.stars[level.id] ?? 0) > 0) for (const rule of levelRules(level)) known.add(rule);
+    if ((progress.stars[level.id] ?? 0) > 0) for (const item of of(level)) known.add(item);
   }
   return known;
 }
 
-/** the rules met, with those of `level` just signed off */
-export function withRulesOf(saved: readonly Rule[], level: LevelDef): Rule[] {
-  return [...new Set([...saved, ...levelRules(level)])];
+/** the rules (or gestures) met, with those just met, each once */
+export function withMet<T>(saved: readonly T[], met: readonly T[]): T[] {
+  return [...new Set([...saved, ...met])];
 }
 
 /** the time challenge shows once the level is signed off: the result screen tells it first */

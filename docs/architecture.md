@@ -46,7 +46,8 @@ src/
                     sa version précalculée pour l'écran titre (baked, showcase.bin)
     levels/         ce qu'est un niveau (levelDef : une union par sorte, campagne, puzzle, ticket, tutoriel, partie libre,
                     zen, baie du jour, vitrine, banc), les règles qu'il joue en plus de brancher et ranger (levelRules :
-                    voyants, tension, fenêtre de maintenance, faisceaux, pannes…), les équipements nommés, la campagne et le tutoriel, les puzzles,
+                    voyants, tension, fenêtre de maintenance, faisceaux, pannes…) et les gestes qu'il demande au-delà du
+                    tutoriel (levelGestures : goulotte, anneau, velcro), les équipements nommés, la campagne et le tutoriel, les puzzles,
                     la carrière (un client, ses tickets, chacun bâti sur la baie laissée par le précédent),
                     la baie sur mesure de l'éditeur (customLevel : sa palette, ses règles, son code de partage), la partie libre et son réglage zen, la baie du jour
                     (tirée de la date : la même pour tous), les baies de la vitrine
@@ -97,8 +98,8 @@ src/
     toolbar.ts      la barre d'outils et ce qui reste en stock ; stockMenu.ts, le stock de cordons neufs
     schedulePanel.ts le plan de brassage, le budget d'interruption, l'étoile suivante et ce qui lui manque, la
                     lisibilité (dès ★★), les jauges repliées, le bouton Valider
-    levelBrief.ts   le brief d'un niveau (ses conseils, les règles qu'on y rencontre pour la première fois, les autres
-                    repliées), puis la préparation ; ruleTexts.ts, les mots de chaque règle
+    levelBrief.ts   le brief d'un niveau (ses conseils, les règles et les gestes qu'on y rencontre pour la première fois,
+                    les autres repliés), puis la préparation ; ruleTexts.ts, les mots de chaque règle et de chaque geste
     timelapsePlayer.ts le timelapse lu en boucle, et enregistré en vidéo (MediaRecorder) ; beforeAfterImage.ts, la baie
                     avant / après en une image ; share.ts, l'adresse du jeu et les fichiers offerts au joueur
     resultScreen.ts l'écran de résultat ; modesPanel.ts, les modes de jeu en trois groupes (histoire, défis, partie libre
@@ -125,7 +126,7 @@ src/
                     réécrire ce qui n'est écrit qu'une fois ; pageTexts.ts, les mots de index.html (data-i18n)
     names.ts        le nom des choses : services (et ce qu'ils portent), fournitures, sortes de cordon, plaques des équipements
     levelTexts.ts   les mots de chaque niveau : titre, brief, conseils (ceux de la campagne par id ; les autres d'après ce qu'ils sont)
-    tutorial.ts     le tutoriel guidé, par-dessus un niveau
+    tutorial.ts     le tutoriel guidé, par-dessus un niveau : les bases du premier niveau, puis, au choix, les gestes avancés
     titleScreen.ts  les boutons de l'écran titre (Commencer seul au premier lancement) ; showcaseSwitch.ts, l'interrupteur
                     Avant / Après et sa légende
     panelMargins.ts la place que les panneaux couvrent à chaque bord de l'écran : la baie est cadrée dans le reste
@@ -239,14 +240,14 @@ sur le fil principal.
 ## Données dans le navigateur
 
 `ui/storage.ts` déclare chaque entrée (clé, valeur par défaut, validation) : progression (étoiles et meilleurs temps
-par niveau), tutoriel terminé, règles déjà rencontrées, partie libre ouverte d'avance, carrière (tickets faits, la baie du client telle que laissée), dernière baie de l'éditeur, portefeuille (salaire, cosmétiques achetés, trouvailles), baies du jour (le meilleur résultat de chaque date), langue (celle du navigateur tant que le joueur n'en a pas choisi), musique coupée, qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu) et son
+par niveau), tutoriel terminé, règles et gestes déjà rencontrés, partie libre ouverte d'avance, carrière (tickets faits, la baie du client telle que laissée), dernière baie de l'éditeur, portefeuille (salaire, cosmétiques achetés, trouvailles), baies du jour (le meilleur résultat de chaque date), langue (celle du navigateur tant que le joueur n'en a pas choisi), musique coupée, qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu) et son
 coupé. Les clés sont celles des versions précédentes.
 
 ## Ajouter…
 
 | Évolution | Où |
 |---|---|
-| une règle de niveau | une entrée dans `RULES` et `hasRule` (`game/levels/levelRules.ts`), ses mots dans `ruleTip` (`ui/ruleTexts.ts`) : le brief la dit au premier niveau qui l'a, puis la replie |
+| une règle de niveau | une entrée dans `RULES` et `hasRule` (`game/levels/levelRules.ts`), ses mots dans `ruleTip` (`ui/ruleTexts.ts`) : le brief la dit au premier niveau qui l'a, puis la replie ; un geste de même, dans `GESTURES` (`levelGestures.ts`) et `gestureTip` |
 | un niveau | une entrée dans `LEVELS` (`game/levels/campaign.ts`), bâtie avec les équipements de `game/levels/equipment.ts`, et ses mots dans `ui/levelTexts.ts` (un test vérifie qu'aucun ne manque) ; un puzzle, de même dans `PUZZLES` (`game/levels/puzzles.ts`) ; `tests/game/levels/levels.test.ts` vérifie son plan, qu'il ne se gagne pas sans rien faire et qu'il peut atteindre 3 étoiles avec son seul inventaire (`tidyKit`) |
 | un équipement de baie | `UnitSpec` et le constructeur de `Rack` (`game/rack.ts`), sa face dans `faceOf` et son rendu dans `render/rackView.ts`, son nom dans `unitLabel` (`ui/names.ts`) |
 | une sorte de cordon | une entrée dans `CORD_KINDS` (`game/cordTypes.ts`) ; le compilateur demande son nom (`ui/names.ts`), son marquage (`JACKET_KIND`, `render/jacket.ts`) et, s'il en a un nouveau, son connecteur (`plugShape`, `render/cableView.ts`) |
@@ -255,7 +256,7 @@ coupé. Les clés sont celles des versions précédentes.
 | un repère visuel pendant un geste | une classe dans `play/feedback/`, mise à jour par l'outil ou par `Controller.tick` |
 | un critère de score | `evaluate()` (`game/evaluation.ts`), sa colonne dans le plan (`ui/schedulePanel.ts`) |
 | un panneau de l'interface | un fichier dans `ui/`, créé et appelé par `Hud` (`ui/hud.ts`) |
-| une étape du tutoriel | `STEPS` dans `ui/tutorial.ts` (`done` lit `ctl.counters` ou l'état du monde) |
+| une étape du tutoriel | `BASICS` (ce que demande le premier niveau) ou `ADVANCED` (les gestes fins) dans `ui/tutorial.ts` (`done` lit `ctl.counters` ou l'état du monde) |
 | un texte | à l'endroit où il s'affiche, dans chaque langue : `tr({ fr: '…', en: '…' })` (`ui/language.ts`) ; un texte de `index.html` : une clé `data-i18n` et ses mots dans `ui/pageTexts.ts` (un test vérifie les deux listes) ; une langue : une entrée dans `Language` et `LANGUAGES`, le compilateur liste chaque texte à traduire |
 | un message du contrôleur à l'interface | `ControllerEvents` (`play/context.ts`), relié dans `app/app.ts` |
 | un raccourci clavier | `InputRouter.bindKeys` (`play/inputRouter.ts`), son action sur le contrôleur ou l'outil |

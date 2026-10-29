@@ -10,6 +10,7 @@ import type { CabinetState } from '../game/cabinetState';
 import type { FindId } from '../game/finds';
 import type { Look } from '../render/look';
 import { RULES, type Rule } from '../game/levels/levelRules';
+import { GESTURES, type Gesture } from '../game/levels/levelGestures';
 
 /** the best result of one cabinet of the day */
 export interface DailyResult {
@@ -128,6 +129,16 @@ const ENTRIES = {
     },
     format: (v: Rule[]) => JSON.stringify(v),
   } satisfies Entry<Rule[]>,
+  /** the gestures a brief has explained in a cabinet signed off (game/levels/levelGestures.ts) */
+  gestures: {
+    key: 'cable.gestures',
+    fallback: (): Gesture[] => [],
+    parse: (raw: string): Gesture[] => {
+      const v: unknown = JSON.parse(raw);
+      return Array.isArray(v) ? v.filter((g): g is Gesture => (GESTURES as readonly unknown[]).includes(g)) : [];
+    },
+    format: (v: Gesture[]) => JSON.stringify(v),
+  } satisfies Entry<Gesture[]>,
   /** free play was opened ahead of the campaign (ui/modeLocks.ts) */
   freeOpen: {
     key: 'cable.free-open',

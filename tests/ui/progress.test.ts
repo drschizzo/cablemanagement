@@ -1,7 +1,8 @@
 // The progress record is plain data: the rules of the best score are tested
 // without a page.
 import { describe, expect, it } from 'vitest';
-import { isTimeChallengeKnown, isUnlocked, knownRules, levelAfter, recordResult, withRulesOf } from '../../src/ui/progress';
+import { isTimeChallengeKnown, isUnlocked, knownGestures, knownRules, levelAfter, recordResult, withMet } from '../../src/ui/progress';
+import { levelRules } from '../../src/game/levels/levelRules';
 import { PUZZLES } from '../../src/game/levels/puzzles';
 import { LEVELS } from '../../src/game/levels/campaign';
 import type { Progress } from '../../src/ui/storage';
@@ -69,9 +70,17 @@ describe('the rules met', () => {
   });
 
   it('grow with a level signed off, without twice the same', () => {
-    const rules = withRulesOf(['leds'], LEVELS[2]);
+    const rules = withMet(['leds'], levelRules(LEVELS[2]));
     expect(rules).toContain('maintenance');
     expect(rules.filter((r) => r === 'leds')).toHaveLength(1);
+  });
+
+  it('the gestures of a level signed off are known, as its rules', () => {
+    const p = empty();
+    expect(knownGestures([], p).has('duct')).toBe(false);
+    p.stars[LEVELS[1].id] = 2;
+    expect(knownGestures([], p).has('duct')).toBe(true);
+    expect(knownGestures(['velcro'], p).has('velcro')).toBe(true);
   });
 
   it('the time challenge is known once its level is signed off', () => {

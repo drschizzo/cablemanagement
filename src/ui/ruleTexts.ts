@@ -1,8 +1,10 @@
-// What each rule of a level says in its brief (game/levels/levelRules.ts):
-// one tip per rule, with the level's own figures (its budget, its bundles).
+// What each rule of a level, and each gesture it calls for, says in its
+// brief (game/levels/levelRules.ts, levelGestures.ts): one tip each, with the
+// level's own figures (its budget, its bundles).
 
 import type { LevelDef } from '../game/levels/levelDef';
 import type { Rule } from '../game/levels/levelRules';
+import type { Gesture } from '../game/levels/levelGestures';
 import { SERVICES } from '../game/services';
 import { CALL_PENALTY, CALL_WAIT } from '../game/incidents';
 import { assertNever } from '../lib/assertNever';
@@ -61,6 +63,25 @@ export function ruleTip(rule: Rule, level: LevelDef, services: number[]): string
       en: `<b>Incidents</b>: while you work, a colleague may unplug a link by mistake, and a user may call about a link that is down. Back within ${CALL_WAIT} s, all is well; too late, the call costs ${CALL_PENALTY} pts off the budget.`,
     });
     default: return assertNever(rule);
+  }
+}
+
+/** the tip of a gesture the level calls for */
+export function gestureTip(gesture: Gesture): string {
+  switch (gesture) {
+    case 'duct': return tr({
+      fr: `<b>Goulotte</b> : outil Supports (${toolKey('supports')}), un clic dans un couloir latéral la pose. Elle descend les câbles le long des montants et cache le mou. Au Chemin, tracez par le guide-câbles puis le long de la goulotte : le câble y entre par la fente de sa face avant, et sa longueur en trop y pend en boucle.`,
+      en: `<b>Duct</b>: Supports tool (${toolKey('supports')}), a click in a side channel places it. It takes the cords down along the posts and hides the slack. With the Route, draw through the cable manager then along the duct: the cord goes in through the slit of its front face, and its extra length hangs in a loop inside.`,
+    });
+    case 'ring': return tr({
+      fr: '<b>Anneau</b> : plus léger qu\'une goulotte, il guide un câble vertical dans un couloir latéral (outil Supports, <b>Maj</b> + clic dans un couloir). Pratique pour quelques câbles ; au-delà, la goulotte tient mieux le mou.',
+      en: '<b>Ring</b>: lighter than a duct, it guides a vertical cord in a side channel (Supports tool, <b>Shift</b> + click in a channel). Handy for a few cords; beyond that, the duct holds the slack better.',
+    });
+    case 'velcro': return tr({
+      fr: `<b>Velcro</b> (${toolKey('velcro')}) : tracez un trait en travers des câbles côte à côte, le velcro les serre là où le trait les croise. Un clic sur un velcro l'enlève. Un faisceau d'un seul service se lit mieux.`,
+      en: `<b>Velcro</b> (${toolKey('velcro')}): draw a line across cords running side by side, the velcro straps them where the line crosses them. A click on a velcro takes it off. A bundle of one service reads better.`,
+    });
+    default: return assertNever(gesture);
   }
 }
 

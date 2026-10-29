@@ -1,6 +1,6 @@
 // The brief of a level, before it starts (and on the Help button): what to
-// do, the tips, the rules met here for the first time (those met before are
-// folded), the material given. On a first reading of a level with supports to
+// do, the tips, the rules and gestures met here for the first time (those
+// met before are folded), the material given. On a first reading of a level with supports to
 // place, the preparation follows: the cabinet stands still and the clock
 // waits while the player places them.
 
@@ -8,15 +8,16 @@ import type { Controller, Tool } from '../play/controller';
 import { ALL_SUPPLIES, ITEM_KINDS } from '../game/supplies';
 import type { LevelDef } from '../game/levels/levelDef';
 import { levelRules, type Rule } from '../game/levels/levelRules';
+import { levelGestures, type Gesture } from '../game/levels/levelGestures';
 import { formatLength, formatTime } from './format';
 import { hide, show } from './dom';
 import { $ } from '../lib/page';
 import { countOf } from './names';
 import { tr } from './language';
 import { levelBrief, levelTips, levelTitle } from './levelTexts';
-import { ruleTip } from './ruleTexts';
+import { gestureTip, ruleTip } from './ruleTexts';
 import { load } from './storage';
-import { isTimeChallengeKnown, knownRules } from './progress';
+import { isTimeChallengeKnown, knownGestures, knownRules } from './progress';
 
 export class LevelBrief {
   /** the preparation was offered for this level already */
@@ -33,12 +34,12 @@ export class LevelBrief {
   show(level: LevelDef, ctl: Controller | null): void {
     $('#brief-title').textContent = levelTitle(level);
     $('#brief-text').textContent = levelBrief(level);
-    const rules = splitRules(level);
+    const met = splitMet(level);
     const services = ctl?.world.circuits.map((c) => c.service) ?? [];
-    $('#brief-tips').innerHTML = briefTips(level, rules, services).map((t) => `<li>${t}</li>`).join('');
-    // the rules met before: folded, to read again on demand
-    $('#brief-known').style.display = rules.known.length ? '' : 'none';
-    $('#brief-known-tips').innerHTML = rules.known.map((r) => `<li>${ruleTip(r, level, services)}</li>`).join('');
+    $('#brief-tips').innerHTML = briefTips(level, met, services).map((t) => `<li>${t}</li>`).join('');
+    const known = knownTips(level, met, services);
+    $('#brief-known').style.display = known.length ? '' : 'none';
+    $('#brief-known-tips').innerHTML = known.map((t) => `<li>${t}</li>`).join('');
     $('#brief-inv').textContent = materialLine(level);
     // the clock waits for the player to read
     ctl?.pause();
@@ -66,13 +67,18 @@ export class LevelBrief {
   }
 }
 
-/** the brief's tips: the level's own, its challenge, then the rules met for the first time (flagged new) */
-function briefTips(level: LevelDef, rules: { fresh: Rule[] }, services: number[]): string[] {
+/** the brief's tips: the level's own, its challenge, then the rules and gestures met for the first time (flagged new) */
+function briefTips(level: LevelDef, met: Met, services: number[]): string[] {
   const tips = levelTips(level);
   const challenge = challengeTip(level);
   if (challenge) tips.push(challenge);
-  const isNew = tr({ fr: 'Nouveau', en: 'New' });
-  return [...tips, ...rules.fresh.map((r) => `<span class="new">${isNew}</span> ${ruleTip(r, level, services)}`)];
+  const isNew = (tip: string) => `<span class="new">${tr({ fr: 'Nouveau', en: 'New' })}</span> ${tip}`;
+  return [...tips, ...met.rules.fresh.map((r) => isNew(ruleTip(r, level, services))), ...met.gestures.fresh.map((g) => isNew(gestureTip(g)))];
+}
+
+/** the tips met before: folded, to read again on demand */
+function knownTips(level: LevelDef, met: Met, services: number[]): string[] {
+  return [...met.rules.known.map((r) => ruleTip(r, level, services)), ...met.gestures.known.map(gestureTip)];
 }
 
 /**
@@ -89,11 +95,19 @@ function challengeTip(level: LevelDef): string | null {
   return null;
 }
 
-/** the level's rules, split: those the player meets here for the first time, and those met before */
-function splitRules(level: LevelDef): { fresh: Rule[]; known: Rule[] } {
-  const known = knownRules(load('rules'), load('progress'));
-  const rules = levelRules(level);
-  return { fresh: rules.filter((r) => !known.has(r)), known: rules.filter((r) => known.has(r)) };
+/** the level's rules and gestures, each split: those the player meets here for the first time, and those met before */
+interface Met {
+  rules: { fresh: Rule[]; known: Rule[] };
+  gestures: { fresh: Gesture[]; known: Gesture[] };
+}
+
+function splitMet(level: LevelDef): Met {
+  const progress = load('progress');
+  const split = <T>(items: T[], known: Set<T>) => ({ fresh: items.filter((i) => !known.has(i)), known: items.filter((i) => known.has(i)) });
+  return {
+    rules: split(levelRules(level), knownRules(load('rules'), progress)),
+    gestures: split(levelGestures(level), knownGestures(load('gestures'), progress)),
+  };
 }
 
 /** the material the level gives: supports, velcros, new cords */

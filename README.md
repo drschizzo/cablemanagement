@@ -38,8 +38,10 @@ Le jeu s'ouvre sur http://localhost:5173, sur l'**écran titre** : une salle de
 baies en désordre. Au premier lancement, un seul bouton, **Commencer**, et en discret le tutoriel et
 les paramètres. L'interrupteur **Avant / Après** montre la même salle une fois rangée.
 
-**Commencer** ouvre le **tutoriel**, qui présente les gestes de base pas à pas, puis le premier
-niveau. Par la suite, le même bouton reprend au premier niveau pas encore réussi, et l'écran titre
+**Commencer** ouvre le **tutoriel**, qui présente pas à pas ce que demande le premier niveau
+(saisir, brancher, ranger au Chemin, les étoiles), puis, au choix, les **gestes avancés** (coude
+pincé, seconde main, goulotte, anneau, velcro). La goulotte, l'anneau et le velcro s'expliquent aussi
+dans le brief du premier niveau qui les donne. Par la suite, le même bouton reprend au premier niveau pas encore réussi, et l'écran titre
 montre aussi les **modes de jeu**, en trois groupes :
 
 | Groupe | Modes | S'ouvre |
