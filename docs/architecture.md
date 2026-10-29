@@ -89,7 +89,8 @@ src/
     findView.ts     une trouvaille dessinée là où elle est posée (un post-it, un canard en plastique…)
     look.ts         ce que le joueur a choisi pour l'image (couleur des velcros, teinte de la lumière) : rien des règles
     cameraTour.ts   le vol de la caméra autour d'une baie validée, puis retour de face (Stage.tour)
-    rackView.ts     la baie, ses équipements, ports, plaques et voyants
+    rackView.ts     la baie, ses équipements, ports, plaques et voyants (sur un équipement actif, un second voyant par
+                    port : le trafic d'une liaison, à la couleur de son service, que le contrôleur lui donne)
     rackItems.ts    les éléments de rangement, construits à partir de leurs formes de collision (buildItem)
     rackMaterials.ts, rackTextures.ts, shapes.ts, room.ts   matériaux, textures, formes, sol de la salle
     cableView.ts    les câbles (tubes de three-cable-tubes), leurs connecteurs et étiquettes

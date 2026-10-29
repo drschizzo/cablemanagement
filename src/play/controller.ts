@@ -11,6 +11,7 @@ import { disposeTree } from '../render/dispose';
 import { World } from '../game/world';
 import type { Evaluation } from '../game/evaluation';
 import type { Port } from '../game/rack';
+import { SERVICES } from '../game/services';
 import type { CordType } from '../game/cordTypes';
 import type { LevelDef } from '../game/levels/levelDef';
 import { sfx } from '../audio/sfx';
@@ -138,7 +139,13 @@ export class Controller implements PlayContext, InputCommands {
     if (threaded) this.world.sim.startWorker();
     const types = new Map<number, CordType>();
     this.world.circuits.forEach((c) => types.set(this.world.rack.port(c.a).unit, c.type));
-    this.rackView = new RackView(this.world.rack, types, { labelOf: (u) => events.unitLabel(u) });
+    // a link carries its service's traffic: the switch shows it in the colour of its cords and labels
+    const traffic = new Map<string, string>();
+    for (const ci of this.world.circuits) for (const id of [ci.a, ci.b]) traffic.set(id, SERVICES[ci.service].color);
+    this.rackView = new RackView(this.world.rack, types, {
+      labelOf: (u) => events.unitLabel(u),
+      trafficColorOf: (p) => traffic.get(p.id) ?? null,
+    });
     this.pointer = new Pointer(stage);
     this.picker = new CordPicker(stage, this.world, this.pointer);
     this.history = new UndoHistory(this.world);

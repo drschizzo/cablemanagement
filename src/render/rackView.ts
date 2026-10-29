@@ -10,7 +10,7 @@ import { assertNever } from '../lib/assertNever';
 import { mergeStatic } from './batch';
 import { bevelBox, bevelTemplate } from './bevel';
 import { LedGlow, ledGlows } from './ledGlow';
-import { STEADY, activity, blinkable, ledGlow, ledMesh, pulse, type LedSpec } from './leds';
+import { STEADY, activity, blinkable, ledGlow, ledMesh, pulse, type Blink, type LedSpec } from './leds';
 import { rackMat } from './rackMaterials';
 import { buildItem } from './rackItems';
 import { crateWall, roundedBox } from './shapes';
@@ -30,16 +30,27 @@ export interface RackViewOptions {
   roomFloor?: boolean;
   /** the words on the face plates (default: none) */
   labelOf?: UnitLabeller;
+  /**
+   * The colour of the traffic a port carries once linked as planned (its
+   * service's): active equipment then shows it on a second light beside the
+   * port's own. null: none; not given: no second light at all.
+   */
+  trafficColorOf?: (port: Port) => THREE.ColorRepresentation | null;
 }
+
+/** how far either side of a port its two lights stand, when it has both (m) */
+const LED_SPLIT = 0.0024;
 
 export class RackView {
   group = new THREE.Group();
   itemsGroup = new THREE.Group();
   /** the rings that highlight ports, made the first time each is asked for (see marker()) */
   portMarkers = new Map<string, THREE.Mesh>();
-  /** every port LED, one instance each */
+  /** every port LED, one instance each, then the traffic lights of the ports that have one */
   private leds: THREE.InstancedMesh;
   private ledOf = new Map<string, number>();
+  /** the ports of active equipment, which show their traffic on a second light: its rank among them */
+  private trafficOf = new Map<string, number>();
   private ledTint: THREE.InstancedBufferAttribute;
   private ledBlink: THREE.InstancedBufferAttribute;
   /** the status and activity lights of the equipment, gathered while it is built */
@@ -61,18 +72,21 @@ export class RackView {
     mergeStatic(this.group, (m) => m.parent === this.group && !m.userData.reflective);
     this.layParts();
     const ports = rack.ports.filter((p) => this.ledOf.has(p.id));
+    const count = ports.length + this.trafficOf.size;
     // a unit lens, sized by its instance (blinkable() reads the size there)
     const geo = new THREE.BoxGeometry(1, 1, 0.001);
-    this.ledTint = new THREE.InstancedBufferAttribute(new Float32Array(3 * ports.length), 3);
-    this.ledBlink = new THREE.InstancedBufferAttribute(new Float32Array(3 * ports.length), 3);
+    this.ledTint = new THREE.InstancedBufferAttribute(new Float32Array(3 * count), 3);
+    this.ledBlink = new THREE.InstancedBufferAttribute(new Float32Array(3 * count), 3);
     geo.setAttribute('emissiveTint', this.ledTint);
     geo.setAttribute('blink', this.ledBlink);
-    this.leds = new THREE.InstancedMesh(geo, blinkable(new THREE.MeshStandardMaterial({ roughness: 0.3 })), ports.length);
+    this.leds = new THREE.InstancedMesh(geo, blinkable(new THREE.MeshStandardMaterial({ roughness: 0.3 })), count);
     this.leds.receiveShadow = true;
     const m4 = new THREE.Matrix4();
     for (const p of ports) {
-      const i = this.ledOf.get(p.id)!;
-      this.leds.setMatrixAt(i, m4.makeScale(0.003, 0.0018, 1).setPosition(p.x, p.y + 0.0078, 0.0006));
+      const traffic = this.trafficLed(p);
+      const split = traffic === undefined ? 0 : LED_SPLIT;
+      this.leds.setMatrixAt(this.ledOf.get(p.id)!, m4.makeScale(0.003, 0.0018, 1).setPosition(p.x - split, p.y + 0.0078, 0.0006));
+      if (traffic !== undefined) this.leds.setMatrixAt(traffic, m4.makeScale(0.003, 0.0018, 1).setPosition(p.x + split, p.y + 0.0078, 0.0006));
       this.setLed(p, 'off');
     }
     const lights = ledMesh(this.lights);
@@ -284,6 +298,8 @@ export class RackView {
         this.part(bevelTemplate(0.0085, 0.008, 0.002, 0.0005), rackMat.hole, p.x, p.y - 0.002, 0.0042);
       }
       this.ledOf.set(p.id, this.ledOf.size);
+      // a patch panel is passive, a power socket carries no traffic
+      if (this.opts.trafficColorOf && u.kind !== 'panel' && !p.power) this.trafficOf.set(p.id, this.trafficOf.size);
     }
   }
 
@@ -403,22 +419,40 @@ export class RackView {
     for (const p of this.rack.ports) if ((this.ledStates.get(p.id) ?? 'off') !== (states.get(p.id) ?? 'off')) this.setLed(p, states.get(p.id) ?? 'off');
   }
 
+  /** the instance of a port's traffic light, after every port's own; undefined: it has none */
+  private trafficLed(port: Port): number | undefined {
+    const k = this.trafficOf.get(port.id);
+    return k === undefined ? undefined : this.ledOf.size + k;
+  }
+
   setLed(port: Port, state: LedState): void {
     const i = this.ledOf.get(port.id);
     if (i === undefined) return;
     if ((this.ledStates.get(port.id) ?? 'off') !== state) this.ledsVersion++;
     this.ledStates.set(port.id, state);
     const c = state === 'ok' ? '#39ff6a' : state === 'wrong' ? '#ffae1f' : state === 'down' ? '#ff3b2f' : state === 'bypass' ? '#ffcf4a' : '#000000';
-    const col = state === 'off' ? new THREE.Color(0, 0, 0) : ledGlow(new THREE.Color(c));
+    // a good line carries traffic (only active equipment shows it: a patch panel is passive), on
+    // its own light when the port has one (this one then stays lit, as a link light does);
+    // a wrong one blinks slowly, as a fault does
+    const traffic = this.trafficLed(port);
+    const active = this.rack.units[port.unit].kind !== 'panel';
+    const b = state === 'wrong' ? pulse(1.2, 0.6) : state === 'down' ? pulse(3, 0.5)
+      : (state === 'ok' && traffic === undefined || state === 'bypass') && active ? activity(this.seed + i, state === 'ok' ? 0.8 : 0.4) : STEADY;
+    this.paintLed(i, state === 'off' ? null : c, b);
+    if (traffic !== undefined) {
+      const color = state === 'ok' ? this.opts.trafficColorOf!(port) : null;
+      this.paintLed(traffic, color, activity(this.seed + traffic, 0.8));
+    }
+  }
+
+  /** one LED lit in `color` and blinking so, or off (null) */
+  private paintLed(i: number, color: THREE.ColorRepresentation | null, b: Blink): void {
+    const col = color === null ? new THREE.Color(0, 0, 0) : ledGlow(new THREE.Color(color));
     col.toArray(this.ledTint.array, 3 * i);
     this.ledTint.needsUpdate = true;
-    // a good line carries traffic (only active equipment shows it: a patch panel is passive);
-    // a wrong one blinks slowly, as a fault does
-    const active = this.rack.units[port.unit].kind !== 'panel';
-    const b = state === 'wrong' ? pulse(1.2, 0.6) : state === 'down' ? pulse(3, 0.5) : (state === 'ok' || state === 'bypass') && active ? activity(this.seed + i, state === 'ok' ? 0.8 : 0.4) : STEADY;
     this.ledBlink.setXYZ(i, b.rate, b.duty, b.phase);
     this.ledBlink.needsUpdate = true;
-    this.leds.setColorAt(i, col.set(state === 'off' ? '#202020' : c));
+    this.leds.setColorAt(i, color === null ? col.set('#202020') : col.set(color));
     this.leds.instanceColor!.needsUpdate = true;
   }
 
