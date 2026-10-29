@@ -11,7 +11,13 @@ export default defineConfig({
   resolve: { conditions },
   ssr: { resolve: { conditions: ['source'], externalConditions: ['source'] } }, // chemins relatifs : le jeu marche aussi sous https://<compte>.github.io/cablemanagement/
   worker: { format: 'es' },
-  build: { target: 'es2022', chunkSizeWarningLimit: 900 }, // three.js
+  build: {
+    target: 'es2022',
+    // three.js dans un fichier à part : chacun sous la limite, et le navigateur garde three.js en cache quand seul
+    // le jeu change
+    chunkSizeWarningLimit: 900,
+    rollupOptions: { output: { manualChunks: { three: ['three'] } } },
+  },
   test: {
     include: ['tests/**/*.test.ts'],
     // la physique tourne sur le fil du test (pas de Worker sous Node) : quelques secondes par niveau
