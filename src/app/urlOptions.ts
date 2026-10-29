@@ -24,7 +24,8 @@ export interface UrlOptions {
 
 export function readUrlOptions(search: string): UrlOptions {
   const params = new URLSearchParams(search);
-  const int = (name: string) => Number(params.get(name)) || 0;
+  // whole numbers only: a quality of 1.5 would be no level of QUALITY
+  const int = (name: string) => Math.trunc(Number(params.get(name))) || 0;
   return {
     syncPhysics: params.has('sync'),
     bays: Math.max(1, Math.min(32, int('bays') || SHOWCASE_DEFAULT.bays)),

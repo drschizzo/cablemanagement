@@ -17,7 +17,9 @@ export function formatCost(points: number): string {
 
 /** a cord length: in centimetres under a metre, else in metres */
 export function formatLength(metres: number): string {
-  return metres < 1 ? `${Math.round(metres * 100)} cm` : `${formatDecimal(metres, metres % 1 ? 2 : 0)} m`;
+  // rounded to the centimetre first: 99.6 cm is 1 m, 1.004 m is 1 m
+  const cm = Math.round(metres * 100);
+  return cm < 100 ? `${cm} cm` : `${formatDecimal(cm / 100, cm % 100 ? 2 : 0)} m`;
 }
 
 /** a duration as minutes:seconds */

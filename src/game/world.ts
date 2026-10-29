@@ -141,7 +141,7 @@ export class World {
     this.newCords = new Map(level.cords ?? []);
     this.maintenance = new MaintenanceWindow(this.circuits, (i) => this.circuitUp(i), level.downtime ?? Infinity, level.bypass ?? 0);
     // their own draws: the incidents leave the level's (schedule, mess) as they are
-    this.incidents = new Incidents(level.incidents ?? [], () => this.maintenance.live, (i) => this.circuitUp(i), rng(level.seed + 1));
+    this.incidents = new Incidents(level.incidents ?? [], () => this.maintenance.live, (i) => this.circuitUp(i), (i) => this.circuitUp(i) || this.maintenance.bypassed.has(i), rng(level.seed + 1));
   }
 
   // ------------------------------------------------- maintenance window

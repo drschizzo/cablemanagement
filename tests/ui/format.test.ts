@@ -16,6 +16,14 @@ describe('numbers as the player reads them', () => {
     expect(formatLength(1.5)).toBe('1,50 m');
   });
 
+  it('rounds a length off the physics to the centimetre before choosing the unit', () => {
+    expect(formatLength(0.996)).toBe('1 m');
+    expect(formatLength(0.994)).toBe('99 cm');
+    expect(formatLength(1.004)).toBe('1 m');
+    expect(formatLength(1.996)).toBe('2 m');
+    expect(formatLength(1.005 + 1e-9)).toBe('1,01 m');
+  });
+
   it('writes a duration as minutes:seconds', () => {
     expect(formatTime(0)).toBe('0:00');
     expect(formatTime(65.9)).toBe('1:05');

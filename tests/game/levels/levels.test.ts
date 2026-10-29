@@ -2,6 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { World } from '../../../src/game/world';
 import { ITEM_KINDS } from '../../../src/game/supplies';
+import { SERVICES } from '../../../src/game/services';
 import { LEVELS, TUTORIAL } from '../../../src/game/levels/campaign';
 import { freeLevel } from '../../../src/game/levels/freeLevel';
 import { PUZZLES } from '../../../src/game/levels/puzzles';
@@ -22,7 +23,7 @@ describe.each(ALL.map((lv) => [lv.id, lv] as const))('%s', (_, lv) => {
   });
 
   it('the services of the schedule have a label colour', () => {
-    for (const c of w.circuits) expect(c.service).toBeGreaterThanOrEqual(0);
+    for (const c of w.circuits) expect(SERVICES[c.service]?.color, `service ${c.service}`).toBeDefined();
   });
 
   it('the starting mess settles without blowing up', () => {

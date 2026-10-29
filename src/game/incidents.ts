@@ -56,13 +56,16 @@ export class Incidents {
   call: { link: CircuitIndex; deadline: number } | null = null;
 
   /**
-   * `live`: the links in production; `isUp`: whether a link carries traffic
-   * now; `random`: who is unplugged, who calls.
+   * `live`: the links in production; `isUp`: whether a link's cord joins its
+   * ports now (a colleague unplugs only those); `served`: whether its users
+   * have their traffic, by its cord or by a bypass (nobody calls about a link
+   * served); `random`: who is unplugged, who calls.
    */
   constructor(
     private specs: readonly IncidentSpec[],
     private live: () => Iterable<CircuitIndex>,
     private isUp: (i: CircuitIndex) => boolean,
+    private served: (i: CircuitIndex) => boolean,
     private random: () => number,
   ) {}
 
@@ -76,7 +79,7 @@ export class Incidents {
     this.elapsed += dt;
     const events: IncidentEvent[] = [];
     const call = this.call;
-    if (call && this.isUp(call.link)) {
+    if (call && this.served(call.link)) {
       events.push({ kind: 'callMet', link: call.link });
       this.call = null;
     } else if (call && this.elapsed >= call.deadline) {
@@ -98,7 +101,7 @@ export class Incidents {
       return up.length ? { kind: 'colleague', link: pick(up, this.random) } : null;
     }
     if (this.call) return null;
-    const down = shuffle(live.filter((i) => !this.isUp(i)), this.random);
+    const down = shuffle(live.filter((i) => !this.served(i)), this.random);
     if (!down.length) return null;
     this.call = { link: down[0], deadline: this.elapsed + CALL_WAIT };
     return { kind: 'call', link: down[0], within: CALL_WAIT };

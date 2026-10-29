@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { load, save } from '../../src/ui/storage';
+import { AUTO_QUALITY, QUALITY } from '../../src/render/quality';
 
 const mem = new Map<string, string>();
 
@@ -34,6 +35,45 @@ describe('browser storage', () => {
     for (const raw of ['{', 'null', '42', '{"stars":3}']) {
       mem.set('cable.progress', raw);
       expect(load('progress')).toEqual({ stars: {}, times: {}, challenges: {}, notes: {} });
+    }
+  });
+
+  it('a wallet of an earlier version gets the fields it lacked; one of another shape reads as empty', () => {
+    const empty = { coins: 0, best: {}, owned: [], equipped: {}, finds: [] };
+    mem.set('cable.wallet', '{"coins":120,"best":{"l1":50}}');
+    expect(load('wallet')).toEqual({ ...empty, coins: 120, best: { l1: 50 } });
+    for (const raw of ['{"coins":"120"}', '{"coins":5,"owned":"velcro-red"}', '{"coins":5,"best":[]}', '[]']) {
+      mem.set('cable.wallet', raw);
+      expect([raw, load('wallet')]).toEqual([raw, empty]);
+    }
+  });
+
+  it('a career that cannot be resumed reads as a new one', () => {
+    const fresh = { done: 0, cabinet: null, stars: [] };
+    const kept = { done: 2, cabinet: { units: [], items: [], circuits: [], cords: [], straps: [] }, stars: [3, 2] };
+    save('career', kept);
+    expect(load('career')).toEqual(kept);
+    for (const raw of ['{"done":-1,"cabinet":null,"stars":[]}', '{"done":1.5,"cabinet":null,"stars":[]}', '{"done":1,"cabinet":{},"stars":[]}', '{"done":1,"cabinet":null}']) {
+      mem.set('cable.career', raw);
+      expect([raw, load('career')]).toEqual([raw, fresh]);
+    }
+  });
+
+  it('a day of the record without its stars or its grid is left out; the other days stay', () => {
+    mem.set('cable.daily', '{"2026-11-05":{"stars":2,"lines":[2,1]},"2026-11-06":{"stars":1},"2026-11-07":null,"2026-11-08":{"stars":"3","lines":[]}}');
+    expect(load('daily')).toEqual({ '2026-11-05': { stars: 2, lines: [2, 1] } });
+    for (const raw of ['[]', 'null', '"x"']) {
+      mem.set('cable.daily', raw);
+      expect([raw, load('daily')]).toEqual([raw, {}]);
+    }
+  });
+
+  it('a quality level the game no longer has reads as automatic', () => {
+    save('quality', { kind: 'auto', level: QUALITY.length - 1 });
+    expect(load('quality')).toEqual({ kind: 'auto', level: QUALITY.length - 1 });
+    for (const bad of [{ kind: 'auto', level: QUALITY.length }, { kind: 'auto', level: 0.5 }, { kind: 'fixed', settings: { ratio: 0, ao: true, ssr: true, shadow: 1024 } }, { kind: 'fixed' }]) {
+      mem.set('cable.quality', JSON.stringify(bad));
+      expect([bad, load('quality')]).toEqual([bad, AUTO_QUALITY]);
     }
   });
 

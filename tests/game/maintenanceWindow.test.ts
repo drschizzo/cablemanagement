@@ -53,6 +53,40 @@ describe('the maintenance window', () => {
     expect(maintenance.bypassed.size).toBe(0);
   });
 
+  it('a bypass put on a link already cut stops the cost at once, and comes back when it is restored', () => {
+    const { up, maintenance } = windowWith([0, 1, 2], 1);
+    up.delete(1);
+    maintenance.tick(1);
+    expect(maintenance.downtime).toBe(3);
+    expect(maintenance.toggleBypass(1)).toBe(true);
+    expect(maintenance.cutCost(1)).toBe(0);
+    maintenance.tick(10);
+    expect(maintenance.downtime).toBe(3);
+    up.add(1);
+    expect(maintenance.tick(0.1)).toEqual([1]);
+    expect(maintenance.bypassesLeft).toBe(1);
+  });
+
+  it('a bypass taken off goes back to the stock, and the link cut costs again', () => {
+    const { up, maintenance } = windowWith([0, 1, 2], 1);
+    maintenance.toggleBypass(2);
+    up.delete(2);
+    maintenance.tick(5);
+    expect(maintenance.downtime).toBe(0);
+    expect(maintenance.toggleBypass(2)).toBe(true);
+    expect(maintenance.bypassesLeft).toBe(1);
+    maintenance.tick(1);
+    expect(maintenance.downtime).toBe(4);
+  });
+
+  it('a bypass on a link never cut stays on it until taken off', () => {
+    const { maintenance } = windowWith([0], 1);
+    maintenance.toggleBypass(0);
+    expect(maintenance.tick(10)).toEqual([]);
+    expect(maintenance.bypassed.has(0)).toBe(true);
+    expect(maintenance.bypassesLeft).toBe(0);
+  });
+
   it('refuses a bypass when none is left, or for a link out of production', () => {
     const { maintenance } = windowWith([0], 0);
     expect(maintenance.toggleBypass(0)).toBe(false);

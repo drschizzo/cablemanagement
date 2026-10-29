@@ -84,9 +84,14 @@ const ENTRIES = {
   daily: {
     key: 'cable.daily',
     fallback: (): Record<string, DailyResult> => ({}),
-    parse: (raw: string): Record<string, DailyResult> => JSON.parse(raw),
+    // a day of another shape is left out; the others, and the run of days, stay
+    parse: (raw: string): Record<string, DailyResult> => {
+      const v: unknown = JSON.parse(raw);
+      if (!isRecord(v)) return v as Record<string, DailyResult>;
+      return Object.fromEntries(Object.entries(v).filter(([, r]) => isRecord(r) && typeof r.stars === 'number' && Array.isArray(r.lines))) as Record<string, DailyResult>;
+    },
     format: (v: Record<string, DailyResult>) => JSON.stringify(v),
-    valid: (v: Record<string, DailyResult>) => isRecord(v) && Object.values(v).every((r) => isRecord(r) && typeof r.stars === 'number' && Array.isArray(r.lines)),
+    valid: isRecord,
   } satisfies Entry<Record<string, DailyResult>>,
   /** the career, and the client's cabinet as the player left it */
   career: {

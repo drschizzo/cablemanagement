@@ -14,6 +14,15 @@ describe('the options of the page address', () => {
     expect(readUrlOptions('?bays=99&pairs=99&quality=99')).toMatchObject({ bays: 32, pairs: 16, quality: QUALITY.length - 1 });
     expect(readUrlOptions('?bays=abc')).toMatchObject({ bays: SHOWCASE_DEFAULT.bays });
   });
+
+  it('keeps whole numbers only: a quality between two levels is none', () => {
+    const o = readUrlOptions('?bays=2.5&pairs=6.7&quality=1.5');
+    expect(o).toMatchObject({ bays: 2, pairs: 6, quality: 1 });
+    expect(QUALITY[o.quality!]).toBeDefined();
+    expect(readUrlOptions('?quality=-0.5&bays=0').quality).toBe(0);
+    expect(readUrlOptions('?bays=0').bays).toBe(SHOWCASE_DEFAULT.bays);
+    expect(readUrlOptions('?bays=-4').bays).toBe(1);
+  });
 });
 
 describe('the aisles of the title screen', () => {

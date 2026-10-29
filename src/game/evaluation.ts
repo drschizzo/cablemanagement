@@ -120,18 +120,27 @@ export function evaluate(w: World): Evaluation {
   const relaxed = count((s) => s.relaxed);
   const bundles = bundleCount(w, supports);
   const bundlesNeeded = w.level.bundles ?? 0;
-  let stars = 0;
-  if (connected === n) {
-    stars = 1;
-    if (routed >= 0.7 * n && clear >= 0.85 * n) stars = 2;
-    // past the downtime budget, an incident: three stars are out of reach
-    if (routed === n && clear === n && labelled === n && relaxed === n && bundles >= bundlesNeeded && w.maintenance.downtime <= w.maintenance.budget) stars = 3;
-  }
+  const stars = starsOf({ total: n, connected, routed, clear, labelled, relaxed, bundles, bundlesNeeded, downtime: w.maintenance.downtime, budget: w.maintenance.budget });
   return {
     circuits, connected, routed, clear, labelled, relaxed, total: n, stars, cableRouted, cableObstructs, cableStrain,
     liveDown: w.maintenance.liveDown(), downtime: w.maintenance.downtime, budget: w.maintenance.budget, bundles, bundlesNeeded,
     readability: readability(w, circuits, cableStrain, supports),
   };
+}
+
+/** the counts the stars are read from */
+export type StarCounts = Pick<Evaluation, 'total' | 'connected' | 'routed' | 'clear' | 'labelled' | 'relaxed' | 'bundles' | 'bundlesNeeded' | 'downtime' | 'budget'>;
+
+/**
+ * One star: every line connected. Two: most cords routed and clear of the
+ * ports. Three: everything done, and the downtime within its budget (past
+ * it, an incident: three stars are out of reach).
+ */
+export function starsOf(c: StarCounts): number {
+  const n = c.total;
+  if (c.connected < n) return 0;
+  if (c.routed === n && c.clear === n && c.labelled === n && c.relaxed === n && c.bundles >= c.bundlesNeeded && c.downtime <= c.budget) return 3;
+  return c.routed >= 0.7 * n && c.clear >= 0.85 * n ? 2 : 1;
 }
 
 /** how tidy the cabinet is overall (0..1): the four criteria, plugging counting double */

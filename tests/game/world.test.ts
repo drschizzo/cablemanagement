@@ -458,6 +458,17 @@ describe('incidents in a cabinet', () => {
     expect(incidents.some((e) => e.kind === 'callMissed')).toBe(true);
     expect(w.maintenance.downtime - before).toBeGreaterThan(40);
   });
+
+  it('nobody calls about a link the player cut on a bypass', () => {
+    const w = new World({ ...L1, bypass: 1, incidents: [{ kind: 'call', at: 1 }] });
+    expect(w.maintenance.toggleBypass(0)).toBe(true);
+    w.unplug(0, 0);
+    expect(w.circuitUp(0)).toBe(false);
+    const { incidents } = w.workGoesOn(2);
+    expect(incidents).toEqual([]);
+    w.workGoesOn(120);
+    expect(w.maintenance.downtime).toBe(0);
+  });
 });
 
 describe('cords broken inside', () => {

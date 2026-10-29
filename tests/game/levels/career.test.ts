@@ -30,6 +30,24 @@ describe('a cabinet carried over', () => {
     expect(again.evaluate().connected).toBe(again.circuits.length);
   });
 
+  it('keeps each strap round the same cords, though a cord before them went to the crate', () => {
+    const level = ticketLevel(0, null);
+    const w = finished(level);
+    strapBundles(w, 1);
+    expect(w.straps.length).toBeGreaterThan(0);
+    // a strap, told by the ports of its cords (their indices change)
+    const strapped = (world: World) => world.straps.map((st) => st.nodes.map((i) => world.cables[world.sim.cableOf[i]].ends.map((e) => e.port).join('-')).sort());
+    const inStraps = new Set(w.straps.flatMap((st) => st.nodes.map((i) => w.sim.cableOf[i])));
+    // a cord in no strap, with strapped cords after it: those are numbered anew
+    const gone = w.cables.findIndex((_, c) => !inStraps.has(c) && [...inStraps].some((s) => s > c));
+    expect(gone).toBeGreaterThanOrEqual(0);
+    const before = strapped(w);
+    w.depositCable(gone);
+    const cabinet = cabinetOf(w);
+    const again = new World({ ...level, schedule: () => cabinet.circuits, starts: cabinet.cords, straps: cabinet.straps, preinstalled: cabinet.items });
+    expect(strapped(again)).toEqual(before);
+  });
+
   it('leaves out the cords lying in the crate', () => {
     const w = finished(ticketLevel(0, null));
     w.depositCable(0);
