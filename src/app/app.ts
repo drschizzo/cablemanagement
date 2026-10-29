@@ -8,15 +8,17 @@ import { Showcase } from '../showcase/showcase';
 import { Hud } from '../ui/hud';
 import { Tutorial } from '../ui/tutorial';
 import { cordTooltipHtml, hintHtml, statsText, toastText } from '../ui/messages';
+import { isDialogOpen } from '../ui/dom';
 import { nextLevelToPlay } from '../game/levels/campaign';
 import type { LevelDef } from '../game/levels/levelDef';
 import { SHOWCASE_DEFAULT } from '../game/levels/showcaseRack';
 import type { BakedBay } from '../game/mess/baked';
 import { SceneLoader } from './sceneLoader';
-import { TitleScreen } from './titleScreen';
-import { measureInsets } from './viewInsets';
+import { TitleScreen } from '../ui/titleScreen';
+import { onPanelsResized, panelMargins } from '../ui/panelMargins';
 import type { AisleSettings } from './urlOptions';
 import { $ } from '../lib/page';
+import { ShowcaseSwitch } from '../ui/showcaseSwitch';
 
 /**
  * The next aisle, built and fallen in the background while this one is on
@@ -38,6 +40,7 @@ export class App {
   private mode: { dispose(): void } | null = null;
   private loader: SceneLoader;
   private title: TitleScreen;
+  private showcaseSwitch: ShowcaseSwitch;
   private nextAisle: NextAisle | null = null;
   /** the seed of the next aisle to show, only for the first one */
   private pendingSeed: number | undefined;
@@ -54,7 +57,13 @@ export class App {
       nextLevel: () => nextLevelToPlay(this.hud.progress.stars),
       hasProgress: () => Object.keys(this.hud.progress.stars).length > 0,
     });
+    this.showcaseSwitch = new ShowcaseSwitch({
+      toggle: () => this.showcase?.toggle(),
+      another: () => this.startShowcase(),
+      state: () => this.showcase?.state ?? 'moving',
+    });
     this.pendingSeed = aisles.firstSeed;
+    onPanelsResized(() => this.reframe());
     setInterval(() => this.hud.tick(), 250);
   }
 
@@ -70,12 +79,13 @@ export class App {
         onToast: (toast) => hud.toast(toastText(toast)),
         onStats: (stats) => hud.stats(statsText(stats)),
         onHint: (hint) => hud.hint(hint ? hintHtml(hint) : null),
+        isDialogOpen,
       }, this.threaded);
       this.ctl = ctl;
       hud.attach(ctl, level);
       if (level.kind === 'tutorial') this.mode = new Tutorial(ctl, hud, { showcase: () => this.startShowcase(), play: () => this.playNext() });
       else if (brief) hud.showBrief(level);
-      measureInsets(this.stage);
+      this.reframe();
     });
   }
 
@@ -96,10 +106,17 @@ export class App {
       this.mode = this.showcase = showcase;
       document.body.classList.remove('booting');
       showcase.view = this.aisles.view;
+      showcase.onStateChange = (state, to) => this.showcaseSwitch.render(state, to, showcase.bayCount);
+      this.showcaseSwitch.show();
       showcase.start();
-      measureInsets(this.stage);
+      this.reframe();
       this.prepareNextAisle();
     });
+  }
+
+  /** frames the cabinet in the screen the panels leave free (they change with the scene) */
+  private reframe(): void {
+    this.stage.setPanelMargins(panelMargins());
   }
 
   /** the first level not yet tidy enough to open the next one, or the menu once they all are */
@@ -113,6 +130,7 @@ export class App {
   private leaveScene(): void {
     // a title screen still loading is left too
     document.body.classList.remove('demo', 'booting');
+    if (this.showcase) this.showcaseSwitch.hide();
     this.mode?.dispose();
     this.mode = null;
     this.showcase = null;
@@ -132,7 +150,7 @@ export class App {
     }
     const seed = this.pendingSeed;
     this.pendingSeed = undefined;
-    return Showcase.create(this.stage, this.threaded, { another: () => this.startShowcase() }, (f) => this.title.showProgress(f), {
+    return Showcase.create(this.stage, this.threaded, (f) => this.title.showProgress(f), {
       seed,
       bays: this.aisles.bays,
       pairs: seed === undefined ? this.aisles.anotherPairs() : this.aisles.firstPairs,
@@ -143,7 +161,7 @@ export class App {
   private prepareNextAisle(): void {
     if (this.nextAisle) return;
     const next: NextAisle = { aisle: null!, onProgress: () => {}, done: 0, ready: false };
-    next.aisle = Showcase.create(this.stage, this.threaded, { another: () => this.startShowcase() }, (f) => { next.done = f; next.onProgress(f); },
+    next.aisle = Showcase.create(this.stage, this.threaded, (f) => { next.done = f; next.onProgress(f); },
       { bays: this.aisles.bays, pairs: this.aisles.anotherPairs(), background: true });
     // its pieces are built between the frames, which come late meanwhile (see Stage.busy)
     this.stage.busy++;

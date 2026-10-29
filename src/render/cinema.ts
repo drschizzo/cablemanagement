@@ -83,11 +83,12 @@ export class CinemaPass extends ShaderPass {
   }
 
   /** frames the vignette on the free part of the screen (panels in px), and steps the grain */
-  frame(dt: number, w: number, h: number, insets: { left: number; right: number; top: number; bottom: number }): void {
+  /** `margins`: the screen the panels cover; the vignette centres on the rest */
+  frame(dt: number, w: number, h: number, margins: { left: number; right: number; top: number; bottom: number }): void {
     const u = this.uniforms;
     u.time.value = (u.time.value + dt) % 1000;
     u.aspect.value = w / Math.max(1, h);
-    const fw = Math.max(1, w - insets.left - insets.right), fh = Math.max(1, h - insets.top - insets.bottom);
-    (u.centre.value as THREE.Vector2).set((insets.left + fw / 2) / w, 1 - (insets.top + fh / 2) / h);
+    const fw = Math.max(1, w - margins.left - margins.right), fh = Math.max(1, h - margins.top - margins.bottom);
+    (u.centre.value as THREE.Vector2).set((margins.left + fw / 2) / w, 1 - (margins.top + fh / 2) / h);
   }
 }

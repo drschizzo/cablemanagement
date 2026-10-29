@@ -198,12 +198,13 @@ tourne dans le navigateur.
 | `src/play/` | une partie en cours : la boucle, les outils du joueur, les repères visuels |
 | `src/showcase/` | l'écran titre, l'allée de baies avant / après |
 | `src/render/` | le dessin three.js : baie, câbles, connecteurs, éclairage |
-| `src/ui/` | l'interface HTML : plan de brassage, outils, tutoriel, écran de résultat |
+| `src/ui/` | l'interface HTML : plan de brassage, outils, tutoriel, écran de résultat, écran titre |
+| `src/lib/` | des outils sans rapport avec le jeu (géométrie, tirages au sort), que tout le monde peut importer |
 | `tests/` | tests unitaires (Vitest), rangés comme `src/` |
 | `tools/` | bancs d'essai du moteur, des gestes et des niveaux, sans navigateur ([index](tools/README.md)) |
 | `vendor/cable-kit/` | sous-module git, le dépôt [cable-kit](https://github.com/drschizzo/cable-kit) : le moteur de câbles et son Web Worker (`@drschizzo/avbd-cables`), les tubes construits par le GPU (`@drschizzo/three-cable-tubes`) |
 
-Chaque dossier ne dépend que de ceux qui sont en dessous de lui (`game` en bas,
+Chaque dossier ne dépend que de ceux qui sont en dessous de lui (`lib` puis `game` en bas,
 `app` en haut), et ESLint le vérifie à chaque `npm run lint`.
 
 ### Lire le code

@@ -25,6 +25,17 @@ fichier à soi. `play/controller.ts` faisait 1600 lignes : la souris et le clavi
 `inputRouter.ts`, chaque outil dans `tools/`, chaque repère dans `feedback/`. Certains fichiers restent longs parce
 qu'ils sont cohérents : `game/world.ts` est l'état d'une partie, `game/levels/campaign.ts` est une liste de niveaux.
 
+**Un fichier vit avec ce qu'il sert, pas avec ceux qui l'appellent.** Les couleurs des fibres sont à côté de leurs
+noms (`game/cordTypes.ts`), pas dans la vue des câbles qui les utilisait la première. La place que couvrent les
+panneaux se mesure dans `ui/` (`panelMargins.ts`), qui connaît les panneaux, et `app/` la transmet à la scène.
+Un outil qui ne sait rien du jeu (`assertNever`, `vec3`) va dans `lib/`, et non dans la première couche qui en a eu
+besoin. Pour vérifier, demander : *si je supprimais ce qui l'appelle, ce fichier aurait-il encore un sens ici ?*
+
+**Une couche basse ne lit pas l'interface.** `render/` ne crée pas de bandeau HTML, il signale qu'il a un conseil
+(`onGpuAdvice`) ; `play/` ne cherche pas la classe CSS d'un dialogue ouvert, il pose la question
+(`ControllerEvents.isDialogOpen`) ; la vitrine annonce son état (`onStateChange`) et `ui/showcaseSwitch.ts` le
+montre.
+
 **Séparer les données, les types et le code qui les fabrique.** `game/levels/` en est l'exemple : `levelDef.ts` dit
 ce qu'est un niveau, `equipment.ts` nomme les équipements, `campaign.ts` ne contient que des données, et
 `showcaseRack.ts` / `freeLevel.ts` sont des générateurs.
@@ -93,7 +104,7 @@ comme son commentaire (quel bout reste, le chemin en points, ajusté à la longu
 nœud, le trajet de chaque nœud), et chaque étape a son nom et sa documentation.
 
 **Ne pas recopier.** Une petite fonction utile partout a une seule maison : `dist`, `lerp` et `polyLength` sont
-dans `game/vec3.ts`, et nulle part ailleurs.
+dans `lib/vec3.ts`, `rng`, `shuffle` et `pick` dans `lib/random.ts`, et nulle part ailleurs.
 
 **Ne pas masquer un nom que tout le monde connaît.** Une interface `Pick` cachait le `Pick<>` de TypeScript : elle
 s'appelle `CordPick`.
@@ -141,7 +152,7 @@ dépendent pas de la discipline de chaque appelant. En passant ces champs en lec
 d'ailleurs listé toutes les écritures extérieures qu'il fallait remplacer.
 
 **Échouer tôt et bruyamment.** Un élément absent de `index.html` lève une erreur qui le nomme (`$` dans
-`page.ts`), et un test vérifie qu'il ne manque aucun id ; une retouche de shader qui ne trouve plus son motif lève une
+`lib/page.ts`), et un test vérifie qu'il ne manque aucun id ; une retouche de shader qui ne trouve plus son motif lève une
 erreur (`shaderPatch.ts`) au lieu de ne rien faire.
 
 ## Tester

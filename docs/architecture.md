@@ -14,29 +14,26 @@ src/
   app/          QUELLE SCÈNE est à l'écran, et comment passer de l'une à l'autre
     app.ts          App : un niveau (Controller, avec ou sans tutoriel) ou l'écran titre (Showcase)
     sceneLoader.ts  une scène à la fois : voile de chargement, chargement dépassé par un autre
-    titleScreen.ts  boutons de l'écran titre et du menu des niveaux
     urlOptions.ts   ?sync, ?bays, ?pairs, ?seed : lus depuis une chaîne, donc testables
-    viewInsets.ts   le cadrage de la baie dans la place que laissent les panneaux
   game/         LES RÈGLES et la physique de la baie                       sans three.js ni DOM : tourne sous Node
     world.ts        World, l'état d'une partie : cordons et leurs bouts, branchement, velcros, bac, stock ; montré
                     en lecture seule, changé par ses méthodes
     cables.ts       ce qu'est un cordon (Cable, CableEnd, Strap) et ses indices nommés (CableIndex, EndIndex,
                     NodeIndex, CircuitIndex)
     cordShapes.ts   la géométrie d'un cordon hors physique : remis à une autre longueur, enroulé dans le bac
-    vec3.ts         les points (V3) et la géométrie de base : distance, interpolation, longueur d'un chemin
     evaluation.ts   le score : chaque liaison (branchée, rangée, dégagée, étiquetée, sans tension), étoiles,
                     lisibilité, propreté — des fonctions qui lisent un World sans le modifier
     maintenanceWindow.ts  liaisons en production, budget d'interruption, dérivations
     rack.ts         baie 19", ports, éléments de rangement, formes de collision, zones de rangement
     supplies.ts     les fournitures (supports et velcros), décrites une fois : ItemKind et Stock en dérivent
-    exhaustive.ts   assertNever, le défaut d'un switch qui a traité tous les cas
+    schedule.ts     le plan de brassage : une ligne (Circuit), et le plan tiré au hasard d'un niveau (makeSchedule)
     cordTypes.ts    sortes de cordon (fibre, cuivre) et longueurs du catalogue
     services.ts     les services du plan (données, voix…) : couleur, poids d'une coupure
     idealRoutes.ts  la route idéale de chaque cordon, la baie « finie » d'un niveau (tidyKit), les cordons couchés
                     sur leurs routes (tidyLayout, la baie rangée de la vitrine)
     routeLaying.ts  l'outil Chemin côté règles : le chemin planifié (planRoute), le câble posé (RouteRun)
     physics/        le solveur tel que le jeu le mène (rackCableSim : mains, ports, creux des guides), et son Worker
-    mess/           le désordre de départ : plan de brassage et chemins emmêlés (tangle), sa chute dans un Worker,
+    mess/           le désordre de départ : les chemins emmêlés des cordons (tangle), leur chute dans un Worker,
                     sa version précalculée pour l'écran titre (baked, showcase.bin)
     levels/         ce qu'est un niveau (levelDef : une union par sorte, campagne, tutoriel, partie libre, vitrine,
                     banc), les équipements nommés, la campagne et le tutoriel, la partie libre, les baies de la vitrine
@@ -53,9 +50,8 @@ src/
     undoHistory.ts  les états de la baie pour Ctrl+Z
     messages.ts     ce qu'une partie dit au joueur, en données (Toast, Hint, CordInfo, HoverNote) : ui/ les met en mots
     cordInfo.ts     ce que la bulle dit d'un cordon survolé
-    frontImage.ts   l'image de face de la baie (avant / après de l'écran de résultat)
   showcase/     L'ÉCRAN TITRE : l'allée avant / après, une scène sans partie en cours
-    showcase.ts     Showcase : l'allée, son interrupteur, sa pluie de câbles
+    showcase.ts     Showcase : l'allée, sa bascule d'un état à l'autre, sa pluie de câbles
     closet.ts       une baie et ses deux états (le désordre et la baie rangée), la chorégraphie de l'un à l'autre
     bay.ts          un état d'une baie : son World, sa vue, le vol de ses cordons
     aisleLayout.ts  où se tiennent les baies : un demi-cercle autour du spectateur
@@ -65,6 +61,8 @@ src/
     stageSetup.ts   la construction du renderer, des contrôles, des lumières et des passes (reflets SSR,
                     occlusion GTAO, bloom), avec les correctifs qu'elles ont demandés
     shaderPatch.ts  les retouches des shaders de three.js, qui échouent bruyamment si three.js a changé
+    gpu.ts          la carte graphique utilisée, et le conseil à donner quand elle dessine trop lentement
+    frontImage.ts   l'image de face de la baie (avant / après de l'écran de résultat)
     rackView.ts     la baie, ses équipements, ports, plaques et voyants
     rackItems.ts    les éléments de rangement, construits à partir de leurs formes de collision (buildItem)
     rackMaterials.ts, rackTextures.ts, shapes.ts, room.ts   matériaux, textures, formes, sol de la salle
@@ -80,11 +78,19 @@ src/
     progress.ts     la progression du joueur : meilleur score, niveau ouvert, niveau suivant (fonctions pures)
     messages.ts     tous les textes d'une partie : messages, aides, bulle d'un cordon, critères de lisibilité
     tutorial.ts     le tutoriel guidé, par-dessus un niveau
-    dom.ts, icons.ts petites aides DOM, icônes de la barre d'outils
+    titleScreen.ts  les boutons de l'écran titre et du menu des niveaux ; showcaseSwitch.ts, l'interrupteur
+                    Avant / Après et sa légende
+    panelMargins.ts la place que les panneaux couvrent à chaque bord de l'écran : la baie est cadrée dans le reste
+    notice.ts       le bandeau qui conseille le joueur quand la carte graphique est trop lente
+    format.ts       nombres, longueurs et durées tels que le joueur les lit
+    storage.ts      données gardées dans le navigateur (clés, valeurs par défaut, validation)
+    dom.ts, icons.ts petites aides DOM (dialogue ouvert, étoiles), icônes de la barre d'outils
   audio/        les effets sonores, synthétisés
-  format.ts     nombres et durées tels que le joueur les lit
-  page.ts       les éléments de index.html, cherchés par sélecteur ($ : une erreur claire si l'un manque)
-  storage.ts    données gardées dans le navigateur (clés, valeurs par défaut, validation)
+  lib/          DES OUTILS SANS RAPPORT AVEC LE JEU, que toutes les couches peuvent importer et qui n'importent rien
+    assertNever.ts  le défaut d'un switch qui a traité tous les cas
+    vec3.ts         les points (V3) et la géométrie de base : distance, interpolation, longueur d'un chemin
+    random.ts       tirages reproductibles : rng(seed), shuffle, pick
+    page.ts         $ : un élément de index.html, ou une erreur claire s'il manque (game/ ne s'en sert pas)
   dev/          poignées de test, chargées en développement seulement
 tests/        tests unitaires (Vitest), rangés comme src/
 tools/        bancs sans navigateur : moteur, gestes, niveaux, vitrine (index : tools/README.md)
@@ -107,10 +113,13 @@ Une couche n'importe que celles qui sont **en dessous** d'elle :
                  game ─────┘          les règles et la physique (ni three.js ni DOM)
                   │
         @drschizzo/avbd-cables        le moteur de câbles
+
+  lib/   sous toutes les couches : des outils qui ne savent rien du jeu
 ```
 
-`audio/`, `format.ts` et `storage.ts` sont des feuilles : tout le monde peut s'en servir, sauf `game/`, qui reste
-indépendant de la page. **Ce sens est vérifié** : `eslint.config.js` interdit à chaque couche d'importer celles qui
+`lib/` est tout en bas : des outils qui ne savent rien du jeu (géométrie, tirages au sort, `assertNever`), que
+toutes les couches peuvent importer. `audio/` est une feuille. `game/` reste indépendant de la page : il n'utilise
+pas `lib/page.ts`. **Ce sens est vérifié** : `eslint.config.js` interdit à chaque couche d'importer celles qui
 sont au-dessus d'elle, et `npm run lint` échoue avec un message qui dit pourquoi. Le cœur (`game/`) peut ainsi
 tourner sous Node, dans les tests et les bancs, et dans un Web Worker.
 
@@ -175,7 +184,7 @@ sur le fil principal.
 
 ## Données dans le navigateur
 
-`storage.ts` déclare chaque entrée (clé, valeur par défaut, validation) : progression (étoiles et meilleurs temps
+`ui/storage.ts` déclare chaque entrée (clé, valeur par défaut, validation) : progression (étoiles et meilleurs temps
 par niveau) et tutoriel terminé. Les clés sont celles des versions précédentes.
 
 ## Ajouter…
@@ -194,7 +203,7 @@ par niveau) et tutoriel terminé. Les clés sont celles des versions précédent
 | un raccourci clavier | `InputRouter.bindKeys` (`play/inputRouter.ts`), son action sur le contrôleur ou l'outil |
 | une option de la page | `readUrlOptions` (`app/urlOptions.ts`) et son test |
 | une couche, ou une règle entre couches | `eslint.config.js` (`layers`), et le schéma ci-dessus |
-| une donnée gardée | une entrée dans `storage.ts` |
+| une donnée gardée | une entrée dans `ui/storage.ts` |
 | une ressource three.js partagée par tous les niveaux | l'envelopper dans `shared()` (`render/dispose.ts`) |
 | un voyant qui clignote | une `LedSpec` (`render/leds.ts`), posée dans `render/rackView.ts` ; `ledGlow.ts` la reprend sur les câbles et la baie |
 | une passe de post-traitement | le `composer` de `Stage` (`render/stage.ts`) |

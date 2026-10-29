@@ -4,7 +4,7 @@
 import type { Tool } from '../play/controller';
 import { ITEM_KINDS, countOf, type Stock } from '../game/supplies';
 import type { LevelDef } from '../game/levels/levelDef';
-import { $ } from './dom';
+import { $ } from '../lib/page';
 import { iconFingerManager, iconHand, iconRoute, iconStock, iconVelcro } from './icons';
 
 interface ToolButton {

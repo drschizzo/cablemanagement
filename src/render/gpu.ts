@@ -32,35 +32,16 @@ export function gpuInfo(renderer: THREE.WebGLRenderer): GpuInfo {
 
 const isWindows = /windows/i.test(navigator.userAgent);
 
+/** what the player can do about the GPU (ui/notice.ts says it) */
+export type GpuAdvice = 'enableHardwareAcceleration' | 'useDedicatedGpu';
+
 /**
  * What to tell the player, if anything: always when drawn in software; for a
  * built-in GPU only once the game turned out too slow on it (`slow`), and only
  * on Windows, where a second, dedicated GPU is likely to sit unused.
  */
-export function gpuAdvice(gpu: GpuInfo, slow: boolean): string | null {
-  if (gpu.software) {
-    return 'Le jeu est dessiné par le processeur, sans carte graphique : il sera très lent. '
-      + 'Activez l’accélération matérielle du navigateur (Chrome : Paramètres › Système › « Utiliser l’accélération graphique »), puis relancez-le.';
-  }
-  if (gpu.integrated && slow && isWindows) {
-    return 'Le navigateur utilise la puce graphique intégrée au processeur. Si l’ordinateur a aussi une carte graphique dédiée, '
-      + 'choisissez « Hautes performances » pour le navigateur dans Paramètres Windows › Affichage › Graphiques, puis relancez-le.';
-  }
+export function gpuAdvice(gpu: GpuInfo, slow: boolean): GpuAdvice | null {
+  if (gpu.software) return 'enableHardwareAcceleration';
+  if (gpu.integrated && slow && isWindows) return 'useDedicatedGpu';
   return null;
-}
-
-/** a notice at the bottom of the screen, until the player closes it */
-export function showNotice(text: string): void {
-  if (document.getElementById('gpu-notice')) return;
-  const n = document.createElement('div');
-  n.id = 'gpu-notice';
-  const p = document.createElement('p');
-  p.textContent = text;
-  const close = document.createElement('button');
-  close.className = 'link';
-  close.title = 'Fermer';
-  close.textContent = '✕';
-  close.onclick = () => n.remove();
-  n.append(p, close);
-  document.body.appendChild(n);
 }

@@ -21,7 +21,6 @@ import { sfx } from '../audio/sfx';
 import { Closet } from './closet';
 import { aisleLayout } from './aisleLayout';
 import type { Pause } from './bay';
-import { $ } from '../lib/page';
 
 /** where a closet is drawn out of sight once, before it shows (see Showcase.warm) */
 const warmTarget = new THREE.WebGLRenderTarget(1, 1);
@@ -29,10 +28,11 @@ const warmTarget = new THREE.WebGLRenderTarget(1, 1);
 /** delay between two racks of the aisle, when they are tidied up or messed up (ms) */
 const WAVE = 700;
 
+export type ShowcaseState = 'before' | 'after' | 'moving';
+
 export class Showcase {
   private closets: Closet[] = [];
-  private el: HTMLElement;
-  private state: 'before' | 'after' | 'moving' = 'before';
+  private currentState: ShowcaseState = 'before';
   private timers: number[] = [];
   private disposed = false;
   private started = false;
@@ -43,6 +43,17 @@ export class Showcase {
   /** the top of the tallest rack (m): the racks of an aisle may be of any height */
   private get topY(): number {
     return Math.max(...this.closets.map((c) => c.tidy.world.rack.topY));
+  }
+
+  /** the aisle changed state; `to`: where it is going while it moves (the interface's switch follows) */
+  onStateChange: (state: ShowcaseState, to?: 'before' | 'after') => void = () => {};
+
+  get state(): ShowcaseState {
+    return this.currentState;
+  }
+
+  get bayCount(): number {
+    return this.closets.length;
   }
 
   /** where the camera rests, relative to the framing of the aisle (see Stage.view); set before start() */
@@ -56,9 +67,9 @@ export class Showcase {
    * `background`: built while another is on screen, one closet at a time, the
    * frames going on between them.
    */
-  static async create(stage: Stage, threaded: boolean, actions: { another(): void }, progress: (f: number) => void,
+  static async create(stage: Stage, threaded: boolean, progress: (f: number) => void,
     o: { seed?: number; bays?: number; pairs?: number | number[]; baked?: BakedBay[] | null; background?: boolean } = {}): Promise<Showcase> {
-    const sc = new Showcase(stage, actions);
+    const sc = new Showcase(stage);
     const seed = o.seed ?? Math.floor(Math.random() * 1e9), bays = o.bays ?? 1;
     const places = aisleLayout(bays, seed);
     // one height for all, or one each
@@ -115,8 +126,7 @@ export class Showcase {
     return sc;
   }
 
-  private constructor(private stage: Stage, private actions: { another(): void }) {
-    this.el = $('#showcase');
+  private constructor(private stage: Stage) {
     this.floor = buildRoom(0);
     // hidden until start(): an aisle made ready in the background must not lay its floor over the one on screen
     this.floor.visible = false;
@@ -162,14 +172,9 @@ export class Showcase {
     const near = Math.max(...ends.map((p) => p.z));
     this.stage.view = this.view;
     this.stage.frame((bounds.topY + bounds.floorY) / 2 + 0.02, bounds.topY - bounds.floorY + 0.1, side + (n > 1 ? 0.15 : 0.6), n > 1 ? 0 : 0.03, side + 0.6, near);
-    document.body.classList.add('demo');
-    this.el.classList.add('on');
-    (this.el.querySelector('#sc-before') as HTMLElement).onclick = () => { if (this.state === 'after') this.toggle(); };
-    (this.el.querySelector('#sc-after') as HTMLElement).onclick = () => { if (this.state === 'before') this.toggle(); };
-    (this.el.querySelector('#sc-new') as HTMLElement).onclick = () => this.actions.another();
     this.stage.sway(true);
     this.stage.dragPans(true);
-    this.render();
+    this.onStateChange(this.currentState);
     this.rain.start();
     requestAnimationFrame(this.frame);
   }
@@ -184,9 +189,6 @@ export class Showcase {
     this.rain.dispose();
     // one made ready in the background and never shown leaves the screen as it is
     if (!this.started) return;
-    this.el.classList.remove('on');
-    document.body.classList.remove('demo');
-    delete document.body.dataset.sc;
     this.stage.sway(false);
     this.stage.dragPans(false);
     this.stage.view = null;
@@ -209,11 +211,12 @@ export class Showcase {
     this.tick(dt);
   };
 
-  private toggle(): void {
-    if (this.state === 'moving') return;
-    const tidy = this.state === 'before';
-    this.state = 'moving';
-    this.render(tidy ? 'after' : 'before');
+  /** before → after (tidied up, bay after bay), or back to the mess; nothing while it moves */
+  toggle(): void {
+    if (this.currentState === 'moving') return;
+    const tidy = this.currentState === 'before';
+    this.currentState = 'moving';
+    this.onStateChange('moving', tidy ? 'after' : 'before');
     if (tidy) this.rain.stop();
     else this.rain.start();
     // a wave down the aisle: left to right to tidy up, back the other way to mess up
@@ -221,8 +224,8 @@ export class Showcase {
     let left = order.length;
     const done = () => {
       if (--left) return;
-      this.state = tidy ? 'after' : 'before';
-      this.render();
+      this.currentState = tidy ? 'after' : 'before';
+      this.onStateChange(this.currentState);
       if (tidy) sfx.win();
     };
     const later = (ms: number, f: () => void) => this.later(ms, f);
@@ -231,24 +234,5 @@ export class Showcase {
 
   private later(ms: number, f: () => void): void {
     this.timers.push(window.setTimeout(() => { if (!this.disposed) f(); }, ms));
-  }
-
-  /** the switch and its caption; while it moves, the switch is already on its way to `to` */
-  private render(to?: 'before' | 'after'): void {
-    const sw = this.el.querySelector('#sc-switch') as HTMLElement;
-    const many = this.closets.length > 1;
-    // the title screen follows the state too (its LEDs, its play button)
-    document.body.dataset.sc = this.state;
-    sw.className = this.state === 'moving' ? `to-${to}` : this.state;
-    for (const side of ['before', 'after'] as const) {
-      const b = this.el.querySelector(`#sc-${side}`) as HTMLButtonElement;
-      b.disabled = this.state !== (side === 'before' ? 'after' : 'before');
-      b.setAttribute('aria-pressed', String(this.state === side || to === side));
-    }
-    const what = many ? `${this.closets.length} baies` : 'Une baie';
-    (this.el.querySelector('#sc-caption') as HTMLElement).textContent =
-      this.state === 'before' ? `${what}, et le technicien précédent est passé par là.`
-      : this.state === 'after' ? 'Chaque cordon à sa longueur, rangé, étiqueté.'
-      : to === 'after' ? 'Rangement en cours…' : 'Retour au désordre…';
   }
 }

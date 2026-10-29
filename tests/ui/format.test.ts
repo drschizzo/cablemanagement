@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatCost, formatLength, formatTime } from '../src/format';
+import { formatCost, formatLength, formatTime } from '../../src/ui/format';
 
 describe('numbers as the player reads them', () => {
   it('writes a cost in points, with a decimal comma', () => {

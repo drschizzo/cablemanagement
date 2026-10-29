@@ -29,6 +29,8 @@ export interface ControllerEvents {
   onStats(stats: PhysicsStats): void;
   /** a hint for what the player is doing now (null: back to the tool's) */
   onHint(hint: Hint | null): void;
+  /** a dialog of the interface is open: the keys are its own, not the level's */
+  isDialogOpen(): boolean;
 }
 
 /** what the player did, for the tutorial */

@@ -2,8 +2,6 @@
 
 import { $ } from '../lib/page';
 
-export { $ };
-
 /** an overlay or panel: shown, or hidden */
 export function show(selector: string): void {
   $(selector).classList.add('on');
@@ -11,6 +9,11 @@ export function show(selector: string): void {
 
 export function hide(selector: string): void {
   $(selector).classList.remove('on');
+}
+
+/** a dialog is open (brief, result, menu…): it takes the keys */
+export function isDialogOpen(): boolean {
+  return !!document.querySelector('.overlay.on');
 }
 
 /** three stars, the first `count` lit */

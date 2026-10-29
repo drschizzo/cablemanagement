@@ -10,9 +10,10 @@ import type { Controller, Tool } from '../play/controller';
 import type { Evaluation } from '../game/evaluation';
 import type { LevelDef } from '../game/levels/levelDef';
 import { isMuted, setMuted, sfx } from '../audio/sfx';
-import { load, save } from '../storage';
-import { formatTime } from '../format';
-import { $, hide } from './dom';
+import { load, save } from './storage';
+import { formatTime } from './format';
+import { hide, isDialogOpen } from './dom';
+import { $ } from '../lib/page';
 import { STOCK_KEY, Toolbar, toolForKey, toolHelp } from './toolbar';
 import { StockMenu } from './stockMenu';
 import { SchedulePanel } from './schedulePanel';
@@ -140,7 +141,7 @@ export class Hud {
 
   /** the interface's keys: the tools, the stock, the view, the sound, the debug line */
   private onKey(e: KeyboardEvent): void {
-    if (!this.ctl || document.querySelector('.overlay.on')) return;
+    if (!this.ctl || isDialogOpen()) return;
     const tool = toolForKey(e.key);
     if (tool) { this.selectTool(tool); return; }
     if (e.key === STOCK_KEY) { this.toggleStock(); return; }

@@ -3,9 +3,10 @@
 
 import { LEVELS, UNLOCK_STARS } from '../game/levels/campaign';
 import type { LevelDef } from '../game/levels/levelDef';
-import type { Progress } from '../storage';
-import { formatTime } from '../format';
-import { $, hide, show, starsHtml } from './dom';
+import type { Progress } from './storage';
+import { formatTime } from './format';
+import { hide, show, starsHtml } from './dom';
+import { $ } from '../lib/page';
 import { isUnlocked } from './progress';
 
 export function showLevelMenu(progress: Progress, start: (level: LevelDef) => void): void {

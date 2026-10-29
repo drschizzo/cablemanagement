@@ -7,8 +7,9 @@ import type { Controller, Tool } from '../play/controller';
 import { SERVICES } from '../game/services';
 import { ALL_SUPPLIES, ITEM_KINDS, countOf } from '../game/supplies';
 import type { LevelDef } from '../game/levels/levelDef';
-import { formatCost, formatLength, formatTime } from '../format';
-import { $, hide, show } from './dom';
+import { formatCost, formatLength, formatTime } from './format';
+import { hide, show } from './dom';
+import { $ } from '../lib/page';
 
 export class LevelBrief {
   /** the preparation was offered for this level already */

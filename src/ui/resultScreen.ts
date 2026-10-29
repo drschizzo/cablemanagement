@@ -6,8 +6,9 @@ import type { Controller } from '../play/controller';
 import type { Evaluation } from '../game/evaluation';
 import { UNLOCK_STARS } from '../game/levels/campaign';
 import type { LevelDef } from '../game/levels/levelDef';
-import { formatTime } from '../format';
-import { $, hide, show, starsHtml } from './dom';
+import { formatTime } from './format';
+import { hide, show, starsHtml } from './dom';
+import { $ } from '../lib/page';
 import { levelAfter, type LevelResult } from './progress';
 import { readabilityText } from './messages';
 

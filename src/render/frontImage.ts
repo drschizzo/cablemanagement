@@ -2,7 +2,7 @@
 // leave free (the before/after of the result screen).
 
 import type * as THREE from 'three';
-import type { Stage } from '../render/stage';
+import type { Stage } from './stage';
 
 /** `hidden`: overlays left out of the image (their visibility is restored after) */
 export function captureFront(stage: Stage, hidden: THREE.Object3D[]): string {
@@ -14,7 +14,7 @@ export function captureFront(stage: Stage, hidden: THREE.Object3D[]): string {
   stage.render();
   const src = stage.renderer.domElement;
   const k = src.width / Math.max(1, src.clientWidth);
-  const ins = stage.insets;
+  const ins = stage.panelMargins;
   const sx = ins.left * k, sy = ins.top * k;
   const sw = Math.max(1, src.width - (ins.left + ins.right) * k), sh = Math.max(1, src.height - (ins.top + ins.bottom) * k);
   const out = document.createElement('canvas');

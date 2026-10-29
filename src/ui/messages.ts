@@ -9,7 +9,7 @@ import { FIBRE_NAMES } from '../game/cordTypes';
 import { SERVICES } from '../game/services';
 import { SUPPLIES } from '../game/supplies';
 import { assertNever } from '../lib/assertNever';
-import { formatCost } from '../format';
+import { formatCost } from './format';
 
 export const STRAIN_LABELS: Record<Strain, string> = { taut: 'tendu', kinked: 'plié' };
 

@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import { isUnlocked, levelAfter, recordResult } from '../../src/ui/progress';
 import { LEVELS } from '../../src/game/levels/campaign';
-import type { Progress } from '../../src/storage';
+import type { Progress } from '../../src/ui/storage';
 
 const empty = (): Progress => ({ stars: {}, times: {}, challenges: {}, notes: {} });
 const level = { ...LEVELS[0], par: 100 };

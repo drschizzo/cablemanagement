@@ -13,8 +13,16 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { CinemaPass } from './cinema';
 import { ledClock, ledViewHeight } from './leds';
 import { ledGlows } from './ledGlow';
-import { gpuAdvice, gpuInfo, showNotice, type GpuInfo } from './gpu';
+import { gpuAdvice, gpuInfo, type GpuAdvice, type GpuInfo } from './gpu';
 import { addLights, createAmbientOcclusionPass, createBloomPass, createControls, createReflectionPass, createRenderer } from './stageSetup';
+
+/** px from each edge of the screen */
+export interface ScreenMargins {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
 
 /** colour of the backdrop where the floor fades out (also the fog) */
 const HORIZON = '#1a1e21';
@@ -39,8 +47,8 @@ export class Stage {
   key: THREE.DirectionalLight;
   private home = { pos: new THREE.Vector3(), target: new THREE.Vector3() };
   private framed = { cy: 0, height: 1, halfWidth: 0.41, cx: 0.03, shadowWidth: 0.41, near: 0 };
-  /** screen space taken by the panels (px): the cabinet is framed in the rest */
-  insets = { left: 0, right: 0, top: 0, bottom: 0 };
+  /** the screen covered by the panels of the interface (px from each edge): the cabinet is framed in the rest */
+  panelMargins: ScreenMargins = { left: 0, right: 0, top: 0, bottom: 0 };
   /**
    * Where the camera rests, relative to the framing (see frame()): its distance
    * (× the one that fits), its angle above the horizontal (rad), how far below
@@ -75,7 +83,8 @@ export class Stage {
   /** the reflections computed (off: the pass draws the scene alone, still multisampled) */
   private reflect = true;
 
-  constructor(host: HTMLElement) {
+  /** `onGpuAdvice`: the GPU draws too slowly, and the player could do something about it */
+  constructor(host: HTMLElement, private onGpuAdvice: (advice: GpuAdvice) => void = () => {}) {
     this.renderer = createRenderer();
     this.gpu = gpuInfo(this.renderer);
     // (the GPU's own clock, EXT_disjoint_timer_query, would measure the GPU alone; but through ANGLE on
@@ -123,7 +132,7 @@ export class Stage {
     }
     this.applyQuality();
     const advice = gpuAdvice(this.gpu, false);
-    if (advice) showNotice(advice);
+    if (advice) this.onGpuAdvice(advice);
   }
 
   /**
@@ -172,7 +181,7 @@ export class Stage {
     this.applyQuality();
     console.info(`Image abaissée au niveau ${this.quality} de qualité (${mean.toFixed(1)} ms par image, ${this.gpu.name})`);
     const advice = gpuAdvice(this.gpu, true);
-    if (advice) showNotice(advice);
+    if (advice) this.onGpuAdvice(advice);
   }
 
   private applyQuality(): void {
@@ -196,8 +205,8 @@ export class Stage {
   frame(cy: number, height: number, halfWidth = 0.41, cx = 0.03, shadowWidth = halfWidth, near = 0): void {
     this.framed = { cy, height, halfWidth, cx, shadowWidth, near };
     const W = window.innerWidth, H = window.innerHeight;
-    const freeW = Math.max(200, W - this.insets.left - this.insets.right);
-    const freeH = Math.max(200, H - this.insets.top - this.insets.bottom);
+    const freeW = Math.max(200, W - this.panelMargins.left - this.panelMargins.right);
+    const freeH = Math.max(200, H - this.panelMargins.top - this.panelMargins.bottom);
     const tanV = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2));
     // fit the height in the free height, and the cabinet width (0.82 m) in the free width
     const dH = (height * 0.55) / (tanV * (freeH / H));
@@ -246,15 +255,15 @@ export class Stage {
     ledViewHeight.value = h * this.renderer.getPixelRatio();
     this.camera.aspect = w / h;
     // shift the image so that its centre is the centre of the free area
-    const ox = (this.insets.right - this.insets.left) / 2;
-    const oy = (this.insets.bottom - this.insets.top) / 2;
+    const ox = (this.panelMargins.right - this.panelMargins.left) / 2;
+    const oy = (this.panelMargins.bottom - this.panelMargins.top) / 2;
     this.camera.setViewOffset(w, h, ox, oy, w, h);
     this.camera.updateProjectionMatrix();
   }
 
   /** panels changed size: refit */
-  setInsets(insets: { left: number; right: number; top: number; bottom: number }): void {
-    this.insets = insets;
+  setPanelMargins(margins: ScreenMargins): void {
+    this.panelMargins = margins;
     this.resize();
     const f = this.framed;
     this.frame(f.cy, f.height, f.halfWidth, f.cx, f.shadowWidth, f.near);
@@ -308,7 +317,7 @@ export class Stage {
     u.cameraProjectionMatrix.value.copy(this.camera.projectionMatrix);
     u.cameraInverseProjectionMatrix.value.copy(this.camera.projectionMatrixInverse);
     this.fitBloom();
-    this.cinema.frame(dt, window.innerWidth, window.innerHeight, this.insets);
+    this.cinema.frame(dt, window.innerWidth, window.innerHeight, this.panelMargins);
     // (wrapped, so that the GPU's hash of it keeps its precision)
     ledClock.value = (ledClock.value + dt) % 600;
     // the light of the LEDs on the cords; a cabinet taken off the scene lets go of its map

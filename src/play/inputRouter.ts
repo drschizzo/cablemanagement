@@ -127,9 +127,7 @@ export class InputRouter {
   private bindKeys(): void {
     const { hand, supports } = this.tools;
     const level = this.level;
-    /** a dialog is open: the keys are its own */
-    const overlayOpen = () => !!document.querySelector('.overlay.on');
-    const plain = (e: KeyboardEvent) => !e.repeat && !e.ctrlKey && !e.metaKey && !overlayOpen();
+    const plain = (e: KeyboardEvent) => !e.repeat && !e.ctrlKey && !e.metaKey && !level.events.isDialogOpen();
     const key = (type: 'keydown' | 'keyup', listener: (e: KeyboardEvent) => void) => this.on(window, type, listener);
 
     // Shift: the hand carries the cord in depth; the supports tool puts a ring rather than a duct
@@ -149,7 +147,7 @@ export class InputRouter {
     });
     // Space: pinch the cord carried, or let go of the pinch under the pointer
     key('keydown', (e) => {
-      if (e.code !== 'Space' || overlayOpen()) return;
+      if (e.code !== 'Space' || level.events.isDialogOpen()) return;
       // not a click on whatever button has the focus
       e.preventDefault();
       if (e.repeat) return;
@@ -165,14 +163,14 @@ export class InputRouter {
       else hand.letGoOtherHand();
     });
     key('keydown', (e) => {
-      if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey) && !overlayOpen()) {
+      if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey) && !level.events.isDialogOpen()) {
         e.preventDefault();
         level.undo();
       }
     });
     // Tab: the next cord under the pointer
     key('keydown', (e) => {
-      if (e.key !== 'Tab' || hand.carried || overlayOpen()) return;
+      if (e.key !== 'Tab' || hand.carried || level.events.isDialogOpen()) return;
       e.preventDefault();
       if (this.tools.byName[level.tool].worksOnCords) level.cyclePick();
     });

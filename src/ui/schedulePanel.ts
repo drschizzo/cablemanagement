@@ -9,8 +9,9 @@ import { cleanliness, type Evaluation } from '../game/evaluation';
 import { STRAIN_LABELS, readabilityText } from './messages';
 import { UNLOCK_STARS } from '../game/levels/campaign';
 import type { LevelDef } from '../game/levels/levelDef';
-import { formatCost } from '../format';
-import { $, starsHtml } from './dom';
+import { formatCost } from './format';
+import { starsHtml } from './dom';
+import { $ } from '../lib/page';
 
 /** how long the overall gauge flashes when it goes up (ms) */
 const GAUGE_FLASH_MS = 700;

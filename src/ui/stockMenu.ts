@@ -5,8 +5,8 @@ import type { Controller } from '../play/controller';
 import { CATALOGUE, FIBRE_NAMES, type FibreType, FIBRE_COLORS } from '../game/cordTypes';
 import { SERVICES } from '../game/services';
 import type { LevelDef } from '../game/levels/levelDef';
-import { formatLength } from '../format';
-import { $ } from './dom';
+import { formatLength } from './format';
+import { $ } from '../lib/page';
 
 export class StockMenu {
   private menu = $('#stock-menu');

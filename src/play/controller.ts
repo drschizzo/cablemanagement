@@ -19,7 +19,7 @@ import { CordPicker, type CordPick } from './picking';
 import { UndoHistory } from './undoHistory';
 import { cordInfo } from './cordInfo';
 import type { HoverNote } from './messages';
-import { captureFront } from './frontImage';
+import { captureFront } from '../render/frontImage';
 import { PortHint } from './feedback/portHint';
 import { HoldView, SETTLE_SHOW } from './feedback/holdView';
 import { OtherHandMarker } from './feedback/otherHandMarker';

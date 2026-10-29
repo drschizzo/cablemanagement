@@ -2,7 +2,7 @@
 // readability note, time challenge won. Pure functions over the saved record:
 // saving it is the caller's business (storage.ts).
 
-import type { Progress } from '../storage';
+import type { Progress } from './storage';
 import { LEVELS, UNLOCK_STARS } from '../game/levels/campaign';
 import type { LevelDef } from '../game/levels/levelDef';
 

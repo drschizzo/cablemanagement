@@ -4,7 +4,7 @@
 import { LEVELS, TUTORIAL } from '../game/levels/campaign';
 import { freeLevel } from '../game/levels/freeLevel';
 import type { LevelDef } from '../game/levels/levelDef';
-import { load } from '../storage';
+import { load } from './storage';
 import { $ } from '../lib/page';
 
 export interface TitleActions {

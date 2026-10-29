@@ -4,21 +4,20 @@
 import { Stage } from './render/stage';
 import { App } from './app/app';
 import { aisleSettings, readUrlOptions } from './app/urlOptions';
-import { followInsets } from './app/viewInsets';
 import { SHOWCASE_DEFAULT } from './game/levels/showcaseRack';
 import { TUTORIAL } from './game/levels/campaign';
 import type { LevelDef } from './game/levels/levelDef';
 import { loadBaked } from './game/mess/baked';
 import bakedUrl from './game/mess/showcase.bin?url';
 import { $ } from './lib/page';
+import { showGpuNotice } from './ui/notice';
 
 const options = readUrlOptions(location.search);
 const aisles = aisleSettings(options);
-const stage = new Stage($('#view'));
+const stage = new Stage($('#view'), showGpuNotice);
 // the fallen mess of the default aisle, fetched while the rest starts
 const baked = aisles.isDefault && aisles.firstSeed === SHOWCASE_DEFAULT.seed ? loadBaked(bakedUrl) : Promise.resolve(null);
 const app = new App(stage, aisles, !options.syncPhysics, baked);
-followInsets(stage);
 app.startShowcase();
 
 // dev handle

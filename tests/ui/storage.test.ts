@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { load, save } from '../src/storage';
+import { load, save } from '../../src/ui/storage';
 
 const mem = new Map<string, string>();
 
