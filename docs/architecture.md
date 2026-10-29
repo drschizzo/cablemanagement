@@ -49,7 +49,8 @@ src/
                     tutoriel (levelGestures : goulotte, anneau, velcro), les équipements nommés, la formation, les grandes baies et le tutoriel, les puzzles,
                     la carrière (un client, ses tickets, chacun bâti sur la baie laissée par le précédent),
                     la baie sur mesure de l'éditeur (customLevel : sa palette, ses règles, son code de partage), la partie libre et son réglage zen, la baie du jour
-                    (tirée de la date : la même pour tous), les baies de la vitrine
+                    (tirée de la date : la même pour tous), les baies de la vitrine ; site.ts, où se passe un niveau
+                    (tous les tickets chez le client, chaque autre niveau dans sa propre salle) : le décor en est tiré
   play/         UNE PARTIE EN COURS : relie game, render et l'interface
     controller.ts   Controller : la boucle à pas fixe, ce que la baie montre de son état, les actions du HUD
     context.ts      PlayContext (ce que les outils voient du contrôleur), ToolHandler (l'interface d'un outil),
@@ -92,7 +93,8 @@ src/
     cameraTour.ts   le vol de la caméra autour d'une baie validée, puis retour de face (Stage.tour)
     rackView.ts     la baie, ses équipements, ports, plaques et voyants (sur un équipement actif, un second voyant par
                     port : le trafic d'une liaison, à la couleur de son service, que le contrôleur lui donne)
-    serverRoom/     le décor d'un niveau autour de la baie, où rien ne se joue (posé par rackView.ts, à côté du sol) :
+    serverRoom/     le décor d'un niveau autour de la baie, où rien ne se joue (posé par rackView.ts, à côté du sol ;
+                    tiré du lieu du niveau, game/levels/site.ts, que le contrôleur lui donne en graine) :
                     serverRoom.ts assemble la salle (des rangées pas tout à fait alignées, une lumière de contre-jour) ;
                     roomRack.ts, une baie de la salle (ses équipements et leurs ports ; rangée, ses cordons passés
                     dans les peignes, ou en désordre, d'un port à l'autre ; toujours devant les façades) ;
@@ -153,7 +155,7 @@ src/
     assertNever.ts  le défaut d'un switch qui a traité tous les cas
     vec3.ts         les points (V3) et la géométrie de base : distance, différence, produit scalaire, interpolation,
                     longueur d'un chemin
-    random.ts       tirages reproductibles : rng(seed), shuffle, pick
+    random.ts       tirages reproductibles : rng(seed), shuffle, pick, et seedOf (une graine tirée d'un texte)
     page.ts         $ : un élément de index.html, ou une erreur claire s'il manque (game/ ne s'en sert pas)
   dev/          poignées de test, chargées en développement seulement
 tests/        tests unitaires (Vitest), rangés comme src/

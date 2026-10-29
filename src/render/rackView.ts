@@ -29,6 +29,8 @@ export type UnitLabeller = (unit: UnitSpec) => string;
 export interface RackViewOptions {
   /** the room round the cabinet: its floor, and the racks of the room (default: drawn) */
   roomFloor?: boolean;
+  /** the room drawn: the same seed, the same room (default 0) */
+  roomSeed?: number;
   /** the words on the face plates (default: none) */
   labelOf?: UnitLabeller;
   /**
@@ -96,7 +98,7 @@ export class RackView {
     ledGlows.add(this.glow);
     this.glow.light(this.group);
     // after the light of the LEDs is given to the cabinet: the room stands too far to take it
-    if (opts.roomFloor !== false) this.group.add(buildServerRoom(rack.open ? rack.floorY : ROOM_FLOOR(rack), this.roomSeed()));
+    if (opts.roomFloor !== false) this.group.add(buildServerRoom(rack.open ? rack.floorY : ROOM_FLOOR(rack), opts.roomSeed ?? 0));
   }
 
   private light(x: number, y: number, color: THREE.ColorRepresentation, blink = STEADY, w = 0.0022, h = 0.0016, z = 0.0035): void {
@@ -217,11 +219,6 @@ export class RackView {
         softShadow(c.max[0] - c.min[0] + 0.07, c.max[2] - c.min[2] + 0.07, (c.min[0] + c.max[0]) / 2, bot - 0.03, (c.min[2] + c.max[2]) / 2, 0.6),
       );
     }
-  }
-
-  /** the same room round the same cabinet, whenever it is played again */
-  private roomSeed(): number {
-    return this.rack.units.length * 7919 + this.rack.ports.length * 104729 + Math.round(this.rack.topY * 1000);
   }
 
   /** the plastic crate for unplugged cords and spares: walls with a handle and vent slots, a rim on top */

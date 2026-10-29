@@ -12,6 +12,8 @@ import { World } from '../game/world';
 import type { Evaluation } from '../game/evaluation';
 import type { Port } from '../game/rack';
 import { SERVICES } from '../game/services';
+import { levelSite } from '../game/levels/site';
+import { seedOf } from '../lib/random';
 import type { CordType } from '../game/cordTypes';
 import type { LevelDef } from '../game/levels/levelDef';
 import { sfx } from '../audio/sfx';
@@ -145,6 +147,7 @@ export class Controller implements PlayContext, InputCommands {
     this.rackView = new RackView(this.world.rack, types, {
       labelOf: (u) => events.unitLabel(u),
       trafficColorOf: (p) => traffic.get(p.id) ?? null,
+      roomSeed: seedOf(levelSite(level)),
     });
     this.pointer = new Pointer(stage);
     this.picker = new CordPicker(stage, this.world, this.pointer);
