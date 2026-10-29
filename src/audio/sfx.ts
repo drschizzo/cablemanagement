@@ -1,15 +1,11 @@
 // Tiny synthesised sound effects (no assets): clicks, thuds, velcro.
 
-let ctx: AudioContext | null = null;
+import { audioContext } from './context';
+
 let muted = false;
 
 function ac(): AudioContext | null {
-  if (muted) return null;
-  if (!ctx) {
-    try { ctx = new AudioContext(); } catch { return null; }
-  }
-  if (ctx.state === 'suspended') void ctx.resume();
-  return ctx;
+  return muted ? null : audioContext();
 }
 
 export function setMuted(on: boolean): void {
