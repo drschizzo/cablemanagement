@@ -7,6 +7,8 @@
 @import '@fontsource/ibm-plex-mono/latin-600.css';
 
 :root {
+  /* where the tool palette ends, from the left edge: what floats beside it starts after */
+  --toolbar-edge: 212px;
   --bg: #0a0b0c;
   --panel: rgba(11, 12, 13, 0.9);
   --panel-solid: #0f1011;
@@ -326,6 +328,7 @@ button:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
 .free button:hover { border-color: var(--accent); color: var(--accent); }
 
 @media (max-width: 1150px) {
+  :root { --toolbar-edge: 76px; }
   #side { width: 290px; }
   .tool { width: auto; grid-template-columns: 22px auto; }
   .tool .name, .tool .key { display: none; }
@@ -451,7 +454,7 @@ body[data-sc='after'] #title-play.primary { background: var(--accent); color: va
 #tuto {
   position: fixed; bottom: 12px; transform: translateX(-50%); z-index: 6; display: none;
   /* the tutorial card sits in the space between the toolbar and the schedule */
-  left: calc(80px + (100% - 80px - 364px) / 2); width: min(560px, calc(100% - 80px - 364px - 24px));
+  left: calc(var(--toolbar-edge) + (100% - var(--toolbar-edge) - 364px) / 2); width: min(560px, calc(100% - var(--toolbar-edge) - 364px - 24px));
   background: rgba(11, 12, 13, 0.96); border: 1px solid var(--line); border-top: 2px solid var(--accent);
   border-radius: var(--r); padding: 14px 18px; box-shadow: 0 16px 50px rgba(0, 0, 0, 0.55); backdrop-filter: blur(8px);
 }
@@ -472,7 +475,7 @@ button.link { background: none; border: 0; color: var(--dim); font: 10.5px var(-
 button.link:hover { color: var(--text); }
 .tool.pulse { animation: toolpulse 1.4s infinite; border-left-color: var(--accent); }
 @keyframes toolpulse { 50% { background: rgba(139, 227, 180, 0.16); } }
-@media (max-width: 1150px) { #tuto { left: calc(70px + (100% - 70px - 302px) / 2); width: min(520px, calc(100% - 70px - 302px - 16px)); } }
+@media (max-width: 1150px) { #tuto { left: calc(var(--toolbar-edge) + (100% - var(--toolbar-edge) - 302px) / 2); width: min(520px, calc(100% - var(--toolbar-edge) - 302px - 16px)); } }
 @media (max-width: 760px) { #tuto { left: 50%; width: calc(100% - 24px); } }
 
 /* ---- length catalogue and stock */
@@ -511,7 +514,7 @@ button.link:hover { color: var(--text); }
 
 /* the preparation: before the work starts */
 /* between the toolbar and the schedule, never over them */
-#prep { position: fixed; left: 76px; right: 364px; top: 56px; display: none; align-items: center; gap: 14px; margin: 0 auto; max-width: 720px; padding: 10px 12px 10px 16px; background: var(--panel-solid); border: 1px solid var(--accent-line); border-radius: var(--r); font-size: 12.5px; color: var(--dim); z-index: 20; }
+#prep { position: fixed; left: var(--toolbar-edge); right: 364px; top: 56px; display: none; align-items: center; gap: 14px; margin: 0 auto; max-width: 720px; padding: 10px 12px 10px 16px; background: var(--panel-solid); border: 1px solid var(--accent-line); border-radius: var(--r); font-size: 12.5px; color: var(--dim); z-index: 20; }
 #prep.on { display: flex; }
 #prep b { color: var(--accent); }
 #prep button { white-space: nowrap; }
