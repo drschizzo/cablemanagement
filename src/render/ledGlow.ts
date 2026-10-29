@@ -12,6 +12,7 @@
 import * as THREE from 'three';
 import { shared } from './dispose';
 import { LED_ON_GLSL, ledClock } from './leds';
+import { patchShader } from './shaderPatch';
 
 /** texels per metre of the map: finer than the gap between two port LEDs */
 const DENSITY = 400;
@@ -172,7 +173,7 @@ export function ledLit<T extends THREE.MeshStandardMaterial>(m: T, glow: LedGlow
     s.uniforms.ledGlowFrame = { value: glow.frame };
     s.uniforms.ledGlowBox = { value: glow.box };
     s.uniforms.ledGlowGain = gain;
-    s.vertexShader = s.vertexShader
+    s.vertexShader = patchShader(s.vertexShader)
       .replace('#include <common>', '#include <common>\nuniform mat4 ledGlowFrame;\nvarying vec3 vLedP;\nvarying vec3 vLedN;')
       .replace('#include <begin_vertex>', `#include <begin_vertex>
 mat4 ledM = ledGlowFrame * modelMatrix;
@@ -180,8 +181,8 @@ mat4 ledM = ledGlowFrame * modelMatrix;
 ledM = ledM * instanceMatrix;
 #endif
 vLedP = (ledM * vec4(transformed, 1.0)).xyz;
-vLedN = mat3(ledM) * objectNormal;`);
-    s.fragmentShader = s.fragmentShader
+vLedN = mat3(ledM) * objectNormal;`).source;
+    s.fragmentShader = patchShader(s.fragmentShader)
       .replace('#include <common>', '#include <common>\nuniform sampler2D ledGlowMap;\nuniform vec4 ledGlowBox;\nuniform float ledGlowGain;\nvarying vec3 vLedP;\nvarying vec3 vLedN;')
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
 {
@@ -213,7 +214,7 @@ vLedN = mat3(ledM) * objectNormal;`);
     light /= 1.0 + dot(light, Y);
     totalEmissiveRadiance += diffuseColor.rgb * light;
   }
-}`);
+}`).source;
   };
   m.customProgramCacheKey = () => `${prevKey}-ledlit`;
   m.needsUpdate = true;

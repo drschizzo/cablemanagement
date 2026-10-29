@@ -7,6 +7,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { SSRPass } from 'three/examples/jsm/postprocessing/SSRPass.js';
 import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { patchShader } from './shaderPatch';
 
 /** the WebGL renderer: shadows, filmic tone mapping, no multisampling on the canvas itself */
 export function createRenderer(): THREE.WebGLRenderer {
@@ -84,9 +85,9 @@ export function createReflectionPass(renderer: THREE.WebGLRenderer, scene: THREE
   const copy = ssr.copyMaterial;
   copy.uniforms.tMask = { value: ssr.metalnessRenderTarget.texture };
   copy.uniforms.masked = { get value() { return copy.uniforms.tDiffuse.value === ssr.blurRenderTarget2.texture ? 1 : 0; } };
-  copy.fragmentShader = copy.fragmentShader
+  copy.fragmentShader = patchShader(copy.fragmentShader)
     .replace('uniform sampler2D tDiffuse;', 'uniform sampler2D tDiffuse;\nuniform sampler2D tMask;\nuniform float masked;')
-    .replace(/}\s*$/, '\tif ( masked > 0.5 ) gl_FragColor.a *= texture2D( tMask, vUv ).r;\n}');
+    .replace(/}\s*$/, '\tif ( masked > 0.5 ) gl_FragColor.a *= texture2D( tMask, vUv ).r;\n}').source;
   // the reflections cut (see QUALITY): the pass still draws the scene, multisampled, and only copies it on;
   // its own output modes all compute the normals, the reflections and their blur first
   const reflected = ssr.render.bind(ssr);
@@ -127,9 +128,9 @@ export function createBloomPass(strength: number, radius: number): UnrealBloomPa
   // the blur spread it over its whole mip chain, and the screen flashed black. Its bright pass
   // reads it as nothing, and caps the rest (far above any light)
   const high = bloom.materialHighPassFilter;
-  high.fragmentShader = high.fragmentShader.replace(
+  high.fragmentShader = patchShader(high.fragmentShader).replace(
     'vec4 texel = texture2D( tDiffuse, vUv );',
     'vec4 texel = texture2D( tDiffuse, vUv );\n\t\t\tif ( any( isnan( texel ) ) || any( isinf( texel ) ) ) texel = vec4( 0.0 );\n\t\t\ttexel = min( texel, vec4( 1000.0 ) );',
-  );
+  ).source;
   return bloom;
 }

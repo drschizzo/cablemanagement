@@ -7,6 +7,7 @@
 // same from afar (and do not shimmer).
 
 import * as THREE from 'three';
+import { patchShader } from './shaderPatch';
 
 /** kinds of cord, the row of their marking in the atlas */
 export const JACKET_KIND = { CU: 0, OS2: 1, OM4: 2 } as const;
@@ -69,10 +70,10 @@ export function jacketed<T extends THREE.MeshStandardMaterial>(m: T): T {
   m.onBeforeCompile = (s, r) => {
     prev(s, r);
     s.uniforms.jacketPrint = { value: printAtlas() };
-    s.vertexShader = s.vertexShader
+    s.vertexShader = patchShader(s.vertexShader)
       .replace('#include <common>', '#include <common>\nvarying vec4 vJacket;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvJacket = tubeCoord;');
-    s.fragmentShader = s.fragmentShader
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvJacket = tubeCoord;').source;
+    s.fragmentShader = patchShader(s.fragmentShader)
       .replace('#include <common>', `#include <common>
 uniform sampler2D jacketPrint;
 varying vec4 vJacket;
@@ -120,7 +121,7 @@ roughnessFactor = clamp(roughnessFactor + jNear * (0.14 * jNoise(jArc * 700.0 + 
 if (jNear > 0.0) {
   float jh = jHeight(jArc, jAng, jKind) * jNear;
   normal = jBump(-vViewPosition, normal, vec2(dFdx(jh), dFdy(jh)), faceDirection);
-}`);
+}`).source;
   };
   m.customProgramCacheKey = () => `${prevKey}-jacket`;
   return m;
