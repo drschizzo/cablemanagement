@@ -19,7 +19,7 @@ export interface TitleActions {
   showModes(): void;
   showSettings(): void;
   showShop(): void;
-  /** the next level the player has to tidy (undefined: all are done) */
+  /** where the story stands: a level of the training, then a ticket of the career (undefined: both done) */
   nextLevel(): LevelDef | undefined;
   /** the player has stars in some level */
   hasProgress(): boolean;

@@ -9,8 +9,9 @@ import type { LevelDef, TicketLevel } from './levelDef';
 import type { CabinetState } from '../cabinetState';
 import type { Circuit } from '../schedule';
 import type { UnitSpec } from '../rack';
+import type { CordType } from '../cordTypes';
 import { Rack } from '../rack';
-import { BLANK, FIREWALL, ROUTER, UPS, copperPanel, ethernetSwitch, fingerManager, server } from './equipment';
+import { BLANK, FIREWALL, ROUTER, UPS, copperPanel, ethernetSwitch, fingerManager, pdu, poweredServer, server } from './equipment';
 import { makeCables } from '../mess/tangle';
 import { drawIncidents } from '../incidents';
 import { rng, shuffle } from '../../lib/random';
@@ -20,8 +21,10 @@ import { SERVICES } from '../services';
 /**
  * The client's cabinet on the first day: a panel over its switch, the
  * firewall and the router, and free units where later tickets install a
- * second panel and switch (4, 5) and two servers (12, 13). Managers under the
- * switch and the firewall (3, 9); room for more (6, 11).
+ * second panel and switch (4, 5), the archives server under its power strip
+ * (13, 11), the streaming server (7). Managers under the switch and the
+ * firewall (3, 9); room for more (6, 12: the power strip and its server
+ * share the one between them).
  */
 const FIRST_UNITS: UnitSpec[] = [
   BLANK, copperPanel('A', 24), ethernetSwitch('S', 24), BLANK, BLANK, BLANK, BLANK, BLANK,
@@ -34,8 +37,8 @@ export interface TicketSpec {
   install?: { unit: number; spec: UnitSpec }[];
   /** new links from a patch panel to an access switch, drawn among the free ports */
   add?: number;
-  /** new links between equipment: a free port of the equipment named `from` (a switch) to the port `to` (a server's card, the firewall) */
-  links?: { from: string; to: string; service?: number }[];
+  /** new links between equipment: a free port of the equipment named `from` (a switch, a power strip) to the port `to` (a server's card or inlet, the firewall); copper unless told */
+  links?: { from: string; to: string; service?: number; type?: CordType }[];
   /** links taken out of service: their cords are still plugged, to be taken off */
   remove?: number;
   /** services the new links may carry (the first ones of SERVICES) */
@@ -59,8 +62,9 @@ export const TICKETS: TicketSpec[] = [
   { services: 2, downtime: 160, bypass: 1, inventory: { fingerManager: 1, duct: 2, ring: 2, velcro: 3 }, cords: [[0.5, 3], [0.75, 3], [1, 3]] },
   // the newsroom moves in: six links more on the panel
   { add: 6, services: 3, downtime: 140, bypass: 1, inventory: { velcro: 3 }, cords: [[0.5, 3], [0.75, 3], [1, 2]] },
-  // the archives server
-  { install: [{ unit: 12, spec: server('X', 0.03) }], links: [{ from: 'S', to: 'X1', service: 4 }, { from: 'S', to: 'X2', service: 4 }],
+  // the archives server, and the power strip that feeds its two supplies
+  { install: [{ unit: 11, spec: pdu() }, { unit: 13, spec: poweredServer('X', 0.03) }],
+    links: [{ from: 'S', to: 'X1', service: 4 }, { from: 'S', to: 'X2', service: 4 }, { from: 'P', to: 'XP1', service: 4, type: 'PWR' }, { from: 'P', to: 'XP2', service: 4, type: 'PWR' }],
     add: 2, services: 5, downtime: 160, bypass: 1, inventory: { fingerManager: 1, ring: 2, velcro: 2 }, cords: [[1, 2], [1.5, 2], [2, 2]] },
   // the night show moves: links out, links in, and the phone rings
   { remove: 4, add: 4, services: 5, downtime: 180, bypass: 2, incidents: 2, inventory: { velcro: 2 }, cords: [[0.5, 2], [0.75, 3], [1, 2]] },
@@ -70,21 +74,22 @@ export const TICKETS: TicketSpec[] = [
   // the storm: old cords broken inside, and listeners calling
   { add: 2, faults: 2, incidents: 2, services: 5, downtime: 200, bypass: 2, inventory: { velcro: 2 }, cords: [[0.5, 3], [0.75, 3], [1, 3]] },
   // online: the streaming server
-  { install: [{ unit: 13, spec: server('Y', 0.09) }], links: [{ from: 'T', to: 'Y1', service: 4 }, { from: 'T', to: 'Y2', service: 4 }],
+  { install: [{ unit: 7, spec: server('Y', 0.09) }], links: [{ from: 'T', to: 'Y1', service: 4 }, { from: 'T', to: 'Y2', service: 4 }],
     add: 4, services: 6, downtime: 240, bypass: 2, bundles: 2, inventory: { ring: 2, velcro: 6 }, cords: [[1, 3], [1.5, 3], [2, 2]] },
   // the 40th anniversary live: nothing new, everything perfect, in bundles
   { services: 6, downtime: 260, bypass: 2, bundles: 4, inventory: { velcro: 8 }, cords: [[0.5, 4], [0.75, 4], [1, 4]] },
 ];
 
-/** what every ticket shares: copper, cords coloured by service, labels */
+/** what every ticket shares: cords coloured by service, labels; copper, and power once a power strip is in */
 function base(index: number, units: UnitSpec[], spec: TicketSpec): Omit<TicketLevel, 'cables'> {
+  const types: CordType[] = units.some((u) => u.style === 'pdu') ? ['CU', 'PWR'] : ['CU'];
   return {
     id: `career-${index + 1}`,
     kind: 'ticket',
     ticket: index,
     units,
     ...MESS,
-    labels: true, services: spec.services, types: ['CU'], colorByService: true,
+    labels: true, services: spec.services, types, colorByService: true,
     downtime: spec.downtime, bypass: spec.bypass, faults: spec.faults, bundles: spec.bundles,
     incidents: spec.incidents ? drawIncidents(spec.incidents, rng(SEED + 100 + index)) : undefined,
     inventory: spec.inventory,
@@ -143,7 +148,7 @@ function equipmentLinks(rack: Rack, schedule: readonly Circuit[], links: NonNull
   return links.map((l) => {
     const from = rack.ports.filter((p) => rack.units[p.unit].name === l.from && !used.has(p.id)).pop()!;
     used.add(from.id);
-    return { a: from.id, b: l.to, type: 'CU' as const, service: l.service ?? 3 };
+    return { a: from.id, b: l.to, type: l.type ?? 'CU', service: l.service ?? 3 };
   });
 }
 

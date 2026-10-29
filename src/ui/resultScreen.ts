@@ -35,7 +35,7 @@ export function showResult(ctl: Controller, level: LevelDef, ev: Evaluation, out
   $<HTMLImageElement>('#ba-after').src = ctl.capture();
   $('#result-lines').innerHTML = resultLines(level, ev, result, challengeWonBefore).map((l) => `<li>${l}</li>`).join('');
 
-  showNext(outcome.next, actions);
+  showNext(level, outcome.next, actions);
   $('#result-again').onclick = () => { hide('#result'); ctl.resume(); };
   $('#result-menu').onclick = () => { hide('#result'); actions.showModes(); };
   $('#result-home').onclick = () => { hide('#result'); actions.home(); };
@@ -87,15 +87,17 @@ function timeChallengeLine(par: number, result: LevelResult, challengeWonBefore:
   return tr({ fr: `⏱ Défi chrono : ★★★ en moins de ${time}${challengeWonBefore ? ' (déjà réussi)' : ''}.`, en: `⏱ Time challenge: ★★★ in less than ${time}${challengeWonBefore ? ' (won already)' : ''}.` });
 }
 
-/** the way on: the next level (or ticket), open or what opens it */
-function showNext(next: Outcome['next'], actions: ResultActions): void {
+/** the way on from `level`: the next level (or ticket, or the career after the training), open or what opens it */
+function showNext(level: LevelDef, next: Outcome['next'], actions: ResultActions): void {
   const button = $<HTMLButtonElement>('#result-next');
   button.style.display = next ? '' : 'none';
   if (!next) return;
   button.disabled = !next.open;
   button.textContent = !next.open
     ? tr({ fr: `${'★'.repeat(UNLOCK_STARS)} pour le niveau suivant`, en: `${'★'.repeat(UNLOCK_STARS)} for the next level` })
-    : next.level.kind === 'ticket' ? tr({ fr: 'Ticket suivant →', en: 'Next ticket →' }) : tr({ fr: 'Niveau suivant →', en: 'Next level →' });
+    : next.level.kind !== 'ticket' ? tr({ fr: 'Niveau suivant →', en: 'Next level →' })
+    : level.kind === 'ticket' ? tr({ fr: 'Ticket suivant →', en: 'Next ticket →' })
+    : tr({ fr: 'La carrière : Radio Pinède →', en: 'The career: Radio Pinède →' });
   button.onclick = () => { if (next.open) { hide('#result'); actions.start(next.level); } };
 }
 

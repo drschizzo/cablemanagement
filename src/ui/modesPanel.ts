@@ -1,12 +1,13 @@
-// The game modes, in three groups: the story (the campaign, then the
-// career), the challenges (the puzzles, the cabinet of the day) and free play
+// The game modes, in three groups: the story (the training, then the
+// career), the challenges (the puzzles, the cabinet of the day, the big
+// cabinets) and free play
 // (its size, its zen setting, and the editor to compose one's own). One card
 // per mode, with what it is in a sentence and where the player stands in it;
 // a mode not open yet says what opens it (modeLocks.ts). From the title
 // screen, and from a level's pause menu.
 
 import type { LevelDef } from '../game/levels/levelDef';
-import { LEVELS } from '../game/levels/campaign';
+import { BIG_BAYS, LEVELS } from '../game/levels/campaign';
 import { PUZZLES } from '../game/levels/puzzles';
 import { TICKETS } from '../game/levels/career';
 import { dailyLevel, dayKey } from '../game/levels/dailyLevel';
@@ -78,8 +79,8 @@ export class ModesPanel {
         cards: [
           {
             mode: 'campaign',
-            name: { fr: 'Campagne', en: 'Campaign' },
-            what: { fr: `${LEVELS.length} baies de plus en plus chargées, du premier brassage au plat de spaghettis : une règle de plus à chacune.`, en: `${LEVELS.length} ever busier cabinets, from the first patch to the spaghetti bowl: one more rule each.` },
+            name: { fr: 'Formation', en: 'Training' },
+            what: { fr: `${LEVELS.length} baies pour apprendre le métier, une règle de plus à chacune. La carrière vient après.`, en: `${LEVELS.length} cabinets to learn the trade, one more rule each. The career comes after.` },
             status: () => `★ ${stars(LEVELS.map((l) => l.id))}/${3 * LEVELS.length}`,
             open: lead(() => this.actions.levels('campaign', start, reopen)),
           },
@@ -111,6 +112,13 @@ export class ModesPanel {
               return (days[today] ? '★'.repeat(days[today].stars) : tr({ fr: 'pas encore jouée', en: 'not played yet' })) + (run > 1 ? ` · 🔥 ${run}` : '');
             },
             open: () => go(dailyLevel(dayKey(new Date()))),
+          },
+          {
+            mode: 'big',
+            name: { fr: 'Grandes baies', en: 'Big cabinets' },
+            what: { fr: `${BIG_BAYS.length} salles chargées, de la salle serveurs au plat de spaghettis, où toutes les règles se croisent.`, en: `${BIG_BAYS.length} busy rooms, from the server room to the spaghetti bowl, where every rule meets the others.` },
+            status: () => `★ ${stars(BIG_BAYS.map((l) => l.id))}/${3 * BIG_BAYS.length}`,
+            open: lead(() => this.actions.levels('big', start, reopen)),
           },
         ],
       },
@@ -164,8 +172,9 @@ export class ModesPanel {
     const el = document.createElement('div');
     el.className = 'lock';
     const after = modeOpensAfter(mode);
-    const index = after ? LEVELS.indexOf(after) + 1 : 0;
-    el.textContent = after ? tr({ fr: `🔒 S'ouvre avec le niveau ${index} · ${levelTitle(after)}`, en: `🔒 Opens with level ${index} · ${levelTitle(after)}` }) : '';
+    el.textContent = after === null ? ''
+      : 'tickets' in after ? tr({ fr: `🔒 S'ouvre avec le ticket ${after.tickets} de la carrière`, en: `🔒 Opens with ticket ${after.tickets} of the career` })
+      : this.levelLock(after.level);
     if (mode === 'free') {
       const button = document.createElement('button');
       button.className = 'link';
@@ -174,6 +183,12 @@ export class ModesPanel {
       el.appendChild(button);
     }
     return el;
+  }
+
+  /** the training level that opens a mode, by its number and title */
+  private levelLock(id: string): string {
+    const index = LEVELS.findIndex((l) => l.id === id);
+    return tr({ fr: `🔒 S'ouvre avec le niveau ${index + 1} de la formation · ${levelTitle(LEVELS[index])}`, en: `🔒 Opens with level ${index + 1} of the training · ${levelTitle(LEVELS[index])}` });
   }
 
   private freeStatus(): string {

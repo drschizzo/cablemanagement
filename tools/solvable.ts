@@ -9,7 +9,7 @@
 // at their service's weight. Is the downtime budget enough for that?
 import { World } from '../src/game/world';
 import { CATALOGUE } from '../src/game/cordTypes';
-import { LEVELS } from '../src/game/levels/campaign';
+import { BIG_BAYS, LEVELS } from '../src/game/levels/campaign';
 import { SERVICES } from '../src/game/services';
 import { polyLength } from '../src/lib/vec3';
 import { routePlan, strapBundles, tidyKit, tidyLayout, tidyRoutes } from '../src/game/idealRoutes';
@@ -28,7 +28,7 @@ function tidyRoutesOf(lv: (typeof LEVELS)[number]): number[] {
 /** seconds a production line stays cut while its cord is taken out of the heap and plugged back */
 const REWORK = 15;
 
-for (const lv of LEVELS) {
+for (const lv of [...LEVELS, ...BIG_BAYS]) {
   const kit = tidyKit(lv);
   const w = new World(kit, tidyLayout(kit).starts);
   for (let f = 0; f < 240; f++) w.sim.step();
@@ -44,7 +44,7 @@ for (const lv of LEVELS) {
 }
 
 console.log('\nAu départ : les liaisons en production rangées sans les débrancher');
-for (const lv of LEVELS) {
+for (const lv of [...LEVELS, ...BIG_BAYS]) {
   const kit = tidyKit(lv);
   const w = new World(lv);
   w.preroll(60);

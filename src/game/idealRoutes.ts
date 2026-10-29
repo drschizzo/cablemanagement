@@ -28,21 +28,24 @@ const WALL_COLUMNS = 2;
  * How each cord travels: out of its port into the `upper` manager, down the
  * side duct of `side`, into the `lower` manager and up into its other port.
  * `curl`: a panel right above its switch, port to port, no manager at all.
- * Where fibre, copper and power share the cabinet, each family takes its own
- * side (three stars want them in separate ducts).
+ * Where fibre, copper and power both go down the side channels, each family
+ * takes its own side (three stars want them in separate ducts).
  */
 export function routePlan(rack: Rack, circuits: readonly Circuit[]) {
   const mgrs = rack.items.filter((it) => it.kind === 'fingerManager').map((it) => it.unit);
-  const families = [...new Set(circuits.map((c) => CORD_KINDS[c.type].family))].sort();
-  return circuits.map((c) => {
+  const plan = circuits.map((c) => {
     const a = rack.port(c.a), b = rack.port(c.b);
     const upper = nearestManager(mgrs, a.unit, +1);
     // arrive from the manager right above the device, else right below it, else the nearest above
     const lower = mgrs.includes(b.unit - 1) ? b.unit - 1 : mgrs.includes(b.unit + 1) ? b.unit + 1 : nearestManager(mgrs, b.unit, -1);
-    const side = families.length > 1 ? (families.indexOf(CORD_KINDS[c.type].family) % 2 ? 1 : -1) : a.x + b.x * 0.3 < 0 ? -1 : 1;
+    const side = a.x + b.x * 0.3 < 0 ? -1 : 1;
     const curl = b.unit === a.unit + 1 && Math.abs(a.x - b.x) < 0.012;
-    return { a, b, upper, lower, side, curl, li: 0, lo: 0, duct: 0 };
+    return { a, b, upper, lower, side, curl, li: 0, lo: 0, duct: 0, family: CORD_KINDS[c.type].family };
   });
+  const down = plan.filter((p) => !p.curl && p.upper !== p.lower);
+  const families = [...new Set(down.map((p) => p.family))].sort();
+  if (families.length > 1) for (const p of down) p.side = families.indexOf(p.family) % 2 ? 1 : -1;
+  return plan;
 }
 
 export function tidyRoutes(rack: Rack, circuits: readonly Circuit[], radius: number, seg = SEG): V3[][] {

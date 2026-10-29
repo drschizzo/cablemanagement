@@ -9,7 +9,7 @@ import type { LevelDef } from '../game/levels/levelDef';
 import { UNLOCK_STARS } from '../game/levels/campaign';
 import { cabinetOf } from '../game/cabinetState';
 import { assertNever } from '../lib/assertNever';
-import { levelAfter, recordResult, withMet, type LevelResult } from './progress';
+import { endsTheTraining, levelAfter, recordResult, withMet, type LevelResult } from './progress';
 import { levelRules } from '../game/levels/levelRules';
 import { levelGestures } from '../game/levels/levelGestures';
 import { recordDaily, shareText, streak } from './daily';
@@ -41,7 +41,8 @@ export function recordOutcome(level: LevelDef, ev: Evaluation, w: World, time: n
       const challengeWonBefore = !!progress.challenges[level.id];
       const result = recordResult(progress, level, ev.stars, time, moves);
       save('progress', progress);
-      const after = levelAfter(level);
+      // after the training, the career (the ticket where it stands)
+      const after = levelAfter(level) ?? (endsTheTraining(level) ? currentTicket(load('career')) : null);
       // the next level opens on a tidy cabinet, not on a merely connected one
       const next = after && { level: after, open: Math.max(result.previousStars, ev.stars) >= UNLOCK_STARS };
       return { result, challengeWonBefore, share: null, next };

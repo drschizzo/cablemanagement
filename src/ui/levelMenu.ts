@@ -1,9 +1,9 @@
-// The levels menu, a section at a time: the campaign (the tutorial, then one
+// The levels menu, a section at a time: the training (the tutorial, then one
 // card per level with its stars, its best time and its time challenge,
-// and what opens it while it is locked), or the puzzles (always open,
-// their gestures challenge).
+// and what opens it while it is locked), the big cabinets (the same cards),
+// or the puzzles (always open, their gestures challenge).
 
-import { LEVELS, TUTORIAL, UNLOCK_STARS } from '../game/levels/campaign';
+import { BIG_BAYS, LEVELS, TUTORIAL, UNLOCK_STARS } from '../game/levels/campaign';
 import { PUZZLES } from '../game/levels/puzzles';
 import type { CampaignLevel, LevelDef, PuzzleLevel } from '../game/levels/levelDef';
 import { load, type Progress } from './storage';
@@ -15,7 +15,7 @@ import { levelTitle } from './levelTexts';
 import { tr } from './language';
 
 /** a section of the levels menu */
-export type LevelSection = 'campaign' | 'puzzles';
+export type LevelSection = 'campaign' | 'big' | 'puzzles';
 
 export class LevelMenu {
   private start: (level: LevelDef) => void = () => {};
@@ -25,17 +25,21 @@ export class LevelMenu {
     $('#menu-back').onclick = () => { hide('#menu'); this.back(); };
   }
 
-  /** `section`: the campaign or the puzzles; `start`: what a chosen level does; `back`: where the Back button returns */
+  /** `section`: the training, the big cabinets or the puzzles; `start`: what a chosen level does; `back`: where the Back button returns */
   show(progress: Progress, section: LevelSection, start: (level: LevelDef) => void, back: () => void): void {
     this.start = start;
     this.back = back;
     const box = $('#menu-levels');
     box.innerHTML = '';
     if (section === 'campaign') {
-      $('#menu-title').textContent = tr({ fr: 'Campagne', en: 'Campaign' });
-      $('#menu-sub').textContent = tr({ fr: 'Deux étoiles à un niveau ouvrent le suivant.', en: 'Two stars on a level open the next one.' });
+      $('#menu-title').textContent = tr({ fr: 'Formation', en: 'Training' });
+      $('#menu-sub').textContent = tr({ fr: 'Deux étoiles à un niveau ouvrent le suivant ; la carrière suit le dernier.', en: 'Two stars on a level open the next one; the career follows the last.' });
       box.appendChild(this.tutorialCard());
-      LEVELS.forEach((level, i) => box.appendChild(this.levelCard(progress, level, i)));
+      LEVELS.forEach((level, i) => box.appendChild(this.levelCard(progress, LEVELS, i)));
+    } else if (section === 'big') {
+      $('#menu-title').textContent = tr({ fr: 'Grandes baies', en: 'Big cabinets' });
+      $('#menu-sub').textContent = tr({ fr: 'Des salles chargées où toutes les règles se croisent. Deux étoiles à l\'une ouvrent la suivante.', en: 'Busy rooms where every rule meets the others. Two stars on one open the next.' });
+      BIG_BAYS.forEach((level, i) => box.appendChild(this.levelCard(progress, BIG_BAYS, i)));
     } else {
       $('#menu-title').textContent = tr({ fr: 'Puzzles express', en: 'Express puzzles' });
       $('#menu-sub').textContent = tr({
@@ -73,9 +77,10 @@ export class LevelMenu {
     return card;
   }
 
-  /** a campaign level: its stars, its best time, and its time challenge */
-  private levelCard(progress: Progress, level: CampaignLevel, index: number): HTMLElement {
-    const unlocked = isUnlocked(progress, index);
+  /** level `index` of `levels` (the training, the big cabinets): its stars, its best time, and its time challenge */
+  private levelCard(progress: Progress, levels: readonly CampaignLevel[], index: number): HTMLElement {
+    const level = levels[index];
+    const unlocked = isUnlocked(progress, levels, index);
     const stars = progress.stars[level.id] ?? 0;
     const time = progress.times[level.id];
     const challenge = tr({ fr: `défi ${formatTime(level.par)}`, en: `challenge ${formatTime(level.par)}` });

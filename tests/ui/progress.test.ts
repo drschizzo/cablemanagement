@@ -1,10 +1,10 @@
 // The progress record is plain data: the rules of the best score are tested
 // without a page.
 import { describe, expect, it } from 'vitest';
-import { isUnlocked, knownGestures, knownRules, levelAfter, recordResult, withMet } from '../../src/ui/progress';
+import { endsTheTraining, isUnlocked, knownGestures, knownRules, levelAfter, nextInStory, recordResult, withMet } from '../../src/ui/progress';
 import { levelRules } from '../../src/game/levels/levelRules';
 import { PUZZLES } from '../../src/game/levels/puzzles';
-import { LEVELS } from '../../src/game/levels/campaign';
+import { BIG_BAYS, LEVELS } from '../../src/game/levels/campaign';
 import type { Progress } from '../../src/ui/storage';
 
 const empty = (): Progress => ({ stars: {}, times: {}, challenges: {} });
@@ -36,20 +36,34 @@ describe('the progress record', () => {
   });
 });
 
-describe('the campaign', () => {
+describe('the training and the big cabinets', () => {
   it('opens a level once the one before has two stars', () => {
     const p = empty();
-    expect(isUnlocked(p, 0)).toBe(true);
-    expect(isUnlocked(p, 1)).toBe(false);
+    expect(isUnlocked(p, LEVELS, 0)).toBe(true);
+    expect(isUnlocked(p, LEVELS, 1)).toBe(false);
     p.stars[LEVELS[0].id] = 1;
-    expect(isUnlocked(p, 1)).toBe(false);
+    expect(isUnlocked(p, LEVELS, 1)).toBe(false);
     p.stars[LEVELS[0].id] = 2;
-    expect(isUnlocked(p, 1)).toBe(true);
+    expect(isUnlocked(p, LEVELS, 1)).toBe(true);
+    expect(isUnlocked(p, BIG_BAYS, 0)).toBe(true);
+    expect(isUnlocked(p, BIG_BAYS, 1)).toBe(false);
   });
 
-  it('knows the level after each one, and none after the last', () => {
+  it('knows the level after each one, and none after the last of its list', () => {
     expect(levelAfter(LEVELS[0])).toBe(LEVELS[1]);
     expect(levelAfter(LEVELS[LEVELS.length - 1])).toBeNull();
+    expect(levelAfter(BIG_BAYS[0])).toBe(BIG_BAYS[1]);
+    expect(endsTheTraining(LEVELS[LEVELS.length - 1])).toBe(true);
+    expect(endsTheTraining(BIG_BAYS[0])).toBe(false);
+  });
+
+  it('the story goes on with the career once the training is tidy', () => {
+    const p = empty();
+    const career = { done: 0, cabinet: null, stars: [] };
+    expect(nextInStory(p, career)).toBe(LEVELS[0]);
+    for (const l of LEVELS) p.stars[l.id] = 2;
+    expect(nextInStory(p, career)?.id).toBe('career-1');
+    expect(nextInStory(p, { ...career, done: 99 })).toBeUndefined();
   });
 });
 

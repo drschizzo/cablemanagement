@@ -8,7 +8,7 @@ import { LOOK_SLOTS, SHOP, equip, equippedIn, isOpen, starsWon, type LookSlot } 
 import { language, tr } from './language';
 import { assertNever } from '../lib/assertNever';
 import { FINDS, type FindId } from '../game/finds';
-import { LEVELS } from '../game/levels/campaign';
+import { BIG_BAYS, LEVELS } from '../game/levels/campaign';
 import { KEYS_WEEKDAY } from '../game/levels/dailyLevel';
 import { MANUAL_FROM } from '../game/levels/freeLevel';
 import { findName, findStory } from './names';
@@ -78,7 +78,9 @@ function slotName(slot: LookSlot): string {
 /** where a find not picked up yet hides, as a hint */
 function whereHidden(id: FindId): string {
   const index = LEVELS.findIndex((l) => l.find === id);
-  if (index >= 0) return tr({ fr: `Quelque part dans le niveau ${index + 1}, ${levelTitle(LEVELS[index])}.`, en: `Somewhere in level ${index + 1}, ${levelTitle(LEVELS[index])}.` });
+  if (index >= 0) return tr({ fr: `Quelque part dans le niveau ${index + 1} de la formation, ${levelTitle(LEVELS[index])}.`, en: `Somewhere in level ${index + 1} of the training, ${levelTitle(LEVELS[index])}.` });
+  const big = BIG_BAYS.find((l) => l.find === id);
+  if (big) return tr({ fr: `Quelque part dans une grande baie, ${levelTitle(big)}.`, en: `Somewhere in a big cabinet, ${levelTitle(big)}.` });
   switch (id) {
     case 'keys': return tr({ fr: `Dans la baie du jour, un ${weekdayName(KEYS_WEEKDAY)}.`, en: `In the cabinet of the day, on a ${weekdayName(KEYS_WEEKDAY)}.` });
     case 'manual': return tr({ fr: `Dans une grande partie libre (${MANUAL_FROM} câbles ou plus).`, en: `In a big free play (${MANUAL_FROM} cords or more).` });

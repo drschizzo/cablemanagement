@@ -197,8 +197,8 @@ const TICKETS: Words<LevelText>[] = [
     en: { title: 'The newsroom moves in', brief: 'Six journalists join the station for the midday news. Six desks to patch from panel A to switch S. The intern has already run the cords “to help”. Thank you, intern.' },
   },
   {
-    fr: { title: 'Quarante ans de cassettes', brief: 'La directrice a fait numériser toutes les archives : quarante ans d\'émissions, de jingles et d\'interviews de maires. Le serveur qui les garde arrive en bas de la baie ; ses deux cartes réseau vont sur le switch S. Il porte le stockage : le couper, c\'est faire taire 1986 à 2026.' },
-    en: { title: 'Forty years of tapes', brief: 'The director had all the archives digitised: forty years of shows, jingles and interviews with mayors. The server that keeps them arrives at the bottom of the cabinet; its two network cards go to switch S. It carries the storage: cutting it silences 1986 to 2026.' },
+    fr: { title: 'Quarante ans de cassettes', brief: 'La directrice a fait numériser toutes les archives : quarante ans d\'émissions, de jingles et d\'interviews de maires. Le serveur qui les garde arrive en bas de la baie, sous son propre bandeau électrique : ses deux alimentations vont au bandeau, ses deux cartes réseau au switch S. Il porte le stockage : le couper, c\'est faire taire 1986 à 2026.' },
+    en: { title: 'Forty years of tapes', brief: 'The director had all the archives digitised: forty years of shows, jingles and interviews with mayors. The server that keeps them arrives at the bottom of the cabinet, under its own power strip: its two supplies go to the strip, its two network cards to switch S. It carries the storage: cutting it silences 1986 to 2026.' },
   },
   {
     fr: { title: 'L\'émission de nuit déménage', brief: 'L\'émission de nuit change de studio : quatre liaisons ne servent plus (leurs cordons sont encore branchés : au bac), quatre nouvelles les remplacent. L\'animateur, lui, est déjà à l\'antenne, et il a votre numéro.' },

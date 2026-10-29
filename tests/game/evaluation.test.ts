@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { nextStar, starsOf, type StarCounts } from '../../src/game/evaluation';
 import { World } from '../../src/game/world';
-import { LEVELS } from '../../src/game/levels/campaign';
+import { BIG_BAYS, LEVELS } from '../../src/game/levels/campaign';
 import type { LevelDef } from '../../src/game/levels/levelDef';
 import { strapBundles, tidyKit, tidyLayout } from '../../src/game/idealRoutes';
 
@@ -112,7 +112,7 @@ describe('a perfect cabinet spoiled by one thing', () => {
   });
 
   it('one bundle short of what the level asks: two stars', () => {
-    const lv = LEVELS[5];
+    const lv = BIG_BAYS[0];
     expect(lv.bundles).toBeGreaterThan(0);
     const w = finished(lv);
     expect(w.evaluate().stars).toBe(3);

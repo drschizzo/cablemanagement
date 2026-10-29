@@ -12,7 +12,7 @@ import { isDialogOpen } from '../ui/dom';
 import { unitLabel } from '../ui/names';
 import { lookOf, starsWon } from '../ui/shop';
 import { load } from '../ui/storage';
-import { nextLevelToPlay } from '../game/levels/campaign';
+import { nextInStory } from '../ui/progress';
 import type { LevelDef } from '../game/levels/levelDef';
 import { SHOWCASE_DEFAULT } from '../game/levels/showcaseRack';
 import { dailyLevel, dayKey } from '../game/levels/dailyLevel';
@@ -65,7 +65,7 @@ export class App {
       showModes: () => this.hud.showModes(),
       showSettings: () => this.hud.showSettings(),
       showShop: () => this.hud.showShop(),
-      nextLevel: () => nextLevelToPlay(this.hud.progress.stars),
+      nextLevel: () => nextInStory(this.hud.progress, load('career')),
       hasProgress: () => Object.keys(this.hud.progress.stars).length > 0,
       playDaily: () => this.startLevel(dailyLevel(dayKey(new Date()))),
     });
@@ -139,9 +139,9 @@ export class App {
     else this.startLevel(customLevel(spec));
   }
 
-  /** the first level not yet tidy enough to open the next one, or the game modes once they all are */
+  /** where the story stands (the training, then the career), or the game modes once both are done */
   playNext(): void {
-    const next = nextLevelToPlay(this.hud.progress.stars);
+    const next = nextInStory(this.hud.progress, load('career'));
     if (next) this.startLevel(next);
     else this.hud.showModes();
   }

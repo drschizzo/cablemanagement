@@ -41,16 +41,17 @@ les paramètres. L'interrupteur **Avant / Après** montre la même salle une foi
 **Commencer** ouvre le **tutoriel**, qui présente pas à pas ce que demande le premier niveau
 (saisir, brancher, ranger au Chemin, les étoiles), puis, au choix, les **gestes avancés** (coude
 pincé, seconde main, goulotte, anneau, velcro). La goulotte, l'anneau et le velcro s'expliquent aussi
-dans le brief du premier niveau qui les donne. Par la suite, le même bouton reprend au premier niveau pas encore réussi, et l'écran titre
-montre aussi les **modes de jeu**, en trois groupes :
+dans le brief du premier niveau qui les donne. Par la suite, le même bouton reprend où en est
+l'histoire : la **formation** (cinq niveaux), puis la **carrière**. L'écran titre montre aussi les
+**modes de jeu**, en trois groupes :
 
 | Groupe | Modes | S'ouvre |
 |---|---|---|
-| Histoire | la campagne, puis la carrière | la carrière avec le niveau 4 |
-| Défis | les puzzles express, la baie du jour | les puzzles avec le niveau 2, la baie du jour avec le niveau 3 |
-| Partie libre | une baie au hasard (réglage zen), ou composée dans l'éditeur | avec le niveau 8, ou tout de suite sur demande |
+| Histoire | la formation, puis la carrière | la carrière à la fin de la formation (niveau 5) |
+| Défis | les puzzles express, la baie du jour, les grandes baies | les puzzles avec le niveau 2, la baie du jour avec le niveau 3, les grandes baies avec le ticket 2 de la carrière |
+| Partie libre | une baie au hasard (réglage zen), ou composée dans l'éditeur | avec le ticket 4 de la carrière, ou tout de suite sur demande |
 
-Un mode pas encore ouvert dit le niveau qui l'ouvre ; un mode déjà joué reste ouvert.
+Un mode pas encore ouvert dit ce qui l'ouvre ; un mode déjà joué reste ouvert.
 
 Dans un niveau, **☰ Menu** (ou **Échap**) met le jeu en pause : consignes,
 recommencer, choisir un autre niveau, paramètres, retour à l'accueil. Quitter
@@ -86,7 +87,7 @@ Un cordon branché comme prévu reçoit tout seul l'étiquette de son service.
 
 Le jeu ajoute ses règles une à une : le brief d'un niveau marque **Nouveau** celles qu'on y
 rencontre pour la première fois (la fenêtre de maintenance au niveau 3, la fibre qui se plie au
-niveau 5, les faisceaux au niveau 6…), et replie les autres sous « Rappel des règles ».
+niveau 5, le courant au ticket 3 de la carrière…), et replie les autres sous « Rappel des règles ».
 
 | Étoiles | Condition |
 |---|---|
@@ -113,13 +114,13 @@ manque. Chaque niveau a aussi un **défi chrono**
 
 L'**atelier** (écran titre, après le niveau 3 ou un ticket de la carrière) offre des touches
 personnelles : la couleur des velcros, la teinte de la lumière autour de la baie. Chacune s'ouvre
-avec les étoiles gagnées (campagne, puzzles et carrière additionnés). Rien de ce qui porte un sens
+avec les étoiles gagnées (formation, grandes baies, puzzles et carrière additionnés). Rien de ce qui porte un sens
 (cordons, étiquettes, voyants) ne change.
 
-Chaque niveau de la campagne cache une **trouvaille** laissée par un technicien précédent (un post-it,
+Chaque niveau de la formation et chaque grande baie cache une **trouvaille** laissée par un technicien précédent (un post-it,
 une clé USB, un canard en plastique…) : sur le plancher de la baie sous les câbles, sur son toit ou dans
 le bac. Un clic la ramasse et raconte son histoire ; l'atelier les rassemble, et dit où chercher
-celles qui manquent (deux se cachent hors de la campagne).
+celles qui manquent (deux se cachent ailleurs).
 
 ### Préparation
 
@@ -167,7 +168,7 @@ signal ; un cordon coupé se jette au bac et se remplace par un neuf du Stock.
 
 ### Courant
 
-Certaines baies (le puzzle P10, les baies de l'éditeur qui ont un bandeau électrique) alimentent
+Certaines baies (le ticket 3 de la carrière et la suite, le puzzle P10, les baies de l'éditeur qui ont un bandeau électrique) alimentent
 leurs serveurs : des **cordons d'alimentation** noirs, raides, à fiche C13, vont des prises du
 **bandeau électrique** aux deux alimentations de chaque serveur. Couper l'une, c'est couper le service
 du serveur. Pour ★★★, le courant descend par son propre couloir, à part des données.
@@ -179,29 +180,39 @@ enroulés dans le bac au pied de la baie. Remplacer un cordon branché, c'est le
 débrancher, donc couper sa liaison le temps de changer : savoir qui reçoit quel
 cordon, et dans quel ordre, fait partie du plan.
 
-### Niveaux
+### Formation et grandes baies
+
+La **formation** apprend le métier en cinq niveaux, une règle de plus à chacun :
 
 | # | Niveau | Câbles · particularité |
 |---|---|---|
 | 1 | Premier brassage | 4 |
 | 2 | Le mou | 6 |
-| 3 | Erreurs de brassage | 8 |
+| 3 | Erreurs de brassage | 8 · fenêtre de maintenance |
 | 4 | Les services | 10 · trois services |
-| 5 | Fibre et cuivre | 12 |
-| 6 | Salle serveurs | 20 · faisceaux, goulottes comptées |
-| 7 | Migration | 24 · budget d'interruption serré |
-| 8 | Le plat de spaghettis | 28 · cordons sans marque, à tracer |
+| 5 | Fibre et cuivre | 12 · fibre pliable, chaque famille son couloir |
 
-La **carrière** (écran titre) suit une petite radio locale, Radio Pinède (98.4 FM), sur huit tickets (une liaison coupée, c'est un
+Les **grandes baies** (dans les Défis) sont trois salles chargées où toutes les règles se croisent ;
+deux étoiles à l'une ouvrent la suivante :
+
+| # | Baie | Câbles · particularité |
+|---|---|---|
+| 1 | Salle serveurs | 20 · faisceaux, goulottes comptées |
+| 2 | Migration | 24 · budget d'interruption serré |
+| 3 | Le plat de spaghettis | 28 · cordons sans marque, à tracer |
+
+### Carrière
+
+La **carrière**, qui suit la formation, est le cœur du jeu. Elle suit une petite radio locale, Radio Pinède (98.4 FM), sur huit tickets (une liaison coupée, c'est un
 blanc à l'antenne). C'est **toujours la
 même baie** : chaque ticket repart de la baie telle que vous l'avez laissée au précédent (cordons,
-supports, velcros), installe du matériel dans les unités gardées libres (un serveur, un deuxième
-panneau et son switch), crée des liaisons, en retire d'autres dont il faut jeter les cordons. Ce qui a
+supports, velcros), installe du matériel dans les unités gardées libres (un serveur et son bandeau
+électrique, un deuxième panneau et son switch), crée des liaisons, en retire d'autres dont il faut jeter les cordons. Ce qui a
 été bien rangé le reste ; ce qui a été bâclé vous attend. Le dernier ticket est le direct des 40 ans de la radio.
 
-Les **puzzles express** (P1 à P8, tous ouverts) sont de toutes petites baies, une idée chacune : un
+Les **puzzles express** (P1 à P10, tous ouverts) sont de toutes petites baies, une idée chacune : un
 bout libre, deux cordons échangés, un support à poser, un faisceau, des goulottes, une liaison en
-production sur un budget minuscule, des cordons sans marque. Leur défi : ★★★ en peu de **gestes**,
+production sur un budget minuscule, des cordons sans marque, un cordon coupé, un serveur et son courant. Leur défi : ★★★ en peu de **gestes**,
 comptés en haut de l'écran : seuls les actes de technicien comptent (brancher, débrancher, poser ou
 retirer un support ou un velcro, le bac, le Stock) ; ranger un câble, à la main, au Chemin ou au
 peigne, est gratuit. Chaque défi laisse un ou deux gestes de marge sur le minimum.

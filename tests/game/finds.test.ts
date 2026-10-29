@@ -3,14 +3,15 @@ import { describe, expect, it } from 'vitest';
 import { FINDS, placeFind } from '../../src/game/finds';
 import { Rack } from '../../src/game/rack';
 import { World } from '../../src/game/world';
-import { LEVELS } from '../../src/game/levels/campaign';
+import { BIG_BAYS, LEVELS } from '../../src/game/levels/campaign';
 import { rng } from '../../src/lib/random';
 
 describe('the finds', () => {
-  it('each level of the campaign hides another one', () => {
-    const hidden = LEVELS.map((l) => l.find);
+  it('each level of the training and big cabinet hides another one', () => {
+    const levels = [...LEVELS, ...BIG_BAYS];
+    const hidden = levels.map((l) => l.find);
     expect(hidden.every((f) => f && FINDS.includes(f))).toBe(true);
-    expect(new Set(hidden).size).toBe(LEVELS.length);
+    expect(new Set(hidden).size).toBe(levels.length);
   });
 
   it('lies on the cabinet floor, on its roof or in the crate; never in an open rack', () => {

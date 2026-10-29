@@ -1,4 +1,5 @@
-// The levels of the game, in order, and the guided tutorial.
+// The training (five cabinets, one rule more each), the big cabinets of the
+// challenges, and the guided tutorial.
 
 import type { CampaignLevel, TutorialLevel } from './levelDef';
 import { BLANK, FIREWALL, ROUTER, SERVER, UPS, copperPanel, ethernetSwitch, fingerManager, opticalPanel, server } from './equipment';
@@ -6,6 +7,7 @@ import { BLANK, FIREWALL, ROUTER, SERVER, UPS, copperPanel, ethernetSwitch, fing
 /** stars a level needs before the next one opens: connected is not enough, it must be tidy */
 export const UNLOCK_STARS = 2;
 
+/** the training: the first cabinets, in order; the career follows it */
 export const LEVELS: CampaignLevel[] = [
   {
     id: 'l1',
@@ -82,6 +84,14 @@ export const LEVELS: CampaignLevel[] = [
     seed: 53,
     par: 540,
   },
+];
+
+/**
+ * The big cabinets, among the challenges: busy server rooms where every rule
+ * of the training and the career meets the others. Open once the career is
+ * under way (ui/modeLocks.ts); two stars on one open the next.
+ */
+export const BIG_BAYS: CampaignLevel[] = [
   {
     id: 'l6',
     kind: 'campaign',
@@ -158,7 +168,7 @@ export const TUTORIAL: TutorialLevel = {
   seed: 5,
 };
 
-/** the first level not yet tidy enough to open the next one (undefined: all are) */
+/** the first level of the training not yet tidy enough to open the next one (undefined: all are) */
 export function nextLevelToPlay(stars: Record<string, number>): CampaignLevel | undefined {
   return LEVELS.find((l) => (stars[l.id] ?? 0) < UNLOCK_STARS);
 }

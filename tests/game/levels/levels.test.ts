@@ -3,14 +3,14 @@ import { describe, it, expect } from 'vitest';
 import { World } from '../../../src/game/world';
 import { ITEM_KINDS } from '../../../src/game/supplies';
 import { SERVICES } from '../../../src/game/services';
-import { LEVELS, TUTORIAL } from '../../../src/game/levels/campaign';
+import { BIG_BAYS, LEVELS, TUTORIAL } from '../../../src/game/levels/campaign';
 import { freeLevel } from '../../../src/game/levels/freeLevel';
 import { PUZZLES } from '../../../src/game/levels/puzzles';
 import { showcaseRack } from '../../../src/game/levels/showcaseRack';
 import type { LevelDef } from '../../../src/game/levels/levelDef';
 import { strapBundles, tidyKit, tidyLayout, tidyTargets } from '../../../src/game/idealRoutes';
 
-const ALL: LevelDef[] = [...LEVELS, ...PUZZLES, TUTORIAL, freeLevel(30, 1), showcaseRack('mess', 1), showcaseRack('tidy', 1)];
+const ALL: LevelDef[] = [...LEVELS, ...BIG_BAYS, ...PUZZLES, TUTORIAL, freeLevel(30, 1), showcaseRack('mess', 1), showcaseRack('tidy', 1)];
 
 describe.each(ALL.map((lv) => [lv.id, lv] as const))('%s', (_, lv) => {
   const w = new World(lv);
@@ -34,8 +34,9 @@ describe.each(ALL.map((lv) => [lv.id, lv] as const))('%s', (_, lv) => {
 
 describe('levels', () => {
   it('unique ids, the cabinets grow', () => {
-    expect(new Set(LEVELS.map((l) => l.id)).size).toBe(LEVELS.length);
-    for (let i = 1; i < LEVELS.length; i++) expect(LEVELS[i].cables).toBeGreaterThanOrEqual(LEVELS[i - 1].cables);
+    const campaign = [...LEVELS, ...BIG_BAYS];
+    expect(new Set(campaign.map((l) => l.id)).size).toBe(campaign.length);
+    for (let i = 1; i < campaign.length; i++) expect(campaign[i].cables).toBeGreaterThanOrEqual(campaign[i - 1].cables);
   });
 
   it('a level’s cabinet is the same every time (seeded)', () => {
@@ -61,7 +62,7 @@ function finishedWorld(lv: LevelDef) {
 }
 
 describe('no level is won before the player does anything', () => {
-  for (const lv of [...LEVELS, ...PUZZLES]) {
+  for (const lv of [...LEVELS, ...BIG_BAYS, ...PUZZLES]) {
     it(lv.id, () => {
       const w = new World(lv);
       w.preroll(60);
@@ -71,7 +72,7 @@ describe('no level is won before the player does anything', () => {
 });
 
 describe('three stars are possible, with the level\'s own stock', () => {
-  for (const lv of [...LEVELS, ...PUZZLES]) {
+  for (const lv of [...LEVELS, ...BIG_BAYS, ...PUZZLES]) {
     it(lv.id, () => {
       const kit = tidyKit(lv);
       const added = kit.preinstalled.slice(lv.preinstalled.length);

@@ -1,7 +1,7 @@
 // The gestures a level calls for, read from what it gives.
 import { describe, expect, it } from 'vitest';
 import { levelGestures } from '../../../src/game/levels/levelGestures';
-import { LEVELS } from '../../../src/game/levels/campaign';
+import { BIG_BAYS, LEVELS } from '../../../src/game/levels/campaign';
 
 describe('the gestures of a level', () => {
   it('the first level needs none beyond the tutorial', () => {
@@ -14,6 +14,6 @@ describe('the gestures of a level', () => {
 
   it('the velcro, once bundles count', () => {
     expect(levelGestures(LEVELS[4])).not.toContain('velcro');
-    expect(levelGestures(LEVELS[5])).toContain('velcro');
+    expect(levelGestures(BIG_BAYS[0])).toContain('velcro');
   });
 });

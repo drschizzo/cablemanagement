@@ -4,8 +4,10 @@
 // functions over the saved record: saving it is the caller's business
 // (storage.ts).
 
-import type { Progress } from './storage';
-import { LEVELS, UNLOCK_STARS } from '../game/levels/campaign';
+import type { Career, Progress } from './storage';
+import { BIG_BAYS, LEVELS, UNLOCK_STARS, nextLevelToPlay } from '../game/levels/campaign';
+import { currentTicket } from './career';
+import type { CampaignLevel } from '../game/levels/levelDef';
 import { PUZZLES } from '../game/levels/puzzles';
 import type { LevelDef } from '../game/levels/levelDef';
 import { levelRules, type Rule } from '../game/levels/levelRules';
@@ -45,16 +47,29 @@ export function recordResult(progress: Progress, level: LevelDef, stars: number,
   return { stars, time, moves, previousStars, challengeWon };
 }
 
-/** a level can be played: the first one, one after a tidy enough level, or one already played */
-export function isUnlocked(progress: Progress, index: number): boolean {
-  const level = LEVELS[index];
-  return index === 0 || (progress.stars[LEVELS[index - 1].id] ?? 0) >= UNLOCK_STARS || (progress.stars[level.id] ?? 0) > 0;
+/** level `index` of `levels` (the training, the big cabinets) can be played: the first one, one after a tidy enough level, or one already played */
+export function isUnlocked(progress: Progress, levels: readonly CampaignLevel[], index: number): boolean {
+  const level = levels[index];
+  return index === 0 || (progress.stars[levels[index - 1].id] ?? 0) >= UNLOCK_STARS || (progress.stars[level.id] ?? 0) > 0;
 }
 
-/** the level after this one in the campaign, if any */
+/** the level after this one in the training or among the big cabinets, if any */
 export function levelAfter(level: LevelDef): LevelDef | null {
-  const index = LEVELS.findIndex((l) => l.id === level.id);
-  return index >= 0 && index + 1 < LEVELS.length ? LEVELS[index + 1] : null;
+  for (const levels of [LEVELS, BIG_BAYS]) {
+    const index = levels.findIndex((l) => l.id === level.id);
+    if (index >= 0) return index + 1 < levels.length ? levels[index + 1] : null;
+  }
+  return null;
+}
+
+/** where the story stands: the first level of the training not tidy enough yet, then the ticket of the career (undefined: both done) */
+export function nextInStory(progress: Progress, career: Career): LevelDef | undefined {
+  return nextLevelToPlay(progress.stars) ?? currentTicket(career) ?? undefined;
+}
+
+/** the last cabinet of the training: the career comes after it */
+export function endsTheTraining(level: LevelDef): boolean {
+  return level.id === LEVELS[LEVELS.length - 1].id;
 }
 
 /**
@@ -72,7 +87,7 @@ export function knownGestures(saved: readonly Gesture[], progress: Progress): Se
 
 function knownOf<T>(saved: readonly T[], progress: Progress, of: (level: LevelDef) => T[]): Set<T> {
   const known = new Set(saved);
-  for (const level of [...LEVELS, ...PUZZLES]) {
+  for (const level of [...LEVELS, ...BIG_BAYS, ...PUZZLES]) {
     if ((progress.stars[level.id] ?? 0) > 0) for (const item of of(level)) known.add(item);
   }
   return known;
