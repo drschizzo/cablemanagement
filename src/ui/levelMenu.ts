@@ -1,15 +1,16 @@
 // The levels menu, a section at a time: the campaign (the tutorial, then one
-// card per level with its stars, its best time, and what opens it while it
-// is locked), or the puzzles (always open, their gestures challenge).
+// card per level with its stars, its best time and its time challenge once
+// found, and what opens it while it is locked), or the puzzles (always open,
+// their gestures challenge).
 
 import { LEVELS, TUTORIAL, UNLOCK_STARS } from '../game/levels/campaign';
 import { PUZZLES } from '../game/levels/puzzles';
-import type { LevelDef, PuzzleLevel } from '../game/levels/levelDef';
+import type { CampaignLevel, LevelDef, PuzzleLevel } from '../game/levels/levelDef';
 import { load, type Progress } from './storage';
 import { formatTime } from './format';
 import { hide, show, starsHtml } from './dom';
 import { $ } from '../lib/page';
-import { isUnlocked } from './progress';
+import { isTimeChallengeKnown, isUnlocked } from './progress';
 import { levelTitle } from './levelTexts';
 import { tr } from './language';
 
@@ -72,15 +73,18 @@ export class LevelMenu {
     return card;
   }
 
-  private levelCard(progress: Progress, level: LevelDef, index: number): HTMLElement {
+  /** a campaign level: its stars, its best time, and its time challenge once the result screen has told it */
+  private levelCard(progress: Progress, level: CampaignLevel, index: number): HTMLElement {
     const unlocked = isUnlocked(progress, index);
     const stars = progress.stars[level.id] ?? 0;
-    const best = progress.times[level.id];
+    const time = progress.times[level.id];
+    const challenge = isTimeChallengeKnown(progress, level) ? tr({ fr: ` · défi ${formatTime(level.par)}`, en: ` · challenge ${formatTime(level.par)}` }) : '';
+    const best = time ? formatTime(time) + challenge : '';
     const card = document.createElement('button');
     card.className = 'level-card' + (unlocked ? '' : ' locked');
     card.innerHTML = `<div class="num">${index + 1}</div><div class="t">${levelTitle(level)}</div>
       <div class="meta">${tr({ fr: `${level.cables} câbles${level.labels ? ' · étiquettes' : ''}`, en: `${level.cables} cords${level.labels ? ' · labels' : ''}` })}</div>
-      <div class="stars">${starsHtml(stars)}${progress.challenges[level.id] ? `<span class="par" title="${tr({ fr: 'Défi chrono réussi', en: 'Time challenge won' })}">⏱</span>` : ''}</div>${best ? `<div class="best">${formatTime(best)}</div>` : ''}
+      <div class="stars">${starsHtml(stars)}${progress.challenges[level.id] ? `<span class="par" title="${tr({ fr: 'Défi chrono réussi', en: 'Time challenge won' })}">⏱</span>` : ''}</div>${best ? `<div class="best">${best}</div>` : ''}
       ${unlocked ? '' : `<div class="lock">${tr({ fr: `${'★'.repeat(UNLOCK_STARS)} au niveau ${index} pour l'ouvrir`, en: `${'★'.repeat(UNLOCK_STARS)} on level ${index} to open it` })}</div>`}`;
     if (unlocked) card.onclick = () => this.choose(level);
     return card;

@@ -94,8 +94,9 @@ ses étoiles et sa lisibilité.
 
 Il faut **★★** pour ouvrir le niveau suivant : brancher ne suffit pas, il faut
 ranger. La jauge **Propreté** résume les critères ; un câble qui devient propre
-s'allume en vert avec une note. Chaque niveau propose aussi un **défi chrono**
-(★★★ en moins d'un temps donné).
+s'allume en vert avec une note. Chaque niveau cache aussi un **défi chrono**
+(★★★ en moins d'un temps donné) : l'écran de résultat le révèle à la première baie validée, et le
+menu des niveaux le rappelle ensuite.
 
 Chaque chantier validé (sauf le tutoriel et le zen) est **payé** : un montant par liaison branchée,
 plus pour une baie rangée, une prime de lisibilité, une autre pour le budget d'interruption épargné,

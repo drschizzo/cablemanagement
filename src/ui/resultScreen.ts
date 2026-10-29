@@ -83,13 +83,16 @@ function resultLines(level: LevelDef, ev: Evaluation, result: LevelResult, chall
       ? tr({ fr: `✋ Défi gestes réussi : ★★★ en ${done} geste${done > 1 ? 's' : ''} !`, en: `✋ Gestures challenge won: ★★★ in ${done} gesture${done > 1 ? 's' : ''}!` })
       : tr({ fr: `✋ Défi gestes : ★★★ en ${most} gestes au plus (${done} cette fois)${challengeWonBefore ? ', déjà réussi' : ''}.`, en: `✋ Gestures challenge: ★★★ in ${most} gestures at most (${done} this time)${challengeWonBefore ? ', won already' : ''}.` }));
   }
-  if (level.kind === 'campaign') {
-    const par = formatTime(level.par);
-    lines.push(result.challengeWon
-      ? tr({ fr: `⏱ Défi chrono réussi : ★★★ en moins de ${par} !`, en: `⏱ Time challenge won: ★★★ in less than ${par}!` })
-      : tr({ fr: `⏱ Défi chrono : ★★★ en moins de ${par}${challengeWonBefore ? ' (déjà réussi)' : ''}.`, en: `⏱ Time challenge: ★★★ in less than ${par}${challengeWonBefore ? ' (won already)' : ''}.` }));
-  }
+  if (level.kind === 'campaign') lines.push(timeChallengeLine(level.par, result, challengeWonBefore));
   return lines;
+}
+
+/** the time challenge of a campaign level: found here, the first time the level is signed off (the brief says nothing of it before) */
+function timeChallengeLine(par: number, result: LevelResult, challengeWonBefore: boolean): string {
+  const time = formatTime(par);
+  if (result.challengeWon) return tr({ fr: `⏱ Défi chrono réussi : ★★★ en moins de ${time} !`, en: `⏱ Time challenge won: ★★★ in less than ${time}!` });
+  if (result.previousStars === 0) return `<span class="found">${tr({ fr: `⏱ Défi débloqué : rejouez la baie pour ★★★ en moins de ${time}.`, en: `⏱ Challenge unlocked: play the cabinet again for ★★★ in less than ${time}.` })}</span>`;
+  return tr({ fr: `⏱ Défi chrono : ★★★ en moins de ${time}${challengeWonBefore ? ' (déjà réussi)' : ''}.`, en: `⏱ Time challenge: ★★★ in less than ${time}${challengeWonBefore ? ' (won already)' : ''}.` });
 }
 
 /** the way on: the next level (or ticket), open or what opens it */
