@@ -12,7 +12,8 @@ export class ShaderPatch {
 
   /** replaces the first `find`; throws if the shader no longer has it */
   replace(find: string | RegExp, replacement: string): ShaderPatch {
-    const next = this.source.replace(find, replacement);
+    // (a function: the replacement is taken as it is, its $ signs are not patterns)
+    const next = this.source.replace(find, () => replacement);
     if (next === this.source) throw new Error(`shader patch: ${String(find)} not found (has three.js changed?)`);
     return new ShaderPatch(next);
   }

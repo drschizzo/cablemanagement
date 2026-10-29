@@ -209,7 +209,7 @@ Chaque dossier ne dépend que de ceux qui sont en dessous de lui (`lib` puis `ga
 
 ### Lire le code
 
-Trois documents, du plus général au plus détaillé :
+Quatre documents, du plus général au plus détaillé :
 
 - [`docs/architecture.md`](docs/architecture.md) : l'organisation du code, le
   sens des dépendances entre les dossiers, et où intervenir pour ajouter un
@@ -217,6 +217,8 @@ Trois documents, du plus général au plus détaillé :
 - [`docs/conventions.md`](docs/conventions.md) : les règles que le code suit
   (découpage, nommage, commentaires, tests, commits), avec un exemple tiré du
   projet pour chacune ;
+- [`docs/mise-a-jour-three.md`](docs/mise-a-jour-three.md) : ce que le jeu prend
+  à three.js au-delà de son API stable, et comment monter de version ;
 - [`docs/anatomie-d-une-frame.md`](docs/anatomie-d-une-frame.md) : une frame
   suivie de bout en bout, avec schémas et captures (la boucle de jeu, le
   moteur physique des câbles, la préparation de la scène, le rendu).

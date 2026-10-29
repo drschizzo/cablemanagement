@@ -5,7 +5,7 @@
 // cabinet full of flickering lights costs no work on the CPU.
 
 import * as THREE from 'three';
-import { patchShader } from './shaderPatch';
+import { patchMaterial, type MaterialPatch } from './threeCompat/materialPatch';
 
 /** seconds, advanced by the stage every frame; shared by every blinking material */
 export const ledClock = { value: 0 };
@@ -79,35 +79,40 @@ float ledOn(vec3 b) {
 }`;
 
 /**
- * A standard material whose glow comes from two attributes, per vertex or per
- * instance: `emissiveTint` (linear RGB) and `blink` (rate, duty, phase).
+ * The glow comes from two attributes, per vertex or per instance:
+ * `emissiveTint` (linear RGB) and `blink` (rate, duty, phase); an instanced
+ * lens grows on screen up to LED_MIN_PX.
  */
-export function blinkable<T extends THREE.MeshStandardMaterial>(m: T): T {
-  m.onBeforeCompile = (s) => {
-    s.uniforms.ledTime = ledClock;
-    s.uniforms.ledViewHeight = ledViewHeight;
-    s.vertexShader = patchShader(s.vertexShader)
-      .replace('#include <common>', `#include <common>
-attribute vec3 emissiveTint;
+export const BLINK_PATCH: MaterialPatch = {
+  key: 'blink',
+  vertex: [
+    { after: '#include <common>', code: `attribute vec3 emissiveTint;
 attribute vec3 blink;
 uniform float ledViewHeight;
 varying vec3 vEmissiveTint;
-${LED_ON_GLSL}`)
-      .replace('#include <begin_vertex>', `#include <begin_vertex>
-vEmissiveTint = emissiveTint * ledOn(blink);
+${LED_ON_GLSL}` },
+    {
+      after: '#include <begin_vertex>',
+      uses: ['transformed', 'modelViewMatrix', 'instanceMatrix', 'projectionMatrix'],
+      code: `vEmissiveTint = emissiveTint * ledOn(blink);
 #ifdef USE_INSTANCING
   // grown on screen up to LED_MIN_PX, from its centre (the lens is a unit square scaled by its instance)
   vec4 ledCentre = modelViewMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
   float ledPixel = (projectionMatrix[3][3] == 0.0 ? -ledCentre.z : 1.0) * 2.0 / (projectionMatrix[1][1] * ledViewHeight);
   vec2 ledSize = vec2(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz));
   transformed.xy *= max(vec2(1.0), ${LED_MIN_PX.toFixed(1)} * ledPixel / ledSize);
-#endif`).source;
-    s.fragmentShader = patchShader(s.fragmentShader)
-      .replace('#include <common>', '#include <common>\nvarying vec3 vEmissiveTint;')
-      .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vEmissiveTint;').source;
-  };
-  m.customProgramCacheKey = () => 'blink';
-  return m;
+#endif`,
+    },
+  ],
+  fragment: [
+    { after: '#include <common>', code: 'varying vec3 vEmissiveTint;' },
+    { after: '#include <emissivemap_fragment>', code: 'totalEmissiveRadiance += vEmissiveTint;', uses: ['totalEmissiveRadiance'] },
+  ],
+};
+
+/** a standard material whose LEDs blink on the GPU (BLINK_PATCH) */
+export function blinkable<T extends THREE.MeshStandardMaterial>(m: T): T {
+  return patchMaterial(m, BLINK_PATCH, () => ({ ledTime: ledClock, ledViewHeight }));
 }
 
 export interface LedSpec {

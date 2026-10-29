@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { patchShader } from '../../src/render/shaderPatch';
+import { patchShader } from '../../../src/render/threeCompat/shaderPatch';
 
 describe('a shader patch', () => {
   it('applies its edits in order', () => {

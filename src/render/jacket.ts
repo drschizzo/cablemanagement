@@ -7,7 +7,7 @@
 // same from afar (and do not shimmer).
 
 import * as THREE from 'three';
-import { patchShader } from './shaderPatch';
+import { patchMaterial, type MaterialPatch } from './threeCompat/materialPatch';
 
 /** kinds of cord, the row of their marking in the atlas */
 export const JACKET_KIND = { CU: 0, OS2: 1, OM4: 2 } as const;
@@ -59,23 +59,18 @@ export function jacketMaterial(): THREE.MeshStandardMaterial {
 }
 
 /**
- * Adds the jacket to the material of the cords' tubes (three-cable-tubes),
- * from their `tubeCoord`: length along the cord (m, at rest, so the print
- * moves with it), cos and sin of the angle around it, and its kind (the tag
- * `lay` was given: JACKET_KIND).
+ * The jacket, from the cords' `tubeCoord` (three-cable-tubes): length along
+ * the cord (m, at rest, so the print moves with it), cos and sin of the angle
+ * around it, and its kind (the tag `lay` was given: JACKET_KIND).
  */
-export function jacketed<T extends THREE.MeshStandardMaterial>(m: T): T {
-  const prev = m.onBeforeCompile.bind(m);
-  const prevKey = m.customProgramCacheKey();
-  m.onBeforeCompile = (s, r) => {
-    prev(s, r);
-    s.uniforms.jacketPrint = { value: printAtlas() };
-    s.vertexShader = patchShader(s.vertexShader)
-      .replace('#include <common>', '#include <common>\nvarying vec4 vJacket;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvJacket = tubeCoord;').source;
-    s.fragmentShader = patchShader(s.fragmentShader)
-      .replace('#include <common>', `#include <common>
-uniform sampler2D jacketPrint;
+export const JACKET_PATCH: MaterialPatch = {
+  key: 'jacket',
+  vertex: [
+    { after: '#include <common>', code: 'varying vec4 vJacket;' },
+    { after: '#include <begin_vertex>', code: 'vJacket = tubeCoord;' },
+  ],
+  fragment: [
+    { after: '#include <common>', code: `uniform sampler2D jacketPrint;
 varying vec4 vJacket;
 float jHash(float n) { return fract(sin(n) * 43758.5453); }
 float jNoise(float x) { float i = floor(x), f = fract(x); return mix(jHash(i), jHash(i + 1.0), f * f * (3.0 - 2.0 * f)); }
@@ -92,9 +87,8 @@ vec3 jBump(vec3 p, vec3 n, vec2 dH, float fd) {
   float det = dot(sx, r1) * fd;
   vec3 g = sign(det) * (dH.x * r1 + dH.y * r2);
   return normalize(abs(det) * n - g);
-}`)
-      .replace('#include <color_fragment>', `#include <color_fragment>
-float jArc = vJacket.x, jKind = vJacket.w;
+}` },
+    { after: '#include <color_fragment>', uses: ['diffuseColor'], code: `float jArc = vJacket.x, jKind = vJacket.w;
 float jAng = atan(vJacket.z, vJacket.y);
 // metres of cord per pixel: the detail goes when it would be finer than that
 float jPx = fwidth(jArc);
@@ -113,16 +107,17 @@ float jLum = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
 vec3 jInkCol = jLum > 0.18 ? diffuseColor.rgb * 0.18 : vec3(0.75);
 diffuseColor.rgb = mix(diffuseColor.rgb, jInkCol, jInk * 0.7);
 // a slightly uneven tone, as extruded PVC
-diffuseColor.rgb *= 1.0 - 0.06 * jNear * jNoise(jArc * 90.0 + vJacket.y);`)
-      .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
-// satin up close (the long white streak of a smooth tube goes), as before from afar
-roughnessFactor = clamp(roughnessFactor + jNear * (0.14 * jNoise(jArc * 700.0 + vJacket.z * 2.0) + 0.1) + 0.12 * jInk, 0.05, 1.0);`)
-      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
-if (jNear > 0.0) {
+diffuseColor.rgb *= 1.0 - 0.06 * jNear * jNoise(jArc * 90.0 + vJacket.y);` },
+    { after: '#include <roughnessmap_fragment>', uses: ['roughnessFactor'], code: `// satin up close (the long white streak of a smooth tube goes), as before from afar
+roughnessFactor = clamp(roughnessFactor + jNear * (0.14 * jNoise(jArc * 700.0 + vJacket.z * 2.0) + 0.1) + 0.12 * jInk, 0.05, 1.0);` },
+    { after: '#include <normal_fragment_maps>', uses: ['normal', 'vViewPosition', 'faceDirection'], code: `if (jNear > 0.0) {
   float jh = jHeight(jArc, jAng, jKind) * jNear;
   normal = jBump(-vViewPosition, normal, vec2(dFdx(jh), dFdy(jh)), faceDirection);
-}`).source;
-  };
-  m.customProgramCacheKey = () => `${prevKey}-jacket`;
-  return m;
+}` },
+  ],
+};
+
+/** adds the jacket (JACKET_PATCH) to the material of the cords' tubes */
+export function jacketed<T extends THREE.MeshStandardMaterial>(m: T): T {
+  return patchMaterial(m, JACKET_PATCH, () => ({ jacketPrint: { value: printAtlas() } }));
 }

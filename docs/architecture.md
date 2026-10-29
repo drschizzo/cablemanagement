@@ -58,9 +58,11 @@ src/
     cableRain.ts    le décor : des câbles qui tombent et s'entassent au milieu de la salle
   render/       LE DESSIN (three.js) de ce que game décrit
     stage.ts        Stage : la scène, la caméra, le cadrage, le rendu et sa qualité adaptée au GPU
-    stageSetup.ts   la construction du renderer, des contrôles, des lumières et des passes (reflets SSR,
-                    occlusion GTAO, bloom), avec les correctifs qu'elles ont demandés
-    shaderPatch.ts  les retouches des shaders de three.js, qui échouent bruyamment si three.js a changé
+    stageSetup.ts   la construction du renderer, des contrôles et des lumières
+    threeCompat/    TOUT CE QUI DÉPEND DES INTERNES DE THREE.JS, et nulle part ailleurs (règle ESLint) : les retouches
+                    de shaders (materialPatch, shaderPatch), les passes de post-traitement retouchées (passes :
+                    ReflectionPass, BloomPass, l'occlusion) ; vérifié contre la version installée par
+                    tests/render/threeCompat/ (voir docs/mise-a-jour-three.md)
     gpu.ts          la carte graphique utilisée, et le conseil à donner quand elle dessine trop lentement
     frontImage.ts   l'image de face de la baie (avant / après de l'écran de résultat)
     rackView.ts     la baie, ses équipements, ports, plaques et voyants
@@ -206,7 +208,9 @@ par niveau) et tutoriel terminé. Les clés sont celles des versions précédent
 | une donnée gardée | une entrée dans `ui/storage.ts` |
 | une ressource three.js partagée par tous les niveaux | l'envelopper dans `shared()` (`render/dispose.ts`) |
 | un voyant qui clignote | une `LedSpec` (`render/leds.ts`), posée dans `render/rackView.ts` ; `ledGlow.ts` la reprend sur les câbles et la baie |
-| une passe de post-traitement | le `composer` de `Stage` (`render/stage.ts`) |
+| une passe de post-traitement | le `composer` de `Stage` (`render/stage.ts`) ; si elle touche aux internes de three.js, dans `render/threeCompat/passes.ts` |
+| un effet dans le shader d'un matériau | un `MaterialPatch` avec ses `uses` (`render/threeCompat/materialPatch.ts`), ajouté à la liste du test `tests/render/threeCompat/` |
+| une nouvelle version de three.js | la procédure de `docs/mise-a-jour-three.md` |
 | une sorte de câble pour le moteur | une entrée dans `CABLES`, dans cable-kit (`packages/avbd-cables/src/presets.ts`) ; voir son README |
 | un réglage du moteur | `SimParams` et `defaultSimParams` (`cableSim.ts`) ; un réglage du jeu (main, chemin, creux des guides) : `RackParams` (`game/physics/rackCableSim.ts`) |
 

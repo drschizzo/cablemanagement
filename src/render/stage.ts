@@ -6,15 +6,13 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { SSRPass } from 'three/examples/jsm/postprocessing/SSRPass.js';
-import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
+import { BloomPass, ReflectionPass, createAmbientOcclusionPass, type AmbientOcclusionPass } from './threeCompat/passes';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { CinemaPass } from './cinema';
 import { ledClock, ledViewHeight } from './leds';
 import { ledGlows } from './ledGlow';
 import { gpuAdvice, gpuInfo, type GpuAdvice, type GpuInfo } from './gpu';
-import { addLights, createAmbientOcclusionPass, createBloomPass, createControls, createReflectionPass, createRenderer } from './stageSetup';
+import { addLights, createControls, createRenderer } from './stageSetup';
 
 /** px from each edge of the screen */
 export interface ScreenMargins {
@@ -32,12 +30,12 @@ export class Stage {
   renderer: THREE.WebGLRenderer;
   /** scene → ambient occlusion → tone mapping */
   private composer: EffectComposer;
-  private ssr: SSRPass;
+  private ssr: ReflectionPass;
   /** meshes flagged `userData.reflective`, gathered each frame for the reflections */
   private mirrors: THREE.Mesh[] = [];
-  private ao: GTAOPass;
+  private ao: AmbientOcclusionPass;
   /** glow of what is brighter than white (LEDs, light strips, screens), before tone mapping */
-  private bloom: UnrealBloomPass;
+  private bloom: BloomPass;
   /** vignette, grain, toning, after tone mapping */
   private cinema: CinemaPass;
   private lastRender = performance.now();
@@ -80,8 +78,6 @@ export class Stage {
    */
   busy = 0;
   private longTask = false;
-  /** the reflections computed (off: the pass draws the scene alone, still multisampled) */
-  private reflect = true;
 
   /** `onGpuAdvice`: the GPU draws too slowly, and the player could do something about it */
   constructor(host: HTMLElement, private onGpuAdvice: (advice: GpuAdvice) => void = () => {}) {
@@ -111,11 +107,11 @@ export class Stage {
     // quad, and resolving 4 samples a pixel after each of them took a third of the frame for nothing
     const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType });
     this.composer = new EffectComposer(this.renderer, target);
-    this.ssr = createReflectionPass(this.renderer, this.scene, this.camera, this.mirrors, () => this.reflect);
+    this.ssr = new ReflectionPass(this.renderer, this.scene, this.camera, this.mirrors);
     this.composer.addPass(this.ssr);
     this.ao = createAmbientOcclusionPass(this.scene, this.camera);
     this.composer.addPass(this.ao);
-    this.bloom = createBloomPass(BLOOM.near.strength, BLOOM.near.radius);
+    this.bloom = new BloomPass(BLOOM.near.strength, BLOOM.near.radius);
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
     this.cinema = new CinemaPass();
@@ -188,7 +184,7 @@ export class Stage {
     const q = QUALITY[this.quality];
     this.renderer.setPixelRatio(Math.min(q.ratio, window.devicePixelRatio));
     this.ao.enabled = q.ao;
-    this.reflect = q.ssr;
+    this.ssr.reflecting = q.ssr;
     if (this.key.shadow.mapSize.x !== q.shadow) {
       this.key.shadow.mapSize.set(q.shadow, q.shadow);
       // rebuilt at the new size on the next frame
@@ -287,15 +283,15 @@ export class Stage {
     const t = THREE.MathUtils.clamp(Math.log(d / near.at) / Math.log(far.at / near.at), 0, 1);
     this.bloom.strength = THREE.MathUtils.lerp(near.strength, far.strength, t);
     this.bloom.radius = THREE.MathUtils.lerp(near.radius, far.radius, t);
-    const mips = this.bloom.compositeMaterial.uniforms.bloomFactors.value as number[];
     // the blur of each mip spans a set number of its pixels: at fewer pixels than the 2 a point it was
     // tuned at (see QUALITY), mip i covers the screen that mip i + shift did, and takes its weight
     const shift = Math.log2(2 / this.renderer.getPixelRatio());
-    const at = (i: number) => (i < mips.length ? THREE.MathUtils.lerp(near.mips[i], far.mips[i], t) : 0);
-    for (let i = 0; i < mips.length; i++) {
+    const count = this.bloom.levelCount;
+    const at = (i: number) => (i < count ? THREE.MathUtils.lerp(near.mips[i], far.mips[i], t) : 0);
+    this.bloom.setLevelWeights((i) => {
       const j = i + shift, k = Math.floor(j);
-      mips[i] = THREE.MathUtils.lerp(at(k), at(k + 1), j - k);
-    }
+      return THREE.MathUtils.lerp(at(k), at(k + 1), j - k);
+    });
   }
 
   render(): void {
@@ -312,10 +308,7 @@ export class Stage {
     // same array, refilled: the pass keeps a reference to it
     this.mirrors.length = 0;
     this.scene.traverseVisible((o) => { if (o.userData.reflective) this.mirrors.push(o as THREE.Mesh); });
-    // the pass only reads the projection on resize, before the view offset is applied
-    const u = this.ssr.ssrMaterial.uniforms;
-    u.cameraProjectionMatrix.value.copy(this.camera.projectionMatrix);
-    u.cameraInverseProjectionMatrix.value.copy(this.camera.projectionMatrixInverse);
+    this.ssr.followProjection(this.camera);
     this.fitBloom();
     this.cinema.frame(dt, window.innerWidth, window.innerHeight, this.panelMargins);
     // (wrapped, so that the GPU's hash of it keeps its precision)

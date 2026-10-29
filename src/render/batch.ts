@@ -5,24 +5,24 @@
 // LEDs) are instanced, with a colour and a glow of their own per instance.
 
 import * as THREE from 'three';
-import { patchShader } from './shaderPatch';
+import { patchMaterial, type MaterialPatch } from './threeCompat/materialPatch';
 
-/**
- * A standard material that adds the `emissiveTint` attribute (linear RGB, per
- * vertex or per instance) to its glow: one material for parts that light up
- * one at a time.
- */
+/** adds the `emissiveTint` attribute (linear RGB, per vertex or per instance) to the glow */
+export const TINT_PATCH: MaterialPatch = {
+  key: 'tint',
+  vertex: [
+    { after: '#include <common>', code: 'attribute vec3 emissiveTint;\nvarying vec3 vEmissiveTint;' },
+    { after: '#include <begin_vertex>', code: 'vEmissiveTint = emissiveTint;' },
+  ],
+  fragment: [
+    { after: '#include <common>', code: 'varying vec3 vEmissiveTint;' },
+    { after: '#include <emissivemap_fragment>', code: 'totalEmissiveRadiance += vEmissiveTint;', uses: ['totalEmissiveRadiance'] },
+  ],
+};
+
+/** a standard material whose parts light up one at a time (TINT_PATCH): one material for them all */
 export function tintable<T extends THREE.MeshStandardMaterial>(m: T): T {
-  m.onBeforeCompile = (s) => {
-    s.vertexShader = patchShader(s.vertexShader)
-      .replace('#include <common>', '#include <common>\nattribute vec3 emissiveTint;\nvarying vec3 vEmissiveTint;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvEmissiveTint = emissiveTint;').source;
-    s.fragmentShader = patchShader(s.fragmentShader)
-      .replace('#include <common>', '#include <common>\nvarying vec3 vEmissiveTint;')
-      .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vEmissiveTint;').source;
-  };
-  m.customProgramCacheKey = () => 'tint';
-  return m;
+  return patchMaterial(m, TINT_PATCH);
 }
 
 const KEEP = ['position', 'normal', 'uv'];

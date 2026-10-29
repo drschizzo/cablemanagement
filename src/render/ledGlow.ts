@@ -12,7 +12,7 @@
 import * as THREE from 'three';
 import { shared } from './dispose';
 import { LED_ON_GLSL, ledClock } from './leds';
-import { patchShader } from './shaderPatch';
+import { patchMaterial, type MaterialPatch } from './threeCompat/materialPatch';
 
 /** texels per metre of the map: finer than the gap between two port LEDs */
 const DENSITY = 400;
@@ -161,31 +161,30 @@ export const ledLight = { value: 4 };
 export const ledLightRack = { value: 6.5 };
 
 /**
- * Lights a material with a cabinet's glow (added to its own glow); `gain`:
- * how much of it, a uniform shared by the materials of a kind.
+ * A cabinet's glow lights the material, added to its own glow: the map of its
+ * façade, read where the surface stands, blurred by the distance to the lenses.
  */
-export function ledLit<T extends THREE.MeshStandardMaterial>(m: T, glow: LedGlow, gain: { value: number } = ledLight): T {
-  const prev = m.onBeforeCompile.bind(m);
-  const prevKey = m.customProgramCacheKey();
-  m.onBeforeCompile = (s, r) => {
-    prev(s, r);
-    s.uniforms.ledGlowMap = { value: glow.map.texture };
-    s.uniforms.ledGlowFrame = { value: glow.frame };
-    s.uniforms.ledGlowBox = { value: glow.box };
-    s.uniforms.ledGlowGain = gain;
-    s.vertexShader = patchShader(s.vertexShader)
-      .replace('#include <common>', '#include <common>\nuniform mat4 ledGlowFrame;\nvarying vec3 vLedP;\nvarying vec3 vLedN;')
-      .replace('#include <begin_vertex>', `#include <begin_vertex>
-mat4 ledM = ledGlowFrame * modelMatrix;
+export const LED_LIT_PATCH: MaterialPatch = {
+  key: 'ledlit',
+  vertex: [
+    { after: '#include <common>', code: 'uniform mat4 ledGlowFrame;\nvarying vec3 vLedP;\nvarying vec3 vLedN;' },
+    {
+      after: '#include <begin_vertex>',
+      uses: ['transformed', 'objectNormal', 'modelMatrix', 'instanceMatrix'],
+      code: `mat4 ledM = ledGlowFrame * modelMatrix;
 #ifdef USE_INSTANCING
 ledM = ledM * instanceMatrix;
 #endif
 vLedP = (ledM * vec4(transformed, 1.0)).xyz;
-vLedN = mat3(ledM) * objectNormal;`).source;
-    s.fragmentShader = patchShader(s.fragmentShader)
-      .replace('#include <common>', '#include <common>\nuniform sampler2D ledGlowMap;\nuniform vec4 ledGlowBox;\nuniform float ledGlowGain;\nvarying vec3 vLedP;\nvarying vec3 vLedN;')
-      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-{
+vLedN = mat3(ledM) * objectNormal;`,
+    },
+  ],
+  fragment: [
+    { after: '#include <common>', code: 'uniform sampler2D ledGlowMap;\nuniform vec4 ledGlowBox;\nuniform float ledGlowGain;\nvarying vec3 vLedP;\nvarying vec3 vLedN;' },
+    {
+      after: '#include <emissivemap_fragment>',
+      uses: ['totalEmissiveRadiance', 'diffuseColor'],
+      code: `{
   vec2 size = ledGlowBox.zw - ledGlowBox.xy;
   vec2 uv = (vLedP.xy - ledGlowBox.xy) / size;
   if (uv.x > 0.0 && uv.x < 1.0 && uv.y > 0.0 && uv.y < 1.0) {
@@ -214,9 +213,20 @@ vLedN = mat3(ledM) * objectNormal;`).source;
     light /= 1.0 + dot(light, Y);
     totalEmissiveRadiance += diffuseColor.rgb * light;
   }
-}`).source;
-  };
-  m.customProgramCacheKey = () => `${prevKey}-ledlit`;
-  m.needsUpdate = true;
-  return m;
+}`,
+    },
+  ],
+};
+
+/**
+ * Lights a material with a cabinet's glow (LED_LIT_PATCH); `gain`: how much
+ * of it, a uniform shared by the materials of a kind.
+ */
+export function ledLit<T extends THREE.MeshStandardMaterial>(m: T, glow: LedGlow, gain: { value: number } = ledLight): T {
+  return patchMaterial(m, LED_LIT_PATCH, () => ({
+    ledGlowMap: { value: glow.map.texture },
+    ledGlowFrame: { value: glow.frame },
+    ledGlowBox: { value: glow.box },
+    ledGlowGain: gain,
+  }));
 }
