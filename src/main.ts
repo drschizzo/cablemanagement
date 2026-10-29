@@ -1,5 +1,6 @@
-// Entry point: reads the page's options, creates the stage and the game
-// (app/), then opens the title screen. Every visit opens on it.
+// Entry point: reads the page's options, creates the stage at the quality
+// chosen and the game (app/), then opens the title screen. Every visit opens
+// on it.
 
 import { Stage } from './render/stage';
 import { App } from './app/app';
@@ -11,10 +12,14 @@ import { loadBaked } from './game/mess/baked';
 import bakedUrl from './game/mess/showcase.bin?url';
 import { $ } from './lib/page';
 import { showGpuNotice } from './ui/notice';
+import { load } from './ui/storage';
+import { QUALITY } from './render/quality';
 
 const options = readUrlOptions(location.search);
 const aisles = aisleSettings(options);
 const stage = new Stage($('#view'), showGpuNotice);
+// ?quality=N holds a level for this visit only; otherwise, the one chosen (or reached by auto) last time
+stage.setQuality(options.quality !== null ? { kind: 'fixed', settings: QUALITY[options.quality] } : load('quality'));
 // the fallen mess of the default aisle, fetched while the rest starts
 const baked = aisles.isDefault && aisles.firstSeed === SHOWCASE_DEFAULT.seed ? loadBaked(bakedUrl) : Promise.resolve(null);
 const app = new App(stage, aisles, !options.syncPhysics, baked);

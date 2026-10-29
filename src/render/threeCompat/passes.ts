@@ -21,7 +21,7 @@ interface SSRPassInternals {
  * soft screen-space reflections on the meshes in `mirrors` (the floor).
  */
 export class ReflectionPass extends SSRPass {
-  /** false: the reflections are skipped (a lower quality, see QUALITY in stage.ts): the scene alone */
+  /** false: the reflections are skipped (a lower quality, see QUALITY in quality.ts): the scene alone */
   reflecting = true;
 
   constructor(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.PerspectiveCamera, mirrors: THREE.Mesh[]) {

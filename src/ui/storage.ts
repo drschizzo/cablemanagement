@@ -4,6 +4,8 @@
 // browsing, storage full or blocked): the game then simply forgets. Keys and
 // formats are those of earlier versions, so players keep their progress.
 
+import { AUTO_QUALITY, QUALITY, type QualityChoice } from '../render/quality';
+
 /** best result per level id: stars (1..3), time (s), readability note (0..100), and the time challenges won */
 export interface Progress {
   stars: Record<string, number>;
@@ -22,6 +24,15 @@ interface Entry<T> {
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
+/** a level of QUALITY, or settings of the same shape as its levels */
+function isQualityChoice(v: QualityChoice): boolean {
+  if (!isRecord(v)) return false;
+  if (v.kind === 'auto') return Number.isInteger(v.level) && v.level >= 0 && v.level < QUALITY.length;
+  if (v.kind !== 'fixed' || !isRecord(v.settings)) return false;
+  const { ratio, ao, ssr, shadow } = v.settings;
+  return ratio > 0 && typeof ao === 'boolean' && typeof ssr === 'boolean' && shadow > 0;
+}
+
 const ENTRIES = {
   progress: {
     key: 'cable.progress',
@@ -37,6 +48,21 @@ const ENTRIES = {
     fallback: (): boolean => false,
     parse: (raw: string) => raw === 'done',
     format: () => 'done',
+  } satisfies Entry<boolean>,
+  /** the quality of the image: chosen in the settings, or the level auto has stepped down to */
+  quality: {
+    key: 'cable.quality',
+    fallback: (): QualityChoice => AUTO_QUALITY,
+    parse: (raw: string): QualityChoice => JSON.parse(raw),
+    format: (v: QualityChoice) => JSON.stringify(v),
+    valid: isQualityChoice,
+  } satisfies Entry<QualityChoice>,
+  /** the sound is off */
+  muted: {
+    key: 'cable.muted',
+    fallback: (): boolean => false,
+    parse: (raw: string) => raw === 'on',
+    format: () => 'on',
   } satisfies Entry<boolean>,
 };
 

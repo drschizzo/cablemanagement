@@ -1,6 +1,7 @@
 // The 3D stage every scene draws on: the renderer, the camera and its
 // controls, the lights, and the post-processing passes (reflections, ambient
-// occlusion, bloom, the cinema pass), stepped down when the GPU cannot keep up.
+// occlusion, bloom, the cinema pass), at the quality chosen or stepped down
+// when the GPU cannot keep up (quality.ts).
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -13,6 +14,7 @@ import { ledClock, ledViewHeight } from './leds';
 import { ledGlows } from './ledGlow';
 import { gpuAdvice, gpuInfo, type GpuAdvice, type GpuInfo } from './gpu';
 import { addLights, createControls, createRenderer } from './stageSetup';
+import { AUTO_QUALITY, QUALITY, drawAlike, settingsOf, type QualityChoice, type QualitySettings } from './quality';
 
 /** px from each edge of the screen */
 export interface ScreenMargins {
@@ -63,10 +65,10 @@ export class Stage {
 
   /** the GPU the browser draws with (see gpu.ts) */
   readonly gpu: GpuInfo;
-  /** index in QUALITY: steps down while the frames come too late (see adapt()) */
-  quality = 0;
-  /** ?quality=N: held at that level, never adapted */
-  private qualityHeld = false;
+  /** the quality of the image (see quality.ts): auto, its level steps down while the frames come too late (see adapt()) */
+  private qualityChoice: QualityChoice = AUTO_QUALITY;
+  /** the image stepped down by itself: the choice it is now */
+  onQualityLowered: (choice: QualityChoice) => void = () => {};
   /** the intervals between the frames of the sample under way (ms), and how many samples in a row were too slow */
   private sample: number[] = [];
   private slowSamples = 0;
@@ -121,11 +123,6 @@ export class Stage {
     for (const e of ['pointermove', 'pointerdown', 'wheel', 'keydown']) {
       window.addEventListener(e, () => { this.lastInput = performance.now(); }, { capture: true, passive: true });
     }
-    const held = new URLSearchParams(location.search).get('quality');
-    if (held !== null) {
-      this.qualityHeld = true;
-      this.quality = THREE.MathUtils.clamp(Math.round(Number(held)) || 0, 0, QUALITY.length - 1);
-    }
     this.applyQuality();
     const advice = gpuAdvice(this.gpu, false);
     if (advice) this.onGpuAdvice(advice);
@@ -163,7 +160,8 @@ export class Stage {
    * is told how to give the browser the other one.
    */
   private adapt(interval: number): void {
-    if (this.qualityHeld || this.quality === QUALITY.length - 1) return;
+    const choice = this.qualityChoice;
+    if (choice.kind !== 'auto' || choice.level === QUALITY.length - 1) return;
     this.sample.push(interval);
     if (this.sample.length < 90) return;
     const mean = this.sample.reduce((a, b) => a + b, 0) / this.sample.length;
@@ -172,16 +170,38 @@ export class Stage {
     if (this.slowSamples < 2) return;
     this.slowSamples = 0;
     // down to the next level that changes something on this screen (at 1 px a pixel, the first ones are alike)
-    const from = settings(QUALITY[this.quality]);
-    do this.quality++; while (this.quality < QUALITY.length - 1 && settings(QUALITY[this.quality]) === from);
+    const from = QUALITY[choice.level];
+    let level = choice.level + 1;
+    while (level < QUALITY.length - 1 && drawAlike(QUALITY[level], from, window.devicePixelRatio)) level++;
+    this.qualityChoice = { kind: 'auto', level };
     this.applyQuality();
-    console.info(`Image abaissée au niveau ${this.quality} de qualité (${mean.toFixed(1)} ms par image, ${this.gpu.name})`);
+    console.info(`Image abaissée au niveau ${level} de qualité (${mean.toFixed(1)} ms par image, ${this.gpu.name})`);
+    this.onQualityLowered(this.qualityChoice);
     const advice = gpuAdvice(this.gpu, true);
     if (advice) this.onGpuAdvice(advice);
   }
 
+  /** what the player chose (or what auto has stepped down to) */
+  get quality(): QualityChoice {
+    return this.qualityChoice;
+  }
+
+  /** the image as it is drawn now */
+  get qualitySettings(): QualitySettings {
+    return settingsOf(this.qualityChoice);
+  }
+
+  /** the image from now on: adapted from a level, or held as set */
+  setQuality(choice: QualityChoice): void {
+    this.qualityChoice = choice;
+    // frames drawn at the former quality say nothing of this one
+    this.sample.length = 0;
+    this.slowSamples = 0;
+    this.applyQuality();
+  }
+
   private applyQuality(): void {
-    const q = QUALITY[this.quality];
+    const q = this.qualitySettings;
     this.renderer.setPixelRatio(Math.min(q.ratio, window.devicePixelRatio));
     this.ao.enabled = q.ao;
     this.ssr.reflecting = q.ssr;
@@ -284,7 +304,7 @@ export class Stage {
     this.bloom.strength = THREE.MathUtils.lerp(near.strength, far.strength, t);
     this.bloom.radius = THREE.MathUtils.lerp(near.radius, far.radius, t);
     // the blur of each mip spans a set number of its pixels: at fewer pixels than the 2 a point it was
-    // tuned at (see QUALITY), mip i covers the screen that mip i + shift did, and takes its weight
+    // tuned at (see QUALITY in quality.ts), mip i covers the screen that mip i + shift did, and takes its weight
     const shift = Math.log2(2 / this.renderer.getPixelRatio());
     const count = this.bloom.levelCount;
     const at = (i: number) => (i < count ? THREE.MathUtils.lerp(near.mips[i], far.mips[i], t) : 0);
@@ -324,25 +344,6 @@ export class Stage {
     this.composer.render();
   }
 }
-
-/**
- * The levels the image steps down through when the GPU cannot keep up (see
- * Stage.adapt()), from the full image: the pixel density first (the cost of
- * every pass scales with it), then the ambient occlusion, the reflections on
- * the floor, the resolution of the shadows, and last below 1 px a pixel.
- */
-const QUALITY = [
-  { ratio: 2, ao: true, ssr: true, shadow: 2048 },
-  { ratio: 1.5, ao: true, ssr: true, shadow: 2048 },
-  { ratio: 1, ao: true, ssr: true, shadow: 2048 },
-  { ratio: 1, ao: false, ssr: true, shadow: 2048 },
-  { ratio: 1, ao: false, ssr: false, shadow: 2048 },
-  { ratio: 1, ao: false, ssr: false, shadow: 1024 },
-  { ratio: 0.75, ao: false, ssr: false, shadow: 1024 },
-];
-
-/** a level as it applies on this screen, to compare */
-const settings = (q: (typeof QUALITY)[number]) => `${Math.min(q.ratio, window.devicePixelRatio)} ${q.ao} ${q.ssr} ${q.shadow}`;
 
 /**
  * The glow of the lights, close to the cabinet and from afar. The bloom spreads

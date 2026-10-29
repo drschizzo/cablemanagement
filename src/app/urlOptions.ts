@@ -3,8 +3,10 @@
 //   ?bays=N      how many closets stand side by side in the before/after aisle (1..32)
 //   ?pairs=N     how many panel / switch pairs each of them holds (1..16)
 //   ?seed=N      the same first aisle every time
+//   ?quality=N   the image held at that level of quality (0: full, see QUALITY), never adapted nor saved
 
 import { SHOWCASE_DEFAULT } from '../game/levels/showcaseRack';
+import { QUALITY } from '../render/quality';
 
 export interface UrlOptions {
   syncPhysics: boolean;
@@ -13,6 +15,8 @@ export interface UrlOptions {
   pairs: number;
   /** 0: not given */
   seed: number;
+  /** a level of QUALITY; null: not given */
+  quality: number | null;
 }
 
 export function readUrlOptions(search: string): UrlOptions {
@@ -23,6 +27,7 @@ export function readUrlOptions(search: string): UrlOptions {
     bays: Math.max(1, Math.min(32, int('bays') || SHOWCASE_DEFAULT.bays)),
     pairs: Math.max(0, Math.min(16, int('pairs'))),
     seed: int('seed'),
+    quality: params.has('quality') ? Math.max(0, Math.min(QUALITY.length - 1, int('quality'))) : null,
   };
 }
 

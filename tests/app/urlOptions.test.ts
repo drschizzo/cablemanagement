@@ -2,15 +2,16 @@
 import { describe, expect, it } from 'vitest';
 import { aisleSettings, readUrlOptions } from '../../src/app/urlOptions';
 import { SHOWCASE_DEFAULT } from '../../src/game/levels/showcaseRack';
+import { QUALITY } from '../../src/render/quality';
 
 describe('the options of the page address', () => {
   it('has defaults when the address carries none', () => {
-    expect(readUrlOptions('')).toEqual({ syncPhysics: false, bays: SHOWCASE_DEFAULT.bays, pairs: 0, seed: 0 });
+    expect(readUrlOptions('')).toEqual({ syncPhysics: false, bays: SHOWCASE_DEFAULT.bays, pairs: 0, seed: 0, quality: null });
   });
 
   it('reads them, and keeps the numbers within bounds', () => {
-    expect(readUrlOptions('?sync&bays=3&pairs=6&seed=42')).toEqual({ syncPhysics: true, bays: 3, pairs: 6, seed: 42 });
-    expect(readUrlOptions('?bays=99&pairs=99')).toMatchObject({ bays: 32, pairs: 16 });
+    expect(readUrlOptions('?sync&bays=3&pairs=6&seed=42&quality=2')).toEqual({ syncPhysics: true, bays: 3, pairs: 6, seed: 42, quality: 2 });
+    expect(readUrlOptions('?bays=99&pairs=99&quality=99')).toMatchObject({ bays: 32, pairs: 16, quality: QUALITY.length - 1 });
     expect(readUrlOptions('?bays=abc')).toMatchObject({ bays: SHOWCASE_DEFAULT.bays });
   });
 });
