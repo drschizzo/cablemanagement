@@ -45,7 +45,8 @@ src/
     mess/           le désordre de départ : les chemins emmêlés des cordons (tangle), leur chute dans un Worker,
                     sa version précalculée pour l'écran titre (baked, showcase.bin)
     levels/         ce qu'est un niveau (levelDef : une union par sorte, campagne, puzzle, ticket, tutoriel, partie libre,
-                    zen, baie du jour, vitrine, banc), les équipements nommés, la campagne et le tutoriel, les puzzles,
+                    zen, baie du jour, vitrine, banc), les règles qu'il joue en plus de brancher et ranger (levelRules :
+                    voyants, tension, fenêtre de maintenance, faisceaux, pannes…), les équipements nommés, la campagne et le tutoriel, les puzzles,
                     la carrière (un client, ses tickets, chacun bâti sur la baie laissée par le précédent),
                     la baie sur mesure de l'éditeur (customLevel : sa palette, ses règles, son code de partage), la partie libre et le zen, la baie du jour
                     (tirée de la date : la même pour tous), les baies de la vitrine
@@ -95,7 +96,8 @@ src/
     hud.ts          Hud : assemble les panneaux, et les petites choses (aide, bulle, message, chronomètre)
     toolbar.ts      la barre d'outils et ce qui reste en stock ; stockMenu.ts, le stock de cordons neufs
     schedulePanel.ts le plan de brassage, ses jauges, le budget d'interruption, le bouton Valider
-    levelBrief.ts   le brief d'un niveau, puis la préparation
+    levelBrief.ts   le brief d'un niveau (ses conseils, les règles qu'on y rencontre pour la première fois, les autres
+                    repliées), puis la préparation ; ruleTexts.ts, les mots de chaque règle
     timelapsePlayer.ts le timelapse lu en boucle, et enregistré en vidéo (MediaRecorder) ; beforeAfterImage.ts, la baie
                     avant / après en une image ; share.ts, l'adresse du jeu et les fichiers offerts au joueur
     resultScreen.ts l'écran de résultat ; modesPanel.ts, les modes de jeu (une carte chacun) ; levelMenu.ts, une section à la
@@ -104,7 +106,7 @@ src/
                     paramètres, accueil ; confirmDialog.ts, la question avant de quitter une baie entamée
     settingsPanel.ts les paramètres : qualité de l'image (auto, préréglages, détails) et son
     progress.ts     la progression du joueur : meilleur score, défi réussi (chrono de la campagne, gestes d'un puzzle),
-                    niveau ouvert, niveau suivant (fonctions pures)
+                    niveau ouvert, niveau suivant, règles déjà rencontrées (fonctions pures)
     shop.ts         l'atelier : son catalogue, acheter et porter un look (fonctions pures) ; shopPanel.ts, son panneau
     wallet.ts       le salaire encaissé (un niveau rejoué ne paie que ce qu'il ajoute à sa meilleure fiche de paie) et les
                     trouvailles gardées
@@ -234,13 +236,14 @@ sur le fil principal.
 ## Données dans le navigateur
 
 `ui/storage.ts` déclare chaque entrée (clé, valeur par défaut, validation) : progression (étoiles et meilleurs temps
-par niveau), tutoriel terminé, carrière (tickets faits, la baie du client telle que laissée), dernière baie de l'éditeur, portefeuille (salaire, cosmétiques achetés, trouvailles), baies du jour (le meilleur résultat de chaque date), langue (celle du navigateur tant que le joueur n'en a pas choisi), musique coupée, qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu) et son
+par niveau), tutoriel terminé, règles déjà rencontrées, carrière (tickets faits, la baie du client telle que laissée), dernière baie de l'éditeur, portefeuille (salaire, cosmétiques achetés, trouvailles), baies du jour (le meilleur résultat de chaque date), langue (celle du navigateur tant que le joueur n'en a pas choisi), musique coupée, qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu) et son
 coupé. Les clés sont celles des versions précédentes.
 
 ## Ajouter…
 
 | Évolution | Où |
 |---|---|
+| une règle de niveau | une entrée dans `RULES` et `hasRule` (`game/levels/levelRules.ts`), ses mots dans `ruleTip` (`ui/ruleTexts.ts`) : le brief la dit au premier niveau qui l'a, puis la replie |
 | un niveau | une entrée dans `LEVELS` (`game/levels/campaign.ts`), bâtie avec les équipements de `game/levels/equipment.ts`, et ses mots dans `ui/levelTexts.ts` (un test vérifie qu'aucun ne manque) ; un puzzle, de même dans `PUZZLES` (`game/levels/puzzles.ts`) ; `tests/game/levels/levels.test.ts` vérifie son plan, qu'il ne se gagne pas sans rien faire et qu'il peut atteindre 3 étoiles avec son seul inventaire (`tidyKit`) |
 | un équipement de baie | `UnitSpec` et le constructeur de `Rack` (`game/rack.ts`), sa face dans `faceOf` et son rendu dans `render/rackView.ts`, son nom dans `unitLabel` (`ui/names.ts`) |
 | une sorte de cordon | une entrée dans `CORD_KINDS` (`game/cordTypes.ts`) ; le compilateur demande son nom (`ui/names.ts`), son marquage (`JACKET_KIND`, `render/jacket.ts`) et, s'il en a un nouveau, son connecteur (`plugShape`, `render/cableView.ts`) |

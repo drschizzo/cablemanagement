@@ -1,7 +1,7 @@
 // The progress record is plain data: the rules of the best score are tested
 // without a page.
 import { describe, expect, it } from 'vitest';
-import { isUnlocked, levelAfter, recordResult } from '../../src/ui/progress';
+import { isTimeChallengeKnown, isUnlocked, knownRules, levelAfter, recordResult, withRulesOf } from '../../src/ui/progress';
 import { PUZZLES } from '../../src/game/levels/puzzles';
 import { LEVELS } from '../../src/game/levels/campaign';
 import type { Progress } from '../../src/ui/storage';
@@ -55,5 +55,30 @@ describe('the campaign', () => {
   it('knows the level after each one, and none after the last', () => {
     expect(levelAfter(LEVELS[0])).toBe(LEVELS[1]);
     expect(levelAfter(LEVELS[LEVELS.length - 1])).toBeNull();
+  });
+});
+
+describe('the rules met', () => {
+  it('are those saved, and those of the levels signed off', () => {
+    const p = empty();
+    p.stars[LEVELS[2].id] = 1;
+    const known = knownRules(['power'], p);
+    expect(known.has('power')).toBe(true);
+    expect(known.has('maintenance')).toBe(true);
+    expect(known.has('blind')).toBe(false);
+  });
+
+  it('grow with a level signed off, without twice the same', () => {
+    const rules = withRulesOf(['leds'], LEVELS[2]);
+    expect(rules).toContain('maintenance');
+    expect(rules.filter((r) => r === 'leds')).toHaveLength(1);
+  });
+
+  it('the time challenge is known once its level is signed off', () => {
+    const p = empty();
+    expect(isTimeChallengeKnown(p, level)).toBe(false);
+    p.stars[level.id] = 1;
+    expect(isTimeChallengeKnown(p, level)).toBe(true);
+    expect(isTimeChallengeKnown(p, PUZZLES[0])).toBe(false);
   });
 });

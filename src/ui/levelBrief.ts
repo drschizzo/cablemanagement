@@ -1,20 +1,22 @@
 // The brief of a level, before it starts (and on the Help button): what to
-// do, the tips, the material given. On a first reading of a level with
-// supports to place, the preparation follows: the cabinet stands still and the
-// clock waits while the player places them.
+// do, the tips, the rules met here for the first time (those met before are
+// folded), the material given. On a first reading of a level with supports to
+// place, the preparation follows: the cabinet stands still and the clock
+// waits while the player places them.
 
 import type { Controller, Tool } from '../play/controller';
-import { SERVICES } from '../game/services';
 import { ALL_SUPPLIES, ITEM_KINDS } from '../game/supplies';
-import { CORD_KINDS } from '../game/cordTypes';
 import type { LevelDef } from '../game/levels/levelDef';
-import { formatCost, formatLength, formatTime } from './format';
+import { levelRules, type Rule } from '../game/levels/levelRules';
+import { formatLength, formatTime } from './format';
 import { hide, show } from './dom';
 import { $ } from '../lib/page';
-import { countOf, serviceName, serviceWhat } from './names';
+import { countOf } from './names';
 import { tr } from './language';
-import { toolKey } from './toolbar';
 import { levelBrief, levelTips, levelTitle } from './levelTexts';
+import { ruleTip } from './ruleTexts';
+import { load } from './storage';
+import { isTimeChallengeKnown, knownRules } from './progress';
 
 export class LevelBrief {
   /** the preparation was offered for this level already */
@@ -31,7 +33,12 @@ export class LevelBrief {
   show(level: LevelDef, ctl: Controller | null): void {
     $('#brief-title').textContent = levelTitle(level);
     $('#brief-text').textContent = levelBrief(level);
-    $('#brief-tips').innerHTML = briefTips(level, ctl).map((t) => `<li>${t}</li>`).join('');
+    const rules = splitRules(level);
+    const services = ctl?.world.circuits.map((c) => c.service) ?? [];
+    $('#brief-tips').innerHTML = briefTips(level, rules, services).map((t) => `<li>${t}</li>`).join('');
+    // the rules met before: folded, to read again on demand
+    $('#brief-known').style.display = rules.known.length ? '' : 'none';
+    $('#brief-known-tips').innerHTML = rules.known.map((r) => `<li>${ruleTip(r, level, services)}</li>`).join('');
     $('#brief-inv').textContent = materialLine(level);
     // the clock waits for the player to read
     ctl?.pause();
@@ -59,39 +66,34 @@ export class LevelBrief {
   }
 }
 
-/** the level's own tips, then those of its rules (time challenge, tension, maintenance window, LEDs) */
-function briefTips(level: LevelDef, ctl: Controller | null): string[] {
+/** the brief's tips: the level's own, its challenge, then the rules met for the first time (flagged new) */
+function briefTips(level: LevelDef, rules: { fresh: Rule[] }, services: number[]): string[] {
   const tips = levelTips(level);
-  if (level.kind === 'puzzle') tips.push(tr({
+  const challenge = challengeTip(level);
+  if (challenge) tips.push(challenge);
+  const isNew = tr({ fr: 'Nouveau', en: 'New' });
+  return [...tips, ...rules.fresh.map((r) => `<span class="new">${isNew}</span> ${ruleTip(r, level, services)}`)];
+}
+
+/**
+ * The level's challenge: the gestures of a puzzle; the time of a campaign
+ * level, once the result screen has told it (it is found there, not read
+ * before the first try).
+ */
+function challengeTip(level: LevelDef): string | null {
+  if (level.kind === 'puzzle') return tr({
     fr: `<b>Défi gestes</b> : ★★★ en ${level.moves} geste${level.moves > 1 ? 's' : ''} au plus. Compte pour un geste : brancher ou débrancher un connecteur (à la main ou au bout d'un chemin), poser ou retirer un support ou un velcro, jeter un cordon au bac, en prendre un au Stock. Ranger (déplacer un câble, poser un chemin, peigner) est gratuit.`,
     en: `<b>Gestures challenge</b>: ★★★ in ${level.moves} gesture${level.moves > 1 ? 's' : ''} at most. A gesture is: plugging or unplugging a connector (by hand or at the end of a route), placing or taking off a support or a velcro, throwing a cord into the crate, taking one from the Stock. Tidying (moving a cord, laying a route, combing) is free.`,
-  }));
-  if (level.kind === 'campaign') tips.push(tr({ fr: `<b>Défi chrono</b> : ★★★ en moins de ${formatTime(level.par)}.`, en: `<b>Time challenge</b>: ★★★ in less than ${formatTime(level.par)}.` }));
-  tips.push(tr({
-    fr: '<b>Ni tendu ni plié</b> : un cordon bien plus court que son chemin rangé, ou une fibre pliée en angle vif, ne vaut pas ★★★.',
-    en: '<b>Neither taut nor kinked</b>: a cord much shorter than its tidy route, or a fibre bent at a sharp angle, is not worth ★★★.',
-  }));
-  if (level.downtime !== undefined) {
-    const used = [...new Set(ctl?.world.circuits.map((c) => c.service) ?? [])].sort((a, b) => SERVICES[b].weight - SERVICES[a].weight);
-    const chips = used.map((i) => `<span class="svc-chip" style="--c:${SERVICES[i].color}" title="${serviceWhat(i)}">${serviceName(i)} ×${formatCost(SERVICES[i].weight).replace(/ pts?/, '')}</span>`).join(' ');
-    const n = level.bypass ?? 0;
-    tips.unshift(tr({
-      fr: `<b>Fenêtre de maintenance</b> : les liaisons ⚡ sont en production. Chaque seconde où l'une est coupée coûte le poids de son service sur un budget de <b>${level.downtime} pts</b> : ${chips}. Budget dépassé : incident, plus de ★★★.`
-        + (n ? ` Vous avez <b>${n} dérivation${n > 1 ? 's' : ''}</b> : posée sur une liaison (cliquez son ⚡ dans le plan), elle porte son trafic pendant qu'on la recâble.` : ''),
-      en: `<b>Maintenance window</b>: the ⚡ links are in production. Every second one of them is cut costs its service's weight off a budget of <b>${level.downtime} pts</b>: ${chips}. Budget overrun: an incident, no more ★★★.`
-        + (n ? ` You have <b>${n} bypass${n > 1 ? 'es' : ''}</b>: put on a link (click its ⚡ on the schedule), it carries its traffic while it is recabled.` : ''),
-    }));
-  }
-  if (ctl?.world.circuits.some((c) => CORD_KINDS[c.type].family === 'power')) tips.push(tr({
-    fr: '<b>Courant</b> : les cordons noirs vont du bandeau électrique aux alimentations des serveurs (couper l\'une, c\'est couper le service du serveur). On ne les range pas avec les données : chaque famille ses supports.',
-    en: '<b>Power</b>: the black cords run from the power strip to the servers\' supplies (cutting one cuts the server\'s service). They are not run with the data: each family its own supports.',
-  }));
-  if (level.faults) tips.push(tr({
-    fr: `<b>Pannes</b> : ${level.faults > 1 ? `${level.faults} vieux cordons sont coupés` : 'un vieux cordon est coupé'} à l'intérieur. Branché comme prévu, il ne porte rien et ses voyants clignotent en rouge. Le <b>Testeur</b> (${toolKey('tester')}) le trouve d'un clic ; remplacez-le par un cordon neuf du Stock.`,
-    en: `<b>Faults</b>: ${level.faults > 1 ? `${level.faults} old cords are` : 'an old cord is'} broken inside. Plugged as planned, it carries nothing and its LEDs blink red. The <b>Tester</b> (${toolKey('tester')}) finds it in a click; swap it for a new cord from the Stock.`,
-  }));
-  tips.push(tr({ fr: 'Les voyants des ports : vert = liaison conforme au plan, orange = mauvais port, rouge = liaison coupée.', en: 'The port LEDs: green = link as planned, orange = wrong port, red = link down.' }));
-  return tips;
+  });
+  if (level.kind === 'campaign' && isTimeChallengeKnown(load('progress'), level)) return tr({ fr: `<b>Défi chrono</b> : ★★★ en moins de ${formatTime(level.par)}.`, en: `<b>Time challenge</b>: ★★★ in less than ${formatTime(level.par)}.` });
+  return null;
+}
+
+/** the level's rules, split: those the player meets here for the first time, and those met before */
+function splitRules(level: LevelDef): { fresh: Rule[]; known: Rule[] } {
+  const known = knownRules(load('rules'), load('progress'));
+  const rules = levelRules(level);
+  return { fresh: rules.filter((r) => !known.has(r)), known: rules.filter((r) => known.has(r)) };
 }
 
 /** the material the level gives: supports, velcros, new cords */

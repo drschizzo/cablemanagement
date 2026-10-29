@@ -1,6 +1,7 @@
 // What a signed-off cabinet leaves behind, by kind of level: its record (the
-// progress, the cabinets of the day, the career), its pay, the lines to
-// share, and the level that comes next. The result screen shows it.
+// progress, the cabinets of the day, the career, the rules met), its pay,
+// the lines to share, and the level that comes next. The result screen shows
+// it.
 
 import type { World } from '../game/world';
 import type { Evaluation } from '../game/evaluation';
@@ -9,7 +10,7 @@ import { UNLOCK_STARS } from '../game/levels/campaign';
 import { cabinetOf } from '../game/cabinetState';
 import { payslip, type Payslip } from '../game/pay';
 import { assertNever } from '../lib/assertNever';
-import { levelAfter, recordResult, type LevelResult } from './progress';
+import { levelAfter, recordResult, withRulesOf, type LevelResult } from './progress';
 import { recordDaily, shareText, streak } from './daily';
 import { currentTicket, recordTicket } from './career';
 import { earn } from './wallet';
@@ -39,6 +40,8 @@ export interface Outcome {
 
 /** a signed-off cabinet `w` of `level`, after `time` s and `moves` gestures: kept where its kind keeps it */
 export function recordOutcome(level: LevelDef, ev: Evaluation, w: World, time: number, moves: number, progress: Progress): Outcome {
+  // whatever the kind, its rules are met: the next briefs only recall them
+  save('rules', withRulesOf(load('rules'), level));
   switch (level.kind) {
     case 'campaign':
     case 'puzzle':

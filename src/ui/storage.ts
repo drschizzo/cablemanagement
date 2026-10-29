@@ -9,6 +9,7 @@ import { LANGUAGES, preferredLanguage, type Language } from './language';
 import type { CabinetState } from '../game/cabinetState';
 import type { FindId } from '../game/finds';
 import type { Look } from '../render/look';
+import { RULES, type Rule } from '../game/levels/levelRules';
 
 /** the best result of one cabinet of the day */
 export interface DailyResult {
@@ -116,6 +117,17 @@ const ENTRIES = {
     parse: (raw: string) => raw,
     format: (v: string) => v,
   } satisfies Entry<string>,
+  /** the rules met in a cabinet signed off: a brief only recalls them (game/levels/levelRules.ts) */
+  rules: {
+    key: 'cable.rules',
+    fallback: (): Rule[] => [],
+    // a rule this version no longer has is forgotten
+    parse: (raw: string): Rule[] => {
+      const v: unknown = JSON.parse(raw);
+      return Array.isArray(v) ? v.filter((r): r is Rule => (RULES as readonly unknown[]).includes(r)) : [];
+    },
+    format: (v: Rule[]) => JSON.stringify(v),
+  } satisfies Entry<Rule[]>,
   /** the tutorial was finished or skipped once */
   tutorialDone: {
     key: 'cable.tutorial',

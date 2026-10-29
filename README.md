@@ -75,6 +75,10 @@ Chaque niveau fournit un **plan de brassage** : la liste des liaisons à établi
 
 Un cordon branché comme prévu reçoit tout seul l'étiquette de son service.
 
+Le jeu ajoute ses règles une à une : le brief d'un niveau marque **Nouveau** celles qu'on y
+rencontre pour la première fois (la fenêtre de maintenance au niveau 3, la fibre qui se plie au
+niveau 5, les faisceaux au niveau 6…), et replie les autres sous « Rappel des règles ».
+
 | Étoiles | Condition |
 |---|---|
 | ★ | toutes les liaisons du plan sont branchées |

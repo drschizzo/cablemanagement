@@ -102,7 +102,6 @@ const CAMPAIGN: Record<string, Words<LevelText>> = {
       brief: 'Deux panneaux, deux switchs, le cœur de réseau et les serveurs : 25 liaisons. Déposez ce qui gêne dans le bac, rebrassez proprement, et serrez les câbles en faisceaux.',
       tips: [
         'Suppr sur un câble : il est débranché et jeté dans le bac. Le Stock (0) fournit des cordons neufs, en nombre limité.',
-        '<b>Faisceaux</b> : pour ★★★, au moins 3 velcros qui serrent chacun 3 câbles ou plus, dans un guide-câbles ou une goulotte.',
         'Seulement 4 goulottes : choisissez les couloirs où elles servent le plus.',
       ],
     },
@@ -111,7 +110,6 @@ const CAMPAIGN: Record<string, Words<LevelText>> = {
       brief: 'Two panels, two switches, the network core and the servers: 25 links. Drop what is in the way into the crate, repatch cleanly, and strap the cords in bundles.',
       tips: [
         'Delete over a cord: it is unplugged and thrown into the crate. The Stock (0) provides new cords, in limited numbers.',
-        '<b>Bundles</b>: for ★★★, at least 3 velcros strapping 3 cords or more each, in a cable manager or a duct.',
         'Only 4 ducts: choose the channels where they help most.',
       ],
     },
@@ -132,12 +130,10 @@ const CAMPAIGN: Record<string, Words<LevelText>> = {
     fr: {
       title: 'Le plat de spaghettis',
       brief: 'Le local technique que personne n\'ose ouvrir : quatre panneaux, quatre switchs, le pare-feu, le routeur, les serveurs. Les vieux cordons ne portent aucune marque : tracez-les pour savoir où ils vont. Bonne chance.',
-      tips: ['Cordons sans marque : survolés, ils ne disent pas où ils vont. Le Traceur (T sur un câble) le révèle, et un cordon branché comme prévu se reconnaît tout seul.'],
     },
     en: {
       title: 'The spaghetti bowl',
       brief: 'The wiring closet nobody dares open: four panels, four switches, the firewall, the router, the servers. The old cords carry no mark: trace them to find where they go. Good luck.',
-      tips: ['Unmarked cords: hovered, they do not say where they go. The Tracer (T over a cord) reveals it, and a cord plugged as planned is recognised by itself.'],
     },
   },
 };
@@ -275,7 +271,7 @@ export function levelBrief(level: LevelDef): string {
   return textOf(level).brief;
 }
 
-/** the level's own tips (those of its rules are added by the brief) */
+/** the level's own tips (those of its rules are added by the brief: ui/ruleTexts.ts) */
 export function levelTips(level: LevelDef): string[] {
   return [...(textOf(level).tips ?? [])];
 }

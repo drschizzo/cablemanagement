@@ -1,11 +1,14 @@
 // The player's progress, level by level: best stars, best time, best
 // readability note, challenge won (the time challenge of the campaign, the
-// gestures challenge of the puzzles). Pure functions over the saved record:
-// saving it is the caller's business (storage.ts).
+// gestures challenge of the puzzles); and the rules already met. Pure
+// functions over the saved record: saving it is the caller's business
+// (storage.ts).
 
 import type { Progress } from './storage';
 import { LEVELS, UNLOCK_STARS } from '../game/levels/campaign';
+import { PUZZLES } from '../game/levels/puzzles';
 import type { LevelDef } from '../game/levels/levelDef';
+import { levelRules, type Rule } from '../game/levels/levelRules';
 
 /** a level just validated, and what the record said before it */
 export interface LevelResult {
@@ -55,4 +58,26 @@ export function isUnlocked(progress: Progress, index: number): boolean {
 export function levelAfter(level: LevelDef): LevelDef | null {
   const index = LEVELS.findIndex((l) => l.id === level.id);
   return index >= 0 && index + 1 < LEVELS.length ? LEVELS[index + 1] : null;
+}
+
+/**
+ * The rules the player has met: those saved, and those of every campaign
+ * level and puzzle signed off (a save from before the rules were kept).
+ */
+export function knownRules(saved: readonly Rule[], progress: Progress): Set<Rule> {
+  const known = new Set(saved);
+  for (const level of [...LEVELS, ...PUZZLES]) {
+    if ((progress.stars[level.id] ?? 0) > 0) for (const rule of levelRules(level)) known.add(rule);
+  }
+  return known;
+}
+
+/** the rules met, with those of `level` just signed off */
+export function withRulesOf(saved: readonly Rule[], level: LevelDef): Rule[] {
+  return [...new Set([...saved, ...levelRules(level)])];
+}
+
+/** the time challenge shows once the level is signed off: the result screen tells it first */
+export function isTimeChallengeKnown(progress: Progress, level: LevelDef): boolean {
+  return level.kind === 'campaign' && (progress.stars[level.id] ?? 0) > 0;
 }

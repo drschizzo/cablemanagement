@@ -63,6 +63,7 @@ export const PAGE_TEXTS: Record<string, Words> = {
   'editor.code': { fr: 'Collez un lien ou un code de baie', en: 'Paste a link or a cabinet code' },
   'editor.open': { fr: 'Ouvrir', en: 'Open' },
   'brief.go': { fr: 'Commencer', en: 'Start' },
+  'brief.known': { fr: 'Rappel des règles', en: 'The rules, again' },
   'result.title': { fr: 'Baie validée', en: 'Cabinet signed off' },
   'result.beforeAlt': { fr: 'La baie au départ', en: 'The cabinet at the start' },
   'result.afterAlt': { fr: 'La baie validée', en: 'The cabinet signed off' },
