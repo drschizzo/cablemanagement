@@ -1,5 +1,5 @@
 // The career panel, from the title screen: the client, its tickets one by one
-// (signed off with their stars, the one to play now, those still to come),
+// (signed off with their stars, the one to play now, those still locked),
 // and a new career from the mess.
 
 import { TICKETS, ticketLevel } from '../game/levels/career';
@@ -36,12 +36,12 @@ export class CareerPanel {
     $('#career-tickets').innerHTML = '';
     TICKETS.forEach((_, t) => {
       const card = document.createElement('div');
-      // the titles of tickets to come show only their number: the client has not called yet
+      // a locked ticket shows only its number: the client has not called yet
       const level = t === now?.ticket ? now : ticketLevel(t, null);
       card.className = 'ticket' + (t < career.done ? ' done' : t === now?.ticket ? ' now' : ' later');
       card.innerHTML = t <= career.done
         ? `<b>${levelTitle(level)}</b>${t < career.done ? `<span class="stars">${starsHtml(career.stars[t] ?? 0)}</span>` : `<p>${levelBrief(level)}</p>`}`
-        : `<b>${tr({ fr: `Ticket ${t + 1}`, en: `Ticket ${t + 1}` })}</b><span class="sub">${tr({ fr: 'à venir', en: 'to come' })}</span>`;
+        : `<b>${tr({ fr: `Ticket ${t + 1}`, en: `Ticket ${t + 1}` })}</b><span class="sub">🔒 ${tr({ fr: `Validez le ticket ${t} pour l'ouvrir`, en: `Sign off ticket ${t} to open it` })}</span>`;
       $('#career-tickets').appendChild(card);
     });
     const go = $<HTMLButtonElement>('#career-go');

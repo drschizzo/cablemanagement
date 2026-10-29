@@ -33,7 +33,7 @@ export class TimelapsePlayer {
     this.back = back;
     $('#tl-status').textContent = tr({ fr: `${frames.length} images`, en: `${frames.length} frames` });
     $<HTMLButtonElement>('#tl-video').disabled = !frames.length || !videoType();
-    $<HTMLButtonElement>('#tl-video').textContent = tr({ fr: 'Enregistrer la vidéo', en: 'Save the video' });
+    $<HTMLButtonElement>('#tl-video').textContent = tr({ fr: '⤓ Télécharger la vidéo', en: '⤓ Download the video' });
     show('#timelapse');
     this.play();
   }
@@ -95,7 +95,7 @@ export class TimelapsePlayer {
     await done;
     downloadBlob(new Blob(chunks, { type }), `${this.name}.${type.startsWith('video/mp4') ? 'mp4' : 'webm'}`);
     button.disabled = false;
-    button.textContent = tr({ fr: 'Enregistrer la vidéo', en: 'Save the video' });
+    button.textContent = tr({ fr: '⤓ Télécharger la vidéo', en: '⤓ Download the video' });
     this.play();
   }
 }

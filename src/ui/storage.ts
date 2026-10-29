@@ -29,14 +29,14 @@ export interface Career {
   stars: number[];
 }
 
-/** what the player has earned and spent: the € on hand, the best payslip of each level, the looks bought and worn, the finds */
+/** what the player has earned and spent: the € on hand, the best payslip of each level, the looks bought and equipped, the finds */
 export interface Wallet {
   coins: number;
   /** € of the best payslip of each level (a replay pays only what it adds) */
   best: Record<string, number>;
   /** ids of the looks bought (ui/shop.ts) */
   owned: string[];
-  /** the look worn in each slot, by slot */
+  /** the look equipped in each slot, by slot */
   equipped: Record<string, string>;
   /** ids of the finds picked up (game/finds.ts) */
   finds: string[];

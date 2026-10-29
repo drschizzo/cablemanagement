@@ -1,6 +1,6 @@
-// The shop: looks to buy with what the jobs paid, one worn per slot (the
+// The shop: looks to buy with what the jobs paid, one equipped per slot (the
 // velcros, the light round the cabinet). Its catalogue, and the rules of
-// buying and wearing: pure functions over the saved wallet (storage.ts).
+// buying and equipping: pure functions over the saved wallet (storage.ts).
 
 import { DEFAULT_LOOK, type Look } from '../render/look';
 import type { Wallet } from './storage';
@@ -39,8 +39,8 @@ export function isOwned(wallet: Wallet, item: LookItem): boolean {
   return item.price === 0 || wallet.owned.includes(item.id);
 }
 
-/** the item worn in a slot: the one chosen, or the one given */
-export function wornIn(wallet: Wallet, slot: LookSlot): LookItem {
+/** the item equipped in a slot: the one chosen, or the one given */
+export function equippedIn(wallet: Wallet, slot: LookSlot): LookItem {
   const chosen = SHOP.find((i) => i.id === wallet.equipped[slot] && i.slot === slot);
   return chosen && isOwned(wallet, chosen) ? chosen : SHOP.find((i) => i.slot === slot && i.price === 0)!;
 }
@@ -53,8 +53,8 @@ export function buy(wallet: Wallet, item: LookItem): boolean {
   return true;
 }
 
-/** wears an item in its slot; false when it is not owned */
-export function wear(wallet: Wallet, item: LookItem): boolean {
+/** equips an item in its slot; false when it is not owned */
+export function equip(wallet: Wallet, item: LookItem): boolean {
   if (!isOwned(wallet, item)) return false;
   wallet.equipped[item.slot] = item.id;
   return true;
@@ -62,5 +62,5 @@ export function wear(wallet: Wallet, item: LookItem): boolean {
 
 /** the look the wallet's items give */
 export function lookOf(wallet: Wallet): Look {
-  return { velcro: wornIn(wallet, 'velcro').value, accent: wornIn(wallet, 'accent').value };
+  return { velcro: equippedIn(wallet, 'velcro').value, accent: equippedIn(wallet, 'accent').value };
 }

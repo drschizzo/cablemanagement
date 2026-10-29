@@ -83,9 +83,9 @@ const STEPS: Step[] = [
     spot: (ctl) => unitBox(ctl, 'panel'),
   },
   {
-    title: { fr: 'Le commutateur', en: 'The switch' },
+    title: { fr: 'Le switch', en: 'The switch' },
     text: {
-      fr: 'Le <b>commutateur</b> (« S ») est l\'équipement actif du réseau. Le <b>plan de brassage</b>, à droite, dit quel port du tiroir relier à quel port du commutateur. Le voyant au-dessus d\'un port : <span class="ok">vert</span> = liaison conforme au plan, <span class="warn">orange</span> = mauvais port.',
+      fr: 'Le <b>switch</b> (« S ») est l\'équipement actif du réseau. Le <b>plan de brassage</b>, à droite, dit quel port du tiroir relier à quel port du switch. Le voyant au-dessus d\'un port : <span class="ok">vert</span> = liaison conforme au plan, <span class="warn">orange</span> = mauvais port.',
       en: 'The <b>switch</b> (“S”) is the active equipment of the network. The <b>patching schedule</b>, on the right, says which port of the panel goes to which port of the switch. The LED above a port: <span class="ok">green</span> = link as planned, <span class="warn">orange</span> = wrong port.',
     },
     spot: (ctl) => unitBox(ctl, 'switch'),
@@ -266,7 +266,7 @@ const STEPS: Step[] = [
     title: { fr: 'Le score', en: 'The score' },
     text: {
       fr: 'Quatre critères, dans le panneau de droite : les <b>connexions</b> conformes au plan (obligatoires pour valider), le <b>rangement</b> (aucune portion de plus de 20 cm ne pend hors d\'un support), la <b>façade dégagée</b> (aucun câble devant le port d\'un autre) et l\'absence de <b>tension</b> (aucun cordon tendu, aucune fibre pliée). De une à trois étoiles ; il en faut <b>deux</b> pour ouvrir le niveau suivant. La <b>lisibilité</b>, sur 100, départage les baies parfaites : le mou juste, les couleurs, les faisceaux, les croisements. À vous !',
-      en: 'Four criteria, in the panel on the right: the <b>connections</b> as planned (needed to sign off), the <b>routing</b> (no stretch longer than 20 cm hangs out of a support), the <b>clear front</b> (no cord in front of another\'s port) and no <b>tension</b> (no cord taut, no fibre kinked). One to three stars; it takes <b>two</b> to open the next level. The <b>readability</b>, out of 100, sets perfect cabinets apart: just the slack, the colours, the bundles, the crossings. Over to you!',
+      en: 'Four criteria, in the panel on the right: the <b>connections</b> as planned (needed to sign off), the <b>routing</b> (no stretch longer than 20 cm hangs out of a support), the <b>clear front</b> (no cord in front of another\'s port) and no <b>strain</b> (no cord taut, no fibre kinked). One to three stars; it takes <b>two</b> to open the next level. The <b>readability</b>, out of 100, sets perfect cabinets apart: just the slack, the colours, the bundles, the crossings. Over to you!',
     },
   },
 

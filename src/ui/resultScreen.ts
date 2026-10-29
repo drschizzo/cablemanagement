@@ -118,8 +118,8 @@ function payItemName(item: PayItem): string {
     case 'links': return tr({ fr: 'Liaisons', en: 'Links' });
     case 'tidy': return tr({ fr: 'Rangement', en: 'Tidiness' });
     case 'readability': return tr({ fr: 'Lisibilité', en: 'Readability' });
-    case 'budget': return tr({ fr: 'Budget épargné', en: 'Budget spared' });
-    case 'challenge': return tr({ fr: 'Défi', en: 'Challenge' });
+    case 'budget': return tr({ fr: 'Interruption évitée', en: 'Downtime avoided' });
+    case 'challenge': return tr({ fr: 'Défi réussi', en: 'Challenge won' });
     default: return assertNever(item);
   }
 }

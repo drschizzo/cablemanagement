@@ -91,7 +91,7 @@ export function unitLabel(u: UnitSpec): string {
         case 'router': return tr({ fr: 'Routeur', en: 'Router' });
         case 'switch': return `Switch ${name}`;
         case 'pdu': return tr({ fr: 'Bandeau électrique', en: 'Power strip' });
-        default: return tr({ fr: `Commutateur ${name}`, en: `Switch ${name}` });
+        default: return `Switch ${name}`;
       }
     }
     case 'server': return u.style === 'ups' ? tr({ fr: 'Onduleur', en: 'UPS' }) : tr({ fr: `Serveur ${name}`, en: `Server ${name}` }).trim();

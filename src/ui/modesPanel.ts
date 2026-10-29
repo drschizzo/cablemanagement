@@ -86,7 +86,7 @@ export class ModesPanel {
         what: { fr: 'La même baie pour tout le monde aujourd\'hui. Un résultat à partager.', en: 'The same cabinet for everyone today. A result to share.' },
         status: () => {
           const days = load('daily'), today = dayKey(new Date()), run = streak(days, today);
-          return (days[today] ? '★'.repeat(days[today].stars) : tr({ fr: 'à faire', en: 'to do' })) + (run > 1 ? ` · 🔥 ${run}` : '');
+          return (days[today] ? '★'.repeat(days[today].stars) : tr({ fr: 'pas encore jouée', en: 'not played yet' })) + (run > 1 ? ` · 🔥 ${run}` : '');
         },
         open: () => go(dailyLevel(dayKey(new Date()))),
       },

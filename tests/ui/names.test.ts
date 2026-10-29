@@ -6,7 +6,7 @@ import { countOf, unitLabel } from '../../src/ui/names';
 describe('the names of things', () => {
   it('says what each unit is on its face plate', () => {
     expect(unitLabel(opticalPanel('A', 12))).toBe('Tiroir optique A');
-    expect(unitLabel(opticalSwitch('S', 12))).toBe('Commutateur S');
+    expect(unitLabel(opticalSwitch('S', 12))).toBe('Switch S');
     expect(unitLabel(copperPanel('B', 24))).toBe('Panneau de brassage B');
     expect(unitLabel(ethernetSwitch('T', 24))).toBe('Switch T');
     expect(unitLabel(FIREWALL)).toBe('Pare-feu');

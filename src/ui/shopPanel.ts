@@ -1,10 +1,10 @@
 // The workshop, from the title screen: the € on hand, for each slot the looks
-// to buy or to wear (a swatch each), and the finds picked up so far.
+// to buy or to equip (a swatch each), and the finds picked up so far.
 
 import { load, save } from './storage';
 import { hide, show } from './dom';
 import { $ } from '../lib/page';
-import { LOOK_SLOTS, SHOP, buy, isOwned, wear, wornIn, type LookSlot } from './shop';
+import { LOOK_SLOTS, SHOP, buy, equip, isOwned, equippedIn, type LookSlot } from './shop';
 import { formatMoney } from './format';
 import { tr } from './language';
 import { assertNever } from '../lib/assertNever';
@@ -37,16 +37,16 @@ export class ShopPanel {
       title.textContent = slotName(slot);
       const row = document.createElement('div');
       row.className = 'swatches';
-      const worn = wornIn(wallet, slot);
+      const equipped = equippedIn(wallet, slot);
       for (const item of SHOP.filter((i) => i.slot === slot)) {
         const owned = isOwned(wallet, item);
         const button = document.createElement('button');
-        button.className = 'swatch' + (item === worn ? ' cur' : '') + (owned ? '' : ' locked');
+        button.className = 'swatch' + (item === equipped ? ' cur' : '') + (owned ? '' : ' locked');
         button.disabled = !owned && wallet.coins < item.price;
-        button.innerHTML = `<i style="background:${item.value}"></i><span>${tr(item.name)}</span><small>${item === worn ? tr({ fr: 'porté', en: 'worn' }) : owned ? tr({ fr: 'porter', en: 'wear' }) : formatMoney(item.price)}</small>`;
+        button.innerHTML = `<i style="background:${item.value}"></i><span>${tr(item.name)}</span><small>${item === equipped ? tr({ fr: 'équipé', en: 'equipped' }) : owned ? tr({ fr: 'équiper', en: 'equip' }) : formatMoney(item.price)}</small>`;
         button.onclick = () => {
           const w = load('wallet');
-          if (owned ? wear(w, item) : buy(w, item) && wear(w, item)) save('wallet', w);
+          if (owned ? equip(w, item) : buy(w, item) && equip(w, item)) save('wallet', w);
           this.render();
         };
         row.appendChild(button);
@@ -68,7 +68,7 @@ export class ShopPanel {
 function slotName(slot: LookSlot): string {
   switch (slot) {
     case 'velcro': return tr({ fr: 'Velcros', en: 'Velcros' });
-    case 'accent': return tr({ fr: 'Lumière autour de la baie', en: 'Light round the cabinet' });
+    case 'accent': return tr({ fr: 'Éclairage de la salle', en: 'Room lighting' });
     default: return assertNever(slot);
   }
 }

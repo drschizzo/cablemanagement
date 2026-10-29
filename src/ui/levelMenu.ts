@@ -53,7 +53,7 @@ export class LevelMenu {
     const card = document.createElement('button');
     card.className = 'level-card tutorial';
     card.innerHTML = `<div class="num">0</div><div class="t">${tr({ fr: 'Tutoriel', en: 'Tutorial' })}</div>
-      <div class="meta">${tr({ fr: 'Les équipements, les gestes, le score', en: 'The equipment, the gestures, the score' })}</div>${load('tutorialDone') ? `<div class="best">${tr({ fr: '✓ suivi', en: '✓ done' })}</div>` : ''}`;
+      <div class="meta">${tr({ fr: 'Les équipements, les gestes, le score', en: 'The equipment, the gestures, the score' })}</div>${load('tutorialDone') ? `<div class="best">${tr({ fr: '✓ terminé', en: '✓ done' })}</div>` : ''}`;
     card.onclick = () => this.choose(TUTORIAL);
     return card;
   }
@@ -64,7 +64,7 @@ export class LevelMenu {
     card.className = 'level-card puzzle';
     const won = progress.challenges[level.id];
     card.innerHTML = `<div class="num">P${index + 1}</div><div class="t">${levelTitle(level)}</div>
-      <div class="meta">${tr({ fr: `${level.cables} câble${level.cables > 1 ? 's' : ''} · ${level.moves} geste${level.moves > 1 ? 's' : ''}`, en: `${level.cables} cord${level.cables > 1 ? 's' : ''} · ${level.moves} gesture${level.moves > 1 ? 's' : ''}` })}</div>
+      <div class="meta">${tr({ fr: `${level.cables} câble${level.cables > 1 ? 's' : ''} · défi : ${level.moves} geste${level.moves > 1 ? 's' : ''}`, en: `${level.cables} cord${level.cables > 1 ? 's' : ''} · challenge: ${level.moves} gesture${level.moves > 1 ? 's' : ''}` })}</div>
       <div class="stars">${starsHtml(progress.stars[level.id] ?? 0)}${won ? `<span class="par" title="${tr({ fr: 'Défi gestes réussi', en: 'Gestures challenge won' })}">✋</span>` : ''}</div>`;
     card.onclick = () => this.choose(level);
     return card;

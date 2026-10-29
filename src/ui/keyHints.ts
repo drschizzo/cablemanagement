@@ -20,14 +20,14 @@ export interface KeyCap {
 }
 
 const CLICK: Words = { fr: 'Clic', en: 'Click' };
-const ESCAPE: KeyCap = { keys: { fr: 'Échap', en: 'Esc' }, action: { fr: 'poser l\'outil', en: 'put the tool down' } };
+const ESCAPE: KeyCap = { keys: { fr: 'Échap', en: 'Esc' }, action: { fr: 'revenir à la main', en: 'back to the hand' } };
 
 /** the keys that matter in this context, the most useful first */
 export function keysFor(ctx: KeyContext): KeyCap[] {
   switch (ctx.tool) {
     case 'hand': return ctx.hover ? [...cordKeys(ctx.hover)] : [
       { keys: CLICK, action: { fr: 'saisir un câble', en: 'grab a cord' } },
-      { keys: { fr: 'Clic droit', en: 'Right drag' }, action: { fr: 'tourner la vue', en: 'turn the view' } },
+      { keys: { fr: 'Clic droit + glisser', en: 'Right-drag' }, action: { fr: 'tourner la vue', en: 'turn the view' } },
       { keys: { fr: 'C', en: 'C' }, action: { fr: 'tracer un chemin', en: 'draw a route' } },
       { keys: { fr: 'Ctrl+Z', en: 'Ctrl+Z' }, action: { fr: 'annuler', en: 'undo' } },
     ];

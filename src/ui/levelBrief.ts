@@ -97,5 +97,5 @@ function materialLine(level: LevelDef): string {
   const parts = ALL_SUPPLIES.filter((s) => level.inventory[s]).map((s) => countOf(s, level.inventory[s]!));
   const cords = (level.cords ?? []).map(([length, count]) => `${count} × ${formatLength(length)}`);
   if (cords.length) parts.push(tr({ fr: `cordons neufs : ${cords.join(', ')}`, en: `new cords: ${cords.join(', ')}` }));
-  return parts.length ? tr({ fr: `Matériel : ${parts.join(', ')}.`, en: `Material: ${parts.join(', ')}.` }) : '';
+  return parts.length ? tr({ fr: `Matériel : ${parts.join(', ')}.`, en: `Supplies: ${parts.join(', ')}.` }) : '';
 }
