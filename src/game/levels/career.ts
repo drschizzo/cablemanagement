@@ -111,7 +111,7 @@ export function ticketLevel(index: number, cabinet: CabinetState | null): Ticket
   for (const i of spec.install ?? []) units[i.unit] = i.spec;
   const rack = new Rack(units);
   const random = rng(SEED + index);
-  const kept = withoutSome(cabinet.circuits, spec.remove ?? 0, random);
+  const kept = withoutSome(rack, cabinet.circuits, spec.remove ?? 0, random);
   const freed = new Set(cabinet.circuits.filter((c) => !kept.includes(c)).flatMap((c) => [c.a, c.b]));
   // the links between equipment first: their ports are reserved
   const links = equipmentLinks(rack, kept, spec.links ?? []);
@@ -132,8 +132,8 @@ export function ticketLevel(index: number, cabinet: CabinetState | null): Ticket
 }
 
 /** the schedule without `count` panel links, drawn (equipment links stay) */
-function withoutSome(circuits: readonly Circuit[], count: number, random: () => number): Circuit[] {
-  const panelLinks = shuffle(circuits.filter((c) => /^[A-E]\d/.test(c.a)), random).slice(0, count);
+function withoutSome(rack: Rack, circuits: readonly Circuit[], count: number, random: () => number): Circuit[] {
+  const panelLinks = shuffle(circuits.filter((c) => rack.units[rack.port(c.a).unit].kind === 'panel'), random).slice(0, count);
   return circuits.filter((c) => !panelLinks.includes(c));
 }
 
