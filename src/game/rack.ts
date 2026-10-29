@@ -189,6 +189,11 @@ export class Rack {
     return true;
   }
 
+  /** the slot to give addItem to put this item back where it is (a duct snaps round the unit given) */
+  slotOf(it: Item): { kind: ItemKind; unit: number; side: number } {
+    return { kind: it.kind, unit: it.kind === 'duct' ? it.unit + 1 : it.unit, side: it.side };
+  }
+
   ductStart(unit: number): number {
     return Math.max(0, Math.min(this.units.length - DUCT_SPAN, unit - 1));
   }

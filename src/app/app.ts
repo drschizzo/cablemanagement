@@ -62,6 +62,7 @@ export class App {
       showMenu: () => this.hud.showMenu(),
       showSettings: () => this.hud.showSettings(),
       showShop: () => this.hud.showShop(),
+      showCareer: () => this.hud.showCareer(),
       nextLevel: () => nextLevelToPlay(this.hud.progress.stars),
       hasProgress: () => Object.keys(this.hud.progress.stars).length > 0,
       playDaily: () => this.startLevel(dailyLevel(dayKey(new Date()))),

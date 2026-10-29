@@ -9,31 +9,14 @@ import type { LevelDef } from '../game/levels/levelDef';
 import { formatMoney, formatTime } from './format';
 import { hide, show, starsHtml } from './dom';
 import { $ } from '../lib/page';
-import { levelAfter, type LevelResult } from './progress';
+import type { LevelResult } from './progress';
+import type { Outcome, Pay } from './outcome';
 import { readabilityText } from './messages';
 import { tr } from './language';
-import type { PayItem, Payslip } from '../game/pay';
+import type { PayItem } from '../game/pay';
 import { assertNever } from '../lib/assertNever';
 import { levelTitle } from './levelTexts';
 import { saveBeforeAfter } from './beforeAfterImage';
-
-/** what a signed-off cabinet left in the record */
-export interface Outcome {
-  result: LevelResult;
-  /** the time challenge was won before this result */
-  challengeWonBefore: boolean;
-  /** the result as lines to share (the cabinet of the day), or null */
-  share: string | null;
-  /** what the job paid, or null (the tutorial, the zen) */
-  pay: Pay | null;
-}
-
-/** a job's payslip, what was paid of it (a replay pays only what it adds), and the € on hand after */
-export interface Pay {
-  slip: Payslip;
-  paid: number;
-  coins: number;
-}
 
 export interface ResultActions {
   start(level: LevelDef): void;
@@ -54,14 +37,7 @@ export function showResult(ctl: Controller, level: LevelDef, ev: Evaluation, out
   $('#result-pay').innerHTML = pay ? payHtml(pay) : '';
   $('#result-note').innerHTML = noteHtml(ctl.startNote, ev, result);
 
-  const next = levelAfter(level);
-  const nextButton = $<HTMLButtonElement>('#result-next');
-  nextButton.style.display = next ? '' : 'none';
-  // the next level opens on a tidy cabinet, not on a merely connected one
-  const open = Math.max(result.previousStars, ev.stars) >= UNLOCK_STARS;
-  nextButton.disabled = !open;
-  nextButton.textContent = open ? tr({ fr: 'Niveau suivant →', en: 'Next level →' }) : tr({ fr: `${'★'.repeat(UNLOCK_STARS)} pour le niveau suivant`, en: `${'★'.repeat(UNLOCK_STARS)} for the next level` });
-  if (next && open) nextButton.onclick = () => { hide('#result'); actions.start(next); };
+  showNext(outcome.next, actions);
   $('#result-again').onclick = () => { hide('#result'); ctl.resume(); };
   $('#result-menu').onclick = () => { hide('#result'); actions.showMenu(); };
   $('#result-home').onclick = () => { hide('#result'); actions.home(); };
@@ -113,6 +89,18 @@ function resultLines(level: LevelDef, ev: Evaluation, result: LevelResult, chall
       : tr({ fr: `⏱ Défi chrono : ★★★ en moins de ${par}${challengeWonBefore ? ' (déjà réussi)' : ''}.`, en: `⏱ Time challenge: ★★★ in less than ${par}${challengeWonBefore ? ' (won already)' : ''}.` }));
   }
   return lines;
+}
+
+/** the way on: the next level (or ticket), open or what opens it */
+function showNext(next: Outcome['next'], actions: ResultActions): void {
+  const button = $<HTMLButtonElement>('#result-next');
+  button.style.display = next ? '' : 'none';
+  if (!next) return;
+  button.disabled = !next.open;
+  button.textContent = !next.open
+    ? tr({ fr: `${'★'.repeat(UNLOCK_STARS)} pour le niveau suivant`, en: `${'★'.repeat(UNLOCK_STARS)} for the next level` })
+    : next.level.kind === 'ticket' ? tr({ fr: 'Ticket suivant →', en: 'Next ticket →' }) : tr({ fr: 'Niveau suivant →', en: 'Next level →' });
+  button.onclick = () => { if (next.open) { hide('#result'); actions.start(next.level); } };
 }
 
 /** the payslip: what each line earned, what was paid, the € on hand */

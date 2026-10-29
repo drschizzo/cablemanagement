@@ -174,6 +174,12 @@ cordon, et dans quel ordre, fait partie du plan.
 | 7 | Migration | 24 · budget d'interruption serré |
 | 8 | Le plat de spaghettis | 28 · cordons sans marque, à tracer |
 
+La **carrière** (écran titre) suit un client, l'Imprimerie Lumen, sur huit tickets. C'est **toujours la
+même baie** : chaque ticket repart de la baie telle que vous l'avez laissée au précédent (cordons,
+supports, velcros), installe du matériel dans les unités gardées libres (un serveur, un deuxième
+panneau et son switch), crée des liaisons, en retire d'autres dont il faut jeter les cordons. Ce qui a
+été bien rangé le reste ; ce qui a été bâclé vous attend. Le dernier ticket est un audit.
+
 Les **puzzles express** (P1 à P8, tous ouverts) sont de toutes petites baies, une idée chacune : un
 bout libre, deux cordons échangés, un support à poser, un faisceau, des goulottes, une liaison en
 production sur un budget minuscule, des cordons sans marque. Leur défi : ★★★ en peu de **gestes**

@@ -118,6 +118,7 @@
       <nav class="menu">
         <button id="title-play" class="primary"></button>
         <button id="title-daily" class="ghost"></button>
+        <button id="title-career" class="ghost" data-i18n="common.career"></button>
         <button id="title-tuto" class="ghost" data-i18n="common.tutorial"></button>
         <button id="title-levels" class="ghost" data-i18n="common.levels"></button>
         <button id="title-shop" class="ghost" data-i18n="common.shop"></button>
@@ -181,10 +182,23 @@
     <div id="confirm" class="overlay">
       <div class="panel">
         <h1 id="confirm-title"></h1>
-        <p class="sub" data-i18n="confirm.lost"></p>
+        <p id="confirm-lost" class="sub"></p>
         <div class="row">
           <button id="confirm-no" class="ghost" data-i18n="common.cancel"></button>
           <button id="confirm-yes" class="primary"></button>
+        </div>
+      </div>
+    </div>
+    <div id="career" class="overlay">
+      <div class="panel">
+        <button id="career-back" class="link back" data-i18n="common.back"></button>
+        <h1 data-i18n="career.title"></h1>
+        <p class="sub" data-i18n="career.sub"></p>
+        <div id="career-tickets"></div>
+        <p id="career-over" class="sub" data-i18n="career.over"></p>
+        <div class="row">
+          <button id="career-reset" class="link" data-i18n="career.reset"></button>
+          <button id="career-go" class="primary"></button>
         </div>
       </div>
     </div>

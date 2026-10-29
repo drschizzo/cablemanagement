@@ -51,6 +51,16 @@ describe('the rack', () => {
     expect(() => r.port('Z9')).toThrow();
   });
 
+  it('says where to put an item back, a duct included (it snaps round the unit given)', () => {
+    for (const [kind, unit] of [['duct', 0], ['duct', 3], ['duct', 4], ['fingerManager', 2], ['ring', 5]] as const) {
+      const r = new Rack(units), again = new Rack(units);
+      const it = r.addItem(kind, unit, 1)!;
+      const slot = r.slotOf(it);
+      const back = again.addItem(slot.kind, slot.unit, slot.side)!;
+      expect([back.unit, back.span]).toEqual([it.unit, it.span]);
+    }
+  });
+
   it('a finger manager goes in an empty unit, once', () => {
     const r = new Rack(units);
     expect(r.addItem('fingerManager', 1, 0)).toBeNull(); // the panel's unit

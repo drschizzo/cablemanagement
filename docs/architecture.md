@@ -25,6 +25,8 @@ src/
     evaluation.ts   le score : chaque liaison (branchée, rangée, dégagée, étiquetée, sans tension), étoiles,
                     lisibilité, propreté — des fonctions qui lisent un World sans le modifier
     maintenanceWindow.ts  liaisons en production, budget d'interruption, dérivations
+    cabinetState.ts une baie telle que le joueur la laisse (équipements, supports, plan, cordons branchés, velcros),
+                    pour la retrouver à la visite suivante (la carrière)
     finds.ts        les trouvailles : l'objet qu'un niveau cache (LevelBase.find), et où il est posé
     pay.ts          ce que rapporte un chantier : les liaisons, le rangement, la lisibilité, le budget épargné, le défi
     incidents.ts    les incidents pendant le chantier (un collègue débranche une liaison, un utilisateur appelle) :
@@ -40,8 +42,9 @@ src/
     physics/        le solveur tel que le jeu le mène (rackCableSim : mains, ports, creux des guides), et son Worker
     mess/           le désordre de départ : les chemins emmêlés des cordons (tangle), leur chute dans un Worker,
                     sa version précalculée pour l'écran titre (baked, showcase.bin)
-    levels/         ce qu'est un niveau (levelDef : une union par sorte, campagne, puzzle, tutoriel, partie libre, zen,
-                    baie du jour, vitrine, banc), les équipements nommés, la campagne et le tutoriel, les puzzles, la partie libre et le zen, la baie du jour
+    levels/         ce qu'est un niveau (levelDef : une union par sorte, campagne, puzzle, ticket, tutoriel, partie libre,
+                    zen, baie du jour, vitrine, banc), les équipements nommés, la campagne et le tutoriel, les puzzles,
+                    la carrière (un client, ses tickets, chacun bâti sur la baie laissée par le précédent), la partie libre et le zen, la baie du jour
                     (tirée de la date : la même pour tous), les baies de la vitrine
   play/         UNE PARTIE EN COURS : relie game, render et l'interface
     controller.ts   Controller : la boucle à pas fixe, ce que la baie montre de son état, les actions du HUD
@@ -100,6 +103,8 @@ src/
                     niveau ouvert, niveau suivant (fonctions pures)
     shop.ts         l'atelier : son catalogue, acheter et porter un look (fonctions pures) ; shopPanel.ts, son panneau
     wallet.ts       le salaire encaissé : un niveau rejoué ne paie que ce qu'il ajoute à sa meilleure fiche de paie
+    outcome.ts      ce que laisse une baie validée, selon sa sorte de niveau : record, salaire, partage, niveau suivant
+    career.ts       la carrière : le ticket à jouer, le ticket validé (la baie gardée) ; careerPanel.ts, son panneau
     daily.ts        les baies du jour réussies : le meilleur de chaque jour, les jours de suite, le résultat à partager
     messages.ts     tous les textes d'une partie : messages, aides, bulle d'un cordon, critères de lisibilité
     keyHints.ts     les touches qui comptent à l'instant (outil en main, cordon survolé), en touches de clavier sous la baie
@@ -220,7 +225,7 @@ sur le fil principal.
 ## Données dans le navigateur
 
 `ui/storage.ts` déclare chaque entrée (clé, valeur par défaut, validation) : progression (étoiles et meilleurs temps
-par niveau), tutoriel terminé, portefeuille (salaire, cosmétiques achetés, trouvailles), baies du jour (le meilleur résultat de chaque date), langue (celle du navigateur tant que le joueur n'en a pas choisi), musique coupée, qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu) et son
+par niveau), tutoriel terminé, carrière (tickets faits, la baie du client telle que laissée), portefeuille (salaire, cosmétiques achetés, trouvailles), baies du jour (le meilleur résultat de chaque date), langue (celle du navigateur tant que le joueur n'en a pas choisi), musique coupée, qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu) et son
 coupé. Les clés sont celles des versions précédentes.
 
 ## Ajouter…

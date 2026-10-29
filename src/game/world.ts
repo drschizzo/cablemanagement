@@ -110,7 +110,7 @@ export class World {
     for (const p of level.preinstalled) this.rack.addItem(p.kind, p.unit, p.side, true);
     const r = rng(level.seed);
     this.circuits = level.schedule ? level.schedule(this.rack) : makeSchedule(level, this.rack, r);
-    this.starts = starts ?? makeCables(level, this.rack, this.circuits, r);
+    this.starts = starts ?? level.starts ?? makeCables(level, this.rack, this.circuits, r);
     // big cabinets trade a substep for frame rate (≈ 13 ms instead of 18 for 40 cords);
     // the solver settings were tuned at these substep counts (see `refSubsteps`)
     const big = level.cables >= 20;
@@ -122,13 +122,18 @@ export class World {
         start: at[c],
         count: s.points.length / 3,
         ends: [{ port: null, label: null }, { port: null, label: null }],
-        color: level.colorByService && s.type === 'CU' ? SERVICES[this.circuits[c].service].color : undefined,
+        // drawn cords are made for the line of the same index; carried ones say their colour
+        color: s.color ?? (level.colorByService && s.type === 'CU' && this.circuits[c] ? SERVICES[this.circuits[c].service].color : undefined),
       });
       for (const e of [0, 1] as const) {
         if (s.ends[e]) this.plug(c, e, s.ends[e]!);
+        if (s.labels) this.cableList[c].ends[e].label = s.labels[e];
       }
     });
     this.simulation.setStatics(this.rack.statics());
+    for (const st of level.straps ?? []) {
+      this.bundle(st.cords.map((c, k) => this.cableList[c].start + Math.round(st.at[k] * (this.cableList[c].count - 1))));
+    }
     // their own draws: the faults and the find leave the level's (schedule, mess) as they are
     this.faultyCords = new Set(shuffle(this.cableList.map((_, c) => c), rng(level.seed + 2)).slice(0, level.faults ?? 0));
     this.hidden = placeFind(level.find, this.rack, rng(level.seed + 3));
@@ -561,12 +566,16 @@ export class World {
   /** straps these nodes together (one of each cord); needs two of them, and a velcro left */
   strapNodes(nodes: number[]): Strap | null {
     if (this.supplies.velcro <= 0 || nodes.length < 2) return null;
+    this.supplies.velcro--;
+    return this.bundle(nodes);
+  }
+
+  /** a strap round these nodes, out of no stock (one on at the start, or one bought already) */
+  private bundle(nodes: number[]): Strap {
     // the strap holds the bundle as tight as the cords allow
     const r = Math.max(this.radius * 2, Math.sqrt(nodes.length) * this.radius * 1.25);
-    const bundle = this.simulation.addBundle(nodes, r);
-    const s = { bundle, nodes };
+    const s = { bundle: this.simulation.addBundle(nodes, r), nodes };
     this.strapList.push(s);
-    this.supplies.velcro--;
     return s;
   }
 

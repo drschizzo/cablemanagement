@@ -48,6 +48,16 @@ export interface CableStart {
   /** port of each end at the start (null = hanging loose) */
   ends: [string | null, string | null];
   points: number[];
+  /** its jacket, when it is known (a cord carried over from an earlier visit); otherwise its service's, or its type's */
+  color?: string;
+  /** the label on each end, when it is known */
+  labels?: [number | null, number | null];
+}
+
+/** a strap on at the start: the cords it closes round, and where along each (0..1) */
+export interface StrapStart {
+  cords: CableIndex[];
+  at: number[];
 }
 
 export interface Strap {

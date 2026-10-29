@@ -182,6 +182,47 @@ const PUZZLES: Record<string, Words<LevelText>> = {
   },
 };
 
+/** the career's tickets, in order: a title and what the client asks */
+const TICKETS: Words<LevelText>[] = [
+  {
+    fr: { title: 'Premier jour chez Lumen', brief: 'L\'Imprimerie Lumen vous confie sa baie. Le technicien d\'avant est parti sans laisser d\'adresse, ni de baie rangée. Remettez de l\'ordre : ce que vous rangez aujourd\'hui, vous le retrouverez à chaque visite.' },
+    en: { title: 'First day at Lumen', brief: 'Lumen Printing hands you its cabinet. The technician before left no address, and no tidy cabinet. Put it in order: what you tidy today, you will find again on every visit.' },
+  },
+  {
+    fr: { title: 'Les nouveaux bureaux', brief: 'L\'atelier s\'agrandit : six postes de plus à brasser du panneau A au switch S. Le stagiaire a déjà tiré les cordons… à sa façon.' },
+    en: { title: 'The new offices', brief: 'The workshop grows: six more desks to patch from panel A to switch S. The intern has already run the cords… his own way.' },
+  },
+  {
+    fr: { title: 'Le serveur de fichiers', brief: 'Un serveur arrive en bas de la baie : ses deux cartes réseau vont sur le switch S. Il porte le stockage.' },
+    en: { title: 'The file server', brief: 'A server arrives at the bottom of the cabinet: its two network cards go to switch S. It carries the storage.' },
+  },
+  {
+    fr: { title: 'La compta déménage', brief: 'La comptabilité change d\'étage : quatre liaisons ne servent plus (leurs cordons sont encore branchés : au bac), quatre nouvelles les remplacent. Et le téléphone va sonner.' },
+    en: { title: 'Accounting moves', brief: 'Accounting changes floors: four links are out of service (their cords are still plugged: into the crate), four new ones replace them. And the phone will ring.' },
+  },
+  {
+    fr: { title: 'Deuxième panneau', brief: 'Un deuxième panneau et son switch sont installés sous le premier. Huit liaisons à créer, et le switch T à relier au pare-feu.' },
+    en: { title: 'Second panel', brief: 'A second panel and its switch are installed under the first. Eight links to make, and switch T to link to the firewall.' },
+  },
+  {
+    fr: { title: 'Lundi noir', brief: 'Rien ne va : de vieux cordons ont lâché, et les utilisateurs appellent. Testez, remplacez, rétablissez.' },
+    en: { title: 'Black Monday', brief: 'Nothing works: old cords have given up, and users are calling. Test, replace, restore.' },
+  },
+  {
+    fr: { title: 'Le second serveur', brief: 'Un second serveur, branché sur le switch T. Pour ★★★, deux faisceaux de velcro.' },
+    en: { title: 'The second server', brief: 'A second server, plugged into switch T. For ★★★, two velcro bundles.' },
+  },
+  {
+    fr: { title: 'L\'audit', brief: 'Un auditeur passe demain. Rien de nouveau : tout doit être impeccable, serré en quatre faisceaux au moins.' },
+    en: { title: 'The audit', brief: 'An auditor comes tomorrow. Nothing new: everything must be spotless, strapped in four bundles at least.' },
+  },
+];
+
+/** the career's tickets that have their words (a test checks every one does) */
+export function hasTicketText(index: number): boolean {
+  return index < TICKETS.length;
+}
+
 /** the campaign levels and the puzzles that have their words (a test checks every one does) */
 export function hasLevelText(id: string): boolean {
   return id in CAMPAIGN || id in PUZZLES;
@@ -191,6 +232,10 @@ function textOf(level: LevelDef): LevelText {
   switch (level.kind) {
     case 'campaign': return tr(CAMPAIGN[level.id]);
     case 'puzzle': return tr(PUZZLES[level.id]);
+    case 'ticket': {
+      const text = tr(TICKETS[level.ticket]);
+      return { ...text, title: tr({ fr: `Ticket ${level.ticket + 1} · ${text.title}`, en: `Ticket ${level.ticket + 1} · ${text.title}` }) };
+    }
     case 'tutorial': return { title: tr({ fr: 'Tutoriel', en: 'Tutorial' }), brief: '' };
     case 'free': return tr({
       fr: { title: `Partie libre — ${level.cables} câbles`, brief: 'Une baie générée au hasard.' },

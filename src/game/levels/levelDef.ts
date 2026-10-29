@@ -6,6 +6,7 @@ import type { Rack, UnitSpec } from '../rack';
 import type { ItemKind, Stock } from '../supplies';
 import type { Circuit } from '../schedule';
 import type { FibreType } from '../cordTypes';
+import type { CableStart, StrapStart } from '../cables';
 import type { IncidentSpec } from '../incidents';
 import type { FindId } from '../finds';
 
@@ -56,6 +57,10 @@ interface LevelBase {
   links?: { a: string; b: string; service?: number }[];
   /** a hand-written patching schedule instead of a random one */
   schedule?: (rack: Rack) => Circuit[];
+  /** where the cords lie at the start, when the level knows it already (a cabinet carried over: the career); otherwise drawn */
+  starts?: CableStart[];
+  /** the straps on at the start (a cabinet carried over) */
+  straps?: StrapStart[];
   /** three stars need this many velcro bundles: a strap round three cords or more, in a manager or a duct */
   bundles?: number;
   /** old unmarked cords: where one goes only shows once it is traced, or plugged as planned */
@@ -78,6 +83,13 @@ export interface PuzzleLevel extends LevelBase {
   kind: 'puzzle';
   /** the gestures challenge: three stars in at most this many gestures that change the cabinet */
   moves: number;
+}
+
+/** a ticket of the career: one visit to the client's cabinet, as the player left it */
+export interface TicketLevel extends LevelBase {
+  kind: 'ticket';
+  /** its place in the career, from 0 */
+  ticket: number;
 }
 
 /** the guided tutorial, over a small cabinet */
@@ -118,4 +130,4 @@ export interface BenchLevel extends LevelBase {
   kind: 'bench';
 }
 
-export type LevelDef = CampaignLevel | PuzzleLevel | TutorialLevel | FreeLevel | ZenLevel | DailyLevel | ShowcaseLevel | BenchLevel;
+export type LevelDef = CampaignLevel | PuzzleLevel | TicketLevel | TutorialLevel | FreeLevel | ZenLevel | DailyLevel | ShowcaseLevel | BenchLevel;

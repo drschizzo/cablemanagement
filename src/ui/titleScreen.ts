@@ -16,6 +16,7 @@ export interface TitleActions {
   showMenu(): void;
   showSettings(): void;
   showShop(): void;
+  showCareer(): void;
   /** the next level the player has to tidy (undefined: all are done) */
   nextLevel(): LevelDef | undefined;
   /** the player has stars in some level */
@@ -36,6 +37,7 @@ export class TitleScreen {
     byId('title-levels').onclick = () => actions.showMenu();
     byId('title-settings').onclick = () => actions.showSettings();
     byId('title-shop').onclick = () => actions.showShop();
+    byId('title-career').onclick = () => actions.showCareer();
     onLanguageChange(() => this.refresh());
   }
 

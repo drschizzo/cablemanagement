@@ -541,3 +541,11 @@ body.touring #toolbar, body.touring #side, body.touring #hint, body.touring #top
 #shop .find { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; border: 1px solid var(--line); border-radius: var(--r); font-size: 12px; }
 #shop .find span { color: var(--dim); }
 #shop .find.unknown b { color: var(--dim); }
+
+/* ---- the career: one card per ticket */
+#career-tickets { display: flex; flex-direction: column; gap: 4px; margin: 12px 0; }
+#career .ticket { padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--r); font-size: 12.5px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+#career .ticket p { margin: 4px 0 0; color: var(--dim); flex-basis: 100%; }
+#career .ticket.now { border-color: var(--accent); }
+#career .ticket.later { opacity: 0.55; }
+#career-over:empty, #career-over[style*="none"] { display: none; }

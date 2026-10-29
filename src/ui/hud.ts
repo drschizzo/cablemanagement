@@ -24,19 +24,17 @@ import type { CordInfo, Hint, HoverNote } from '../play/messages';
 import { StockMenu } from './stockMenu';
 import { SchedulePanel } from './schedulePanel';
 import { LevelBrief } from './levelBrief';
-import { fileName, showResult, type Outcome, type Pay } from './resultScreen';
-import { payslip } from '../game/pay';
-import { earn } from './wallet';
+import { fileName, showResult } from './resultScreen';
+import { recordOutcome } from './outcome';
 import { TimelapsePlayer } from './timelapsePlayer';
 import { ShopPanel } from './shopPanel';
+import { CareerPanel } from './careerPanel';
 import { FINDS, type FindId } from '../game/finds';
 import { findName, findStory } from './names';
-import { recordDaily, shareText, streak } from './daily';
 import { LevelMenu } from './levelMenu';
 import { PauseMenu } from './pauseMenu';
 import { SettingsPanel, type QualityControl } from './settingsPanel';
 import { confirmLeaving } from './confirmDialog';
-import { recordResult } from './progress';
 import { levelTitle } from './levelTexts';
 import { onLanguageChange, tr } from './language';
 
@@ -66,6 +64,7 @@ export class Hud {
   private settings: SettingsPanel;
   private timelapse = new TimelapsePlayer();
   private shop = new ShopPanel();
+  private career = new CareerPanel();
   private toastTimer = 0;
   /** the hint of the gesture under way, and the notes of the cord under the pointer (null: none) */
   private liveHint: Hint | null = null;
@@ -160,6 +159,11 @@ export class Hud {
     this.toast(isNew
       ? tr({ fr: `Trouvaille : ${findName(find)} ! ${findStory(find)} (${count})`, en: `Found: ${findName(find)}! ${findStory(find)} (${count})` })
       : tr({ fr: `${findName(find)}, encore. Il est déjà dans votre collection.`, en: `${findName(find)} again. It is in your collection already.` }), STORY_MS);
+  }
+
+  /** the career, from the title screen */
+  showCareer(): void {
+    this.career.show(this.actions.start, () => {});
   }
 
   /** the workshop, from the title screen */
@@ -270,7 +274,7 @@ export class Hud {
     if (!ctl || !level) return;
     const ev = ctl.world.evaluate();
     if (ev.stars < 1 || document.body.classList.contains('touring')) return;
-    const outcome = this.record(level, ev, ctl.elapsed, ctl.counters.moves);
+    const outcome = recordOutcome(level, ev, ctl.world, ctl.elapsed, ctl.counters.moves, this.progress);
     sfx.win();
     // the panels step aside while the camera flies round the work
     document.body.classList.add('touring');
@@ -285,31 +289,6 @@ export class Hud {
         home: this.actions.home,
       });
     });
-  }
-
-  /** keeps the result where its kind of level keeps it; what the result screen shows of it */
-  private record(level: LevelDef, ev: Evaluation, time: number, moves: number): Outcome {
-    // zen keeps no score, and pays nothing
-    if (level.kind === 'zen') return { result: { stars: ev.stars, time, moves, note: ev.readability.note, previousStars: 0, previousNote: undefined, challengeWon: false }, challengeWonBefore: false, share: null, pay: null };
-    if (level.kind === 'daily') {
-      const days = load('daily');
-      const result = recordDaily(days, level, ev, time, moves);
-      save('daily', days);
-      return { result, challengeWonBefore: false, share: shareText(level, days[level.date], streak(days, level.date)), pay: this.pay(level, ev, false) };
-    }
-    const challengeWonBefore = !!this.progress.challenges[level.id];
-    const result = recordResult(this.progress, level, ev.stars, time, moves, ev.readability.note);
-    save('progress', this.progress);
-    return { result, challengeWonBefore, share: null, pay: level.kind === 'tutorial' ? null : this.pay(level, ev, result.challengeWon) };
-  }
-
-  /** the job's payslip, paid into the wallet (a replay pays only what it adds) */
-  private pay(level: LevelDef, ev: Evaluation, challengeWon: boolean): Pay {
-    const wallet = load('wallet');
-    const slip = payslip(ev, challengeWon);
-    const paid = earn(wallet, level.id, slip);
-    save('wallet', wallet);
-    return { slip, paid, coins: wallet.coins };
   }
 
   private openPause(): void {

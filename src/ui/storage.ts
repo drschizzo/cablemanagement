@@ -6,6 +6,7 @@
 
 import { AUTO_QUALITY, QUALITY, type QualityChoice } from '../render/quality';
 import { LANGUAGES, preferredLanguage, type Language } from './language';
+import type { CabinetState } from '../game/cabinetState';
 
 /** the best result of one cabinet of the day */
 export interface DailyResult {
@@ -19,6 +20,13 @@ export interface DailyResult {
   budget: number;
   /** each line of the schedule: 2 tidy, 1 plugged only, 0 not plugged (the shared grid) */
   lines: number[];
+}
+
+/** the career: tickets done, the client's cabinet as the last one left it, the best stars of each */
+export interface Career {
+  done: number;
+  cabinet: CabinetState | null;
+  stars: number[];
 }
 
 /** what the player has earned and spent: the € on hand, the best payslip of each level, the looks bought and worn, the finds */
@@ -78,6 +86,14 @@ const ENTRIES = {
     format: (v: Record<string, DailyResult>) => JSON.stringify(v),
     valid: (v: Record<string, DailyResult>) => isRecord(v) && Object.values(v).every((r) => isRecord(r) && typeof r.stars === 'number' && Array.isArray(r.lines)),
   } satisfies Entry<Record<string, DailyResult>>,
+  /** the career, and the client's cabinet as the player left it */
+  career: {
+    key: 'cable.career',
+    fallback: (): Career => ({ done: 0, cabinet: null, stars: [] }),
+    parse: (raw: string): Career => JSON.parse(raw),
+    format: (v: Career) => JSON.stringify(v),
+    valid: (v: Career) => Number.isInteger(v.done) && v.done >= 0 && Array.isArray(v.stars) && (v.cabinet === null || (isRecord(v.cabinet) && Array.isArray(v.cabinet.cords))),
+  } satisfies Entry<Career>,
   /** what the player earned, bought and found */
   wallet: {
     key: 'cable.wallet',
