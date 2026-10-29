@@ -12,8 +12,8 @@ import { CATALOGUE, LEVELS, SERVICES } from '../src/game/levels';
 import { polyLength, routePlan, strapBundles, tidyKit, tidyRoutes } from '../src/game/idealRoutes';
 import { planRoute, RouteRun } from '../src/game/routeLaying';
 import type { Guide } from '../src/game/rack';
+import { env } from './env';
 
-declare const process: { env: Record<string, string | undefined> };
 
 /** length of every line's tidy route, in the level's finished cabinet (m) */
 function tidyRoutesOf(lv: (typeof LEVELS)[number]): number[] {
@@ -70,7 +70,7 @@ for (const lv of LEVELS) {
   for (let f = 0; f < 120; f++) w.sim.step();
   const ev = w.evaluate();
   const stuck = [...w.live].filter((i) => !ev.circuits[i].routed || !ev.circuits[i].clear);
-  if (process.env.WHY) console.log(`  pendent ${stuck.filter((i) => !ev.circuits[i].routed).length}, devant un port ${stuck.filter((i) => !ev.circuits[i].clear).length}`);
+  if (env.WHY) console.log(`  pendent ${stuck.filter((i) => !ev.circuits[i].routed).length}, devant un port ${stuck.filter((i) => !ev.circuits[i].clear).length}`);
   const cost = stuck.reduce((a, i) => a + REWORK * SERVICES[w.circuits[i].service].weight, 0);
   const budget = lv.downtime ?? Infinity;
   // the new cords the level takes: for every line whose cord is half a metre too long for its

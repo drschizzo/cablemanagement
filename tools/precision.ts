@@ -1,13 +1,13 @@
 // Precision bench: the gestures that frustrate a player, measured.
-//   PARAMS='{"substeps":8}' node precision.mjs
+//   PARAMS='{"substeps":8}' npm run precision
 // S1 push a cord into a duct and let go; S2 lay a cord along a finger manager;
 // S3 a level settling at rest; S4 the big heap of level 8.
-declare const process: { env: Record<string, string | undefined> };
 import { World } from '../src/game/world';
 import { LEVELS, type LevelDef } from '../src/game/levels';
 import { U } from '../src/game/rack';
+import { env, envNumber, envParams } from './env';
 
-const params = JSON.parse(process.env.PARAMS ?? '{}');
+const params = envParams();
 const B = { kind: 'blank' as const };
 const bench: LevelDef = {
   id: 'bench', title: '', brief: '',
@@ -16,11 +16,11 @@ const bench: LevelDef = {
   labels: false, services: 1, types: ['CU'], colorByService: true,
   inventory: {}, preinstalled: [{ kind: 'hmgr', unit: 2, side: 0 }, { kind: 'duct', unit: 3, side: 1 }, { kind: 'duct', unit: 7, side: 1 }],
   seed: 5,
-  seg: Number(process.env.SEG ?? 0.025),
+  seg: envNumber('SEG', 0.025),
 };
 
 function make(level: LevelDef): World {
-  const w = new World({ ...level, ...(process.env.SEG ? { seg: Number(process.env.SEG) } : {}), ...(process.env.BEND ? { bend: Number(process.env.BEND) } : {}) });
+  const w = new World({ ...level, ...(env.SEG ? { seg: Number(env.SEG) } : {}), ...(env.BEND ? { bend: Number(env.BEND) } : {}) });
   Object.assign(w.sim.P, params);
   return w;
 }
@@ -79,7 +79,7 @@ function gesture(w: World, node: number, path: number[][], hold = 20, kind: 'hmg
     }
   }
   for (let f = 0; f < hold; f++) sim.step();
-  if (process.env.WHERE) {
+  if (env.WHERE) {
     const g = sim.grabNode;
     console.log(`   au lâcher : main (${sim.grabTarget.map((v) => v.toFixed(3))}) nœud (${[0, 1, 2].map((d) => sim.x[3 * g + d].toFixed(3))}) dans goulotte ${nodesIn(w, sim.cableOf[g], 'duct')} guide ${nodesIn(w, sim.cableOf[g], 'hmgr')}`);
   }
@@ -102,7 +102,7 @@ function gesture(w: World, node: number, path: number[][], hold = 20, kind: 'hmg
     stretchPeak = Math.max(stretchPeak, stretchMax(w));
     if (settle < 0 && sim.stats.awake === 0) settle = f;
   }
-  if (process.env.WHERE) {
+  if (env.WHERE) {
     console.log('   pic :', where);
     const c = w.sim.cableOf[node], cb = w.cables[c];
     const pts: string[] = [];

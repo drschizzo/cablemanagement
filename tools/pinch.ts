@@ -10,13 +10,13 @@
 // pinched one after the other, then its kinetic energy and the reversals of
 // its nodes' velocity over the next three seconds, and when it falls asleep.
 //   PARAMS='{"pinchK":8}' npm run pinch
-declare const process: { env: Record<string, string | undefined> };
 import { CABLES } from '@drschizzo/avbd-cables';
 import { RackCableSim } from '../src/game/rackCableSim';
 import { World } from '../src/game/world';
 import { LEVELS } from '../src/game/levels';
+import { envParams } from './env';
 
-const params = JSON.parse(process.env.PARAMS ?? '{}');
+const params = envParams();
 const SEG = 0.025, R = 0.0028;
 
 /** turning angle (degrees) between segments a → a+1 and b → b+1 */

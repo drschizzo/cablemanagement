@@ -1,7 +1,7 @@
 // Headless checks of the cable solver: run with
-declare const process: { env: Record<string, string | undefined> };
-//   npx esbuild tools/bench.ts --bundle --platform=node --format=esm --outfile=/tmp/bench.mjs && node /tmp/bench.mjs
+//   VARIANTS='[["default", {}]]' NC=24 npm run bench
 import { CABLES, CableSim, closest, segSeg, type CableInit, type StaticShape } from '@drschizzo/avbd-cables';
+import { env, envNumber } from './env';
 
 const SEG = 0.025;
 /** patch cords, connectors at both ends */
@@ -87,7 +87,7 @@ function maxSpeed(sim: CableSim): number {
 }
 
 // --- 2. a pile of cables dropped across a bar and onto a shelf
-const variants: [string, Record<string, number>][] = JSON.parse(process.env.VARIANTS ?? '[["default", {}]]');
+const variants: [string, Record<string, number>][] = JSON.parse(env.VARIANTS ?? '[["default", {}]]');
 for (const [label, params] of variants) {
   const sim = new CableSim(params);
   const defs: CableInit[] = [];
@@ -110,7 +110,7 @@ for (const [label, params] of variants) {
   for (let f = 0; f < F; f++) {
     sim.step();
     ms += sim.stats.ms; worstMs = Math.max(worstMs, sim.stats.ms);
-    if (f % 60 === 59 && process.env.VERBOSE) {
+    if (f % 60 === 59 && env.VERBOSE) {
       console.log(`  pile f${f + 1}: contacts ${sim.stats.contacts}, awake ${sim.stats.awake}, ${sim.stats.ms.toFixed(2)} ms, overlap ${(worstOverlap(sim) * 1000).toFixed(2)} mm, stretch ${(stretchError(sim) * 100).toFixed(2)} %, vmax ${maxSpeed(sim).toFixed(3)}`);
     }
   }
@@ -123,7 +123,7 @@ for (const [label, params] of variants) {
 {
   let seed = 7;
   const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-  const NC = Number(process.env.NC ?? 24);
+  const NC = envNumber('NC', 24);
   const defs: CableInit[] = [];
   const perm = Array.from({ length: NC }, (_, i) => i);
   for (let i = NC - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [perm[i], perm[j]] = [perm[j], perm[i]]; }
@@ -168,7 +168,7 @@ for (const [label, params] of variants) {
     ms += sim.stats.ms; worst = Math.max(worst, sim.stats.ms);
     if (f === 0 || f % 120 === 119) log.push(`f${f + 1}: awake ${sim.stats.awake} vmax ${maxSpeed(sim).toFixed(3)} ov>1mm ${overlapCount(sim, 0.001)} ov>3mm ${overlapCount(sim, 0.003)}`);
   }
-  if (process.env.DEEP) {
+  if (env.DEEP) {
     const x = sim.x; const S: any = sim;
     for (let a = 0; a < sim.n; a++) {
       if (!sim.segOK[a]) continue;

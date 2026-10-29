@@ -3,12 +3,12 @@
 // along the fingers, holds it, lets go; then the cord's peak speed, its peak
 // upward speed and its kinetic energy over the next half second.
 //   SEEDS=1,2 ROWS=1 PARAMS='{"keepK":8}' npm run release
-declare const process: { env: Record<string, string | undefined> };
 import { World } from '../src/game/world';
 import { type LevelDef } from '../src/game/levels';
+import { env, envParams, envSeeds } from './env';
 
-const params = JSON.parse(process.env.PARAMS ?? '{}');
-const seeds = (process.env.SEEDS ?? '1,2,3,4,5').split(',').map(Number);
+const params = envParams();
+const seeds = envSeeds('1,2,3,4,5');
 const B = { kind: 'blank' as const };
 const bench = (seed: number): LevelDef => ({
   id: 'release', title: '', brief: '',
@@ -58,7 +58,7 @@ for (const seed of seeds) for (const c of [0, 1, 2, 3]) for (const off of [15, 2
     }
   }
   const after = kept();
-  if (process.env.ROWS) console.log(`seed ${seed} cable ${c} node ${off} sweep ${sweep}: kept ${atRelease} -> ${after}, peak ${peak.toFixed(2)} m/s, up ${up.toFixed(2)} m/s, energy ${(ke * 1000).toFixed(1)} mJ·frame`);
+  if (env.ROWS) console.log(`seed ${seed} cable ${c} node ${off} sweep ${sweep}: kept ${atRelease} -> ${after}, peak ${peak.toFixed(2)} m/s, up ${up.toFixed(2)} m/s, energy ${(ke * 1000).toFixed(1)} mJ·frame`);
   tot.peak += peak; tot.up += up; tot.ke += ke; tot.kept += atRelease; tot.after += after; tot.n++;
 }
 const n = tot.n;

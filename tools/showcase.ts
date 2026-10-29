@@ -1,6 +1,6 @@
 // Headless check of the before/after cabinet, over a few random closets: the
 // mess (settled as in the demo), then the tidy cords on their routes.
-//   npx esbuild tools/showcase.ts --bundle --platform=node --format=esm --outfile=/tmp/showcase.mjs && node /tmp/showcase.mjs [seeds] [pairs]
+//   npm run showcase -- [seeds] [pairs]
 declare const process: { argv: string[] };
 import { World } from '../src/game/world';
 import { SHOWCASE_SETTLE, showcaseRack } from '../src/game/levels';

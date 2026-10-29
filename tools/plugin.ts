@@ -5,11 +5,11 @@
 // just above. Then: how many of the cord's nodes in the channel left it, and
 // how fast the cord moved.
 //   SEEDS=1,2 ROWS=1 PARAMS='{"keepK":8}' npm run plugin
-declare const process: { env: Record<string, string | undefined> };
 import { World } from '../src/game/world';
 import { type LevelDef } from '../src/game/levels';
 import { CONNECTOR } from '../src/game/rack';
 import type { StaticCapsule } from '@drschizzo/avbd-cables';
+import { env, envNumber, envParams, envSeeds } from './env';
 
 /** closest distance between segments p0p1 and q0q1 */
 function segSeg(p0: number[], p1: number[], q0: number[], q1: number[]): number {
@@ -22,10 +22,10 @@ function segSeg(p0: number[], p1: number[], q0: number[], q1: number[]): number 
   return Math.hypot(...[0, 1, 2].map((k) => p0[k] + d1[k] * s - q0[k] - d2[k] * t));
 }
 
-const params = JSON.parse(process.env.PARAMS ?? '{}');
-const seeds = (process.env.SEEDS ?? '1,2,3,4,5,6,7,8').split(',').map(Number);
-const SLACK = Number(process.env.SLACK ?? 0.8);
-const X0 = Number(process.env.X0 ?? -0.34);
+const params = envParams();
+const seeds = envSeeds('1,2,3,4,5,6,7,8');
+const SLACK = envNumber('SLACK', 0.8);
+const X0 = envNumber('X0', -0.34);
 const B = { kind: 'blank' as const };
 const bench = (seed: number): LevelDef => ({
   id: 'plugin', title: '', brief: '',
@@ -54,7 +54,7 @@ for (const seed of seeds) for (const c of [0, 1, 2, 3]) for (const port of ['A2'
   sim.grab(n0);
   const t = [...sim.grabTarget];
   const yc = (room.min[1] + room.max[1]) / 2, zc = 0.035;
-  const way = [[X0, yc - 0.25, 0.08], [X0, yc, zc], [pa.x, yc, zc], ...(process.env.UP ? [[pa.x, pa.y, CONNECTOR + Number(process.env.UP)]] : [])];
+  const way = [[X0, yc - 0.25, 0.08], [X0, yc, zc], [pa.x, yc, zc], ...(env.UP ? [[pa.x, pa.y, CONNECTOR + Number(env.UP)]] : [])];
   for (const p of way) for (let f = 0; f < 400; f++) {
     const d = [p[0] - t[0], p[1] - t[1], p[2] - t[2]];
     const L = Math.hypot(d[0], d[1], d[2]);
@@ -79,7 +79,7 @@ for (const seed of seeds) for (const c of [0, 1, 2, 3]) for (const port of ['A2'
   for (let i = cb.start; i < cb.start + cb.count; i++) if (i !== n0 && i !== n1 && inside(i)) was.push(i);
   const exit0 = exitX();
   sim.release();
-  if (process.env.MODE === 'freeze') { sim.pin(n0, sim.x[3 * n0], sim.x[3 * n0 + 1], sim.x[3 * n0 + 2]); sim.pin(n1, sim.x[3 * n1], sim.x[3 * n1 + 1], sim.x[3 * n1 + 2]); } else if (process.env.MODE !== 'release') w.plug(c, e, port);
+  if (env.MODE === 'freeze') { sim.pin(n0, sim.x[3 * n0], sim.x[3 * n0 + 1], sim.x[3 * n0 + 2]); sim.pin(n1, sim.x[3 * n1], sim.x[3 * n1 + 1], sim.x[3 * n1 + 2]); } else if (env.MODE !== 'release') w.plug(c, e, port);
   let peak = 0, pen = 0;
   const caps = rack.statics().filter((q): q is StaticCapsule => q.kind === 'capsule');
   for (let f = 0; f < 120; f++) {
@@ -89,7 +89,7 @@ for (const seed of seeds) for (const c of [0, 1, 2, 3]) for (const port of ['A2'
       if (Math.min(p0[0], p1[0]) > -0.15) continue;
       for (const q of caps) pen = Math.max(pen, q.r + w.radius - segSeg(p0, p1, [q.ax, q.ay, q.az], [q.bx, q.by, q.bz]));
     }
-    if (process.env.TRACE && (f < 14 || f % 10 === 0)) {
+    if (env.TRACE && (f < 14 || f % 10 === 0)) {
       const dir = e === 0 ? 1 : -1, ex = exitX();
       let k0 = -1;
       for (let i = n0; i >= cb.start && i < cb.start + cb.count; i += dir) if (sim.x[3 * i] < room.min[0] + 0.05) { k0 = i; break; }
@@ -106,7 +106,7 @@ for (const seed of seeds) for (const c of [0, 1, 2, 3]) for (const port of ['A2'
   // it came in by the end of the manager, and now goes out between two fingers
   const slipped = exit0 !== null && exit0 < room.min[0] && exit1 !== null && exit1 > room.min[0] + 0.004;
   tot.slip += slipped ? 1 : 0; tot.byEnd += exit0 !== null && exit0 < room.min[0] ? 1 : 0;
-  if (process.env.ROWS) console.log(`seed ${seed} cable ${c} ${port}: in the channel ${was.length}, left it ${gone.length}${gone.length ? ' (' + gone.map((i) => `${Math.abs(i - n0)}@${sim.x[3 * i].toFixed(2)},${sim.x[3 * i + 1].toFixed(2)},${sim.x[3 * i + 2].toFixed(2)}`).join(' ') + ')' : ''}${seated ? '' : ` NOT SEATED at ${[0, 1, 2].map((d) => (sim.x[3 * n0 + d] * 1000).toFixed(0)).join(",")} port ${(pa.x * 1000).toFixed(0)},${(pa.y * 1000).toFixed(0)} (${(Math.hypot(sim.x[3 * n0] - pa.x, sim.x[3 * n0 + 1] - pa.y, sim.x[3 * n0 + 2] - CONNECTOR) * 1000).toFixed(1)} / ${(Math.hypot(sim.x[3 * n1] - pa.x, sim.x[3 * n1 + 1] - pa.y, sim.x[3 * n1 + 2] - CONNECTOR - w.seg) * 1000).toFixed(1)} mm)`}, exit ${exit0?.toFixed(3)} -> ${exit1?.toFixed(3)}${slipped ? ' SLIPPED' : ''}, into a finger ${(pen * 1000).toFixed(1)} mm, peak ${peak.toFixed(2)} m/s`);
+  if (env.ROWS) console.log(`seed ${seed} cable ${c} ${port}: in the channel ${was.length}, left it ${gone.length}${gone.length ? ' (' + gone.map((i) => `${Math.abs(i - n0)}@${sim.x[3 * i].toFixed(2)},${sim.x[3 * i + 1].toFixed(2)},${sim.x[3 * i + 2].toFixed(2)}`).join(' ') + ')' : ''}${seated ? '' : ` NOT SEATED at ${[0, 1, 2].map((d) => (sim.x[3 * n0 + d] * 1000).toFixed(0)).join(",")} port ${(pa.x * 1000).toFixed(0)},${(pa.y * 1000).toFixed(0)} (${(Math.hypot(sim.x[3 * n0] - pa.x, sim.x[3 * n0 + 1] - pa.y, sim.x[3 * n0 + 2] - CONNECTOR) * 1000).toFixed(1)} / ${(Math.hypot(sim.x[3 * n1] - pa.x, sim.x[3 * n1 + 1] - pa.y, sim.x[3 * n1 + 2] - CONNECTOR - w.seg) * 1000).toFixed(1)} mm)`}, exit ${exit0?.toFixed(3)} -> ${exit1?.toFixed(3)}${slipped ? ' SLIPPED' : ''}, into a finger ${(pen * 1000).toFixed(1)} mm, peak ${peak.toFixed(2)} m/s`);
   tot.runs++; tot.lost += gone.length; tot.hit += gone.length ? 1 : 0; tot.peak += peak; tot.inG += was.length;
 }
 const n = tot.runs || 1;

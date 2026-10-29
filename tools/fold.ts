@@ -4,12 +4,12 @@
 // the channel that are not in the run around the hand, and that were not
 // already lying there before the hand took the cord.
 //   SEEDS=1,2 ROWS=1 npm run fold
-declare const process: { env: Record<string, string | undefined> };
 import { World } from '../src/game/world';
 import { type LevelDef } from '../src/game/levels';
+import { env, envParams, envSeeds } from './env';
 
-const params = JSON.parse(process.env.PARAMS ?? '{}');
-const seeds = (process.env.SEEDS ?? '1,2,3,4,5').split(',').map(Number);
+const params = envParams();
+const seeds = envSeeds('1,2,3,4,5');
 const B = { kind: 'blank' as const };
 const bench = (seed: number): LevelDef => ({
   id: 'fold', title: '', brief: '',
@@ -84,6 +84,6 @@ for (const seed of seeds) for (const c of [0, 1, 2, 3]) for (const off of [12, 2
     .reduce((t, [a, b]) => { for (let i = a; i <= b; i++) if (!there(i)) t++; return t; }, 0);
   if (s3) lying++;
   n++; if (s1) foldedHeld++; if (s2) foldedAfter++;
-  if (process.env.ROWS) console.log(`seed ${seed} cable ${c} node ${off}/${cb.count} sweep ${sweep}: held ${JSON.stringify(r1)} stray ${s1} | let go ${JSON.stringify(r2)} stray ${s2} | in channel before ${JSON.stringify(before)} after ${JSON.stringify(inside)} stray ${s3}`);
+  if (env.ROWS) console.log(`seed ${seed} cable ${c} node ${off}/${cb.count} sweep ${sweep}: held ${JSON.stringify(r1)} stray ${s1} | let go ${JSON.stringify(r2)} stray ${s2} | in channel before ${JSON.stringify(before)} after ${JSON.stringify(inside)} stray ${s3}`);
 }
 console.log(`${n} lays: a part far from the hand kept in the channel in ${foldedHeld} while held, ${foldedAfter} after letting go; far nodes come to lie in it in ${lying}`);

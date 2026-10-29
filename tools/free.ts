@@ -1,13 +1,13 @@
 // Free play with many cords, headless: how long the cabinet takes to settle,
 // and how erratic the other cords get while the hand drags one through them.
 //   NC=48 SEEDS=1,2,3 PARAMS='{"kCapCable":2}' npm run free
-declare const process: { env: Record<string, string | undefined> };
 import { World } from '../src/game/world';
 import { freeLevel } from '../src/game/levels';
+import { envNumber, envParams, envSeeds } from './env';
 
-const NC = Number(process.env.NC ?? 48);
-const seeds = (process.env.SEEDS ?? '1,2,3').split(',').map(Number);
-const params = JSON.parse(process.env.PARAMS ?? '{}');
+const NC = envNumber('NC', 48);
+const seeds = envSeeds('1,2,3');
+const params = envParams();
 
 /** speed of node i (m/s) */
 const speed = (w: World, i: number) => Math.hypot(w.sim.v[3 * i], w.sim.v[3 * i + 1], w.sim.v[3 * i + 2]);

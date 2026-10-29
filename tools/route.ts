@@ -1,4 +1,4 @@
-// Laying cords along a drawn route, headless (src/game/route.ts): a cord
+// Laying cords along a drawn route, headless (src/game/routeLaying.ts): a cord
 // plugged in its panel port, its other end hanging, routed through the
 // manager below the panel, two rings (or a duct) down the side channel and
 // the manager above the switch, into its switch port. Then: whether it got
@@ -7,18 +7,18 @@
 // (a cord must never pass through it), and how far it carried the other
 // cords (it passes through them while laid).
 //   SEEDS=1,2 SLACK=0.5 ROWS=1 VIA=duct PARAMS='{"goalK":2}' npm run route
-declare const process: { env: Record<string, string | undefined> };
 import { World } from '../src/game/world';
 import { type LevelDef } from '../src/game/levels';
 import { planRoute, RouteRun } from '../src/game/routeLaying';
 import type { Guide } from '../src/game/rack';
 import type { StaticCapsule } from '@drschizzo/avbd-cables';
+import { env, envNumber, envParams, envSeeds } from './env';
 
-const params = JSON.parse(process.env.PARAMS ?? '{}');
-const seeds = (process.env.SEEDS ?? '1,2,3,4,5,6,7,8').split(',').map(Number);
+const params = envParams();
+const seeds = envSeeds('1,2,3,4,5,6,7,8');
 /** extra length of the cords over their ideal route (m) */
-const slack = Number(process.env.SLACK ?? 0.3);
-const via = process.env.VIA ?? 'rings';
+const slack = envNumber('SLACK', 0.3);
+const via = env.VIA ?? 'rings';
 const B = { kind: 'blank' as const };
 const bench = (seed: number): LevelDef => ({
   id: 'route', title: '', brief: '',
@@ -77,7 +77,7 @@ for (const seed of seeds) for (const c of [0, 1, 2, 3]) {
   const res = planRoute(w, c, order, pb);
   tot.runs++;
   if ('error' in res) {
-    if (process.env.ROWS) console.log(`seed ${seed} cable ${c}: ${res.error}`);
+    if (env.ROWS) console.log(`seed ${seed} cable ${c}: ${res.error}`);
     continue;
   }
   tot.planned++;
@@ -88,7 +88,7 @@ for (const seed of seeds) for (const c of [0, 1, 2, 3]) {
   let lagged = '';
   for (let f = 0; f < 600 && !run.step(1 / 60); f++) {
     sim.step(); ms += sim.stats.ms; pen = Math.max(pen, worstPen(w, c));
-    if (process.env.LAG && run.t >= run.duration && !lagged) {
+    if (env.LAG && run.t >= run.duration && !lagged) {
       const errs: string[] = [];
       for (let k = 0; k < cb.count; k++) { const i = cb.start + k; if (sim.goalW[i] <= 0) continue; const e = Math.hypot(sim.x[3 * i] - sim.goal[3 * i], sim.x[3 * i + 1] - sim.goal[3 * i + 1], sim.x[3 * i + 2] - sim.goal[3 * i + 2]); if (e > 0.02) errs.push(`${k}:${(e * 100).toFixed(0)}cm@(${[0, 1, 2].map((d) => sim.goal[3 * i + d].toFixed(3)).join(',')})`); }
       lagged = errs.join(' ') || 'none';
@@ -108,7 +108,7 @@ for (const seed of seeds) for (const c of [0, 1, 2, 3]) {
   tot.moved += moved; tot.movedMax = Math.max(tot.movedMax, movedMax);
   tot.penRest = Math.max(tot.penRest, penRest);
   const plugged = cb.ends[1].port === pb.id;
-  if (process.env.LAG && !plugged) { const [n0] = w.endNodes(c, 1); console.log('   connector', [0, 1, 2].map((d) => sim.x[3 * n0 + d].toFixed(3)).join(','), 'port', pb.x.toFixed(3), pb.y.toFixed(3), 'plug', pb.plug, 'run.plugged', run.plugged, 'goalW', sim.goalW[n0]); }
+  if (env.LAG && !plugged) { const [n0] = w.endNodes(c, 1); console.log('   connector', [0, 1, 2].map((d) => sim.x[3 * n0 + d].toFixed(3)).join(','), 'port', pb.x.toFixed(3), pb.y.toFixed(3), 'plug', pb.plug, 'run.plugged', run.plugged, 'goalW', sim.goalW[n0]); }
   let inG = 0;
   for (let i = cb.start; i < cb.start + cb.count; i++) if (order.some((g) => inside(g.room, sim.x, i))) inG++;
   let peak = 0;
@@ -118,8 +118,8 @@ for (const seed of seeds) for (const c of [0, 1, 2, 3]) {
   }
   const kept = nodesIn(w, c, order);
   const through = kept.filter((k) => k > 0).length;
-  if (process.env.WHERE) console.log('   deepest:', where);
-  if (process.env.ROWS) console.log(`seed ${seed} cable ${c}: ${plugged ? 'plugged' : 'NOT PLUGGED'}, slack ${(res.plan.slack * 100).toFixed(0)} cm, through ${through}/${order.length} guides (nodes ${kept.join(' ')}), worst into a part ${(pen * 1000).toFixed(1)} mm, peak at rest ${peak.toFixed(3)} m/s, others carried ${(moved * 1000).toFixed(1)} mm (furthest ${(movedMax * 100).toFixed(0)} cm), ${run.duration.toFixed(1)} s`);
+  if (env.WHERE) console.log('   deepest:', where);
+  if (env.ROWS) console.log(`seed ${seed} cable ${c}: ${plugged ? 'plugged' : 'NOT PLUGGED'}, slack ${(res.plan.slack * 100).toFixed(0)} cm, through ${through}/${order.length} guides (nodes ${kept.join(' ')}), worst into a part ${(pen * 1000).toFixed(1)} mm, peak at rest ${peak.toFixed(3)} m/s, others carried ${(moved * 1000).toFixed(1)} mm (furthest ${(movedMax * 100).toFixed(0)} cm), ${run.duration.toFixed(1)} s`);
   tot.plugged += plugged ? 1 : 0; tot.through += through; tot.guides += order.length; tot.inGuides += inG / cb.count; tot.pen += pen; tot.penMax = Math.max(tot.penMax, pen); tot.calm += peak; tot.ms += ms;
 }
 const n = tot.planned || 1;
