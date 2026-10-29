@@ -52,7 +52,7 @@ for (const lv of LEVELS) {
   const itemOf = (id: number) => w.rack.items.find((it) => it.id === id)!;
   const h = w.sim.P.dt;
   let failed = 0;
-  for (const i of w.live) {
+  for (const i of w.maintenance.live) {
     const ci = w.circuits[i];
     const c = w.rack.port(ci.a).plug >> 1;
     const [p] = routePlan(w.rack, [ci]);
@@ -71,7 +71,7 @@ for (const lv of LEVELS) {
   }
   for (let f = 0; f < 120; f++) w.sim.step();
   const ev = w.evaluate();
-  const stuck = [...w.live].filter((i) => !ev.circuits[i].routed || !ev.circuits[i].clear);
+  const stuck = [...w.maintenance.live].filter((i) => !ev.circuits[i].routed || !ev.circuits[i].clear);
   if (env.WHY) console.log(`  pendent ${stuck.filter((i) => !ev.circuits[i].routed).length}, devant un port ${stuck.filter((i) => !ev.circuits[i].clear).length}`);
   const cost = stuck.reduce((a, i) => a + REWORK * SERVICES[w.circuits[i].service].weight, 0);
   const budget = lv.downtime ?? Infinity;
@@ -87,5 +87,5 @@ for (const lv of LEVELS) {
   });
   const needs = [...need].sort((a, b) => a[0] - b[0]).map(([L, n]) => `${n}×${L}`).join(' ');
   const have = (lv.cords ?? []).map(([L, n]) => `${n}×${L}`).join(' ');
-  console.log(`${lv.id}: ${w.live.size - stuck.length}/${w.live.size} rangées en place${failed ? ` (${failed} chemins refusés)` : ''}, ${stuck.length} à débrancher ≈ ${Math.round(cost)} pts pour un budget de ${budget}${cost - (lv.bypass ?? 0) * REWORK * 4 > budget ? ' — TROP JUSTE, même avec les dérivations' : ''}${lv.bypass ? ` (${lv.bypass} dérivation${lv.bypass > 1 ? 's' : ''})` : ''}${needs ? ` ; cordons : ${needs} (stock ${have})` : ''}`);
+  console.log(`${lv.id}: ${w.maintenance.live.size - stuck.length}/${w.maintenance.live.size} rangées en place${failed ? ` (${failed} chemins refusés)` : ''}, ${stuck.length} à débrancher ≈ ${Math.round(cost)} pts pour un budget de ${budget}${cost - (lv.bypass ?? 0) * REWORK * 4 > budget ? ' — TROP JUSTE, même avec les dérivations' : ''}${lv.bypass ? ` (${lv.bypass} dérivation${lv.bypass > 1 ? 's' : ''})` : ''}${needs ? ` ; cordons : ${needs} (stock ${have})` : ''}`);
 }

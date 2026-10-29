@@ -122,11 +122,11 @@ export function evaluate(w: World): Evaluation {
     stars = 1;
     if (routed >= 0.7 * n && clear >= 0.85 * n) stars = 2;
     // past the downtime budget, an incident: three stars are out of reach
-    if (routed === n && clear === n && labelled === n && relaxed === n && bundles >= bundlesNeeded && w.downtime <= w.budget) stars = 3;
+    if (routed === n && clear === n && labelled === n && relaxed === n && bundles >= bundlesNeeded && w.maintenance.downtime <= w.maintenance.budget) stars = 3;
   }
   return {
     circuits, connected, routed, clear, labelled, relaxed, total: n, stars, cableRouted, cableObstructs, cableStrain,
-    liveDown: w.liveDown(), downtime: w.downtime, budget: w.budget, bundles, bundlesNeeded,
+    liveDown: w.maintenance.liveDown(), downtime: w.maintenance.downtime, budget: w.maintenance.budget, bundles, bundlesNeeded,
     readability: readability(w, circuits, cableStrain, supports),
   };
 }

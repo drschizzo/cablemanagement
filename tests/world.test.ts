@@ -23,8 +23,8 @@ describe('a cabinet at the start', () => {
   });
 
   it('what works at the start is in production', () => {
-    expect(w.live.size).toBe(L1.cables);
-    expect(w.liveDown()).toBe(0);
+    expect(w.maintenance.live.size).toBe(L1.cables);
+    expect(w.maintenance.liveDown()).toBe(0);
   });
 
   it('nothing tidy yet: one star, with every line connected', () => {
@@ -43,33 +43,33 @@ describe('plugging and the maintenance window', () => {
     w.unplug(0, 0);
     expect(w.rack.port(port).plug).toBe(-1);
     expect(w.circuitUp(0)).toBe(false);
-    expect(w.liveDown()).toBe(1);
+    expect(w.maintenance.liveDown()).toBe(1);
     expect(w.evaluate().stars).toBe(0);
   });
 
   it('every second a production link is cut costs its service\'s weight', () => {
     const weight = SERVICES[w.circuits[0].service].weight;
-    w.tickDowntime(2);
-    expect(w.downtime).toBe(0);
+    w.maintenance.tick(2);
+    expect(w.maintenance.downtime).toBe(0);
     w.unplug(0, 0);
-    w.tickDowntime(2);
-    expect(w.downtime).toBeCloseTo(2 * weight);
+    w.maintenance.tick(2);
+    expect(w.maintenance.downtime).toBeCloseTo(2 * weight);
     expect(w.evaluate().downtime).toBeCloseTo(2 * weight);
   });
 
   it('a bypass carries its link while it is cut, and comes back once it is restored', () => {
     const v = new World({ ...L1, bypass: 1 });
     const port = v.cables[0].ends[0].port!;
-    expect(v.toggleBypass(0)).toBe(true);
+    expect(v.maintenance.toggleBypass(0)).toBe(true);
     expect(v.inventory.bypass).toBe(0);
-    expect(v.toggleBypass(1)).toBe(false); // none left
+    expect(v.maintenance.toggleBypass(1)).toBe(false); // none left
     v.unplug(0, 0);
-    v.tickDowntime(5);
-    expect(v.downtime).toBe(0);
+    v.maintenance.tick(5);
+    expect(v.maintenance.downtime).toBe(0);
     v.plug(0, 0, port);
-    expect(v.tickDowntime(0.1)).toEqual([0]);
+    expect(v.maintenance.tick(0.1)).toEqual([0]);
     expect(v.inventory.bypass).toBe(1);
-    expect(v.bypassed.size).toBe(0);
+    expect(v.maintenance.bypassed.size).toBe(0);
   });
 
   it('plugged back, the line works again', () => {
@@ -77,7 +77,7 @@ describe('plugging and the maintenance window', () => {
     w.unplug(0, 0);
     expect(w.plug(0, 0, port)).toBe(true);
     expect(w.circuitUp(0)).toBe(true);
-    expect(w.liveDown()).toBe(0);
+    expect(w.maintenance.liveDown()).toBe(0);
   });
 
   it('a port takes one connector', () => {

@@ -218,7 +218,7 @@ export class Hud {
     this.planRows = w.circuits.map((c, i) => {
       const tr = document.createElement('tr');
       const svc = SERVICES[c.service];
-      const live = windowed && w.live.has(i);
+      const live = windowed && w.maintenance.live.has(i);
       const prodTip = `En production : chaque seconde coupée coûte ${formatCost(svc.weight)}`;
       const prod = !live ? '' : this.level!.bypass
         ? `<button class="prod bypass" title="${prodTip}. Cliquez pour lui poser une dérivation : le trafic passe par un chemin provisoire pendant que vous la recâblez (re-cliquez pour la retirer).">⚡</button>`
@@ -248,8 +248,8 @@ export class Hud {
       tr.querySelector('.s-relax')!.setAttribute('title', s.cable >= 0 && ev.cableStrain[s.cable] ? `Cordon ${STRAIN_LABELS[ev.cableStrain[s.cable]!]}` : 'Ni tendu ni plié');
       tr.classList.toggle('done', s.connected && s.routed && s.clear && s.relaxed);
       const w = this.ctl?.world;
-      tr.classList.toggle('cut', !!w && this.level!.downtime !== undefined && w.live.has(i) && !w.circuitUp(i));
-      tr.classList.toggle('bypassed', !!w?.bypassed.has(i));
+      tr.classList.toggle('cut', !!w && this.level!.downtime !== undefined && w.maintenance.isDown(i));
+      tr.classList.toggle('bypassed', !!w?.maintenance.bypassed.has(i));
     });
     const n = ev.total;
     this.showDowntime(ev);
@@ -274,7 +274,7 @@ export class Hud {
     const el = $('#cuts'), w = this.ctl?.world;
     el.style.display = this.level?.downtime === undefined ? 'none' : '';
     if (!w || this.level?.downtime === undefined) return;
-    const rate = [...w.live].reduce((a, i) => a + (w.circuitUp(i) ? 0 : w.cutCost(i)), 0);
+    const rate = [...w.maintenance.live].reduce((a, i) => a + (w.circuitUp(i) ? 0 : w.maintenance.cutCost(i)), 0);
     const pct = Math.min(100, (100 * ev.downtime) / ev.budget);
     el.innerHTML = `⚡ Interruption <b>${Math.round(ev.downtime)}/${ev.budget}</b>${rate > 0 ? ` <em>+${formatCost(rate)}/s</em>` : ''}<div class="bar"><div class="fill" style="width:${pct}%"></div></div>`;
     el.className = ev.downtime > ev.budget ? 'full' : rate > 0 ? 'some' : '';

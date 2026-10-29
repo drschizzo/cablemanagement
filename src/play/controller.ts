@@ -1,9 +1,8 @@
-// Runs one level: the fixed-step physics loop, the rendering, the routing of
-// the player's input to the tools, and what the cabinet shows of its state
-// (highlights, LEDs, glows). The gestures themselves live in tools/, the
-// overlays in feedback/.
+// Runs one level: the fixed-step physics loop, the rendering, and what the
+// cabinet shows of its state (LEDs, glows, the cord under the pointer). It
+// puts the pieces together: the gestures live in tools/, the routing of the
+// mouse and keys in inputRouter.ts, the overlays in feedback/.
 
-import * as THREE from 'three';
 import { Stage } from '../render/stage';
 import { RackView } from '../render/rackView';
 import { CableView } from '../render/cableView';
@@ -28,26 +27,21 @@ import { OtherHandMarker } from './feedback/otherHandMarker';
 import { ConnectorGlows } from './feedback/connectorGlows';
 import { Spotlight, type Box3Like } from './feedback/spotlight';
 import { TidyGlows } from './feedback/tidyGlows';
+import { CordHighlights } from './feedback/cordHighlights';
 import { HandTool } from './tools/handTool';
 import { RouteTool } from './tools/routeTool';
 import { VelcroTool } from './tools/velcroTool';
 import { SupportsTool } from './tools/supportsTool';
+import { InputRouter, type InputCommands } from './inputRouter';
 
 export type { ControllerEvents, Tool } from './context';
 
-/** the tools that work on a cord (the others work on the rack) */
-const CORD_TOOLS = new Set<Tool>(['hand', 'route']);
 /** physics steps the loop may catch up in one frame; beyond, time is dropped */
 const MAX_STEPS_PER_FRAME = 2;
 /** how often the cabinet is scored (s) */
 const EVAL_PERIOD = 0.4;
-/** how long a traced cord blinks (s) */
-const TRACE_TIME = 4;
-const TRACE_COLOR = '#ff3030';
-const FOCUS_COLOR = '#2b5f7a';
-const HOVER_COLOR = '#5a4a10';
 
-export class Controller implements PlayContext {
+export class Controller implements PlayContext, InputCommands {
   world: World;
   rackView: RackView;
   cableView: CableView;
@@ -80,27 +74,17 @@ export class Controller implements PlayContext {
   private velcro: VelcroTool;
   private supports: SupportsTool;
   private tools: Record<Tool, ToolHandler>;
-  /** the tools that may have a gesture under way, in the order they get the pointer */
-  private gestureTools: ToolHandler[];
+  private input: InputRouter;
 
   private otherHand = new OtherHandMarker();
   private connectorGlows = new ConnectorGlows();
   private spotlightFrame: Spotlight;
   private tidyGlows = new TidyGlows();
+  private highlights: CordHighlights;
 
   /** the cord under the pointer */
   private hover: CordPick | null = null;
   private lastHoveredCable = -1;
-  /** the view being dragged: the pointer when it last moved */
-  private pan: { mx: number; my: number } | null = null;
-  /** the line of the schedule focused (−1: none) */
-  private focusCircuit = -1;
-  /** cords lit now, by refreshHighlights */
-  private highlighted = new Set<number>();
-  /** the cord blinking under the tracer, until when (clock) */
-  private tracing: { cable: number; until: number } | null = null;
-  /** cords traced at least once: an unmarked cord (blind level) then tells where it goes */
-  private traced = new Set<number>();
   /** cords tidy as of the last evaluation (plugged as planned, routed, clear) */
   private tidyCables = new Set<number>();
   /** production lines down as of the last evaluation */
@@ -115,8 +99,6 @@ export class Controller implements PlayContext {
   /** the version of the cords the cord view was built for */
   private cablesVersionShown = 0;
   private disposed = false;
-  /** undoes every subscription made by bindInput() */
-  private unbind: (() => void)[] = [];
 
   constructor(public stage: Stage, level: LevelDef, readonly events: ControllerEvents, threaded = true) {
     this.world = new World(level);
@@ -128,7 +110,8 @@ export class Controller implements PlayContext {
     this.pointer = new Pointer(stage);
     this.picker = new CordPicker(stage, this.world, this.pointer);
     this.history = new UndoHistory(this.world);
-    this.portHint = new PortHint(this.rackView, () => { if (this.focusCircuit >= 0) this.focus(this.focusCircuit); });
+    this.highlights = new CordHighlights(this.world, this.rackView, () => this.cableView);
+    this.portHint = new PortHint(this.rackView, () => { if (this.highlights.focusedLine >= 0) this.focus(this.highlights.focusedLine); });
     this.holdView = new HoldView(this);
     this.spotlightFrame = new Spotlight(stage.scene);
     this.hand = new HandTool(this);
@@ -137,7 +120,6 @@ export class Controller implements PlayContext {
     this.velcro = new VelcroTool(this);
     this.supports = new SupportsTool(this);
     this.tools = { hand: this.hand, route: this.route, velcro: this.velcro, supports: this.supports };
-    this.gestureTools = [this.route, this.velcro, this.hand];
     stage.scene.add(this.connectorGlows.group);
     this.cableView = new CableView(this.world);
     this.cableView.lightBy(this.rackView.glow);
@@ -151,14 +133,17 @@ export class Controller implements PlayContext {
     this.startNote = this.lastEval.readability.note;
     this.tidyCables = tidyCablesOf(this.lastEval);
     this.refreshLeds();
-    this.bindInput();
+    this.input = new InputRouter(stage, this.pointer, {
+      byName: this.tools, withGestures: [this.route, this.velcro, this.hand], hand: this.hand, route: this.route, supports: this.supports,
+    }, this);
+    this.setTool('hand');
     requestAnimationFrame(this.frame);
   }
 
   dispose(): void {
     this.disposed = true;
     this.world.dispose();
-    for (const off of this.unbind) off();
+    this.input.dispose();
     this.spotlightFrame.set(null);
     for (const t of Object.values(this.tools)) t.dispose();
     for (const g of [this.rackView.group, this.cableView.group, this.otherHand.group, this.connectorGlows.group]) {
@@ -177,12 +162,7 @@ export class Controller implements PlayContext {
 
   /** highlights the cords and ports of one line of the schedule (−1: none) */
   focus(circuit: number): void {
-    this.focusCircuit = circuit;
-    for (const m of this.rackView.portMarkers.values()) m.visible = false;
-    if (circuit >= 0) {
-      const ci = this.world.circuits[circuit];
-      for (const id of [ci.a, ci.b]) this.rackView.marker(id).visible = true;
-    }
+    this.highlights.focus(circuit);
     this.refreshHighlights();
   }
 
@@ -219,13 +199,13 @@ export class Controller implements PlayContext {
   tick(dt: number, draw = true): void {
     if (this.running) {
       this.elapsed += dt;
-      for (const i of this.world.tickDowntime(dt)) {
+      for (const i of this.world.maintenance.tick(dt)) {
         this.events.onToast(`Liaison ${i + 1} rétablie : sa dérivation revient au stock.`);
         this.events.onInventory();
       }
     }
     this.clock += dt;
-    this.updateTracer();
+    if (this.highlights.updateTracer(this.clock)) this.focus(this.highlights.focusedLine);
     this.spotlightFrame.update(dt);
     this.hand.firmPinch();
     this.stepPhysics(dt);
@@ -238,7 +218,7 @@ export class Controller implements PlayContext {
       this.reevaluate();
       this.reportStats();
     }
-    this.tidyGlows.update(this.cableView, this.clock, (c) => this.highlighted.has(c) || this.tracing?.cable === c);
+    this.tidyGlows.update(this.cableView, this.clock, (c) => this.highlights.isBusy(c));
     this.holdView.update();
     const carried = this.hand.carried;
     this.connectorGlows.update(this.world, this.clock, carried && carried.end >= 0 ? carried : null);
@@ -278,119 +258,14 @@ export class Controller implements PlayContext {
     this.events.onStats(`${sim.n} nœuds · ${s.contacts} contacts · ${s.awake}/${this.world.cables.length} câbles actifs · physique ${s.ms.toFixed(1)} ms${sim.threaded ? ' (worker)' : ''}${lost ? ` · ${lost} pas perdus` : ''}`);
   }
 
-  // ------------------------------------------------------------ input
-
-  private bindInput(): void {
-    const el = this.stage.renderer.domElement;
-    const on = (t: EventTarget, n: string, f: (e: any) => void, opt?: AddEventListenerOptions) => {
-      t.addEventListener(n, f, opt);
-      this.unbind.push(() => t.removeEventListener(n, f));
-    };
-    const overlayOpen = () => !!document.querySelector('.overlay.on');
-    on(el, 'pointermove', (e: PointerEvent) => this.onPointerMove(e));
-    on(el, 'pointerdown', (e: PointerEvent) => this.onPointerDown(e));
-    on(window, 'pointerup', (e: PointerEvent) => this.onPointerUp(e));
-    on(el, 'wheel', (e: WheelEvent) => this.hand.wheel(e), { passive: false });
-    on(el, 'contextmenu', (e: Event) => e.preventDefault());
-    on(el, 'pointerleave', () => this.events.onHover(null, 0, 0));
-    const onOrbit = () => { this.counters.orbited++; };
-    this.stage.controls.addEventListener('start', onOrbit);
-    this.unbind.push(() => this.stage.controls.removeEventListener('start', onOrbit));
-    on(window, 'keydown', (e: KeyboardEvent) => { if (e.key === 'Shift') this.hand.shiftChanged(true); });
-    on(window, 'keyup', (e: KeyboardEvent) => { if (e.key === 'Shift') this.hand.shiftChanged(false); });
-    const modifiers = (e: KeyboardEvent) => this.supports.setShift(e.shiftKey);
-    on(window, 'keydown', modifiers);
-    on(window, 'keyup', modifiers);
-    on(window, 'keydown', (e: KeyboardEvent) => {
-      if (e.repeat || e.ctrlKey || e.metaKey || overlayOpen()) return;
-      const p = this.hand.carried ? null : this.hover;
-      if (e.code === 'KeyT' && p) this.trace(p.cable);
-      else if ((e.key === 'Delete' || e.key === 'Backspace') && p) {
-        e.preventDefault();
-        this.deposit(p.cable);
-      }
-    });
-    on(window, 'keydown', (e: KeyboardEvent) => {
-      if (e.code !== 'Space' || overlayOpen()) return;
-      // not a click on whatever button has the focus
-      e.preventDefault();
-      if (e.repeat) return;
-      if (this.hand.carried) this.hand.setPinch('space', true);
-      else if (this.hover && this.tool === 'hand') this.hand.unpinchAt(this.hover);
-    });
-    on(window, 'keyup', (e: KeyboardEvent) => { if (e.code === 'Space') this.hand.setPinch('space', false); });
-    on(window, 'keydown', (e: KeyboardEvent) => {
-      if (e.code !== 'KeyE' || e.repeat || e.ctrlKey || e.metaKey || overlayOpen()) return;
-      if (this.hand.carried) this.hand.handOver();
-      else this.hand.letGoOtherHand();
-    });
-    on(window, 'keydown', (e: KeyboardEvent) => {
-      if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey) && !overlayOpen()) {
-        e.preventDefault();
-        this.undo();
-      }
-    });
-    on(window, 'keydown', (e: KeyboardEvent) => {
-      if (e.key !== 'Tab' || this.hand.carried || overlayOpen()) return;
-      e.preventDefault();
-      if (CORD_TOOLS.has(this.tool)) this.cyclePick();
-    });
-    this.setTool('hand');
-  }
-
-  private onPointerDown(e: PointerEvent): void {
-    if (e.button !== 0) return;
-    this.pointer.update(e);
-    // any gesture stops a cord being laid where it is
-    this.route.stopLaying();
-    // preparing, the cabinet stands still: the view moves, the cords wait
-    if (this.preparing && this.tool !== 'supports') { this.startPan(e); return; }
-    // nothing for the tool under the pointer: drag the view
-    if (!this.tools[this.tool].pointerDown(e)) this.startPan(e);
-  }
-
-  private onPointerMove(e: PointerEvent): void {
-    this.pointer.update(e);
-    if (this.pan) {
-      this.panBy(e.clientX - this.pan.mx, e.clientY - this.pan.my);
-      this.pan = { mx: e.clientX, my: e.clientY };
-      return;
-    }
-    for (const t of this.gestureTools) if (t.pointerMove(e)) return;
-    if (CORD_TOOLS.has(this.tool)) this.hoverCords(e);
-    else {
-      this.setHover(null);
-      this.events.onHover(null, 0, 0);
-    }
-    this.supports.updateGhost();
-  }
-
-  private onPointerUp(e: PointerEvent): void {
-    if (this.pan) { this.pan = null; this.pointer.setCursor('default'); return; }
-    for (const t of this.gestureTools) if (t.pointerUp(e)) return;
-  }
-
-  private startPan(e: PointerEvent): void {
-    this.pan = { mx: e.clientX, my: e.clientY };
-    this.pointer.setCursor('move');
-  }
-
-  /** moves the view parallel to the screen (the world follows the mouse) */
-  private panBy(dx: number, dy: number): void {
-    const cam = this.stage.camera;
-    const ctl = this.stage.controls;
-    const m = this.pointer.metresPerPixel(cam.position.distanceTo(ctl.target));
-    const right = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 0);
-    const up = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 1);
-    const move = right.multiplyScalar(-dx * m).add(up.multiplyScalar(dy * m));
-    cam.position.add(move);
-    ctl.target.add(move);
-  }
-
   // ------------------------------------------------------------ hover
 
+  hoveredCord(): CordPick | null {
+    return this.hover;
+  }
+
   /** the cord under the pointer, and its tooltip */
-  private hoverCords(e: PointerEvent): void {
+  hoverCords(e: PointerEvent): void {
     const p = this.picker.pick();
     this.setHover(p);
     if (!p) { this.events.onHover(null, 0, 0); return; }
@@ -412,8 +287,13 @@ export class Controller implements PlayContext {
     this.events.onHover(`${this.describe(next.pick)}<br><i>${next.index + 1}/${next.count} sous le curseur — Tab : suivant</i>`, r.left + px.x, r.top + px.y);
   }
 
+  clearHover(): void {
+    this.setHover(null);
+    this.events.onHover(null, 0, 0);
+  }
+
   private describe(p: CordPick): string {
-    return describeCord(this.world, this.lastEval, this.tool, this.traced, p);
+    return describeCord(this.world, this.lastEval, this.tool, this.highlights.traced, p);
   }
 
   private setHover(p: CordPick | null): void {
@@ -429,26 +309,8 @@ export class Controller implements PlayContext {
 
   /** the focused line's cords, the cord in hand or under the pointer: lit; the others not */
   refreshHighlights(): void {
-    const want = new Map<number, string>();
-    if (this.focusCircuit >= 0) {
-      const st = this.lastEval.circuits[this.focusCircuit];
-      if (st && st.cable >= 0) want.set(st.cable, FOCUS_COLOR);
-      // cords plugged into either port of the line
-      const ci = this.world.circuits[this.focusCircuit];
-      for (const id of [ci.a, ci.b]) {
-        const pl = this.world.rack.port(id).plug;
-        if (pl >= 0) want.set(pl >> 1, FOCUS_COLOR);
-      }
-    }
-    const h = this.hand.carried?.cable ?? this.hover?.cable ?? -1;
-    if (h >= 0) want.set(h, HOVER_COLOR);
-    // the cord shown stretch by stretch keeps its own glow
-    const shown = this.holdView.cable;
-    want.delete(shown);
-    for (const c of this.highlighted) if (!want.has(c) && c !== shown) this.cableView.setHighlight(c, false);
-    for (const [c, col] of want) this.cableView.setHighlight(c, true, col);
-    this.highlighted = new Set(want.keys());
-    if (shown >= 0) this.highlighted.add(shown);
+    const active = this.hand.carried?.cable ?? this.hover?.cable ?? -1;
+    this.highlights.refresh(this.lastEval, active, this.holdView.cable);
   }
 
   // ---------------------------------------------------------- actions
@@ -476,7 +338,7 @@ export class Controller implements PlayContext {
   }
 
   /** unplugs a cord, coils it and throws it in the crate (Delete over it) */
-  private deposit(c: number): void {
+  deposit(c: number): void {
     this.route.stopLaying();
     const cut = this.world.liveLinksCarriedBy(c);
     this.history.remember();
@@ -504,8 +366,8 @@ export class Controller implements PlayContext {
 
   /** puts a bypass on a production link, or takes it off */
   toggleBypass(i: number): void {
-    if (!this.world.toggleBypass(i)) {
-      this.events.onToast(this.world.live.has(i) ? 'Plus de dérivation en stock.' : 'Seules les liaisons en production (⚡) se dérivent.');
+    if (!this.world.maintenance.toggleBypass(i)) {
+      this.events.onToast(this.world.maintenance.live.has(i) ? 'Plus de dérivation en stock.' : 'Seules les liaisons en production (⚡) se dérivent.');
       sfx.error();
       return;
     }
@@ -540,33 +402,15 @@ export class Controller implements PlayContext {
     sfx.whoosh();
   }
 
-  /**
-   * The tracer: a visual fault locator (red light in a fibre) or a tone
-   * generator (copper), in the game a cord that blinks for a few seconds with
-   * its two ports circled — to find where a cord in the heap really goes.
-   */
-  private trace(c: number): void {
-    this.traced.add(c);
-    this.tracing = { cable: c, until: this.clock + TRACE_TIME };
-    for (const m of this.rackView.portMarkers.values()) m.visible = false;
-    for (const e of this.world.cables[c].ends) if (e.port) this.rackView.marker(e.port).visible = true;
+  /** the tracer (T over a cord): it blinks, its two ports circled */
+  trace(c: number): void {
+    this.highlights.trace(c, this.clock);
     sfx.label();
-  }
-
-  private updateTracer(): void {
-    const t = this.tracing;
-    if (!t) return;
-    const on = this.clock < t.until && Math.floor(this.clock * 6) % 2 === 0;
-    this.cableView.setHighlight(t.cable, on, TRACE_COLOR);
-    if (this.clock >= t.until) {
-      this.tracing = null;
-      this.focus(this.focusCircuit);
-    }
   }
 
   /** production links just cut: what each second of them costs */
   announceCut(links: number[]): void {
-    const cost = links.reduce((a, i) => a + this.world.cutCost(i), 0);
+    const cost = links.reduce((a, i) => a + this.world.maintenance.cutCost(i), 0);
     if (!links.length) return;
     const names = links.map((i) => `${i + 1} (${SERVICES[this.world.circuits[i].service].name})`).join(', ');
     this.events.onToast(cost > 0
@@ -597,8 +441,8 @@ export class Controller implements PlayContext {
   /** a production line cut: the traffic drops; back up: it comes back, and its cord glows */
   private followTraffic(): void {
     const w = this.world;
-    const now = new Set([...w.live].filter((i) => !w.circuitUp(i)));
-    const cut = [...now].some((i) => !this.linksDown.has(i) && !w.bypassed.has(i));
+    const now = new Set([...w.maintenance.live].filter((i) => w.maintenance.isDown(i)));
+    const cut = [...now].some((i) => !this.linksDown.has(i) && !w.maintenance.bypassed.has(i));
     const back = [...this.linksDown].filter((i) => !now.has(i));
     this.linksDown = now;
     if (cut) sfx.cut();
@@ -630,7 +474,7 @@ export class Controller implements PlayContext {
     this.cableView = new CableView(this.world);
     this.cableView.lightBy(this.rackView.glow);
     this.stage.scene.add(this.cableView.group);
-    this.highlighted.clear();
+    this.highlights.forget();
     this.tidyGlows.clear();
     this.hover = null;
     this.refreshHighlights();
@@ -638,10 +482,10 @@ export class Controller implements PlayContext {
 
   private refreshLeds(): void {
     const w = this.world, down = new Set<string>(), bypass = new Set<string>();
-    for (const i of w.live) {
+    for (const i of w.maintenance.live) {
       if (w.circuitUp(i)) continue;
       const ci = w.circuits[i];
-      for (const id of [ci.a, ci.b]) (w.bypassed.has(i) ? bypass : down).add(id);
+      for (const id of [ci.a, ci.b]) (w.maintenance.bypassed.has(i) ? bypass : down).add(id);
     }
     this.rackView.showLeds(w.okPorts(this.lastEval), down, bypass);
   }

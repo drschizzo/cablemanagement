@@ -81,7 +81,7 @@ describe('three stars are possible, with the level\'s own stock', () => {
     const w = new World(tidyKit(lv));
     for (let f = 0; f < 240; f++) w.sim.step();
     expect(w.evaluate().stars).toBe(3);
-    w.downtime = w.budget + 1;
+    w.maintenance.downtime = w.maintenance.budget + 1;
     expect(w.evaluate().stars).toBe(2);
   });
 

@@ -7,6 +7,7 @@ import { bundleCount, cordStrain, evaluate, holdMap, okPorts, type Evaluation, t
 import { ThreadedSim } from './physics/threadedSim';
 import { CABLE_R, CONNECTOR, Rack, SEG, type Item, type ItemKind } from './rack';
 import { SERVICES } from './services';
+import { MaintenanceWindow } from './maintenanceWindow';
 import type { FibreType } from './cordTypes';
 import type { LevelDef } from './levels/levelDef';
 import { makeCables, makeSchedule, rng, type CableStart, type Circuit } from './mess/tangle';
@@ -128,15 +129,13 @@ export class World {
     this.sim.setStatics(this.rack.statics());
     this.inventory = { hmgr: 0, duct: 0, vring: 0, velcro: 0, ...level.inventory, bypass: level.bypass ?? 0 };
     this.cordStock = new Map(level.cords ?? []);
-    this.budget = level.downtime ?? Infinity;
-    // what works at the start is in production
-    this.circuits.forEach((_, i) => { if (this.circuitUp(i)) this.live.add(i); });
+    this.maintenance = new MaintenanceWindow(this.circuits, (i) => this.circuitUp(i), level.downtime ?? Infinity, this.inventory);
   }
 
   // ------------------------------------------------- maintenance window
 
-  /** circuits that worked at the start: the service must keep running */
-  live = new Set<number>();
+  /** the links in production, the downtime budget, the bypasses */
+  readonly maintenance: MaintenanceWindow;
 
   /** a circuit carries traffic: one cord of the right type joins its two ports */
   circuitUp(i: CircuitIndex): boolean {
@@ -147,59 +146,7 @@ export class World {
 
   /** the production links a cord carries now (unplugging it cuts them) */
   liveLinksCarriedBy(c: CableIndex): CircuitIndex[] {
-    return [...this.live].filter((i) => this.circuitUp(i) && this.rack.port(this.circuits[i].a).plug >> 1 === c);
-  }
-
-  /** production links currently cut */
-  liveDown(): number {
-    let n = 0;
-    for (const i of this.live) if (!this.circuitUp(i)) n++;
-    return n;
-  }
-
-  /** downtime spent: every second a production link is cut costs its service's weight */
-  downtime = 0;
-  budget: number;
-  /** production links on a bypass (the traffic takes a temporary path), and whether they were cut since */
-  bypassed = new Map<number, { cut: boolean }>();
-
-  /**
-   * Time passes with production links cut: the downtime grows. A bypass
-   * carries its link meanwhile, and comes back to the stock once the link is
-   * restored. Returns the links whose bypass just came back.
-   */
-  tickDowntime(dt: number): number[] {
-    const back: number[] = [];
-    for (const i of this.live) {
-      const up = this.circuitUp(i), by = this.bypassed.get(i);
-      if (by) {
-        if (!up) by.cut = true;
-        else if (by.cut) {
-          this.bypassed.delete(i);
-          this.inventory.bypass++;
-          back.push(i);
-        }
-      } else if (!up) this.downtime += dt * SERVICES[this.circuits[i].service].weight;
-    }
-    return back;
-  }
-
-  /** puts a bypass on a production link, or takes it off; false when there is none left or it is no production link */
-  toggleBypass(i: CircuitIndex): boolean {
-    if (this.bypassed.has(i)) {
-      this.bypassed.delete(i);
-      this.inventory.bypass++;
-      return true;
-    }
-    if (!this.live.has(i) || this.inventory.bypass <= 0) return false;
-    this.bypassed.set(i, { cut: !this.circuitUp(i) });
-    this.inventory.bypass--;
-    return true;
-  }
-
-  /** what a second of this link cut costs now (0: not in production, or on a bypass) */
-  cutCost(i: CircuitIndex): number {
-    return this.live.has(i) && !this.bypassed.has(i) ? SERVICES[this.circuits[i].service].weight : 0;
+    return [...this.maintenance.live].filter((i) => this.circuitUp(i) && this.rack.port(this.circuits[i].a).plug >> 1 === c);
   }
 
   /** bumps when the cords are rebuilt (a cord swapped for another length) */
