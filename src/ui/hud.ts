@@ -211,15 +211,27 @@ export class Hud {
     $('#stats').textContent = text;
   }
 
-  /** the timer, and the gestures of a puzzle, a few times a second */
+  /** the timer, the call under way, and the gestures of a puzzle, a few times a second */
   tick(): void {
     if (!this.ctl) return;
     $('#timer').textContent = formatTime(this.ctl.elapsed);
+    this.showCall();
     if (this.level?.kind === 'puzzle') {
       const moves = this.ctl.counters.moves, most = this.level.moves;
       $('#moves').textContent = tr({ fr: `Gestes ${moves}/${most}`, en: `Gestures ${moves}/${most}` });
       $('#moves').classList.toggle('over', moves > most);
     }
+  }
+
+  /** a user waiting for a link: which one, and how long they still wait */
+  private showCall(): void {
+    const incidents = this.ctl!.world.incidents;
+    const left = incidents.callLeft(), el = $('#call');
+    el.classList.toggle('on', left !== null);
+    if (left === null || !incidents.call) return;
+    const n = incidents.call.link + 1;
+    el.textContent = tr({ fr: `📞 Liaison ${n} · ${formatTime(left)}`, en: `📞 Link ${n} · ${formatTime(left)}` });
+    el.classList.toggle('late', left < 15);
   }
 
   private toggleStock(): void {

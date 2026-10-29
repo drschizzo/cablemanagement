@@ -436,3 +436,26 @@ describe('a cord laid along a drawn route', () => {
     expect(res.error.kind === 'tooShort' && res.error.missing).toBeGreaterThan(0.005);
   });
 });
+
+describe('incidents in a cabinet', () => {
+  it('a colleague unplugs a production link: it goes down, and costs downtime', () => {
+    const w = new World({ ...L1, incidents: [{ kind: 'colleague', at: 0 }] });
+    const { incidents } = w.workGoesOn(0.1);
+    expect(incidents).toHaveLength(1);
+    const ev = incidents[0];
+    if (ev.kind !== 'colleague') throw new Error('a colleague was expected');
+    expect(w.circuitUp(ev.link)).toBe(false);
+    w.workGoesOn(1);
+    expect(w.maintenance.downtime).toBeGreaterThan(0);
+  });
+
+  it('a call missed weighs on the downtime budget', () => {
+    const w = new World({ ...L1, incidents: [{ kind: 'colleague', at: 0 }, { kind: 'call', at: 1 }] });
+    w.workGoesOn(0.1);
+    w.workGoesOn(1);
+    const before = w.maintenance.downtime;
+    const { incidents } = w.workGoesOn(61);
+    expect(incidents.some((e) => e.kind === 'callMissed')).toBe(true);
+    expect(w.maintenance.downtime - before).toBeGreaterThan(40);
+  });
+});

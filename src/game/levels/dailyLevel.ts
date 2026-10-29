@@ -1,9 +1,11 @@
 // The cabinet of the day: drawn from the date, so that every player gets the
 // same one on the same day, small early in the week and bigger towards the
-// weekend.
+// weekend, when incidents come too.
 
 import type { DailyLevel } from './levelDef';
 import { freeLevel } from './freeLevel';
+import { drawIncidents } from '../incidents';
+import { rng } from '../../lib/random';
 
 /** the day of the first cabinet of the day (number 1) */
 const FIRST_DAY = Date.UTC(2026, 9, 29);
@@ -36,8 +38,11 @@ export function dailyLevel(date: string): DailyLevel {
   // getUTCDay: Sunday 0; the table starts on Monday
   const weekday = (new Date(utc).getUTCDay() + 6) % 7;
   const cables = CORDS_BY_WEEKDAY[weekday];
+  const seed = seedOf(`brassage-${date}`);
+  const weekend = weekday >= 5;
   return {
-    ...freeLevel(cables, seedOf(`brassage-${date}`)),
+    ...freeLevel(cables, seed),
+    incidents: weekend ? drawIncidents(2, rng(seed ^ 0x51ed)) : undefined,
     id: `daily-${date}`,
     kind: 'daily',
     date,

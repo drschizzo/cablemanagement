@@ -122,6 +122,14 @@ le ⚡ d'une ligne du plan) porte le trafic d'une liaison pendant qu'on la
 recâble, puis revient au stock quand la liaison est rétablie. Les voyants d'une
 liaison coupée clignotent en rouge, ceux d'une liaison dérivée en ambre.
 
+### Incidents
+
+En partie libre (à partir de 12 câbles) et dans la baie du jour le week-end, le chantier ne se
+déroule pas tout seul : **un collègue débranche une liaison par erreur**, puis **un utilisateur
+appelle** pour une liaison coupée. Un compte à rebours s'affiche en haut de l'écran et sa ligne
+s'allume dans le plan : rétablie à temps, tout va bien ; trop tard, l'appel coûte 40 points sur le
+budget d'interruption.
+
 ### Cordons neufs
 
 Le **Stock** fournit des cordons neufs, comptés par longueur ; ils arrivent

@@ -502,6 +502,12 @@ body.demo #prep { display: none; }
 @media (max-width: 1150px) { #prep { right: 314px; } }
 @media (max-width: 760px) { #prep { left: 12px; right: 12px; top: auto; bottom: 12px; } }
 
+/* ---- a user waiting for a link: the countdown, and its line on the schedule */
+#call { display: none; font-family: var(--mono); font-size: 12px; color: var(--warn); border: 1px solid rgba(233, 182, 92, 0.4); border-radius: var(--r); padding: 2px 8px; }
+#call.on { display: block; }
+#call.late { color: var(--bad); animation: pulse 1s infinite; }
+#plan tr.called td { background: rgba(233, 182, 92, 0.12); }
+
 /* ---- a puzzle counts its gestures */
 #moves { display: none; font-family: var(--mono); font-size: 12px; color: var(--dim); }
 body[data-level="puzzle"] #moves { display: block; }

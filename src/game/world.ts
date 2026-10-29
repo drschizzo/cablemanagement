@@ -10,6 +10,7 @@ import { CABLE_R, CONNECTOR, Rack, SEG, type Item } from './rack';
 import { stockOf, type ItemKind, type Stock } from './supplies';
 import { SERVICES } from './services';
 import { MaintenanceWindow } from './maintenanceWindow';
+import { Incidents, type IncidentEvent } from './incidents';
 import type { FibreType } from './cordTypes';
 import type { Cable, CableEnd, CableIndex, CircuitIndex, EndIndex, NodeIndex, ReadonlyCable, Strap, CableStart } from './cables';
 import { coilInCrate, minLengthThrough, shapeForLength } from './cordShapes';
@@ -128,12 +129,40 @@ export class World {
     this.supplies = stockOf(level.inventory);
     this.newCords = new Map(level.cords ?? []);
     this.maintenance = new MaintenanceWindow(this.circuits, (i) => this.circuitUp(i), level.downtime ?? Infinity, level.bypass ?? 0);
+    // their own draws: the incidents leave the level's (schedule, mess) as they are
+    this.incidents = new Incidents(level.incidents ?? [], () => this.maintenance.live, (i) => this.circuitUp(i), rng(level.seed + 1));
   }
 
   // ------------------------------------------------- maintenance window
 
   /** the links in production, the downtime budget, the bypasses */
   readonly maintenance: MaintenanceWindow;
+
+  /** the incidents of the level: who unplugs what, who calls */
+  readonly incidents: Incidents;
+
+  /**
+   * Time passes while the work goes on: the downtime of the links cut, the
+   * bypasses that come back, and the incidents, applied to the cabinet (a
+   * link unplugged by a colleague, a call missed on the budget). Returns
+   * what the player should hear of: the bypasses back, the incidents.
+   */
+  workGoesOn(dt: number): { bypassesBack: CircuitIndex[]; incidents: IncidentEvent[] } {
+    const bypassesBack = this.maintenance.tick(dt);
+    const incidents = this.incidents.tick(dt);
+    for (const ev of incidents) {
+      if (ev.kind === 'colleague') this.unplugLink(ev.link);
+      else if (ev.kind === 'callMissed') this.maintenance.penalize(ev.penalty);
+    }
+    return { bypassesBack, incidents };
+  }
+
+  /** one end of the cord carrying a link comes out of its port, and hangs */
+  private unplugLink(i: CircuitIndex): void {
+    const ci = this.circuits[i];
+    const at = this.rack.port(ci.b).plugged ?? this.rack.port(ci.a).plugged;
+    if (at) this.unplug(at.cable, at.end);
+  }
 
   /** a circuit carries traffic: one cord of the right type joins its two ports */
   circuitUp(i: CircuitIndex): boolean {

@@ -33,6 +33,7 @@ import { VelcroTool } from './tools/velcroTool';
 import { SupportsTool } from './tools/supportsTool';
 import { InputRouter, type InputCommands } from './inputRouter';
 import type { CableIndex, CircuitIndex } from '../game/cables';
+import type { IncidentEvent } from '../game/incidents';
 
 export type { ControllerEvents, Tool } from './context';
 
@@ -240,10 +241,12 @@ export class Controller implements PlayContext, InputCommands {
   tick(dt: number, draw = true): void {
     if (this.currentPhase === 'playing') {
       this.elapsed += dt;
-      for (const i of this.world.maintenance.tick(dt)) {
+      const news = this.world.workGoesOn(dt);
+      for (const i of news.bypassesBack) {
         this.events.onToast({ kind: 'bypassBack', link: i });
         this.events.onInventory();
       }
+      for (const ev of news.incidents) this.announceIncident(ev);
     }
     this.clock += dt;
     if (this.highlights.updateTracer(this.clock)) this.focus(this.highlights.focusedLine);
@@ -447,6 +450,14 @@ export class Controller implements PlayContext, InputCommands {
   trace(c: CableIndex): void {
     this.highlights.trace(c, this.clock);
     sfx.label();
+  }
+
+  /** an incident: the player hears of it, and the cabinet shows it at once */
+  private announceIncident(ev: IncidentEvent): void {
+    this.events.onToast({ kind: 'incident', incident: ev });
+    if (ev.kind === 'call') sfx.ring();
+    else if (ev.kind === 'callMissed') sfx.error();
+    if (ev.kind === 'colleague') this.reevaluate();
   }
 
   /** production links just cut: what each second of them costs */

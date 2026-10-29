@@ -76,6 +76,11 @@ export class MaintenanceWindow {
     return true;
   }
 
+  /** downtime that is no second of a link cut: a call missed, say */
+  penalize(points: number): void {
+    this.downtime += points;
+  }
+
   /** what a second of this link cut costs now (0: not in production, or on a bypass) */
   cutCost(i: CircuitIndex): number {
     return this.live.has(i) && !this.bypassed.has(i) ? this.weight(i) : 0;

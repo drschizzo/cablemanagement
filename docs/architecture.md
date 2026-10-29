@@ -24,6 +24,8 @@ src/
     evaluation.ts   le score : chaque liaison (branchée, rangée, dégagée, étiquetée, sans tension), étoiles,
                     lisibilité, propreté — des fonctions qui lisent un World sans le modifier
     maintenanceWindow.ts  liaisons en production, budget d'interruption, dérivations
+    incidents.ts    les incidents pendant le chantier (un collègue débranche une liaison, un utilisateur appelle) :
+                    joués par Incidents, appliqués à la baie par World.workGoesOn
     rack.ts         baie 19", ports, éléments de rangement, formes de collision, zones de rangement
     supplies.ts     les fournitures (supports et velcros), décrites une fois : ItemKind et Stock en dérivent
     schedule.ts     le plan de brassage : une ligne (Circuit), et le plan tiré au hasard d'un niveau (makeSchedule)

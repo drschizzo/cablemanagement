@@ -6,6 +6,7 @@ import type { Rack, UnitSpec } from '../rack';
 import type { ItemKind, Stock } from '../supplies';
 import type { Circuit } from '../schedule';
 import type { FibreType } from '../cordTypes';
+import type { IncidentSpec } from '../incidents';
 
 /** what every level has, whatever its kind */
 interface LevelBase {
@@ -42,6 +43,8 @@ interface LevelBase {
    * this budget, an incident is declared and three stars are out of reach.
    */
   downtime?: number;
+  /** incidents while the work goes on (a colleague unplugs a link, a user calls): see incidents.ts */
+  incidents?: IncidentSpec[];
   /** bypasses: a temporary path that keeps a production link running while it is recabled */
   bypass?: number;
   /** new cords in stock, by length (m): how many of each */

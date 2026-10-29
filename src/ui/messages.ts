@@ -5,6 +5,7 @@
 import type { CordInfo, Hint, HoverNote, PhysicsStats, Toast } from '../play/messages';
 import type { RouteError } from '../game/routeLaying';
 import type { ReadabilityPart, Strain } from '../game/evaluation';
+import type { IncidentEvent } from '../game/incidents';
 import { assertNever } from '../lib/assertNever';
 import { formatCost, formatDecimal } from './format';
 import { fibreName, serviceName, supplyName } from './names';
@@ -49,7 +50,19 @@ export function toastText(t: Toast): string {
     case 'velcroClick': return tr({ fr: 'Velcro : tracez un trait en travers des câbles à serrer (un clic sur un velcro l\'enlève).', en: 'Velcro: draw a line across the cords to strap (a click on a velcro takes it off).' });
     case 'noVelcroLeft': return tr({ fr: 'Plus de velcro.', en: 'No velcro left.' });
     case 'velcroNeedsTwo': return tr({ fr: 'Le trait doit croiser au moins deux câbles qui passent côte à côte.', en: 'The line must cross at least two cords running side by side.' });
+    case 'incident': return incidentText(t.incident);
     default: return assertNever(t);
+  }
+}
+
+function incidentText(ev: IncidentEvent): string {
+  const n = ev.link + 1;
+  switch (ev.kind) {
+    case 'colleague': return tr({ fr: `Un collègue a débranché la liaison ${n} par erreur !`, en: `A colleague unplugged link ${n} by mistake!` });
+    case 'call': return tr({ fr: `📞 Un utilisateur appelle : la liaison ${n} doit revenir d'ici ${ev.within} s.`, en: `📞 A user calls: link ${n} must be back within ${ev.within} s.` });
+    case 'callMet': return tr({ fr: `📞 Liaison ${n} rétablie à temps : l'utilisateur vous remercie.`, en: `📞 Link ${n} back in time: the user thanks you.` });
+    case 'callMissed': return tr({ fr: `📞 Trop tard pour la liaison ${n} : ${ev.penalty} pts sur le budget d'interruption.`, en: `📞 Too late for link ${n}: ${ev.penalty} pts off the downtime budget.` });
+    default: return assertNever(ev);
   }
 }
 

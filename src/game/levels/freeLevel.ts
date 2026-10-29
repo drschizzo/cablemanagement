@@ -4,6 +4,11 @@
 import type { UnitSpec } from '../rack';
 import type { FreeLevel, ZenLevel } from './levelDef';
 import { BLANK, FIREWALL, ROUTER, SERVER, UPS, copperPanel, ethernetSwitch } from './equipment';
+import { drawIncidents } from '../incidents';
+import { rng } from '../../lib/random';
+
+/** from this many cords, free play has its incidents (a colleague, a call) */
+const INCIDENTS_FROM = 12;
 
 export function freeLevel(cables: number, seed: number): FreeLevel {
   const panels = Math.max(1, Math.ceil(cables / 24));
@@ -21,6 +26,8 @@ export function freeLevel(cables: number, seed: number): FreeLevel {
     slack: [0.25, 0.6], mess: Math.min(5, 1 + Math.round(cables / 10)),
     labels: true, services: Math.min(6, 1 + Math.round(cables / 8)), types: ['CU'], colorByService: true,
     downtime: 200, bypass: 2,
+    // their own draws, apart from the level's
+    incidents: cables >= INCIDENTS_FROM ? drawIncidents(2, rng(seed ^ 0x51ed)) : undefined,
     cords: [[1, Math.ceil(cables / 6)], [1.5, Math.ceil(cables / 6)], [2, Math.ceil(cables / 8)]],
     inventory: { fingerManager: panels + switches, duct: 6, ring: 6, velcro: Math.ceil(cables / 3) },
     preinstalled: [],
@@ -33,12 +40,12 @@ export const ZEN_CORDS = 36;
 
 /**
  * Zen: a big cabinet of free play with nothing pressing. No link in
- * production (no downtime budget), and material to spare, cords of every
- * length included.
+ * production (no downtime budget, no incident), and material to spare,
+ * cords of every length included.
  */
 export function zenLevel(seed: number): ZenLevel {
   const free = freeLevel(ZEN_CORDS, seed);
-  const { downtime, bypass, ...rest } = free;
+  const { downtime, bypass, incidents, ...rest } = free;
   return {
     ...rest,
     id: `zen-${seed}`,

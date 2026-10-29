@@ -75,6 +75,7 @@ export class SchedulePanel {
       row.classList.toggle('done', s.connected && s.routed && s.clear && s.relaxed);
       row.classList.toggle('cut', !!w && windowed && w.maintenance.isDown(i));
       row.classList.toggle('bypassed', !!w?.maintenance.bypassed.has(i));
+      row.classList.toggle('called', w?.incidents.call?.link === i);
     });
     const n = ev.total;
     this.showDowntime(ev, ctl, level);

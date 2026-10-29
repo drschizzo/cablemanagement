@@ -8,6 +8,7 @@ import type { FibreType } from '../game/cordTypes';
 import type { Strain } from '../game/evaluation';
 import type { RouteError } from '../game/routeLaying';
 import type { ItemKind } from '../game/supplies';
+import type { IncidentEvent } from '../game/incidents';
 
 /** a short message that comes and goes */
 export type Toast =
@@ -31,7 +32,9 @@ export type Toast =
   | { kind: 'connectorHeldBack' }
   | { kind: 'velcroClick' }
   | { kind: 'noVelcroLeft' }
-  | { kind: 'velcroNeedsTwo' };
+  | { kind: 'velcroNeedsTwo' }
+  /** something happened in the cabinet without the player: a colleague, a call */
+  | { kind: 'incident'; incident: IncidentEvent };
 
 /** what the player is doing now, under the cabinet (null: back to the tool's help) */
 export type Hint =
