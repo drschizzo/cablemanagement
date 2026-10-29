@@ -42,6 +42,8 @@ export class App {
   private title: TitleScreen;
   private showcaseSwitch: ShowcaseSwitch;
   private nextAisle: NextAisle | null = null;
+  /** the title screen's aisle, set aside while a level is played: back home, it shows again as it was */
+  private keptAisle: Showcase | null = null;
   /** the seed of the next aisle to show, only for the first one */
   private pendingSeed: number | undefined;
 
@@ -70,7 +72,7 @@ export class App {
 
   startLevel(level: LevelDef, brief = true): void {
     this.loader.load(() => {
-      this.leaveScene();
+      this.leaveScene(true);
       this.dropNextAisle();
       const hud = this.hud;
       const ctl = new Controller(this.stage, level, {
@@ -95,9 +97,9 @@ export class App {
     this.loader.load(async (token) => {
       this.leaveScene();
       // the game's panels stay hidden, the title shows its own progress while the aisle falls
-      // (not for an aisle already made ready behind the last one: it shows at once)
+      // (not for an aisle already made ready, behind the last one or set aside: it shows at once)
       document.body.classList.add('demo');
-      if (!this.nextAisle?.ready) document.body.classList.add('booting');
+      if (!this.keptAisle && !this.nextAisle?.ready) document.body.classList.add('booting');
       this.title.refresh();
       this.title.showProgress(0);
       const showcase = await this.takeNextAisle();
@@ -126,12 +128,22 @@ export class App {
     else this.hud.showMenu();
   }
 
-  /** leaves the current scene, whatever it is */
-  private leaveScene(): void {
+  /**
+   * Leaves the current scene, whatever it is. `keepAisle`: the title screen's
+   * aisle is set aside (keptAisle) rather than thrown away, unless it is on its
+   * way from one state to the other.
+   */
+  private leaveScene(keepAisle = false): void {
     // a title screen still loading is left too
     document.body.classList.remove('demo', 'booting');
-    if (this.showcase) this.showcaseSwitch.hide();
-    this.mode?.dispose();
+    const aisle = this.showcase;
+    if (aisle) this.showcaseSwitch.hide();
+    if (keepAisle && aisle && aisle.state !== 'moving') {
+      aisle.stop();
+      this.keptAisle = aisle;
+    } else {
+      this.mode?.dispose();
+    }
     this.mode = null;
     this.showcase = null;
     this.ctl?.dispose();
@@ -139,8 +151,13 @@ export class App {
     this.hud.ctl = null;
   }
 
-  /** the aisle made ready behind the last one (still falling: its progress shows), or a new one */
+  /** the aisle set aside for a level, the one made ready behind the last one (still falling: its progress shows), or a new one */
   private async takeNextAisle(): Promise<Showcase> {
+    const kept = this.keptAisle;
+    if (kept) {
+      this.keptAisle = null;
+      return kept;
+    }
     const next = this.nextAisle;
     if (next) {
       this.nextAisle = null;

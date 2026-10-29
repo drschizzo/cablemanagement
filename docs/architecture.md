@@ -166,7 +166,9 @@ rien d'autre ; le reste apparaît avec la salle. La première salle est toujours
 `game/mess/showcase.bin`, ~210 Ko, lu par `game/mess/baked.ts`), elle s'affiche donc sans attendre la physique ;
 une baie dont le désordre n'est plus celui du fichier (le code a changé depuis) retombe comme avant, et un test le
 signale. Pendant qu'une salle est à l'écran, la suivante, tirée au hasard, se construit et tombe en fond
-(`App.prepareNextAisle`) : « une autre salle » l'affiche aussitôt. Les options de la page (`?seed`, `?bays`,
+(`App.prepareNextAisle`) : « une autre salle » l'affiche aussitôt. Pendant un niveau, la salle de l'écran titre est
+mise de côté (`Showcase.stop`, `App.keptAisle`), hors de la scène : revenir à l'accueil la remontre aussitôt, dans
+l'état où on l'a laissée (une salle en pleine bascule est jetée, sa chorégraphie tourne sur des minuteries). Les options de la page (`?seed`, `?bays`,
 `?pairs`, `?sync`, `?quality`) sont décrites en tête de `app/urlOptions.ts` ; voir aussi « L'écran d'accueil » dans
 `anatomie-d-une-frame.md`. Chaque chargement passe par `SceneLoader.load()` :
 

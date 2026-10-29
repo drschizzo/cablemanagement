@@ -1,6 +1,7 @@
 // One closet of the aisle: the mess and the tidy cabinet, two worlds on the
 // same rack, and the choreography from one to the other.
 
+import type * as THREE from 'three';
 import type { Stage } from '../render/stage';
 import { SHOWCASE_SETTLE } from '../game/levels/showcaseRack';
 import { U } from '../game/rack';
@@ -60,6 +61,11 @@ export class Closet {
 
   set visible(v: boolean) {
     this.mess.group.visible = this.tidy.group.visible = v;
+  }
+
+  /** what the closet puts in the scene: its two states */
+  get groups(): THREE.Object3D[] {
+    return [this.mess.group, this.tidy.group];
   }
 
   /** lets the mess fall, in `chunks` steps (or puts it where it is known to come to rest) */

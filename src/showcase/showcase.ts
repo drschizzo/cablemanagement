@@ -35,7 +35,10 @@ export class Showcase {
   private currentState: ShowcaseState = 'before';
   private timers: number[] = [];
   private disposed = false;
-  private started = false;
+  /** between start() and stop(): on screen, its frames running */
+  private onScreen = false;
+  /** counts the starts and stops: the frame loop of an earlier start ends */
+  private loop = 0;
   private last = performance.now();
   private floor: THREE.Group;
   /** before it is tidied, cords keep falling from above and pile up in the middle of the room */
@@ -158,9 +161,19 @@ export class Showcase {
     for (const o of shown) o.visible = true;
   }
 
-  /** puts the aisle on screen: its panel, the camera sway (the title screen around it is the caller's) */
+  /** what the aisle puts in the scene */
+  private get objects(): THREE.Object3D[] {
+    return [this.floor, this.rain.group, ...this.closets.flatMap((c) => c.groups)];
+  }
+
+  /**
+   * Puts the aisle on screen: its panel, the camera sway (the title screen
+   * around it is the caller's); again after stop(), as it was left.
+   */
   start(): void {
-    this.started = true;
+    if (this.onScreen) return;
+    this.onScreen = true;
+    this.stage.scene.add(...this.objects);
     for (const c of this.closets) c.visible = true;
     this.floor.visible = this.rain.group.visible = true;
     const bounds = { floorY: this.closets[0].tidy.world.rack.floorY, topY: this.topY };
@@ -175,8 +188,30 @@ export class Showcase {
     this.stage.sway(true);
     this.stage.dragPans(true);
     this.onStateChange(this.currentState);
-    this.rain.start();
-    requestAnimationFrame(this.frame);
+    // tidied up, it no longer rains
+    if (this.currentState === 'before') this.rain.start();
+    const loop = ++this.loop;
+    this.last = performance.now();
+    const frame = () => {
+      if (this.disposed || loop !== this.loop) return;
+      requestAnimationFrame(frame);
+      this.frame();
+    };
+    requestAnimationFrame(frame);
+  }
+
+  /**
+   * Takes the aisle off screen as it is, to show it again with start() (a
+   * level is played meanwhile). Out of the scene, not merely hidden: the
+   * ambient occlusion and the reflections go through every object of the
+   * scene, hidden or not. Not while it moves: its choreography runs on timers.
+   */
+  stop(): void {
+    if (!this.onScreen) return;
+    this.onScreen = false;
+    this.loop++;
+    this.stage.scene.remove(...this.objects);
+    this.leaveStage();
   }
 
   dispose(): void {
@@ -187,8 +222,12 @@ export class Showcase {
     disposeTree(this.floor);
     this.stage.scene.remove(this.rain.group);
     this.rain.dispose();
-    // one made ready in the background and never shown leaves the screen as it is
-    if (!this.started) return;
+    // one made ready in the background and never shown (or set aside) leaves the screen as it is
+    if (this.onScreen) this.leaveStage();
+  }
+
+  /** the camera as the aisle found it */
+  private leaveStage(): void {
     this.stage.sway(false);
     this.stage.dragPans(false);
     this.stage.view = null;
@@ -201,15 +240,14 @@ export class Showcase {
     this.stage.render();
   }
 
-  private frame = (): void => {
-    if (this.disposed) return;
-    requestAnimationFrame(this.frame);
+  /** a frame, when one is due */
+  private frame(): void {
     const now = performance.now();
     if (!this.stage.due(now)) return;
     const dt = Math.min(0.05, (now - this.last) / 1000);
     this.last = now;
     this.tick(dt);
-  };
+  }
 
   /** before → after (tidied up, bay after bay), or back to the mess; nothing while it moves */
   toggle(): void {
