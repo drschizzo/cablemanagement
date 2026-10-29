@@ -185,6 +185,11 @@ export class World {
     return pa >= 0 && pb >= 0 && pa >> 1 === pb >> 1 && this.cables[pa >> 1].type === ci.type;
   }
 
+  /** the production links a cord carries now (unplugging it cuts them) */
+  liveLinksCarriedBy(c: number): number[] {
+    return [...this.live].filter((i) => this.circuitUp(i) && this.rack.port(this.circuits[i].a).plug >> 1 === c);
+  }
+
   /** production links currently cut */
   liveDown(): number {
     let n = 0;

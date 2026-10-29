@@ -1,6 +1,6 @@
-import type { Controller, Tool } from '../game/controller';
+import type { Controller, Tool } from '../play/controller';
 import { CATALOGUE, FIBRE_NAMES, LEVELS, SERVICES, UNLOCK_STARS, type LevelDef } from '../game/levels';
-import { fmtCost } from '../game/controller';
+import { formatCost } from '../format';
 import type { Evaluation } from '../game/world';
 import { FIBRE_COLORS } from '../render/cableView';
 import { isMuted, setMuted, sfx } from '../audio/sfx';
@@ -64,7 +64,7 @@ export class Hud {
     tips.push('<b>Ni tendu ni plié</b> : un cordon bien plus court que son chemin rangé, ou une fibre pliée en angle vif, ne vaut pas ★★★.');
     if (level.downtime !== undefined) {
       const used = [...new Set(this.ctl?.world.circuits.map((c) => c.service) ?? [])].sort((a, b) => SERVICES[b].weight - SERVICES[a].weight);
-      tips.unshift(`<b>Fenêtre de maintenance</b> : les liaisons ⚡ sont en production. Chaque seconde où l'une est coupée coûte le poids de son service sur un budget de <b>${level.downtime} pts</b> : ${used.map((i) => `<span class="svc-chip" style="--c:${SERVICES[i].color}" title="${SERVICES[i].what}">${SERVICES[i].name} ×${fmtCost(SERVICES[i].weight).replace(/ pts?/, '')}</span>`).join(' ')}. Budget dépassé : incident, plus de ★★★.`
+      tips.unshift(`<b>Fenêtre de maintenance</b> : les liaisons ⚡ sont en production. Chaque seconde où l'une est coupée coûte le poids de son service sur un budget de <b>${level.downtime} pts</b> : ${used.map((i) => `<span class="svc-chip" style="--c:${SERVICES[i].color}" title="${SERVICES[i].what}">${SERVICES[i].name} ×${formatCost(SERVICES[i].weight).replace(/ pts?/, '')}</span>`).join(' ')}. Budget dépassé : incident, plus de ★★★.`
         + (level.bypass ? ` Vous avez <b>${level.bypass} dérivation${level.bypass > 1 ? 's' : ''}</b> : posée sur une liaison (cliquez son ⚡ dans le plan), elle porte son trafic pendant qu'on la recâble.` : ''));
     }
     tips.push('Les voyants des ports : vert = liaison conforme au plan, orange = mauvais port.');
@@ -215,13 +215,13 @@ export class Hud {
       const tr = document.createElement('tr');
       const svc = SERVICES[c.service];
       const live = windowed && w.live.has(i);
-      const prodTip = `En production : chaque seconde coupée coûte ${fmtCost(svc.weight)}`;
+      const prodTip = `En production : chaque seconde coupée coûte ${formatCost(svc.weight)}`;
       const prod = !live ? '' : this.level!.bypass
         ? `<button class="prod bypass" title="${prodTip}. Cliquez pour lui poser une dérivation : le trafic passe par un chemin provisoire pendant que vous la recâblez (re-cliquez pour la retirer).">⚡</button>`
         : `<span class="prod" title="${prodTip}">⚡</span>`;
       tr.innerHTML = `<td class="n">${i + 1}${prod}</td><td class="ports">${c.a} <span class="arrow">↔</span> ${c.b}</td>
         <td><span class="chip" style="background:${FIBRE_COLORS[c.type]}" title="${FIBRE_NAMES[c.type]}">${c.type}</span></td>
-        <td class="svc" title="${svc.name} : ${svc.what}${windowed ? ` — coupée, ${fmtCost(svc.weight)} par seconde` : ''}"><span class="dot" style="background:${svc.color}"></span>${svc.name}</td>
+        <td class="svc" title="${svc.name} : ${svc.what}${windowed ? ` — coupée, ${formatCost(svc.weight)} par seconde` : ''}"><span class="dot" style="background:${svc.color}"></span>${svc.name}</td>
         <td class="st"><i class="s-conn" title="Branchée"></i><i class="s-route" title="Rangée"></i><i class="s-clear" title="Façade dégagée"></i><i class="s-relax" title="Ni tendu ni plié"></i></td>`;
       tr.onmouseenter = () => this.ctl?.focus(i);
       tr.onmouseleave = () => this.ctl?.focus(-1);
@@ -272,7 +272,7 @@ export class Hud {
     if (!w || this.level?.downtime === undefined) return;
     const rate = [...w.live].reduce((a, i) => a + (w.circuitUp(i) ? 0 : w.cutCost(i)), 0);
     const pct = Math.min(100, (100 * ev.downtime) / ev.budget);
-    el.innerHTML = `⚡ Interruption <b>${Math.round(ev.downtime)}/${ev.budget}</b>${rate > 0 ? ` <em>+${fmtCost(rate)}/s</em>` : ''}<div class="bar"><div class="fill" style="width:${pct}%"></div></div>`;
+    el.innerHTML = `⚡ Interruption <b>${Math.round(ev.downtime)}/${ev.budget}</b>${rate > 0 ? ` <em>+${formatCost(rate)}/s</em>` : ''}<div class="bar"><div class="fill" style="width:${pct}%"></div></div>`;
     el.className = ev.downtime > ev.budget ? 'full' : rate > 0 ? 'some' : '';
     el.title = ev.downtime > ev.budget
       ? 'Incident : le budget d\'interruption est dépassé, ★★★ n\'est plus possible.'

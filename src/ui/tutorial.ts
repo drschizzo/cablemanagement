@@ -3,7 +3,7 @@
 // piece being described, and steps with a task tick themselves off when the
 // player has done it (any step can be skipped).
 
-import type { Controller, Tool } from '../game/controller';
+import type { Controller, Tool } from '../play/controller';
 import { COLUMN_X, SIDE_BACK, SIDE_IN, SIDE_OUT, U, WALL_X, insideBox } from '../game/rack';
 import { sfx } from '../audio/sfx';
 import { save } from '../storage';

@@ -6,7 +6,7 @@
 // overtaken by another throws its result away.
 
 import { Stage } from './render/stage';
-import { Controller } from './game/controller';
+import { Controller } from './play/controller';
 import { Hud } from './ui/hud';
 import { Showcase } from './ui/showcase';
 import { Tutorial } from './ui/tutorial';
