@@ -37,6 +37,14 @@ import type { CableIndex, CircuitIndex } from '../game/cables';
 
 export type { ControllerEvents, Tool } from './context';
 
+/**
+ * Where a level is: playing (the clock and the downtime run), paused (a brief
+ * or the result is read: the clock waits, the cords still move), or preparing
+ * (before the work starts: the cabinet stands still and the clock waits, only
+ * the supports may be placed).
+ */
+export type Phase = 'playing' | 'paused' | 'preparing';
+
 /** physics steps the loop may catch up in one frame; beyond, time is dropped */
 const MAX_STEPS_PER_FRAME = 2;
 /** how often the cabinet is scored (s) */
@@ -47,14 +55,9 @@ export class Controller implements PlayContext, InputCommands {
   rackView: RackView;
   cableView: CableView;
   tool: Tool = 'hand';
-  /** seconds of play (the level's clock: it waits during the preparation) */
+  /** seconds of play (the level's clock: it only runs while playing) */
   elapsed = 0;
-  running = true;
-  /**
-   * Preparation: before the work starts, the cabinet stands still and the
-   * clock waits; only the supports may be placed (the plan is made first).
-   */
-  preparing = false;
+  private currentPhase: Phase = 'playing';
   lastEval: Evaluation;
   debug = false;
   /** seconds since the level opened, preparation and pauses included (animations) */
@@ -172,10 +175,32 @@ export class Controller implements PlayContext, InputCommands {
     this.spotlightFrame.set(box);
   }
 
+  get phase(): Phase {
+    return this.currentPhase;
+  }
+
+  get preparing(): boolean {
+    return this.currentPhase === 'preparing';
+  }
+
+  /** the clock stops (a brief, the result): the cords still move */
+  pause(): void {
+    if (this.currentPhase === 'playing') this.currentPhase = 'paused';
+  }
+
+  /** back to work after a pause (not out of the preparation: startWork does that) */
+  resume(): void {
+    if (this.currentPhase === 'paused') this.currentPhase = 'playing';
+  }
+
+  /** before the work starts, the cabinet stands still while the supports are placed */
+  beginPreparation(): void {
+    this.currentPhase = 'preparing';
+  }
+
   /** the preparation is over: the cords move, the clock and the downtime run */
   startWork(): void {
-    this.preparing = false;
-    this.running = true;
+    this.currentPhase = 'playing';
     this.lastFrameAt = performance.now();
   }
 
@@ -198,7 +223,7 @@ export class Controller implements PlayContext, InputCommands {
 
   /** advances the game by dt seconds and draws it */
   tick(dt: number, draw = true): void {
-    if (this.running) {
+    if (this.currentPhase === 'playing') {
       this.elapsed += dt;
       for (const i of this.world.maintenance.tick(dt)) {
         this.events.onToast(`Liaison ${i + 1} rétablie : sa dérivation revient au stock.`);

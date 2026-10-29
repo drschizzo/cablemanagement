@@ -30,7 +30,7 @@ export function showResult(ctl: Controller, level: LevelDef, ev: Evaluation, res
   nextButton.disabled = !open;
   nextButton.textContent = open ? 'Niveau suivant →' : `${'★'.repeat(UNLOCK_STARS)} pour le niveau suivant`;
   if (next && open) nextButton.onclick = () => { hide('#result'); actions.start(next); };
-  $('#result-again').onclick = () => { hide('#result'); ctl.running = true; };
+  $('#result-again').onclick = () => { hide('#result'); ctl.resume(); };
   $('#result-menu').onclick = () => { hide('#result'); actions.showMenu(); };
   show('#result');
 }

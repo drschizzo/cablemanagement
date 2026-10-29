@@ -28,13 +28,13 @@ export class LevelBrief {
     $('#brief-tips').innerHTML = briefTips(level, ctl).map((t) => `<li>${t}</li>`).join('');
     $('#brief-inv').textContent = materialLine(level);
     // the clock waits for the player to read
-    if (ctl) ctl.running = false;
+    ctl?.pause();
     $('#brief-go').onclick = () => {
       hide('#brief');
       if (!ctl) return;
       const hasSupports = ITEM_KINDS.some((k) => (level.inventory[k] ?? 0) > 0);
       if (!this.prepared && !level.tutorial && hasSupports) this.prepare(ctl);
-      else if (!ctl.preparing) ctl.running = true;
+      else ctl.resume();
       this.prepared = true;
     };
     show('#brief');
@@ -42,8 +42,7 @@ export class LevelBrief {
 
   /** the cabinet stands still and the clock waits while the supports are placed */
   private prepare(ctl: Controller): void {
-    ctl.preparing = true;
-    ctl.running = false;
+    ctl.beginPreparation();
     this.selectTool('supports');
     $('#prep').classList.add('on');
     $('#prep-go').onclick = () => {

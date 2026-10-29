@@ -126,7 +126,7 @@ export class Hud {
     if (!ctl || !level) return;
     const ev = ctl.world.evaluate();
     if (ev.stars < 1) return;
-    ctl.running = false;
+    ctl.pause();
     const result = recordResult(this.progress, level, ev.stars, ctl.elapsed, ev.readability.note);
     save('progress', this.progress);
     sfx.win();
