@@ -5,7 +5,7 @@ import type { Stage } from '../render/stage';
 import { SHOWCASE_SETTLE } from '../game/levels/showcaseRack';
 import { U } from '../game/rack';
 import { printOf, type BakedBay } from '../game/mess/baked';
-import type { CableStart } from '../game/mess/tangle';
+import type { CableStart } from '../game/cables';
 import { sfx } from '../audio/sfx';
 import { Bay, type Pause } from './bay';
 import type { Place } from './aisleLayout';

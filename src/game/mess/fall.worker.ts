@@ -6,7 +6,7 @@
 
 import { World } from '../world';
 import { SHOWCASE_SETTLE, showcaseRack } from '../levels/showcaseRack';
-import type { CableStart } from './tangle';
+import type { CableStart } from '../cables';
 
 export interface FallRequest { seed: number; pairs?: number; chunks: number }
 export type FallReply = { type: 'chunk' } | { type: 'done'; starts: CableStart[]; x: Float64Array };

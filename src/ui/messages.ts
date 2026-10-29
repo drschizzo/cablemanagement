@@ -8,7 +8,7 @@ import type { ReadabilityPart, Strain } from '../game/evaluation';
 import { FIBRE_NAMES } from '../game/cordTypes';
 import { SERVICES } from '../game/services';
 import { SUPPLIES } from '../game/supplies';
-import { assertNever } from '../game/exhaustive';
+import { assertNever } from '../lib/assertNever';
 import { formatCost } from '../format';
 
 export const STRAIN_LABELS: Record<Strain, string> = { taut: 'tendu', kinked: 'plié' };

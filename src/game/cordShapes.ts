@@ -2,7 +2,7 @@
 // in place, or coiled and thrown into the crate. Pure geometry on lists of
 // points, so that it can be tested on its own.
 
-import { dist, polyLength, type V3 } from './vec3';
+import { dist, polyLength, type V3 } from '../lib/vec3';
 
 /** how much longer than the straight path between its boots the shortest cord is (m) */
 const MIN_LENGTH_PLAY = 0.02;

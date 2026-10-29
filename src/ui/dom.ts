@@ -1,6 +1,6 @@
 // Small helpers shared by the panels of the interface.
 
-import { $ } from '../page';
+import { $ } from '../lib/page';
 
 export { $ };
 

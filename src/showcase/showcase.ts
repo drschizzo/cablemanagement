@@ -21,7 +21,7 @@ import { sfx } from '../audio/sfx';
 import { Closet } from './closet';
 import { aisleLayout } from './aisleLayout';
 import type { Pause } from './bay';
-import { $ } from '../page';
+import { $ } from '../lib/page';
 
 /** where a closet is drawn out of sight once, before it shows (see Showcase.warm) */
 const warmTarget = new THREE.WebGLRenderTarget(1, 1);

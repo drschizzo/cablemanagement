@@ -3,7 +3,7 @@
 // several cords. The indices are plain numbers; their names say which is which.
 
 import type { FibreType } from './cordTypes';
-import type { V3 } from './vec3';
+import type { V3 } from '../lib/vec3';
 
 /** a cord: its place in World.cables */
 export type CableIndex = number;
@@ -41,6 +41,14 @@ export interface Cable {
 
 /** a cord as World shows it: changed through World's methods only */
 export type ReadonlyCable = Readonly<Omit<Cable, 'ends'>> & { readonly ends: readonly [Readonly<CableEnd>, Readonly<CableEnd>] };
+
+/** where a cord lies at the start: its type, the port of each end, its nodes (x, y, z flat) */
+export interface CableStart {
+  type: FibreType;
+  /** port of each end at the start (null = hanging loose) */
+  ends: [string | null, string | null];
+  points: number[];
+}
 
 export interface Strap {
   /** the solver's bundle that holds it */

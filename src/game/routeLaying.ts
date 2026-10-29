@@ -15,9 +15,9 @@ import {
   managerFingers, type Guide, type Port,
 } from './rack';
 import type { World } from './world';
-import { dist, lerp, polyLength, type V3 } from './vec3';
+import { dist, lerp, polyLength, type V3 } from '../lib/vec3';
 import type { CableIndex, EndIndex } from './cables';
-import { assertNever } from './exhaustive';
+import { assertNever } from '../lib/assertNever';
 
 /** the plane in front of every guide where a cord is carried across (z) */
 export const FRONT = 0.12;

@@ -1,7 +1,7 @@
 // The shapes a cord is given outside the physics, on hand-made lists of points.
 import { describe, expect, it } from 'vitest';
 import { coilInCrate, minLengthThrough, shapeForLength } from '../../src/game/cordShapes';
-import { polyLength, type V3 } from '../../src/game/vec3';
+import { polyLength, type V3 } from '../../src/lib/vec3';
 
 /** a cord hanging in a V between two connectors 40 cm apart, 1 m above the floor */
 const hanging: V3[] = [

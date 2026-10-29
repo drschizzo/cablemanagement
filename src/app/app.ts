@@ -16,7 +16,7 @@ import { SceneLoader } from './sceneLoader';
 import { TitleScreen } from './titleScreen';
 import { measureInsets } from './viewInsets';
 import type { AisleSettings } from './urlOptions';
-import { $ } from '../page';
+import { $ } from '../lib/page';
 
 /**
  * The next aisle, built and fallen in the background while this one is on

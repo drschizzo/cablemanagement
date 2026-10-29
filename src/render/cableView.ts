@@ -14,8 +14,8 @@ import { ledLit, type LedGlow } from './ledGlow';
 import { JACKET_KIND, jacketMaterial, jacketed } from './jacket';
 import { Straps } from './straps';
 import type { CableIndex } from '../game/cables';
+import { FIBRE_COLORS } from '../game/cordTypes';
 
-export const FIBRE_COLORS = { OS2: '#f2c12e', OM4: '#3cc9cf', CU: '#3d7fe0' } as const;
 
 interface CableMesh {
   visible: boolean;

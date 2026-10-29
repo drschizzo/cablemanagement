@@ -11,8 +11,8 @@ import { World } from '../game/world';
 import { showcaseRack } from '../game/levels/showcaseRack';
 import type { FibreType } from '../game/cordTypes';
 import { resample, tidyLayout } from '../game/idealRoutes';
-import type { V3 } from '../game/vec3';
-import type { CableStart } from '../game/mess/tangle';
+import type { V3 } from '../lib/vec3';
+import type { CableStart } from '../game/cables';
 import type { Place } from './aisleLayout';
 
 /** waits a little, so that the page may draw (or not at all) */

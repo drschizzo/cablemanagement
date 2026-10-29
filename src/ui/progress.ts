@@ -3,8 +3,8 @@
 // saving it is the caller's business (storage.ts).
 
 import type { Progress } from '../storage';
-import { LEVELS } from '../game/levels/campaign';
-import { UNLOCK_STARS, type LevelDef } from '../game/levels/levelDef';
+import { LEVELS, UNLOCK_STARS } from '../game/levels/campaign';
+import type { LevelDef } from '../game/levels/levelDef';
 
 /** a level just validated, and what the record said before it */
 export interface LevelResult {

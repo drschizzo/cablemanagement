@@ -2,7 +2,7 @@
 // (hidden panels leave it all).
 
 import type { Stage } from '../render/stage';
-import { $ } from '../page';
+import { $ } from '../lib/page';
 
 /** height kept free under the view for the tutorial's panel (px) */
 const TUTORIAL_PANEL = 230;

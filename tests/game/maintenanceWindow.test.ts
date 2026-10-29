@@ -2,7 +2,7 @@
 // is a plain set the test changes by hand (a test double for the cabinet).
 import { describe, expect, it } from 'vitest';
 import { MaintenanceWindow } from '../../src/game/maintenanceWindow';
-import type { Circuit } from '../../src/game/mess/tangle';
+import type { Circuit } from '../../src/game/schedule';
 
 /** three links: data (weight 1), voice (weight 3), admin (weight 4) */
 const circuits: Circuit[] = [

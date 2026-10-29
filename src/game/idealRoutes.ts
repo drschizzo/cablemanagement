@@ -10,11 +10,13 @@
 
 import { CABLE_R, CONNECTOR, DUCT_SPAN, Rack, SEG, SIDE_BACK, SIDE_IN, SIDE_OUT, insideBox, type Port } from './rack';
 import { stockOf, type ItemKind } from './supplies';
-import { makeSchedule, rng, type CableStart, type Circuit } from './mess/tangle';
+import { makeSchedule, type Circuit } from './schedule';
+import { rng } from '../lib/random';
+import type { CableStart } from './cables';
 import type { World } from './world';
 import { bundleCount } from './evaluation';
 import type { LevelDef } from './levels/levelDef';
-import { lerp, polyLength, type V3 } from './vec3';
+import { lerp, polyLength, type V3 } from '../lib/vec3';
 
 const FINGER_R = 0.003;
 const LANES_Z = 6;

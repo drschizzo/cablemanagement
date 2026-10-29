@@ -29,6 +29,8 @@ const layers = [
     'showcase/ est une scène à part, sans partie en cours ni interface.'),
   forbid('ui', ['app', 'showcase'],
     'ui/ affiche et transmet ; c\'est app/ qui choisit la scène.'),
+  forbid('lib', ['game', 'render', 'play', 'showcase', 'ui', 'app', 'audio', 'dev'],
+    'lib/ tient des outils sans rapport avec le jeu (géométrie, tirages, page) : il ne connaît aucune couche.'),
   forbid('audio', ['game', 'render', 'play', 'showcase', 'ui', 'app'],
     'audio/ ne fait que des sons : il ne dépend de rien.'),
   {

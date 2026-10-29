@@ -3,11 +3,8 @@
 
 import type { Rack, UnitSpec } from '../rack';
 import type { ItemKind, Stock } from '../supplies';
-import type { Circuit } from '../mess/tangle';
+import type { Circuit } from '../schedule';
 import type { FibreType } from '../cordTypes';
-
-/** stars a level needs before the next one opens: connected is not enough, it must be tidy */
-export const UNLOCK_STARS = 2;
 
 /** what every level has, whatever its kind */
 interface LevelBase {

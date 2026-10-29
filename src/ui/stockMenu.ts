@@ -2,10 +2,9 @@
 // length. A cord taken drops coiled into the crate on the floor.
 
 import type { Controller } from '../play/controller';
-import { CATALOGUE, FIBRE_NAMES, type FibreType } from '../game/cordTypes';
+import { CATALOGUE, FIBRE_NAMES, type FibreType, FIBRE_COLORS } from '../game/cordTypes';
 import { SERVICES } from '../game/services';
 import type { LevelDef } from '../game/levels/levelDef';
-import { FIBRE_COLORS } from '../render/cableView';
 import { formatLength } from '../format';
 import { $ } from './dom';
 

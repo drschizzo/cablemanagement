@@ -1,6 +1,6 @@
 // The page's side of fall.worker.ts.
 
-import type { CableStart } from './tangle';
+import type { CableStart } from '../cables';
 import type { FallReply, FallRequest } from './fall.worker';
 
 /** lets the mess of bay `seed` fall in a worker of its own; `onChunk` is called as it goes */

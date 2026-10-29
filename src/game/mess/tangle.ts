@@ -1,85 +1,13 @@
-// Builds the starting mess of a level: the patching schedule (which port
-// goes to which), the cords (type, length) and the tangled paths they start
-// in. The physics then lets them fall into place.
+// Builds the starting mess of a level: the cords of its schedule (type,
+// length) and the tangled paths they start in. The physics then lets them
+// fall into place.
 
 import { CONNECTOR, Rack, SEG as DEFAULT_SEG, type Port } from '../rack';
-import type { FibreType } from '../cordTypes';
 import type { LevelDef } from '../levels/levelDef';
-import { dist } from '../vec3';
-
-export interface Circuit {
-  a: string;
-  b: string;
-  type: FibreType;
-  service: number;
-}
-
-export interface CableStart {
-  type: FibreType;
-  /** port of each end at the start (null = hanging loose) */
-  ends: [string | null, string | null];
-  points: number[];
-}
-
-export function rng(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function shuffle<T>(a: T[], r: () => number): T[] {
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(r() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-export function makeSchedule(level: LevelDef, rack: Rack, r: () => number): Circuit[] {
-  const links = level.links ?? [];
-  const reserved = new Set(links.flatMap((l) => [l.a, l.b]));
-  const panelUnits = rack.units.map((u, k) => (u.kind === 'panel' ? k : -1)).filter((k) => k >= 0);
-  // panel cords go to the access switches (not to the firewall or the router)
-  const switchPorts = shuffle(rack.ports.filter((p) => {
-    const u = rack.units[p.unit];
-    return u.kind === 'switch' && (u.style ?? 'switch') === 'switch' && !reserved.has(p.id);
-  }), r);
-  // spread the cords over the panels, then over the ports of each panel
-  const panelPorts = panelUnits.map((u) => shuffle(rack.ports.filter((p) => p.unit === u && !reserved.has(p.id)), r));
-  const out: Circuit[] = [];
-  // one-to-one patching: a panel right above a switch goes port i to port i
-  const below = (k: number) => (level.pairing && rack.units[k + 1]?.kind === 'switch' ? rack.ports.filter((p) => p.unit === k + 1) : null);
-  const taken = new Set<string>();
-  for (let c = 0; c < level.cables; c++) {
-    const pi = c % panelUnits.length;
-    const sw = below(panelUnits[pi]);
-    let a: Port, b: Port;
-    if (sw) {
-      const k = panelPorts[pi].findIndex((p) => sw[p.index] && !reserved.has(sw[p.index].id) && !taken.has(sw[p.index].id));
-      a = panelPorts[pi].splice(k, 1)[0];
-      b = sw[a.index];
-    } else {
-      a = panelPorts[pi].pop()!;
-      do { b = switchPorts.pop()!; } while (taken.has(b.id));
-    }
-    taken.add(b.id);
-    // copper panels take copper cords; fibre: one type per panel, or alternating
-    const fibres = level.types.filter((t) => t !== 'CU');
-    const ti = panelUnits.length > 1 ? pi : c;
-    const type: FibreType = rack.units[a.unit].style === 'copper' ? 'CU' : fibres[ti % Math.max(1, fibres.length)] ?? 'OS2';
-    out.push({ a: a.id, b: b.id, type, service: Math.floor(r() * level.services) });
-  }
-  // the schedule reads best sorted by panel port
-  out.sort((p, q) => rack.ports.indexOf(rack.port(p.a)) - rack.ports.indexOf(rack.port(q.a)));
-  // then the links between equipment: uplinks, firewall, router, servers
-  for (const l of links) out.push({ a: l.a, b: l.b, type: 'CU', service: l.service ?? 3 });
-  return out;
-}
+import { dist } from '../../lib/vec3';
+import { shuffle } from '../../lib/random';
+import type { Circuit } from '../schedule';
+import type { CableStart } from '../cables';
 
 export function makeCables(level: LevelDef, rack: Rack, circuits: readonly Circuit[], r: () => number, lengths?: number[]): CableStart[] {
   const n = circuits.length;

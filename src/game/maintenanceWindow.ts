@@ -4,7 +4,7 @@
 // keeps a link running while it is recabled.
 
 import { SERVICES } from './services';
-import type { Circuit } from './mess/tangle';
+import type { Circuit } from './schedule';
 import type { CircuitIndex } from './cables';
 
 export class MaintenanceWindow {

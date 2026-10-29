@@ -14,8 +14,9 @@ import * as THREE from 'three';
 import { TubeMesh, TubeNodes } from '@drschizzo/three-cable-tubes';
 import { CABLE_R } from '../game/rack';
 import { SERVICES } from '../game/services';
-import { rng } from '../game/mess/tangle';
-import { FIBRE_COLORS, connectorGeos } from '../render/cableView';
+import { rng } from '../lib/random';
+import { connectorGeos } from '../render/cableView';
+import { FIBRE_COLORS } from '../game/cordTypes';
 import { JACKET_KIND, jacketMaterial, jacketed } from '../render/jacket';
 
 /** cords at most (on screen at once): past it, the oldest, deep in the heap, makes room */

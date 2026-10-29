@@ -1,6 +1,6 @@
 // Where the racks of the aisle stand: a half circle around the viewer.
 
-import { rng } from '../game/mess/tangle';
+import { rng } from '../lib/random';
 
 /** where a closet stands on the floor (m), and which way it faces (rad) */
 export interface Place { x: number; z: number; yaw: number }

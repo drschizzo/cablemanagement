@@ -11,12 +11,14 @@ import { stockOf, type ItemKind, type Stock } from './supplies';
 import { SERVICES } from './services';
 import { MaintenanceWindow } from './maintenanceWindow';
 import type { FibreType } from './cordTypes';
-import type { Cable, CableEnd, CableIndex, CircuitIndex, EndIndex, NodeIndex, ReadonlyCable, Strap } from './cables';
+import type { Cable, CableEnd, CableIndex, CircuitIndex, EndIndex, NodeIndex, ReadonlyCable, Strap, CableStart } from './cables';
 import { coilInCrate, minLengthThrough, shapeForLength } from './cordShapes';
 import type { LevelDef } from './levels/levelDef';
-import { makeCables, makeSchedule, rng, type CableStart, type Circuit } from './mess/tangle';
+import { makeCables } from './mess/tangle';
+import { makeSchedule, type Circuit } from './schedule';
+import { rng } from '../lib/random';
 import { pathToNodes, tidyRoutes } from './idealRoutes';
-import { polyLength, type V3 } from './vec3';
+import { polyLength, type V3 } from '../lib/vec3';
 
 export interface Snapshot {
   version: number;

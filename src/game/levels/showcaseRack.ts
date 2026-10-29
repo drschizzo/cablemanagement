@@ -1,7 +1,8 @@
 // The cabinets of the before/after aisle (the title screen), drawn from a seed.
 
 import type { UnitSpec } from '../rack';
-import { rng, type Circuit } from '../mess/tangle';
+import { pick, rng, shuffle } from '../../lib/random';
+import type { Circuit } from '../schedule';
 import type { LevelDef } from './levelDef';
 import { BLANK, SERVER, UPS, copperPanel, ethernetSwitch, fingerManager, firewall, router, server } from './equipment';
 
@@ -81,7 +82,6 @@ interface Closet {
 }
 
 function drawEquipment(random: () => number, pairCount: number, drawnPairs: number): Closet {
-  const pick = <T>(a: T[]): T => a[Math.floor(random() * a.length)];
   const panel = (name: string) => copperPanel(name, 24);
   const sw = (name: string) => ethernetSwitch(name, 24);
   // past the first four, two letters (none of them F, R, X, Y: the other units)
@@ -90,7 +90,7 @@ function drawEquipment(random: () => number, pairCount: number, drawnPairs: numb
   // three ways to fill a closet, all of them patched across through the side ducts:
   // the panels above the switches, the switches between two banks of panels,
   // or panel / switch pairs patched to each other's switch
-  const layout = pick(['grouped', 'sandwich', 'pairs'] as const);
+  const layout = pick(['grouped', 'sandwich', 'pairs'] as const, random);
   const units: UnitSpec[] = [BLANK];
   if (layout === 'grouped') {
     for (const p of panels) units.push(panel(p), BLANK);
@@ -131,20 +131,18 @@ function placeSupports(units: UnitSpec[]): { managers: number[]; ducts: number[]
  */
 function drawPatching(random: () => number, closet: Closet, allSwitches: boolean): Circuit[] {
   const { panels, switches, servers, uplinks } = closet;
-  const pick = <T>(a: T[]): T => a[Math.floor(random() * a.length)];
-  const shuffle = <T>(a: T[]): T[] => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   const out: Circuit[] = [];
   // every n-th port of a panel is an admin link (0: none)
-  const adminEvery = pick([0, 7, 11]);
+  const adminEvery = pick([0, 7, 11], random);
   // each switch has 22 ports for the panels (the last two are its uplinks)
-  const free = switches.map(() => shuffle([...Array(22).keys()].map((i) => i + 1)));
+  const free = switches.map(() => shuffle([...Array(22).keys()].map((i) => i + 1), random));
   panels.forEach((p, k) => {
-    const service = pick([0, 0, 1, 2, 4, 5]);
-    const used = shuffle([...Array(22).keys()].map((i) => i + 1)).slice(0, 16 + Math.floor(random() * 7)).sort((a, b) => a - b);
+    const service = pick([0, 0, 1, 2, 4, 5], random);
+    const used = shuffle([...Array(22).keys()].map((i) => i + 1), random).slice(0, 16 + Math.floor(random() * 7)).sort((a, b) => a - b);
     used.forEach((i) => {
       // any switch but the one next to the panel, as long as it has ports left
       const others = switches.map((_, j) => j).filter((j) => j !== k && free[j].length > 0 && (allSwitches || Math.abs(j - k) <= 2));
-      const j = others.length ? pick(others) : k;
+      const j = others.length ? pick(others, random) : k;
       if (!free[j].length) return;
       out.push({ a: `${p}${i}`, b: `${switches[j]}${free[j].pop()}`, type: 'CU', service: adminEvery && i % adminEvery === 0 ? 3 : service });
     });

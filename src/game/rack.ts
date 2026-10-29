@@ -10,7 +10,7 @@ import type { StaticBox, StaticCapsule } from '@drschizzo/avbd-cables';
 import type { RackShape } from './physics/rackCableSim';
 import type { ItemKind } from './supplies';
 import type { CableIndex, CordEnd } from './cables';
-import { assertNever } from './exhaustive';
+import { assertNever } from '../lib/assertNever';
 
 export const U = 0.04445;
 export const COLUMN_X = 0.25; // half width of the equipment column (with its ears)

@@ -1,9 +1,12 @@
 // The levels of the game, in order, and the guided tutorial.
 
-import { UNLOCK_STARS, type CampaignLevel, type TutorialLevel } from './levelDef';
+import type { CampaignLevel, TutorialLevel } from './levelDef';
 import { BLANK, FIREWALL, ROUTER, SERVER, UPS, copperPanel, ethernetSwitch, fingerManager, opticalPanel, opticalSwitch, server } from './equipment';
 
 const LENGTH_TIP = 'Un cordon trop long se remplace par un cordon neuf du Stock (0), qui arrive dans le bac : il faut couper la liaison le temps de changer. Le stock est compté : choisissez bien qui reçoit quel cordon.';
+
+/** stars a level needs before the next one opens: connected is not enough, it must be tidy */
+export const UNLOCK_STARS = 2;
 
 export const LEVELS: CampaignLevel[] = [
   {

@@ -1,8 +1,8 @@
 // The levels menu: one card per level of the campaign, with its stars, its
 // best time, and what opens it while it is locked.
 
-import { LEVELS } from '../game/levels/campaign';
-import { UNLOCK_STARS, type LevelDef } from '../game/levels/levelDef';
+import { LEVELS, UNLOCK_STARS } from '../game/levels/campaign';
+import type { LevelDef } from '../game/levels/levelDef';
 import type { Progress } from '../storage';
 import { formatTime } from '../format';
 import { $, hide, show, starsHtml } from './dom';

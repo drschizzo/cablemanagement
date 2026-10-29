@@ -11,7 +11,7 @@ import { World } from '../src/game/world';
 import { CATALOGUE } from '../src/game/cordTypes';
 import { LEVELS } from '../src/game/levels/campaign';
 import { SERVICES } from '../src/game/services';
-import { polyLength } from '../src/game/vec3';
+import { polyLength } from '../src/lib/vec3';
 import { routePlan, strapBundles, tidyKit, tidyLayout, tidyRoutes } from '../src/game/idealRoutes';
 import { planRoute, RouteRun } from '../src/game/routeLaying';
 import type { Guide } from '../src/game/rack';

@@ -3,12 +3,12 @@
 // readability note, the stars, and the Validate button.
 
 import type { Controller } from '../play/controller';
-import { FIBRE_NAMES } from '../game/cordTypes';
+import { FIBRE_NAMES, FIBRE_COLORS } from '../game/cordTypes';
 import { SERVICES } from '../game/services';
 import { cleanliness, type Evaluation } from '../game/evaluation';
 import { STRAIN_LABELS, readabilityText } from './messages';
-import { UNLOCK_STARS, type LevelDef } from '../game/levels/levelDef';
-import { FIBRE_COLORS } from '../render/cableView';
+import { UNLOCK_STARS } from '../game/levels/campaign';
+import type { LevelDef } from '../game/levels/levelDef';
 import { formatCost } from '../format';
 import { $, starsHtml } from './dom';
 

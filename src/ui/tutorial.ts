@@ -7,7 +7,7 @@ import type { Controller, Tool } from '../play/controller';
 import { COLUMN_X, SIDE_BACK, SIDE_IN, SIDE_OUT, U, WALL_X, insideBox } from '../game/rack';
 import { sfx } from '../audio/sfx';
 import { save } from '../storage';
-import { $ } from '../page';
+import { $ } from '../lib/page';
 
 type Box = { min: [number, number, number]; max: [number, number, number] };
 

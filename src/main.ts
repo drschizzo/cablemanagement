@@ -10,7 +10,7 @@ import { TUTORIAL } from './game/levels/campaign';
 import type { LevelDef } from './game/levels/levelDef';
 import { loadBaked } from './game/mess/baked';
 import bakedUrl from './game/mess/showcase.bin?url';
-import { $ } from './page';
+import { $ } from './lib/page';
 
 const options = readUrlOptions(location.search);
 const aisles = aisleSettings(options);
