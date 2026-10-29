@@ -92,10 +92,7 @@ export class VelcroTool implements ToolHandler {
     for (const c of now) ctx.cableView.setHighlight(c, true, CROSSED_TINT);
     line.lit = now;
     this.draw(ok);
-    const n = line.nodes.length;
-    ctx.events.onHint(ok
-      ? `<b>${n} câbles</b> : relâchez, le velcro les serre là où le trait les croise.`
-      : 'Tracez le trait <b>en travers</b> des câbles à serrer, là où ils passent côte à côte : ceux qu\'il prend s\'allument.');
+    ctx.events.onHint({ kind: 'velcroLine', cords: ok ? line.nodes.length : 0 });
   }
 
   /** let go: the velcro straps the cords the line crossed, if they lie close together */
@@ -107,11 +104,11 @@ export class VelcroTool implements ToolHandler {
     ctx.events.onHint(null);
     ctx.refreshHighlights();
     if (Math.hypot(line.to.x - line.from.x, line.to.y - line.from.y) < MIN_LINE_PX) {
-      ctx.events.onToast('Velcro : tracez un trait en travers des câbles à serrer (un clic sur un velcro l\'enlève).');
+      ctx.events.onToast({ kind: 'velcroClick' });
       return;
     }
-    if (ctx.world.stock.velcro <= 0) { ctx.events.onToast('Plus de velcro.'); sfx.error(); return; }
-    if (line.nodes.length < 2) { ctx.events.onToast('Le trait doit croiser au moins deux câbles qui passent côte à côte.'); sfx.error(); return; }
+    if (ctx.world.stock.velcro <= 0) { ctx.events.onToast({ kind: 'noVelcroLeft' }); sfx.error(); return; }
+    if (line.nodes.length < 2) { ctx.events.onToast({ kind: 'velcroNeedsTwo' }); sfx.error(); return; }
     ctx.world.strapNodes(line.nodes);
     sfx.velcro();
     ctx.events.onInventory();

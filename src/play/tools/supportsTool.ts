@@ -8,7 +8,7 @@ import { buildItem } from '../../render/rackItems';
 import { ghostBadMat, ghostMat } from '../../render/rackMaterials';
 import { disposeTree } from '../../render/dispose';
 import { COLUMN_X, U, WALL_X, type Item } from '../../game/rack';
-import { SUPPLIES, type ItemKind } from '../../game/supplies';
+import type { ItemKind } from '../../game/supplies';
 import type { PlayContext, ToolHandler } from '../context';
 
 /** what a click would do: put an item of this kind there, or take off the one there */
@@ -82,12 +82,12 @@ export class SupportsTool implements ToolHandler {
     if (!s) return;
     const w = ctx.world;
     if (s.existing) {
-      if (s.existing.locked) { ctx.events.onToast('Cet élément est fixé à la baie.'); sfx.error(); return; }
+      if (s.existing.locked) { ctx.events.onToast({ kind: 'itemLocked' }); sfx.error(); return; }
       w.removeItem(s.existing);
       sfx.remove();
     } else {
-      if (w.stock[s.kind] <= 0) { ctx.events.onToast(`Plus de ${SUPPLIES[s.kind].singular} en stock.`); sfx.error(); return; }
-      if (!w.placeItem(s.kind, s.unit, s.side)) { ctx.events.onToast(s.kind === 'fingerManager' ? 'Un guide-câbles se pose dans une unité vide.' : 'Emplacement occupé.'); sfx.error(); return; }
+      if (w.stock[s.kind] <= 0) { ctx.events.onToast({ kind: 'noSupportLeft', item: s.kind }); sfx.error(); return; }
+      if (!w.placeItem(s.kind, s.unit, s.side)) { ctx.events.onToast({ kind: 'cannotPlace', item: s.kind }); sfx.error(); return; }
       sfx.place();
     }
     this.updateGhost(true);

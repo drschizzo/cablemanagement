@@ -89,8 +89,8 @@ export class RouteTool implements ToolHandler {
     const ctx = this.ctx;
     this.sketch = { cable, guides: [], legs: [[]], over: -1, points: [], port: null, last: { x: -1e9, y: -1e9 } };
     ctx.cableView.setHighlight(cable, true, LINE_COLOR);
-    ctx.events.onHover(null, 0, 0);
-    ctx.events.onHint('Tracez le chemin du câble <b>par-dessus les guides</b>, dans l\'ordre où il doit les traverser (guide-câbles, anneaux, goulottes), et finissez sur un <b>port libre</b> pour l\'y brancher. Relâchez : le câble est posé le long du chemin.');
+    ctx.events.onHover(null, [], 0, 0);
+    ctx.events.onHint({ kind: 'drawRoute' });
     sfx.grab();
     this.extend();
   }
@@ -133,7 +133,7 @@ export class RouteTool implements ToolHandler {
     this.clear();
     const res = planRoute(w, sk.cable, sk.guides, sk.port, sk.legs);
     if ('error' in res) {
-      ctx.events.onToast(res.error);
+      ctx.events.onToast({ kind: 'routeRefused', error: res.error });
       sfx.error();
       return;
     }
@@ -143,7 +143,7 @@ export class RouteTool implements ToolHandler {
     w.unpark(sk.cable, b);
     this.laying = new RouteRun(w, res.plan);
     ctx.counters.routed++;
-    if (res.plan.slack > 0.2) ctx.events.onToast(`Ce cordon a ${Math.round(res.plan.slack * 100)} cm de trop pour ce chemin : le mou est rangé dans les guides, ou pend (un cordon plus court se prend au Stock).`);
+    if (res.plan.slack > 0.2) ctx.events.onToast({ kind: 'routeSlack', extra: res.plan.slack });
     sfx.whoosh();
   }
 
@@ -195,7 +195,7 @@ export class RouteTool implements ToolHandler {
       ctx.counters.plugged++;
       sfx.plug(ctx.isLineConnectedAt(ctx.world.rack.port(port)));
     } else if (port) {
-      ctx.events.onToast('Le connecteur n\'a pas pu atteindre le port : quelque chose le retient.');
+      ctx.events.onToast({ kind: 'connectorHeldBack' });
       sfx.error();
     }
     ctx.reevaluate();

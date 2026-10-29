@@ -8,6 +8,7 @@ import { UNLOCK_STARS, type LevelDef } from '../game/levels/levelDef';
 import { formatTime } from '../format';
 import { $, hide, show, starsHtml } from './dom';
 import { levelAfter, type LevelResult } from './progress';
+import { readabilityText } from './messages';
 
 export interface ResultActions {
   start(level: LevelDef): void;
@@ -67,5 +68,5 @@ function noteHtml(startNote: number, ev: Evaluation, result: LevelResult): strin
   const { note, previousNote } = result;
   const record = previousNote !== undefined ? ` · record ${Math.max(previousNote, note)}${note > previousNote ? ' — nouveau record !' : ''}` : '';
   return `<div class="grade"><s>${startNote}</s><span class="to">→</span><b>${note}</b><span>Lisibilité${record}</span></div>`
-    + ev.readability.parts.map((p) => `<div class="part"><span>${p.name}</span><div class="bar"><div class="fill" style="width:${Math.round(p.value * 100)}%"></div></div><i>${p.tip}</i></div>`).join('');
+    + ev.readability.parts.map((p) => { const t = readabilityText(p); return `<div class="part"><span>${t.name}</span><div class="bar"><div class="fill" style="width:${Math.round(p.value * 100)}%"></div></div><i>${t.tip}</i></div>`; }).join('');
 }

@@ -428,6 +428,8 @@ describe('a cord laid along a drawn route', () => {
     w.setCableLength(c, w.minCableLength(c));
     const [m2, m7, r3, r5] = w.rack.guides();
     const res = planRoute(w, c, [m2, r3, r5, m7], w.rack.port(w.circuits[c].b));
-    expect('error' in res && res.error).toMatch(/trop court.*il manque \d+ cm/);
+    if (!('error' in res)) throw new Error('the route should be refused');
+    expect(res.error.kind).toBe('tooShort');
+    expect(res.error.kind === 'tooShort' && res.error.missing).toBeGreaterThan(0.005);
   });
 });

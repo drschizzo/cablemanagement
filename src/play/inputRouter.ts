@@ -71,7 +71,7 @@ export class InputRouter {
     this.on(window, 'pointerup', (e: PointerEvent) => this.pointerUp(e));
     this.on(canvas, 'wheel', (e: WheelEvent) => this.tools.hand.wheel(e), { passive: false });
     this.on(canvas, 'contextmenu', (e: Event) => e.preventDefault());
-    this.on(canvas, 'pointerleave', () => this.level.events.onHover(null, 0, 0));
+    this.on(canvas, 'pointerleave', () => this.level.events.onHover(null, [], 0, 0));
     this.on(this.stage.controls as unknown as EventTarget, 'start', () => { this.level.counters.orbited++; });
   }
 

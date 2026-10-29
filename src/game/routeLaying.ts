@@ -48,7 +48,14 @@ export interface RoutePlan {
  */
 export interface NodeWay { out: V3[]; inn: V3[] }
 
-export type RouteResult = { plan: RoutePlan } | { error: string };
+/** why a way cannot be laid (ui/messages.ts says it to the player) */
+export type RouteError =
+  | { kind: 'noGuide' }
+  | { kind: 'portTaken'; port: string }
+  /** `missing`: m */
+  | { kind: 'tooShort'; missing: number };
+
+export type RouteResult = { plan: RoutePlan } | { error: RouteError };
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 const centre = (g: Guide): V3 => [0, 1, 2].map((d) => (g.room.min[d] + g.room.max[d]) / 2) as V3;
@@ -79,7 +86,7 @@ function slotX(x: number): number {
  * node takes to get there.
  */
 export function planRoute(w: World, c: CableIndex, guides: Guide[], portB: Port | null, legs: V3[][] = []): RouteResult {
-  if (!guides.length && !portB) return { error: 'Tracez le chemin par-dessus les guides (ou jusqu\'à un port).' };
+  if (!guides.length && !portB) return { error: { kind: 'noGuide' } };
   const cb = w.cables[c];
   const ports = cb.ends.map((e) => (e.port ? w.rack.port(e.port) : null));
   const a = stayingEnd(w, c, ports, guides, portB);
@@ -88,7 +95,7 @@ export function planRoute(w: World, c: CableIndex, guides: Guide[], portB: Port 
   // where the other end goes: the port the stroke ends on, else its own
   let pb = portB ?? ports[b];
   const taken = portB?.plugged;
-  if (taken && !(taken.cable === c && taken.end === b)) return { error: `Le port ${portB.id} est déjà occupé.` };
+  if (portB && taken && !(taken.cable === c && taken.end === b)) return { error: { kind: 'portTaken', port: portB.id } };
   if (pb && pb === pa) pb = null;
 
   const drawn = drawnLegs(w, guides, legs, pa, pb);
@@ -99,7 +106,7 @@ export function planRoute(w: World, c: CableIndex, guides: Guide[], portB: Port 
   if (pb) {
     const route = cutCorners(drawnRoute, new Set(drawn.flat()), length);
     const needed = polyLength(route);
-    if (needed > length + 0.01) return { error: `Ce cordon est trop court pour ce chemin : il manque ${Math.ceil((needed - length) * 100)} cm (un cordon plus long se prend au Stock).` };
+    if (needed > length + 0.01) return { error: { kind: 'tooShort', missing: needed - length } };
     slack = length - needed;
     path = layExtraLength(route, runs, guides, slack);
   }

@@ -10,16 +10,15 @@ import { disposeTree } from '../render/dispose';
 import { World } from '../game/world';
 import type { Evaluation } from '../game/evaluation';
 import type { Port } from '../game/rack';
-import { SERVICES } from '../game/services';
 import type { FibreType } from '../game/cordTypes';
 import type { LevelDef } from '../game/levels/levelDef';
 import { sfx } from '../audio/sfx';
-import { formatCost } from '../format';
 import type { ControllerEvents, GestureCounters, PlayContext, Tool, ToolHandler } from './context';
 import { Pointer } from './pointer';
 import { CordPicker, type CordPick } from './picking';
 import { UndoHistory } from './undoHistory';
-import { describeCord } from './cordTooltip';
+import { cordInfo } from './cordInfo';
+import type { HoverNote } from './messages';
 import { captureFront } from './frontImage';
 import { PortHint } from './feedback/portHint';
 import { HoldView, SETTLE_SHOW } from './feedback/holdView';
@@ -226,7 +225,7 @@ export class Controller implements PlayContext, InputCommands {
     if (this.currentPhase === 'playing') {
       this.elapsed += dt;
       for (const i of this.world.maintenance.tick(dt)) {
-        this.events.onToast(`Liaison ${i + 1} rétablie : sa dérivation revient au stock.`);
+        this.events.onToast({ kind: 'bypassBack', link: i });
         this.events.onInventory();
       }
     }
@@ -281,7 +280,7 @@ export class Controller implements PlayContext, InputCommands {
     sim.dropped = 0;
     if (!this.debug) return;
     const s = sim.stats;
-    this.events.onStats(`${sim.n} nœuds · ${s.contacts} contacts · ${s.awake}/${this.world.cables.length} câbles actifs · physique ${s.ms.toFixed(1)} ms${sim.threaded ? ' (worker)' : ''}${lost ? ` · ${lost} pas perdus` : ''}`);
+    this.events.onStats({ nodes: sim.n, contacts: s.contacts, awake: s.awake, cords: this.world.cables.length, physicsMs: s.ms, inWorker: sim.threaded, lostSteps: lost });
   }
 
   // ------------------------------------------------------------ hover
@@ -294,10 +293,9 @@ export class Controller implements PlayContext, InputCommands {
   hoverCords(e: PointerEvent): void {
     const p = this.picker.pick();
     this.setHover(p);
-    if (!p) { this.events.onHover(null, 0, 0); return; }
+    if (!p) { this.events.onHover(null, [], 0, 0); return; }
     const stacked = this.picker.pickAll().length;
-    const notes = stacked > 1 ? [`${stacked} câbles sous le curseur — Tab : suivant`] : [];
-    this.events.onHover(this.describe(p, notes), e.clientX, e.clientY);
+    this.showTooltip(p, stacked > 1 ? [{ kind: 'stacked', count: stacked }] : [], e.clientX, e.clientY);
   }
 
   /** Tab: the next cord under the pointer */
@@ -307,18 +305,18 @@ export class Controller implements PlayContext, InputCommands {
     this.setHover(next.pick);
     const rect = this.stage.renderer.domElement.getBoundingClientRect();
     const px = this.pointer.px;
-    this.events.onHover(this.describe(next.pick, [`${next.index + 1}/${next.count} sous le curseur — Tab : suivant`]), rect.left + px.x, rect.top + px.y);
+    this.showTooltip(next.pick, [{ kind: 'cycling', index: next.index, count: next.count }], rect.left + px.x, rect.top + px.y);
   }
 
   clearHover(): void {
     this.setHover(null);
-    this.events.onHover(null, 0, 0);
+    this.events.onHover(null, [], 0, 0);
   }
 
-  /** the tooltip of a cord: what it is, what the chosen tool can do with it, then `extra` lines */
-  private describe(p: CordPick, extra: string[]): string {
+  /** the tooltip of a cord: what it is, what the chosen tool can do with it, then `extra` notes */
+  private showTooltip(p: CordPick, extra: HoverNote[], x: number, y: number): void {
     const notes = [...(this.tools[this.tool].hoverNotes?.(p) ?? []), ...extra];
-    return describeCord(this.world, this.lastEval, this.highlights.traced, p) + notes.map((n) => `<br><i>${n}</i>`).join('');
+    this.events.onHover(cordInfo(this.world, this.lastEval, this.highlights.traced, p), notes, x, y);
   }
 
   private setHover(p: CordPick | null): void {
@@ -344,12 +342,12 @@ export class Controller implements PlayContext, InputCommands {
     if (this.hand.carried || this.route.drawing) return;
     this.route.stopLaying();
     const s = this.history.takeLast();
-    if (!s) { this.events.onToast('Rien à annuler.'); return; }
+    if (!s) { this.events.onToast({ kind: 'nothingToUndo' }); return; }
     this.world.sim.letGoStill();
     if (!this.world.restore(s)) {
       // cords rebuilt since (another length, a new cord): older states no longer fit
       this.history.clear();
-      this.events.onToast('Impossible d\'annuler au-delà d\'un changement de cordon.');
+      this.events.onToast({ kind: 'undoBlocked' });
       sfx.error();
       return;
     }
@@ -358,7 +356,7 @@ export class Controller implements PlayContext, InputCommands {
     this.cableView.update(true);
     this.reevaluate();
     this.tidyCables = tidyCablesOf(this.lastEval);
-    this.events.onToast('Annulé.');
+    this.events.onToast({ kind: 'undone' });
   }
 
   /** unplugs a cord, coils it and throws it in the crate (Delete over it) */
@@ -371,7 +369,7 @@ export class Controller implements PlayContext, InputCommands {
     sfx.unplug();
     this.announceCut(cut);
     this.setHover(null);
-    this.events.onHover(null, 0, 0);
+    this.events.onHover(null, [], 0, 0);
     this.afterRewire();
   }
 
@@ -379,7 +377,7 @@ export class Controller implements PlayContext, InputCommands {
   newCord(type: FibreType, length: number, color?: string): boolean {
     this.route.stopLaying();
     if (this.world.takeCord(type, length, color) < 0) {
-      this.events.onToast('Plus aucun cordon de cette longueur en stock.');
+      this.events.onToast({ kind: 'noCordOfThatLength' });
       sfx.error();
       return false;
     }
@@ -391,7 +389,7 @@ export class Controller implements PlayContext, InputCommands {
   /** puts a bypass on a production link, or takes it off */
   toggleBypass(i: CircuitIndex): void {
     if (!this.world.maintenance.toggleBypass(i)) {
-      this.events.onToast(this.world.maintenance.live.has(i) ? 'Plus de dérivation en stock.' : 'Seules les liaisons en production (⚡) se dérivent.');
+      this.events.onToast({ kind: this.world.maintenance.live.has(i) ? 'noBypassLeft' : 'notInProduction' });
       sfx.error();
       return;
     }
@@ -407,14 +405,14 @@ export class Controller implements PlayContext, InputCommands {
   fetchEnd(circuit: CircuitIndex): void {
     const w = this.world, ci = w.circuits[circuit];
     const free = [ci.a, ci.b].map((id) => w.rack.port(id)).filter((p) => !p.plugged);
-    if (!free.length) { this.events.onToast('Ses deux ports sont occupés.'); return; }
+    if (!free.length) { this.events.onToast({ kind: 'portsTaken' }); return; }
     // its own cord first (the one made for it), else any cord of its type with a loose end
     const loose = (c: number) => w.cables[c].ends.findIndex((e) => !e.port);
     const plugged = [ci.a, ci.b].map((id) => w.rack.port(id).plugged).find((p) => p !== null);
     const order = [...(plugged ? [plugged.cable] : []), circuit, ...w.cables.map((_, c) => c)];
     const c = order.find((k) => k < w.cables.length && w.cables[k].type === ci.type && loose(k) >= 0);
     if (c === undefined) {
-      this.events.onToast('Aucun cordon de ce type n\'a de bout libre : débranchez celui qui est sur un mauvais port.');
+      this.events.onToast({ kind: 'noLooseEnd' });
       sfx.error();
       return;
     }
@@ -436,10 +434,7 @@ export class Controller implements PlayContext, InputCommands {
   announceCut(links: number[]): void {
     const cost = links.reduce((a, i) => a + this.world.maintenance.cutCost(i), 0);
     if (!links.length) return;
-    const names = links.map((i) => `${i + 1} (${SERVICES[this.world.circuits[i].service].name})`).join(', ');
-    this.events.onToast(cost > 0
-      ? `Liaison ${names} coupée : ${formatCost(cost)} par seconde sur le budget d'interruption. Rebranchez vite.`
-      : `Liaison ${names} coupée, mais sa dérivation porte le trafic.`);
+    this.events.onToast({ kind: 'linksCut', links: links.map((i) => ({ link: i, service: this.world.circuits[i].service })), costPerSecond: cost });
   }
 
   // ------------------------------------------------------- evaluation

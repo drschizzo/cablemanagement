@@ -18,10 +18,15 @@ export interface CircuitStatus {
   relaxed: boolean;
 }
 
+/** one criterion of readability, 0..1 (ui/messages.ts names it) */
+export type ReadabilityPart =
+  | { criterion: 'slack' | 'colours' | 'bundles' | 'separation'; value: number }
+  | { criterion: 'crossings'; value: number; crossings: number };
+
 /** how readable the cabinet is, beyond the stars: each part 0..1, the note 0..100 */
 export interface Readability {
   note: number;
-  parts: { name: string; value: number; tip: string }[];
+  parts: ReadabilityPart[];
 }
 
 export interface Evaluation {
@@ -49,9 +54,6 @@ export interface Evaluation {
 }
 
 export type Strain = 'taut' | 'kinked';
-
-/** a strain as the player reads it */
-export const STRAIN_LABELS: Record<Strain, string> = { taut: 'tendu', kinked: 'plié' };
 
 /**
  * A cord this much shorter than the tidy route between its ports is pulled
@@ -232,14 +234,14 @@ function readability(w: World, circuits: CircuitStatus[], strain: (Strain | null
       const extra = w.cableLength(s.cable) - w.routeLength(s.cable)!;
       sum += Math.max(0, Math.min(1, 1 - (extra - 0.5)));
     }
-    parts.push({ name: 'Le mou juste', value: sum / made.length, tip: 'ni tendu ni plié, et pas plus de 50 cm de trop' });
+    parts.push({ criterion: 'slack', value: sum / made.length });
   }
   // copper cords of the colour of their service
   if (w.level.colorByService) {
     const cu = made.filter(({ s }) => w.cables[s.cable].type === 'CU');
     if (cu.length) {
       const ok = cu.filter(({ s, i }) => w.cables[s.cable].color === SERVICES[w.circuits[i].service].color).length;
-      parts.push({ name: 'Couleurs', value: ok / cu.length, tip: 'chaque cordon cuivre de la couleur de son service' });
+      parts.push({ criterion: 'colours', value: ok / cu.length });
     }
   }
   // bundles of one service
@@ -248,7 +250,7 @@ function readability(w: World, circuits: CircuitStatus[], strain: (Strain | null
   const straps = w.straps.filter((st) => st.nodes.length >= 2);
   if (straps.length) {
     const pure = straps.filter((st) => new Set(st.nodes.map((i) => serviceOf.get(w.sim.cableOf[i]) ?? -1)).size === 1).length;
-    parts.push({ name: 'Faisceaux', value: pure / straps.length, tip: 'un seul service par velcro' });
+    parts.push({ criterion: 'bundles', value: pure / straps.length });
   }
   // fibre and copper in separate ducts and managers
   const x = w.sim.x;
@@ -265,11 +267,11 @@ function readability(w: World, circuits: CircuitStatus[], strain: (Strain | null
       if (kinds.size) used++;
       if (kinds.size > 1) mixed++;
     }
-    if (used) parts.push({ name: 'Fibre et cuivre', value: 1 - mixed / used, tip: 'la fibre et le cuivre dans des supports séparés' });
+    if (used) parts.push({ criterion: 'separation', value: 1 - mixed / used });
   }
   // cords crossing each other in front of the cabinet, out of every support
   const crossings = frontCrossings(w, supports);
-  parts.push({ name: 'Croisements', value: Math.max(0, 1 - crossings / Math.max(4, w.cables.length)), tip: `${crossings} croisement${crossings > 1 ? 's' : ''} hors des supports` });
+  parts.push({ criterion: 'crossings', value: Math.max(0, 1 - crossings / Math.max(4, w.cables.length)), crossings });
   const note = Math.round((100 * parts.reduce((a, p) => a + p.value, 0)) / parts.length);
   return { note, parts };
 }

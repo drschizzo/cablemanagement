@@ -12,6 +12,7 @@ import { PlumbLine } from '../feedback/plumbLine';
 import { SETTLE_SHOW } from '../feedback/holdView';
 import type { PlayContext, ToolHandler } from '../context';
 import type { CordPick } from '../picking';
+import type { HoverNote } from '../messages';
 import type { NodeIndex } from '../../game/cables';
 
 /** m per physics step the hand may move */
@@ -103,15 +104,15 @@ export class HandTool implements ToolHandler {
     ctx.pointer.setCursor(p ? (this.isConnector(p) ? 'pointer' : 'grab') : 'default');
   }
 
-  hoverNotes(p: CordPick): string[] {
-    const w = this.ctx.world, notes: string[] = [];
+  hoverNotes(p: CordPick): HoverNote[] {
+    const w = this.ctx.world, notes: HoverNote[] = [];
     if (this.isConnector(p)) {
       const plugged = w.cables[p.cable].ends[p.end >= 0 ? p.end : w.endOfNode(p.node)!.end].port;
-      notes.push(plugged ? 'connecteur : saisir et tirer pour débrancher' : 'connecteur : relâchez-le devant un port pour le brancher');
+      notes.push({ kind: plugged ? 'connectorPlugged' : 'connectorLoose' });
     }
-    notes.push('T : tracer · Suppr : au bac');
-    if (this.pinchNear(p.node) >= 0) notes.push('Coude pincé — Espace : le relâcher');
-    if (this.otherHandAt(p.node)) notes.push('Tenu par l\'autre main — E : la lâcher');
+    notes.push({ kind: 'traceOrCrate' });
+    if (this.pinchNear(p.node) >= 0) notes.push({ kind: 'pinched' });
+    if (this.otherHandAt(p.node)) notes.push({ kind: 'heldByOtherHand' });
     return notes;
   }
 
@@ -174,12 +175,10 @@ export class HandTool implements ToolHandler {
     ctx.holdView.show(p.cable, Infinity);
     ctx.cableView.pinchHover = -1;
     ctx.cableView.pinchShown = p.cable;
-    ctx.events.onHint(pull
-      ? '<b>Tirez</b> le connecteur de quelques centimètres pour le débrancher ; sinon vous rangez simplement le câble.'
-      : 'Maintenez <b>Maj</b> pour pousser le câble vers le fond (souris vers le haut) ou le ramener vers vous (vers le bas). Maintenez <b>Espace</b> (ou le clic droit) pour pincer : le câble garde le coude qu\'il fait sous la main, d\'autant plus fermement que vous pincez longtemps. <b>E</b> : l\'autre main tient le câble ici, et la vôtre est libre. <span class="ok">Vert</span> : tenu, <span class="warn">orange</span> : pend trop.');
+    ctx.events.onHint({ kind: pull ? 'pullToUnplug' : 'carry' });
     stage.controls.enableZoom = false;
     ctx.pointer.setCursor('grabbing');
-    ctx.events.onHover(null, 0, 0);
+    ctx.events.onHover(null, [], 0, 0);
     ctx.refreshHighlights();
   }
 
@@ -277,7 +276,7 @@ export class HandTool implements ToolHandler {
     g[0] = c.target.x; g[1] = c.target.y; g[2] = c.target.z;
     c.node = n0;
     c.end = p.end;
-    ctx.events.onHint('Relâchez le connecteur devant un port libre (surligné en jaune) pour le brancher. Lâché en l\'air, il y reste accroché ; avec <b>Alt</b>, il pend.');
+    ctx.events.onHint({ kind: 'plugConnector' });
   }
 
   /** Shift pressed or released while carrying a cord */
@@ -295,9 +294,7 @@ export class HandTool implements ToolHandler {
       const hit = ctx.pointer.onPlane(c.plane, 0);
       c.offset = hit ? c.target.clone().sub(hit) : new THREE.Vector3();
     }
-    ctx.events.onHint(on
-      ? '<b>Profondeur</b> : souris vers le haut = vers le fond, vers le bas = vers vous. Relâchez Maj pour revenir.'
-      : 'Maintenez <b>Maj</b> pour pousser le câble vers le fond ou le ramener vers vous.');
+    ctx.events.onHint({ kind: 'depth', on });
   }
 
   /** while carrying a connector: the free port it would plug into */
@@ -358,7 +355,7 @@ export class HandTool implements ToolHandler {
     ctx.history.remember();
     ctx.world.sim.unpinch(ctx.world.sim.pinches[k].a);
     ctx.cableView.pinchHover = -1;
-    ctx.events.onHover(null, 0, 0);
+    ctx.events.onHover(null, [], 0, 0);
     sfx.remove();
   }
 

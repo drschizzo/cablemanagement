@@ -9,6 +9,8 @@ import type { Evaluation } from '../game/evaluation';
 import type { Port } from '../game/rack';
 import type { Pointer } from './pointer';
 import type { CordPick, CordPicker } from './picking';
+import type { CordInfo, Hint, HoverNote, PhysicsStats, Toast } from './messages';
+import type { CircuitIndex } from '../game/cables';
 import type { UndoHistory } from './undoHistory';
 import type { PortHint } from './feedback/portHint';
 import type { HoldView } from './feedback/holdView';
@@ -20,11 +22,13 @@ export type Tool = 'hand' | 'route' | 'supports' | 'velcro';
 export interface ControllerEvents {
   onEval(ev: Evaluation): void;
   onInventory(): void;
-  onHover(text: string | null, x: number, y: number): void;
-  onToast(text: string): void;
-  onStats(text: string): void;
+  /** the cord under the pointer and the notes on it (null: none), at the pointer (px of the page) */
+  onHover(cord: CordInfo | null, notes: HoverNote[], x: number, y: number): void;
+  onToast(toast: Toast): void;
+  /** the debug line: what the physics costs */
+  onStats(stats: PhysicsStats): void;
   /** a hint for what the player is doing now (null: back to the tool's) */
-  onHint(text: string | null): void;
+  onHint(hint: Hint | null): void;
 }
 
 /** what the player did, for the tutorial */
@@ -63,7 +67,7 @@ export interface PlayContext {
   /** the highlights of the cords follow the hover, the hand and the focused line again */
   refreshHighlights(): void;
   /** production links just cut by the player: a toast with what they cost */
-  announceCut(links: number[]): void;
+  announceCut(links: CircuitIndex[]): void;
   /** a line of the schedule through this port is connected (as of the last evaluation) */
   isLineConnectedAt(port: Port): boolean;
 }
@@ -82,8 +86,8 @@ export interface ToolHandler {
   readonly worksWhilePreparing: boolean;
   /** the cord under the pointer changed: what the tool shows of it (cursor, pinches…) */
   hoverChanged?(pick: CordPick | null): void;
-  /** what the tooltip of the cord under the pointer adds for this tool, one line each */
-  hoverNotes?(pick: CordPick): string[];
+  /** what the tooltip of the cord under the pointer adds for this tool */
+  hoverNotes?(pick: CordPick): HoverNote[];
   /** the left button went down with this tool chosen: false when it took nothing (the view pans instead) */
   pointerDown(e: PointerEvent): boolean;
   /** the pointer moved: true when it was this tool's gesture */

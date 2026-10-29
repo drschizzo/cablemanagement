@@ -5,7 +5,8 @@
 import type { Controller } from '../play/controller';
 import { FIBRE_NAMES } from '../game/cordTypes';
 import { SERVICES } from '../game/services';
-import { STRAIN_LABELS, cleanliness, type Evaluation } from '../game/evaluation';
+import { cleanliness, type Evaluation } from '../game/evaluation';
+import { STRAIN_LABELS, readabilityText } from './messages';
 import { UNLOCK_STARS, type LevelDef } from '../game/levels/levelDef';
 import { FIBRE_COLORS } from '../render/cableView';
 import { formatCost } from '../format';
@@ -76,7 +77,7 @@ export class SchedulePanel {
     $('#bar-bundle').style.display = ev.bundlesNeeded ? '' : 'none';
     this.showGauge(cleanliness(ev));
     $('#note').innerHTML = `Lisibilité <b>${ev.readability.note}</b>`;
-    $('#note').title = ev.readability.parts.map((p) => `${p.name} : ${Math.round(p.value * 100)} % (${p.tip})`).join('\n');
+    $('#note').title = ev.readability.parts.map((p) => { const t = readabilityText(p); return `${t.name} : ${Math.round(p.value * 100)} % (${t.tip})`; }).join('\n');
     $('#live-stars').innerHTML = starsHtml(ev.stars);
     const validate = $<HTMLButtonElement>('#btn-validate');
     validate.disabled = ev.stars < 1;
