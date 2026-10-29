@@ -17,8 +17,7 @@ src/
     urlOptions.ts   ?sync, ?bays, ?pairs, ?seed, ?quality, ?rack : lus depuis une chaîne, donc testables
   game/         LES RÈGLES et la physique de la baie                       sans three.js ni DOM : tourne sous Node
     world.ts        World, l'état d'une partie : cordons et leurs bouts (et ceux coupés à l'intérieur), branchement,
-                    velcros, bac, stock ; montré
-                    en lecture seule, changé par ses méthodes
+                    velcros, bac, stock ; montré en lecture seule, changé par ses méthodes
     cables.ts       ce qu'est un cordon (Cable, CableEnd, Strap) et ses indices nommés (CableIndex, EndIndex,
                     NodeIndex, CircuitIndex)
     cordShapes.ts   la géométrie d'un cordon hors physique : remis à une autre longueur, enroulé dans le bac
@@ -110,8 +109,9 @@ src/
     settingsPanel.ts les paramètres : qualité de l'image (auto, préréglages, détails) et son
     progress.ts     la progression du joueur : meilleur score, défi réussi (les gestes d'un puzzle),
                     niveau ouvert, niveau suivant, règles déjà rencontrées (fonctions pures)
-    shop.ts         le carnet du technicien : les trouvailles, puis en prime les teintes ; son catalogue, quand il ouvre, les étoiles gagnées qui ouvrent chaque look, le porter,
-                    les trouvailles gardées (fonctions pures) ; shopPanel.ts, son panneau
+    shop.ts         le carnet du technicien : les trouvailles, puis en prime les teintes (le catalogue, les étoiles
+                    qui ouvrent chaque teinte, celle qu'on porte), quand le carnet s'ouvre, les trouvailles gardées
+                    (fonctions pures) ; shopPanel.ts, son panneau
     editorPanel.ts  l'éditeur de baie : la baie en élévation (une bande par unité, aux couleurs de son équipement), la
                     palette, les règles, jouer ou copier le lien (?rack=CODE)
     outcome.ts      ce que laisse une baie validée, selon sa sorte de niveau : record, partage, niveau suivant
@@ -206,8 +206,8 @@ panneaux ouverts depuis un autre (niveaux, paramètres) y reviennent par leur bo
 rien d'autre ; le reste apparaît avec la salle. La première salle est toujours la même
 (`SHOWCASE_DEFAULT`, `game/levels/showcaseRack.ts`) : son désordre tombé est précalculé (`npm run bake`,
 `game/mess/showcase.bin`, ~210 Ko, lu par `game/mess/baked.ts`), elle s'affiche donc sans attendre la physique ;
-une baie dont le désordre n'est plus celui du fichier (le code a changé depuis) retombe comme avant, et un test le
-signale. Pendant qu'une salle est à l'écran, la suivante, tirée au hasard, se construit et tombe en fond
+si le code qui dispose le désordre change, une baie qui ne correspond plus au fichier tombe au chargement, comme
+les autres salles, et un test le signale. Pendant qu'une salle est à l'écran, la suivante, tirée au hasard, se construit et tombe en fond
 (`App.prepareNextAisle`) : « une autre salle » l'affiche aussitôt. Pendant un niveau, la salle de l'écran titre est
 mise de côté (`Showcase.stop`, `App.keptAisle`), hors de la scène : revenir à l'accueil la remontre aussitôt, dans
 l'état où on l'a laissée (une salle en pleine bascule est jetée, sa chorégraphie tourne sur des minuteries). Les options de la page (`?seed`, `?bays`,
@@ -238,8 +238,8 @@ sur le fil principal.
 ## Données dans le navigateur
 
 `ui/storage.ts` déclare chaque entrée (clé, valeur par défaut, validation) : progression (étoiles et meilleurs temps
-par niveau), tutoriel terminé, règles et gestes déjà rencontrés, carrière (tickets faits, la baie du client telle que laissée), dernière baie de l'éditeur, carnet (looks portés, trouvailles ; sous la clé du portefeuille d'avant), baies du jour (le meilleur résultat de chaque date), langue (celle du navigateur tant que le joueur n'en a pas choisi), musique coupée, qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu) et son
-coupé. Les clés sont celles des versions précédentes.
+par niveau), tutoriel terminé, règles et gestes déjà rencontrés, carrière (tickets faits, la baie du client telle que laissée), dernière baie de l'éditeur, carnet (teintes portées, trouvailles), baies du jour (le meilleur résultat de chaque date), langue (celle du navigateur tant que le joueur n'en a pas choisi), musique coupée, qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu) et son
+coupé. Une valeur illisible ou d'une autre forme se lit comme la valeur par défaut.
 
 ## Ajouter…
 

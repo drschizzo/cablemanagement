@@ -60,7 +60,7 @@ export class LevelMenu {
     const card = document.createElement('button');
     card.className = 'level-card tutorial';
     card.innerHTML = `<div class="num">0</div><div class="t">${tr({ fr: 'Tutoriel', en: 'Tutorial' })}</div>
-      <div class="meta">${tr({ fr: 'Les équipements, les gestes, le score', en: 'The equipment, the gestures, the score' })}</div>${load('tutorialDone') ? `<div class="best">${tr({ fr: '✓ terminé', en: '✓ done' })}</div>` : ''}`;
+      <div class="meta">${tr({ fr: 'Les équipements, les gestes, les étoiles', en: 'The equipment, the gestures, the stars' })}</div>${load('tutorialDone') ? `<div class="best">${tr({ fr: '✓ terminé', en: '✓ done' })}</div>` : ''}`;
     card.onclick = () => this.choose(TUTORIAL);
     return card;
   }
@@ -87,7 +87,7 @@ export class LevelMenu {
     const card = document.createElement('button');
     card.className = 'level-card' + (unlocked ? '' : ' locked');
     card.innerHTML = `<div class="num">${index + 1}</div><div class="t">${levelTitle(level)}</div>
-      <div class="meta">${tr({ fr: `${level.cables} câbles${level.labels ? ' · étiquettes' : ''}`, en: `${level.cables} cords${level.labels ? ' · labels' : ''}` })}</div>
+      <div class="meta">${tr({ fr: `${level.cables} câbles`, en: `${level.cables} cords` })}</div>
       <div class="stars">${starsHtml(stars)}</div>${best ? `<div class="best">${best}</div>` : ''}
       ${unlocked ? '' : `<div class="lock">${levels === BIG_BAYS
     ? tr({ fr: `${'★'.repeat(UNLOCK_STARS)} à la baie ${index} pour l'ouvrir`, en: `${'★'.repeat(UNLOCK_STARS)} on cabinet ${index} to open it` })

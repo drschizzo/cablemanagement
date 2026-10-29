@@ -6,7 +6,7 @@ Il s'adresse à un développeur qui connaît le web mais pas forcément la 3D ni
 
 ![Image finale d'un niveau](frame/image-finale.jpg)
 
-*Le niveau 4, « Étiquetage » : 13 câbles, 667 nœuds de physique. Toutes les captures du document viennent de ce niveau, rendu dans une fenêtre de 1280 × 800 pixels avec une densité de 2 pixels physiques par pixel CSS.*
+*Une baie de 13 câbles, soit 667 nœuds de physique. Toutes les captures du document viennent de cette baie, rendu dans une fenêtre de 1280 × 800 pixels avec une densité de 2 pixels physiques par pixel CSS.*
 
 ## Sommaire
 
@@ -439,7 +439,7 @@ Les sommets ne coûtent presque rien au CPU, mais le GPU exécute le vertex shad
 
 - **Un tube allégé hors de l'image.** Seule l'image montre le contour et l'éclairage des câbles. Les autres passes dessinent un sommet sur deux autour du câble et un anneau sur deux, par une seconde liste de triangles qui reprend les mêmes sommets. `TubeMesh` choisit la liste avant chaque dessin.
 - **Un niveau de détail par tronçon.** Le vertex shader calcule le rayon du câble à l'écran, en pixels. Sous 6 pixels, un sommet sur deux se replie sur son voisin, autour du câble et le long de lui ; sous 1,5 pixel, trois sur quatre, et l'anneau restant se tourne vers la caméra, pour qu'un câble vu par la tranche ne disparaisse pas. Les triangles repliés deviennent plats et le GPU les élimine avant d'avoir un seul pixel à calculer. La liste des triangles ne change pas, donc le tube reste fermé.
-- **Un niveau de détail par mesh.** Un sommet replié passe quand même par le vertex shader. Quand même le nœud le plus proche de la caméra est assez loin pour être replié, `TubeMesh` dessine directement la liste qui ne référence que les sommets qui ne se replient pas. C'est le cas de chaque baie de l'écran d'accueil. Au même seuil, `CableView` ôte la transparence des connecteurs RJ45, qui coûtait une passe de plus pour des connecteurs de deux pixels.
+- **Un niveau de détail par mesh.** Un sommet replié passe quand même par le vertex shader. Quand même le nœud le plus proche de la caméra est assez loin pour être replié, `TubeMesh` dessine directement la liste qui ne référence que les sommets qui ne se replient pas. C'est le cas de chaque baie de l'écran d'accueil. Au même seuil, `CableView` ôte la transparence des connecteurs RJ45, qui coûterait une passe de plus pour des connecteurs de deux pixels.
 
 ![Les trois niveaux de détail du tube](frame/niveaux-de-detail.jpg)
 
@@ -649,7 +649,7 @@ Trois idées en ressortent.
 
 Le jeu s'ouvre sur une allée de baies géantes en désordre, que l'interrupteur Avant / Après range sous les yeux du joueur (`src/showcase/`). Elle utilise les mêmes moteur et rendu qu'un niveau, à une autre échelle : des dizaines de milliers de nœuds, que les niveaux de détail de la section 7.4 rendent abordables.
 
-- **Une chute précalculée.** Le désordre de la salle par défaut est tombé une fois pour toutes (`npm run bake`) et rangé dans `src/game/showcase.bin` : la position de chaque nœud, en écarts au nœud précédent au dixième de millimètre, compressés. La salle s'affiche donc sans attendre la physique. Si le code qui dispose le désordre change, l'empreinte d'une baie ne correspond plus, et cette baie retombe comme avant jusqu'au prochain précalcul.
+- **Une chute précalculée.** Le désordre de la salle par défaut est tombé une fois pour toutes (`npm run bake`) et rangé dans `src/game/mess/showcase.bin` : la position de chaque nœud, en écarts au nœud précédent au dixième de millimètre, compressés. La salle s'affiche donc sans attendre la physique. Si le code qui dispose le désordre change, l'empreinte d'une baie ne correspond plus : cette baie tombe au chargement, comme une salle tirée au hasard, jusqu'au prochain précalcul.
 - **La salle suivante, en fond.** Pendant qu'une salle est à l'écran, la suivante, tirée au hasard, tombe dans un Worker par baie (`game/mess/fall.worker.ts`). La page construit chaque baie par petits morceaux, une image entre deux, puis la dessine une fois hors écran pour que shaders et textures soient sur le GPU avant sa première vraie image (`Showcase.warm`). « Une autre salle » l'affiche alors aussitôt.
 - **Avant / après.** Les deux états sont deux mondes qui partagent la baie et le plan de brassage : les longs cordons en désordre, et la baie rangée. Le passage de l'un à l'autre est une chorégraphie : chaque cordon est mené le long de son chemin rangé, puis échangé contre le cordon court de l'autre monde là où leurs formes coïncident.
 - **La pluie de câbles** (`showcase/cableRain.ts`) est un décor, pas le moteur : chaque câble qui tombe est une petite chaîne de points (intégration de Verlet, longueurs projetées), qui se pose sur une carte de hauteur du tas puis se fige.

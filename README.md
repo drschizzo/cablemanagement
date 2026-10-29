@@ -98,8 +98,8 @@ niveau 5, le courant au ticket 3 de la carrière, les incidents au ticket 4…),
 
 Le joueur suit trois choses : **branché**, **propre**, **en production**. Un câble est propre quand
 il ne pend nulle part hors des supports, ne passe devant aucun autre port, et n'est ni tendu ni plié
-(règles 2 à 4 ci-dessus). Les étoiles sont la seule note d'une baie. Le budget d'interruption est
-une contrainte ; seuls les puzzles ont en plus un défi, leurs gestes.
+(règles 2 à 4 ci-dessus). Les étoiles notent la baie ; le budget d'interruption est une contrainte
+pour ★★★. Les puzzles ajoutent un défi : leurs gestes.
 
 Une baie validée a droit à son tour d'honneur : la caméra fait le tour de la baie
 pendant que les cordons s'allument de haut en bas, puis l'écran de résultat s'ouvre.
@@ -238,7 +238,7 @@ peigne, est gratuit. Chaque défi laisse un ou deux gestes de marge sur le minim
 
 La **partie libre** génère une baie au hasard, de 4 à 48 câbles. Son réglage **zen** n'y met rien en
 production (ni budget, ni incident, ni panne), du matériel en abondance, et une musique d'ambiance
-générée à la volée (coupable dans les Paramètres).
+générée à la volée (qu'on peut couper dans les Paramètres).
 
 L'**éditeur de baie** (depuis la carte de la partie libre) compose une baie avec une palette d'équipements (panneaux,
 switchs, pare-feu, routeur, serveurs, onduleur, unités vides), du haut vers le bas, et règle ses
@@ -287,8 +287,8 @@ qu'on peut faire en le tenant. L'aide complète d'un outil reste sur son bouton.
 | C | Chemin | tracer le chemin d'un câble à travers les guides ; il y est posé, et branché au port où finit le trait |
 | 2 | Supports | dans une unité vide, un guide-câbles ; dans un couloir latéral, une goulotte (**Maj** : un anneau) ; sur un support posé, le retirer |
 | 3 | Velcro | tracer un trait en travers des câbles à serrer : le velcro serre ceux que le trait croise, s'ils sont côte à côte ; un clic sur un velcro l'enlève |
-| 5 | Peigne | glissé le long d'un faisceau, il range côte à côte les câbles qu'il traverse, dans leur ordre, et défait leurs croisements |
 | 4 | Testeur | dit si un cordon porte le signal (seulement là où des cordons sont coupés) |
+| 5 | Peigne | glissé le long d'un faisceau, il range côte à côte les câbles qu'il traverse, dans leur ordre, et défait leurs croisements |
 | 0 | Stock | prend un cordon neuf (type, couleur, longueur), livré dans le bac |
 
 ### Ranger un câble

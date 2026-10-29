@@ -83,8 +83,8 @@ export const LEVELS: CampaignLevel[] = [
 
 /**
  * The big cabinets, among the challenges: busy server rooms where every rule
- * of the training and the career meets the others. Open once the career is
- * under way (ui/modeLocks.ts); two stars on one open the next.
+ * of the training and the career meets the others. Open once the training is
+ * done (ui/modeLocks.ts); two stars on one open the next.
  */
 export const BIG_BAYS: CampaignLevel[] = [
   {

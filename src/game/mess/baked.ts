@@ -1,12 +1,12 @@
 // The default aisle of the title screen, fallen once and for all (npm run bake):
-// its mess took seconds of physics on every visit, while the rest of the game
+// its mess would take seconds of physics on every visit, while the rest of the game
 // loads in a moment. What is stored is the nodes of each bay's mess where they
 // came to rest, nothing else: the racks, the schedule and the tidy cabinet come
 // back from the seed, as they always do.
 //
 // Each bay is kept with the print of its mess before the fall: if the code
 // that lays it out changes, the print no longer matches, and the game lets
-// that bay fall as before (until it is baked again).
+// that bay fall on load, like any other (until it is baked again).
 //
 // The format: a header (magic, bays; per bay its nodes and its print), then
 // per bay its x, y and z in 0.1 mm steps, each node as the step from the one

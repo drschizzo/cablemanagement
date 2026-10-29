@@ -213,8 +213,8 @@ const ADVANCED: Step[] = [
   {
     title: { fr: 'Le velcro', en: 'The velcro' },
     text: {
-      fr: `Le <b>velcro</b> (touche ${toolKey('velcro')}) serre en faisceau des câbles côte à côte. <b>Tracez un trait en travers</b> des câbles à serrer : ceux qu'il croise s'allument, et au relâcher le velcro les serre là où le trait les croise. Il se place là où le plus de câbles passent côte à côte, et laisse de côté un câble croisé plus loin. Cliquez sur un velcro pour l'enlever. Un faisceau d'un seul service se lit mieux. Jamais de collier serré sur une fibre : il l'écrase !`,
-      en: `The <b>velcro</b> (key ${toolKey('velcro')}) straps cords running side by side into a bundle. <b>Draw a line across</b> the cords to strap: those it crosses light up, and when you let go the velcro straps them where the line crosses them. It goes where most cords run side by side, and leaves out a cord crossed further on. Click a velcro to take it off. A bundle of one service reads better. Never a tight cable tie on a fibre: it crushes it!`,
+      fr: `Le <b>velcro</b> (touche ${toolKey('velcro')}) serre en faisceau des câbles côte à côte. <b>Tracez un trait en travers</b> des câbles à serrer : ceux qu'il croise s'allument, et au relâcher le velcro les serre là où le trait les croise. Il se place là où le plus de câbles passent côte à côte, et laisse de côté un câble croisé plus loin. Cliquez sur un velcro pour l'enlever. Un faisceau ne compte que s'il est d'un seul service. Jamais de collier serré sur une fibre : il l'écrase !`,
+      en: `The <b>velcro</b> (key ${toolKey('velcro')}) straps cords running side by side into a bundle. <b>Draw a line across</b> the cords to strap: those it crosses light up, and when you let go the velcro straps them where the line crosses them. It goes where most cords run side by side, and leaves out a cord crossed further on. Click a velcro to take it off. A bundle only counts if it is of one service. Never a tight cable tie on a fibre: it crushes it!`,
     },
     task: { fr: 'Posez un velcro', en: 'Place a velcro' },
     tool: 'velcro',

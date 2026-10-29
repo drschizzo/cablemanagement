@@ -46,8 +46,8 @@ export const TOOL_BUTTONS: Record<Tool, ToolButton> = {
   velcro: {
     key: '3', name: { fr: 'Velcro', en: 'Velcro' }, icon: iconVelcro(), showsStock: true,
     help: {
-      fr: 'Tracez un trait <b>en travers</b> des câbles à serrer : ceux qu\'il croise s\'allument, et le velcro les serre là où le trait les croise. Il se place là où le plus de câbles passent côte à côte ; un seul service par faisceau, c\'est plus lisible. Cliquez sur un velcro pour l\'enlever.',
-      en: 'Draw a line <b>across</b> the cords to strap: those it crosses light up, and the velcro straps them where the line crosses them. It goes where most cords run side by side; one service per bundle reads better. Click a velcro to take it off.',
+      fr: 'Tracez un trait <b>en travers</b> des câbles à serrer : ceux qu\'il croise s\'allument, et le velcro les serre là où le trait les croise. Il se place là où le plus de câbles passent côte à côte ; un faisceau ne compte que s\'il est d\'un seul service. Cliquez sur un velcro pour l\'enlever.',
+      en: 'Draw a line <b>across</b> the cords to strap: those it crosses light up, and the velcro straps them where the line crosses them. It goes where most cords run side by side; a bundle only counts if it is of one service. Click a velcro to take it off.',
     },
   },
   comb: {

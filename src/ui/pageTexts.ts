@@ -40,7 +40,7 @@ export const PAGE_TEXTS: Record<string, Words> = {
     fr: '<i class="s-conn ok"></i>branchée <i class="s-tidy ok"></i>propre : dans les supports, hors de la façade, ni tendue ni pliée',
     en: '<i class="s-conn ok"></i>plugged <i class="s-tidy ok"></i>tidy: in the supports, off the front, neither taut nor kinked',
   },
-  'side.connections': { fr: 'Connexions', en: 'Connections' },
+  'side.connections': { fr: 'Branchées', en: 'Plugged' },
   'side.tidy': { fr: 'Propres', en: 'Tidy' },
   'side.tidyTip': { fr: 'Un câble propre ne pend nulle part de plus de 20 cm hors des supports, ne passe devant aucun autre port, n\'est ni tendu ni plié', en: 'A tidy cord hangs nowhere more than 20 cm out of the supports, crosses no other port, is neither taut nor kinked' },
   'side.bundles': { fr: 'Faisceaux', en: 'Bundles' },

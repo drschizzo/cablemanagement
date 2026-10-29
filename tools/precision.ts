@@ -1,9 +1,9 @@
 // Precision bench: the gestures that frustrate a player, measured.
 //   PARAMS='{"substeps":8}' npm run precision
 // S1 push a cord into a duct and let go; S2 lay a cord along a finger manager;
-// S3 a level settling at rest; S4 the big heap of level 8.
+// S3 a level of the training settling at rest; S4 the big heap of the last big cabinet.
 import { World } from '../src/game/world';
-import { LEVELS } from '../src/game/levels/campaign';
+import { BIG_BAYS, LEVELS } from '../src/game/levels/campaign';
 import type { LevelDef } from '../src/game/levels/levelDef';
 import { U } from '../src/game/rack';
 import { env, envNumber, envParams } from './env';
@@ -154,14 +154,14 @@ const t0 = performance.now();
   console.log(`S2 guide-câbles : ${g.atRelease} nœuds posés au lâcher, ${nodesIn(w, c, 'fingerManager')} restent, pic vitesse après lâcher ${g.peakAfter.toFixed(2)} m/s, repos ${g.settle < 0 ? 'jamais' : (g.settle / 60).toFixed(1) + ' s'}, étirement max ${(g.stretchPeak * 100).toFixed(1)} %, pénétration ${(statPen(w) * 1000).toFixed(1)} mm`);
 }
 // S3, S4: settling
-for (const li of [3, 7]) {
-  const w = make(LEVELS[li]);
+for (const [label, level] of [['S3 repos niveau 4', LEVELS[3]], ['S4 tas grande baie 3', BIG_BAYS[2]]] as const) {
+  const w = make(level);
   let asleepAt = -1, ms = 0;
   for (let f = 0; f < 900; f++) {
     w.sim.step();
     ms += w.sim.stats.ms;
     if (asleepAt < 0 && w.sim.stats.awake === 0) asleepAt = f;
   }
-  console.log(`${li === 3 ? 'S3 repos niveau 4' : 'S4 tas niveau 8'} : ${asleepAt < 0 ? `encore ${w.sim.stats.awake}/${w.cables.length} actifs à 15 s` : `tout au repos à ${(asleepAt / 60).toFixed(1)} s`}, vitesse max ${speedMax(w).toFixed(3)} m/s, étirement ${(stretchMax(w) * 100).toFixed(1)} %, ${(ms / 900).toFixed(1)} ms/pas`);
+  console.log(`${label} : ${asleepAt < 0 ? `encore ${w.sim.stats.awake}/${w.cables.length} actifs à 15 s` : `tout au repos à ${(asleepAt / 60).toFixed(1)} s`}, vitesse max ${speedMax(w).toFixed(3)} m/s, étirement ${(stretchMax(w) * 100).toFixed(1)} %, ${(ms / 900).toFixed(1)} ms/pas`);
 }
 console.log(`(${((performance.now() - t0) / 1000).toFixed(1)} s)`);

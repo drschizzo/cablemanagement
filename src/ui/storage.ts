@@ -1,8 +1,7 @@
 // What the game keeps in the browser (localStorage). Each entry declares its
 // key, its default and its validation: a value that is missing, unreadable or
 // of another shape reads as the default. Any read or write may throw (private
-// browsing, storage full or blocked): the game then simply forgets. Keys and
-// formats are those of earlier versions, so players keep their progress.
+// browsing, storage full or blocked): the game then simply forgets.
 
 import { AUTO_QUALITY, QUALITY, type QualityChoice } from '../render/quality';
 import { LANGUAGES, preferredLanguage, type Language } from './language';
@@ -69,11 +68,7 @@ const ENTRIES = {
   progress: {
     key: 'cable.progress',
     fallback: (): Progress => ({ stars: {}, times: {}, challenges: {} }),
-    // older saves may lack the times and the challenges, and keep a readability note the game no longer gives
-    parse: (raw: string): Progress => {
-      const { stars, times = {}, challenges = {} } = JSON.parse(raw);
-      return { stars, times, challenges };
-    },
+    parse: (raw: string): Progress => JSON.parse(raw),
     format: (v: Progress) => JSON.stringify(v),
     valid: (v: Progress) => isRecord(v.stars) && isRecord(v.times) && isRecord(v.challenges),
   } satisfies Entry<Progress>,
@@ -98,14 +93,11 @@ const ENTRIES = {
     format: (v: Career) => JSON.stringify(v),
     valid: (v: Career) => Number.isInteger(v.done) && v.done >= 0 && Array.isArray(v.stars) && (v.cabinet === null || (isRecord(v.cabinet) && Array.isArray(v.cabinet.cords))),
   } satisfies Entry<Career>,
-  /** the looks equipped and the finds (the key of the wallet it was, when jobs paid) */
+  /** the looks equipped and the finds */
   workshop: {
-    key: 'cable.wallet',
+    key: 'cable.workshop',
     fallback: (): Workshop => ({ equipped: {}, finds: [] }),
-    parse: (raw: string): Workshop => {
-      const { equipped = {}, finds = [] } = JSON.parse(raw);
-      return { equipped, finds };
-    },
+    parse: (raw: string): Workshop => JSON.parse(raw),
     format: (v: Workshop) => JSON.stringify(v),
     valid: (v: Workshop) => isRecord(v.equipped) && Array.isArray(v.finds),
   } satisfies Entry<Workshop>,
@@ -120,7 +112,7 @@ const ENTRIES = {
   rules: {
     key: 'cable.rules',
     fallback: (): Rule[] => [],
-    // a rule this version no longer has is forgotten
+    // a name that is not a rule is left out
     parse: (raw: string): Rule[] => {
       const v: unknown = JSON.parse(raw);
       return Array.isArray(v) ? v.filter((r): r is Rule => (RULES as readonly unknown[]).includes(r)) : [];

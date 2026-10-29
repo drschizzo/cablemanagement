@@ -21,14 +21,14 @@ chaque outil a son fichier (`tools/handTool.ts`, `tools/velcroTool.ts`…), et c
 Si la phrase a besoin de « et puis… et aussi… », le fichier fait sans doute plusieurs choses.
 
 **La taille est un signal, pas une règle.** Au-delà de 400 à 500 lignes, se demander ce qui pourrait partir dans un
-fichier à soi. `play/controller.ts` faisait 1600 lignes : la souris et le clavier sont partis dans
-`inputRouter.ts`, chaque outil dans `tools/`, chaque repère dans `feedback/`. Certains fichiers restent longs parce
+fichier à soi. `play/controller.ts` mène la partie, mais la souris et le clavier vivent dans `inputRouter.ts`,
+chaque outil dans `tools/`, chaque repère dans `feedback/`. Certains fichiers restent longs parce
 qu'ils sont cohérents : `game/world.ts` est l'état d'une partie, `game/levels/campaign.ts` est une liste de niveaux.
 
 **Un fichier vit avec ce qu'il sert, pas avec ceux qui l'appellent.** Les couleurs des fibres sont à côté de leurs
-noms (`game/cordTypes.ts`), pas dans la vue des câbles qui les utilisait la première. La place que couvrent les
+noms (`game/cordTypes.ts`), pas dans la vue des câbles qui les dessine. La place que couvrent les
 panneaux se mesure dans `ui/` (`panelMargins.ts`), qui connaît les panneaux, et `app/` la transmet à la scène.
-Un outil qui ne sait rien du jeu (`assertNever`, `vec3`) va dans `lib/`, et non dans la première couche qui en a eu
+Un outil qui ne sait rien du jeu (`assertNever`, `vec3`) va dans `lib/`, et non dans la première couche qui en a
 besoin. Pour vérifier, demander : *si je supprimais ce qui l'appelle, ce fichier aurait-il encore un sens ici ?*
 
 **Une couche basse ne lit pas l'interface.** `render/` ne crée pas de bandeau HTML, il signale qu'il a un conseil
@@ -64,7 +64,7 @@ scène 3D les retire et libère leur mémoire GPU dans son `dispose()` (`render/
 ## Nommer
 
 **Le nom dit ce qu'est la chose, pas comment elle est faite.** `idealRoutes.ts` plutôt que `tidy.ts`,
-`routeLaying.ts` plutôt que `route.ts` (il y avait deux sortes de « route »), `plumbLine` plutôt que `guide` (un
+`routeLaying.ts` plutôt que `route.ts` (« route » désigne aussi la route idéale d'un cordon), `plumbLine` plutôt que `guide` (un
 `Guide` est déjà un guide-câbles de la baie).
 
 **Fichiers** en `camelCase`, du nom de ce qu'ils exportent : `handTool.ts` exporte `HandTool`. **Types et
@@ -99,15 +99,15 @@ non (`formatTime(seconds)`, `aisleLayout(bayCount, seed)`). Et quand un `number`
 un alias de type le dit : `plug(c: CableIndex, e: EndIndex, portId: string)` (`game/world.ts`).
 
 **Une fonction se lit d'une traite.** Au-delà d'une soixantaine de lignes, elle fait sans doute plusieurs étapes :
-les nommer. `planRoute` (`game/routeLaying.ts`) faisait 200 lignes ; c'est maintenant une suite d'appels qui se lit
+les nommer. `planRoute` (`game/routeLaying.ts`) est une suite d'appels qui se lit
 comme son commentaire (quel bout reste, le chemin en points, ajusté à la longueur du cordon, la place de chaque
 nœud, le trajet de chaque nœud), et chaque étape a son nom et sa documentation.
 
 **Ne pas recopier.** Une petite fonction utile partout a une seule maison : `dist`, `minus`, `dot`, `lerp` et `polyLength` sont
 dans `lib/vec3.ts`, `rng`, `shuffle` et `pick` dans `lib/random.ts`, et nulle part ailleurs.
 
-**Ne pas masquer un nom que tout le monde connaît.** Une interface `Pick` cachait le `Pick<>` de TypeScript : elle
-s'appelle `CordPick`.
+**Ne pas masquer un nom que tout le monde connaît.** Ce que vise la souris s'appelle `CordPick`, et non `Pick`, qui
+cacherait le `Pick<>` de TypeScript.
 
 ## Commenter
 
@@ -143,7 +143,7 @@ service ? quel connecteur ?) se demande à sa sorte (`CORD_KINDS`, `game/cordTyp
 (`type === 'CU'`) : une nouvelle sorte n'est pas traitée en silence comme une autre.
 
 **Un switch sur une union traite tous les cas, et finit par `assertNever`.** Une chaîne de ternaires
-`a ? … : b ? … : c` traite en silence un nouveau cas comme le dernier : un nouveau support aurait été posé comme une
+`a ? … : b ? … : c` traite en silence un nouveau cas comme le dernier : un nouveau support serait posé comme une
 goulotte. Avec `default: return assertNever(kind)`, il ne compile plus tant qu'on ne l'a pas traité.
 
 **Ce qui varie selon la sorte appartient à la sorte.** Le curseur d'un outil, le fait qu'il travaille sur les
@@ -157,8 +157,7 @@ pas de sens.
 
 **L'état se change par des méthodes.** `World` montre ses cordons en lecture seule (`ReadonlyCable`) et les change
 par ses méthodes (`plug`, `labelCord`…) : ses invariants (un port et le bout qui y est branché se correspondent) ne
-dépendent pas de la discipline de chaque appelant. En passant ces champs en lecture seule, le compilateur a
-d'ailleurs listé toutes les écritures extérieures qu'il fallait remplacer.
+dépendent pas de la discipline de chaque appelant : le compilateur refuse toute écriture venue d'ailleurs.
 
 **Une dépendance fragile a une frontière.** Ce qui s'appuie sur les internes de three.js (le texte de ses
 shaders, des champs privés de ses passes) vit dans `render/threeCompat/` et nulle part ailleurs (ESLint le
@@ -175,10 +174,10 @@ erreur (`render/threeCompat/shaderPatch.ts`) au lieu de ne rien faire.
 `tests/game/maintenanceWindow.test.ts`.
 
 **Tester d'abord ce qui est pur.** Une fonction qui reçoit des données et rend un résultat se teste en trois lignes
-(`tests/format.test.ts`, `tests/app/urlOptions.test.ts`). C'est une raison de plus pour sortir la logique des
+(`tests/ui/format.test.ts`, `tests/app/urlOptions.test.ts`). C'est une raison de plus pour sortir la logique des
 classes qui touchent au DOM, à three.js ou à la physique : `readUrlOptions` lit une chaîne plutôt que `location` ;
-les règles de la progression (`ui/progress.ts`) sont sorties de l'écran de résultat ; la forme d'un cordon remis à
-une autre longueur (`game/cordShapes.ts`) est sortie du `World` et se teste sur une liste de points écrite à la
+les règles de la progression (`ui/progress.ts`) vivent hors de l'écran de résultat ; la forme d'un cordon remis à
+une autre longueur (`game/cordShapes.ts`) vit hors du `World` et se teste sur une liste de points écrite à la
 main. Un hasard qu'on veut tester se passe en paramètre (`coilInCrate(…, random)`).
 
 **Remplacer ce qui est lourd par un double.** `tests/play/undoHistory.test.ts` donne à l'historique un faux monde
