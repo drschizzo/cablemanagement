@@ -62,7 +62,6 @@ export class CombTool implements ToolHandler {
     }
     s.comb.release();
     this.laying = s.comb;
-    this.ctx.counters.moves++;
     sfx.velcro();
     return true;
   }

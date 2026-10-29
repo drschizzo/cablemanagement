@@ -189,9 +189,10 @@ panneau et son switch), crée des liaisons, en retire d'autres dont il faut jete
 
 Les **puzzles express** (P1 à P8, tous ouverts) sont de toutes petites baies, une idée chacune : un
 bout libre, deux cordons échangés, un support à poser, un faisceau, des goulottes, une liaison en
-production sur un budget minuscule, des cordons sans marque. Leur défi : ★★★ en peu de **gestes**
-(un cordon déplacé ou branché, un chemin posé, un support ou un velcro posé ou retiré, un cordon au
-bac ou pris au Stock), compté en haut de l'écran.
+production sur un budget minuscule, des cordons sans marque. Leur défi : ★★★ en peu de **gestes**,
+comptés en haut de l'écran : seuls les actes de technicien comptent (brancher, débrancher, poser ou
+retirer un support ou un velcro, le bac, le Stock) ; ranger un câble, à la main, au Chemin ou au
+peigne, est gratuit. Chaque défi laisse un ou deux gestes de marge sur le minimum.
 
 La **partie libre** génère une baie au hasard, de 4 à 48 câbles.
 

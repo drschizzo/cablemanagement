@@ -40,7 +40,10 @@ export interface ControllerEvents {
 
 /** what the player did, for the tutorial and the puzzles */
 export interface GestureCounters {
-  /** gestures that changed the cabinet: a cord moved or plugged, a route laid, a support or a velcro placed or taken off, a cord to the crate or out of the stock */
+  /**
+   * the technician's acts (the puzzles count them): a connector plugged or unplugged, a support or a
+   * velcro placed or taken off, a cord to the crate or out of the stock; tidying (hand, route, comb) is free
+   */
   moves: number;
   hovered: number;
   /** metres the hand has travelled carrying a cord */

@@ -61,8 +61,8 @@ export class LevelBrief {
 function briefTips(level: LevelDef, ctl: Controller | null): string[] {
   const tips = levelTips(level);
   if (level.kind === 'puzzle') tips.push(tr({
-    fr: `<b>Défi gestes</b> : ★★★ en ${level.moves} geste${level.moves > 1 ? 's' : ''} au plus. Compte pour un geste : un cordon déplacé ou branché, un chemin posé, un support ou un velcro posé ou retiré, un cordon jeté au bac ou pris au Stock.`,
-    en: `<b>Gestures challenge</b>: ★★★ in ${level.moves} gesture${level.moves > 1 ? 's' : ''} at most. A gesture is: a cord moved or plugged, a route laid, a support or a velcro placed or taken off, a cord thrown into the crate or taken from the Stock.`,
+    fr: `<b>Défi gestes</b> : ★★★ en ${level.moves} geste${level.moves > 1 ? 's' : ''} au plus. Compte pour un geste : brancher ou débrancher un connecteur (à la main ou au bout d'un chemin), poser ou retirer un support ou un velcro, jeter un cordon au bac, en prendre un au Stock. Ranger (déplacer un câble, poser un chemin, peigner) est gratuit.`,
+    en: `<b>Gestures challenge</b>: ★★★ in ${level.moves} gesture${level.moves > 1 ? 's' : ''} at most. A gesture is: plugging or unplugging a connector (by hand or at the end of a route), placing or taking off a support or a velcro, throwing a cord into the crate, taking one from the Stock. Tidying (moving a cord, laying a route, combing) is free.`,
   }));
   if (level.kind === 'campaign') tips.push(tr({ fr: `<b>Défi chrono</b> : ★★★ en moins de ${formatTime(level.par)}.`, en: `<b>Time challenge</b>: ★★★ in less than ${formatTime(level.par)}.` }));
   tips.push(tr({

@@ -485,7 +485,6 @@ export class Controller implements PlayContext, InputCommands {
     this.history.remember();
     this.stopLaying();
     w.park(c, e, [[p.x, p.y - 0.035, 0.09], [p.x, p.y - 0.035 - w.seg, 0.09]]);
-    this.counters.moves++;
     this.holdView.show(c, this.clock + SETTLE_SHOW);
     sfx.whoosh();
   }

@@ -82,7 +82,7 @@ export interface CampaignLevel extends LevelBase {
 /** a puzzle: a tiny cabinet, solved in as few gestures as possible */
 export interface PuzzleLevel extends LevelBase {
   kind: 'puzzle';
-  /** the gestures challenge: three stars in at most this many gestures that change the cabinet */
+  /** the gestures challenge: three stars in at most this many acts of a technician (see GestureCounters.moves) */
   moves: number;
 }
 
