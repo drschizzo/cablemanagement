@@ -1,6 +1,6 @@
-// A level played again pays only what it adds to its best payslip.
+// A level played again pays only what it adds to its best payslip; a find is kept once.
 import { describe, expect, it } from 'vitest';
-import { earn } from '../../src/ui/wallet';
+import { collectFind, earn } from '../../src/ui/wallet';
 import type { Wallet } from '../../src/ui/storage';
 
 const empty = (): Wallet => ({ coins: 0, best: {}, owned: [], equipped: {}, finds: [] });
@@ -14,5 +14,12 @@ describe('the wallet', () => {
     expect(earn(w, 'l1', slip(70))).toBe(20);
     expect(w.coins).toBe(70);
     expect(earn(w, 'l2', slip(10))).toBe(10);
+  });
+
+  it('keeps a find once', () => {
+    const w = empty();
+    expect(collectFind(w, 'duck')).toBe(true);
+    expect(collectFind(w, 'duck')).toBe(false);
+    expect(w.finds).toEqual(['duck']);
   });
 });

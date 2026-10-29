@@ -28,6 +28,7 @@ import { fileName, showResult } from './resultScreen';
 import { recordOutcome } from './outcome';
 import { TimelapsePlayer } from './timelapsePlayer';
 import { ShopPanel } from './shopPanel';
+import { collectFind } from './wallet';
 import { CareerPanel } from './careerPanel';
 import { ModesPanel } from './modesPanel';
 import { EditorPanel } from './editorPanel';
@@ -161,8 +162,7 @@ export class Hud {
   /** the player picked up a find: kept in the wallet, its story told */
   found(find: FindId): void {
     const wallet = load('wallet');
-    const isNew = !wallet.finds.includes(find);
-    if (isNew) wallet.finds.push(find);
+    const isNew = collectFind(wallet, find);
     save('wallet', wallet);
     const count = `${wallet.finds.length}/${FINDS.length}`;
     this.toast(isNew
