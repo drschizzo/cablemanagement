@@ -7,7 +7,7 @@
 
 import type { World } from './world';
 import type { CableIndex, NodeIndex } from './cables';
-import type { V3 } from '../lib/vec3';
+import { dot, minus, type V3 } from '../lib/vec3';
 
 /** m: half the width of the comb, and how far either side of its line a cord counts as in its teeth */
 export const COMB_REACH = 0.045;
@@ -19,9 +19,6 @@ const SPAN = 3;
 /** s the cords are held in their lanes once the comb is out, then s over which they are let go */
 const HOLD = 0.6;
 const FADE = 0.5;
-
-const dot = (a: V3, b: V3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-const minus = (a: V3, b: V3): V3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 
 /** the lane of each cord: `gap` apart, centred, in the order of `sides` (where each cord crossed the comb) */
 export function laneOffsets(sides: ReadonlyMap<CableIndex, number>, gap: number): Map<CableIndex, number> {
