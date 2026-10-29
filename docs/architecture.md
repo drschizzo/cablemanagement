@@ -18,7 +18,8 @@ src/
     urlOptions.ts   ?sync, ?bays, ?pairs, ?seed : lus depuis une chaîne, donc testables
     viewInsets.ts   le cadrage de la baie dans la place que laissent les panneaux
   game/         LES RÈGLES et la physique de la baie                       sans three.js ni DOM : tourne sous Node
-    world.ts        World, l'état d'une partie : cordons et leurs bouts, branchement, velcros, bac, stock
+    world.ts        World, l'état d'une partie : cordons et leurs bouts, branchement, velcros, bac, stock ; montré
+                    en lecture seule, changé par ses méthodes
     cables.ts       ce qu'est un cordon (Cable, CableEnd, Strap) et ses indices nommés (CableIndex, EndIndex,
                     NodeIndex, CircuitIndex)
     cordShapes.ts   la géométrie d'un cordon hors physique : remis à une autre longueur, enroulé dans le bac
@@ -27,15 +28,18 @@ src/
                     lisibilité, propreté — des fonctions qui lisent un World sans le modifier
     maintenanceWindow.ts  liaisons en production, budget d'interruption, dérivations
     rack.ts         baie 19", ports, éléments de rangement, formes de collision, zones de rangement
+    supplies.ts     les fournitures (supports et velcros), décrites une fois : ItemKind et Stock en dérivent
+    exhaustive.ts   assertNever, le défaut d'un switch qui a traité tous les cas
     cordTypes.ts    sortes de cordon (fibre, cuivre) et longueurs du catalogue
     services.ts     les services du plan (données, voix…) : couleur, poids d'une coupure
-    idealRoutes.ts  la route idéale de chaque cordon, la baie « finie » d'un niveau (tidyKit)
+    idealRoutes.ts  la route idéale de chaque cordon, la baie « finie » d'un niveau (tidyKit), les cordons couchés
+                    sur leurs routes (tidyLayout, la baie rangée de la vitrine)
     routeLaying.ts  l'outil Chemin côté règles : le chemin planifié (planRoute), le câble posé (RouteRun)
     physics/        le solveur tel que le jeu le mène (rackCableSim : mains, ports, creux des guides), et son Worker
     mess/           le désordre de départ : plan de brassage et chemins emmêlés (tangle), sa chute dans un Worker,
                     sa version précalculée pour l'écran titre (baked, showcase.bin)
-    levels/         ce qu'est un niveau (levelDef), les équipements nommés, la campagne et le tutoriel, la partie
-                    libre, les baies de la vitrine
+    levels/         ce qu'est un niveau (levelDef : une union par sorte, campagne, tutoriel, partie libre, vitrine,
+                    banc), les équipements nommés, la campagne et le tutoriel, la partie libre, les baies de la vitrine
   play/         UNE PARTIE EN COURS : relie game, render et l'interface
     controller.ts   Controller : la boucle à pas fixe, ce que la baie montre de son état, les actions du HUD
     context.ts      PlayContext (ce que les outils voient du contrôleur), ToolHandler (l'interface d'un outil),
@@ -47,7 +51,8 @@ src/
     pointer.ts      la souris sur la vue : pixels, rayon, projections écran ↔ baie
     picking.ts      ce qui est sous la souris : cordons (Tab pour le suivant), guides, ports libres
     undoHistory.ts  les états de la baie pour Ctrl+Z
-    cordTooltip.ts  la bulle d'un cordon survolé
+    messages.ts     ce qu'une partie dit au joueur, en données (Toast, Hint, CordInfo, HoverNote) : ui/ les met en mots
+    cordInfo.ts     ce que la bulle dit d'un cordon survolé
     frontImage.ts   l'image de face de la baie (avant / après de l'écran de résultat)
   showcase/     L'ÉCRAN TITRE : l'allée avant / après, une scène sans partie en cours
     showcase.ts     Showcase : l'allée, son interrupteur, sa pluie de câbles
@@ -59,6 +64,7 @@ src/
     stage.ts        Stage : la scène, la caméra, le cadrage, le rendu et sa qualité adaptée au GPU
     stageSetup.ts   la construction du renderer, des contrôles, des lumières et des passes (reflets SSR,
                     occlusion GTAO, bloom), avec les correctifs qu'elles ont demandés
+    shaderPatch.ts  les retouches des shaders de three.js, qui échouent bruyamment si three.js a changé
     rackView.ts     la baie, ses équipements, ports, plaques et voyants
     rackItems.ts    les éléments de rangement, construits à partir de leurs formes de collision (buildItem)
     rackMaterials.ts, rackTextures.ts, shapes.ts, room.ts   matériaux, textures, formes, sol de la salle
@@ -72,10 +78,12 @@ src/
     levelBrief.ts   le brief d'un niveau, puis la préparation
     resultScreen.ts l'écran de résultat ; levelMenu.ts, le menu des niveaux
     progress.ts     la progression du joueur : meilleur score, niveau ouvert, niveau suivant (fonctions pures)
+    messages.ts     tous les textes d'une partie : messages, aides, bulle d'un cordon, critères de lisibilité
     tutorial.ts     le tutoriel guidé, par-dessus un niveau
     dom.ts, icons.ts petites aides DOM, icônes de la barre d'outils
   audio/        les effets sonores, synthétisés
   format.ts     nombres et durées tels que le joueur les lit
+  page.ts       les éléments de index.html, cherchés par sélecteur ($ : une erreur claire si l'un manque)
   storage.ts    données gardées dans le navigateur (clés, valeurs par défaut, validation)
   dev/          poignées de test, chargées en développement seulement
 tests/        tests unitaires (Vitest), rangés comme src/
@@ -108,7 +116,8 @@ tourner sous Node, dans les tests et les bancs, et dans un Web Worker.
 
 Quand une couche basse doit prévenir une couche haute, elle ne l'importe pas : elle reçoit un **rappel**.
 `play/` prévient l'interface par `ControllerEvents` (`onEval`, `onToast`, `onHover`…), qu'`app/app.ts` relie à
-`ui/hud.ts`. Dans l'autre sens, `ui/` lit l'état (`ctl.world`, `ctl.lastEval`) et appelle le contrôleur
+`ui/hud.ts`. Ces rappels portent des **données** (un `Toast`, un `Hint`, un `CordInfo`), jamais du texte :
+`ui/messages.ts` les met en mots. Dans l'autre sens, `ui/` lit l'état (`ctl.world`, `ctl.lastEval`) et appelle le contrôleur
 (`setTool`, `newCord`, `toggleBypass`, `fetchEnd`).
 
 Les outils de `play/tools/` ne connaissent pas le `Controller` mais seulement `PlayContext`, l'interface de ce qu'il

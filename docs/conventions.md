@@ -101,8 +101,9 @@ s'appelle `CordPick`.
 ## Commenter
 
 **Le code et ses commentaires sont en anglais ; ce que lit le joueur et la documentation, en français.** Les
-textes du jeu ne se mélangent pas aux identifiants : `Strain` vaut `'taut' | 'kinked'`, et ses mots français sont
-dans `STRAIN_LABELS` (`game/evaluation.ts`).
+textes du jeu ne se mélangent pas au code : `game/` et `play/` n'écrivent ni phrase ni balise HTML. Ils envoient
+des données (`{ kind: 'routeRefused', error: { kind: 'tooShort', missing: 0.12 } }`), et `ui/messages.ts` les met
+en mots, avec ses propres tests. Le jeu se lit sans traverser le français ; le texte change sans toucher au jeu.
 
 **Un commentaire dit pourquoi, ou ce que le code ne peut pas dire** : une unité, une intention, un piège déjà
 rencontré. Ce que fait une ligne, la ligne le dit elle-même.
@@ -113,6 +114,35 @@ this.on(window, 'pointerup', (e: PointerEvent) => this.pointerUp(e));
 ```
 
 **Les champs et les fonctions exportées ont un `/** … */`**, que l'éditeur montre au survol.
+
+## Modéliser
+
+**Une sorte de chose est décrite une fois, et les types en dérivent.** Ce qu'on sait d'une fourniture (sa
+catégorie, son nom au singulier et au pluriel) est dans `SUPPLIES` (`game/supplies.ts`) ; `ItemKind` et `Stock` en
+sont calculés. Une liste écrite à la main ailleurs (`['fingerManager', 'duct', 'ring']`) oublierait la prochaine
+sorte sans que rien ne le signale.
+
+**Un switch sur une union traite tous les cas, et finit par `assertNever`.** Une chaîne de ternaires
+`a ? … : b ? … : c` traite en silence un nouveau cas comme le dernier : un nouveau support aurait été posé comme une
+goulotte. Avec `default: return assertNever(kind)`, il ne compile plus tant qu'on ne l'a pas traité.
+
+**Ce qui varie selon la sorte appartient à la sorte.** Le curseur d'un outil, le fait qu'il travaille sur les
+cordons, ce que sa bulle ajoute : c'est l'outil qui le dit (`ToolHandler`), pas une suite de `tool === 'hand'`
+ailleurs. De même, un niveau est une union discriminée par `kind` : le défi chrono n'existe que pour la campagne, et
+le compilateur demande `level.kind === 'campaign'` avant de le lire.
+
+**Une donnée dit ce qu'elle est.** Un port tient un `CordEnd { cable, end }`, pas un entier `cable * 2 + end` à
+décoder ; une partie a une `phase` (`'playing' | 'paused' | 'preparing'`), pas deux booléens dont une combinaison n'a
+pas de sens.
+
+**L'état se change par des méthodes.** `World` montre ses cordons en lecture seule (`ReadonlyCable`) et les change
+par ses méthodes (`plug`, `labelCord`…) : ses invariants (un port et le bout qui y est branché se correspondent) ne
+dépendent pas de la discipline de chaque appelant. En passant ces champs en lecture seule, le compilateur a
+d'ailleurs listé toutes les écritures extérieures qu'il fallait remplacer.
+
+**Échouer tôt et bruyamment.** Un élément absent de `index.html` lève une erreur qui le nomme (`$` dans
+`page.ts`), et un test vérifie qu'il ne manque aucun id ; une retouche de shader qui ne trouve plus son motif lève une
+erreur (`shaderPatch.ts`) au lieu de ne rien faire.
 
 ## Tester
 
