@@ -47,7 +47,7 @@ Dans un niveau, **☰ Menu** (ou **Échap**) met le jeu en pause : consignes,
 recommencer, choisir un autre niveau, paramètres, retour à l'accueil. Quitter
 une baie déjà entamée demande confirmation.
 
-Les **Paramètres** règlent la qualité de l'image et le son. En **Auto**, la
+Les **Paramètres** règlent la langue (français ou anglais), la qualité de l'image et le son. En **Auto**, la
 qualité s'abaisse d'elle-même quand la carte graphique ne suit plus (le jeu le
 signale) ; on peut aussi la fixer (Maximale, Élevée, Moyenne, Basse) ou régler
 chaque effet : définition, ombres, occlusion ambiante, reflets au sol. Le choix

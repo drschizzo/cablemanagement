@@ -11,6 +11,7 @@ import { formatCost, formatLength, formatTime } from './format';
 import { hide, show } from './dom';
 import { $ } from '../lib/page';
 import { countOf, serviceName, serviceWhat } from './names';
+import { tr } from './language';
 import { levelBrief, levelTips, levelTitle } from './levelTexts';
 
 export class LevelBrief {
@@ -59,15 +60,23 @@ export class LevelBrief {
 /** the level's own tips, then those of its rules (time challenge, tension, maintenance window, LEDs) */
 function briefTips(level: LevelDef, ctl: Controller | null): string[] {
   const tips = levelTips(level);
-  if (level.kind === 'campaign') tips.push(`<b>Défi chrono</b> : ★★★ en moins de ${formatTime(level.par)}.`);
-  tips.push('<b>Ni tendu ni plié</b> : un cordon bien plus court que son chemin rangé, ou une fibre pliée en angle vif, ne vaut pas ★★★.');
+  if (level.kind === 'campaign') tips.push(tr({ fr: `<b>Défi chrono</b> : ★★★ en moins de ${formatTime(level.par)}.`, en: `<b>Time challenge</b>: ★★★ in less than ${formatTime(level.par)}.` }));
+  tips.push(tr({
+    fr: '<b>Ni tendu ni plié</b> : un cordon bien plus court que son chemin rangé, ou une fibre pliée en angle vif, ne vaut pas ★★★.',
+    en: '<b>Neither taut nor kinked</b>: a cord much shorter than its tidy route, or a fibre bent at a sharp angle, is not worth ★★★.',
+  }));
   if (level.downtime !== undefined) {
     const used = [...new Set(ctl?.world.circuits.map((c) => c.service) ?? [])].sort((a, b) => SERVICES[b].weight - SERVICES[a].weight);
     const chips = used.map((i) => `<span class="svc-chip" style="--c:${SERVICES[i].color}" title="${serviceWhat(i)}">${serviceName(i)} ×${formatCost(SERVICES[i].weight).replace(/ pts?/, '')}</span>`).join(' ');
-    tips.unshift(`<b>Fenêtre de maintenance</b> : les liaisons ⚡ sont en production. Chaque seconde où l'une est coupée coûte le poids de son service sur un budget de <b>${level.downtime} pts</b> : ${chips}. Budget dépassé : incident, plus de ★★★.`
-      + (level.bypass ? ` Vous avez <b>${level.bypass} dérivation${level.bypass > 1 ? 's' : ''}</b> : posée sur une liaison (cliquez son ⚡ dans le plan), elle porte son trafic pendant qu'on la recâble.` : ''));
+    const n = level.bypass ?? 0;
+    tips.unshift(tr({
+      fr: `<b>Fenêtre de maintenance</b> : les liaisons ⚡ sont en production. Chaque seconde où l'une est coupée coûte le poids de son service sur un budget de <b>${level.downtime} pts</b> : ${chips}. Budget dépassé : incident, plus de ★★★.`
+        + (n ? ` Vous avez <b>${n} dérivation${n > 1 ? 's' : ''}</b> : posée sur une liaison (cliquez son ⚡ dans le plan), elle porte son trafic pendant qu'on la recâble.` : ''),
+      en: `<b>Maintenance window</b>: the ⚡ links are in production. Every second one of them is cut costs its service's weight off a budget of <b>${level.downtime} pts</b>: ${chips}. Budget overrun: an incident, no more ★★★.`
+        + (n ? ` You have <b>${n} bypass${n > 1 ? 'es' : ''}</b>: put on a link (click its ⚡ on the schedule), it carries its traffic while it is recabled.` : ''),
+    }));
   }
-  tips.push('Les voyants des ports : vert = liaison conforme au plan, orange = mauvais port.');
+  tips.push(tr({ fr: 'Les voyants des ports : vert = liaison conforme au plan, orange = mauvais port.', en: 'The port LEDs: green = link as planned, orange = wrong port.' }));
   return tips;
 }
 
@@ -75,6 +84,6 @@ function briefTips(level: LevelDef, ctl: Controller | null): string[] {
 function materialLine(level: LevelDef): string {
   const parts = ALL_SUPPLIES.filter((s) => level.inventory[s]).map((s) => countOf(s, level.inventory[s]!));
   const cords = (level.cords ?? []).map(([length, count]) => `${count} × ${formatLength(length)}`);
-  if (cords.length) parts.push(`cordons neufs : ${cords.join(', ')}`);
-  return parts.length ? `Matériel : ${parts.join(', ')}.` : '';
+  if (cords.length) parts.push(tr({ fr: `cordons neufs : ${cords.join(', ')}`, en: `new cords: ${cords.join(', ')}` }));
+  return parts.length ? tr({ fr: `Matériel : ${parts.join(', ')}.`, en: `Material: ${parts.join(', ')}.` }) : '';
 }

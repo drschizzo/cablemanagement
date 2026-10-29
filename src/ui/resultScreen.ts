@@ -11,6 +11,7 @@ import { hide, show, starsHtml } from './dom';
 import { $ } from '../lib/page';
 import { levelAfter, type LevelResult } from './progress';
 import { readabilityText } from './messages';
+import { tr } from './language';
 
 export interface ResultActions {
   start(level: LevelDef): void;
@@ -21,7 +22,7 @@ export interface ResultActions {
 
 export function showResult(ctl: Controller, level: LevelDef, ev: Evaluation, result: LevelResult, challengeWonBefore: boolean, actions: ResultActions): void {
   $('#result-stars').innerHTML = starsHtml(ev.stars, true);
-  $('#result-time').textContent = `Temps : ${formatTime(result.time)}`;
+  $('#result-time').textContent = tr({ fr: `Temps : ${formatTime(result.time)}`, en: `Time: ${formatTime(result.time)}` });
   $<HTMLImageElement>('#ba-before').src = ctl.before ?? '';
   $<HTMLImageElement>('#ba-after').src = ctl.capture();
   $('#result-lines').innerHTML = resultLines(level, ev, result, challengeWonBefore).map((l) => `<li>${l}</li>`).join('');
@@ -33,7 +34,7 @@ export function showResult(ctl: Controller, level: LevelDef, ev: Evaluation, res
   // the next level opens on a tidy cabinet, not on a merely connected one
   const open = Math.max(result.previousStars, ev.stars) >= UNLOCK_STARS;
   nextButton.disabled = !open;
-  nextButton.textContent = open ? 'Niveau suivant →' : `${'★'.repeat(UNLOCK_STARS)} pour le niveau suivant`;
+  nextButton.textContent = open ? tr({ fr: 'Niveau suivant →', en: 'Next level →' }) : tr({ fr: `${'★'.repeat(UNLOCK_STARS)} pour le niveau suivant`, en: `${'★'.repeat(UNLOCK_STARS)} for the next level` });
   if (next && open) nextButton.onclick = () => { hide('#result'); actions.start(next); };
   $('#result-again').onclick = () => { hide('#result'); ctl.resume(); };
   $('#result-menu').onclick = () => { hide('#result'); actions.showMenu(); };
@@ -43,27 +44,35 @@ export function showResult(ctl: Controller, level: LevelDef, ev: Evaluation, res
 
 /** the checks one by one, and what the next star needs */
 function resultLines(level: LevelDef, ev: Evaluation, result: LevelResult, challengeWonBefore: boolean): string[] {
+  const of = (n: number) => `${n}/${ev.total}`;
   const lines = [
-    `Liaisons branchées : ${ev.connected}/${ev.total}`,
-    `Liaisons rangées : ${ev.routed}/${ev.total}`,
-    `Façade dégagée : ${ev.clear}/${ev.total}`,
-    `Ni tendus ni pliés : ${ev.relaxed}/${ev.total}`,
+    tr({ fr: `Liaisons branchées : ${of(ev.connected)}`, en: `Links plugged: ${of(ev.connected)}` }),
+    tr({ fr: `Liaisons rangées : ${of(ev.routed)}`, en: `Links routed: ${of(ev.routed)}` }),
+    tr({ fr: `Façade dégagée : ${of(ev.clear)}`, en: `Front clear: ${of(ev.clear)}` }),
+    tr({ fr: `Ni tendus ni pliés : ${of(ev.relaxed)}`, en: `Neither taut nor kinked: ${of(ev.relaxed)}` }),
   ];
-  if (ev.bundlesNeeded) lines.push(`Faisceaux : ${Math.min(ev.bundles, ev.bundlesNeeded)}/${ev.bundlesNeeded}`);
+  const bundles = `${Math.min(ev.bundles, ev.bundlesNeeded)}/${ev.bundlesNeeded}`;
+  if (ev.bundlesNeeded) lines.push(tr({ fr: `Faisceaux : ${bundles}`, en: `Bundles: ${bundles}` }));
   if (level.downtime !== undefined) {
+    const spent = Math.round(ev.downtime);
     lines.push(ev.downtime > ev.budget
-      ? `<span class="bad">Incident : ${Math.round(ev.downtime)} pts d'interruption pour un budget de ${ev.budget}.</span>`
-      : `Interruption : ${Math.round(ev.downtime)} pts sur ${ev.budget}.`);
+      ? `<span class="bad">${tr({ fr: `Incident : ${spent} pts d'interruption pour un budget de ${ev.budget}.`, en: `Incident: ${spent} pts of downtime for a budget of ${ev.budget}.` })}</span>`
+      : tr({ fr: `Interruption : ${spent} pts sur ${ev.budget}.`, en: `Downtime: ${spent} pts of ${ev.budget}.` }));
   }
   if (ev.stars < 3) {
+    const windowed = level.downtime !== undefined;
     lines.push(ev.stars === 1
-      ? '★★ : rangez au moins 70 % des liaisons, façade dégagée à 85 %.'
-      : '★★★ : tout rangé, façade entièrement dégagée, aucun cordon tendu ni plié' + (ev.bundlesNeeded ? `, ${ev.bundlesNeeded} faisceaux` : '') + (level.downtime !== undefined ? ', budget d\'interruption tenu' : '') + '.');
+      ? tr({ fr: '★★ : rangez au moins 70 % des liaisons, façade dégagée à 85 %.', en: '★★: route at least 70% of the links, front 85% clear.' })
+      : tr({
+        fr: '★★★ : tout rangé, façade entièrement dégagée, aucun cordon tendu ni plié' + (ev.bundlesNeeded ? `, ${ev.bundlesNeeded} faisceaux` : '') + (windowed ? ', budget d\'interruption tenu' : '') + '.',
+        en: '★★★: everything routed, the front all clear, no cord taut or kinked' + (ev.bundlesNeeded ? `, ${ev.bundlesNeeded} bundles` : '') + (windowed ? ', the downtime budget kept' : '') + '.',
+      }));
   }
   if (level.kind === 'campaign') {
+    const par = formatTime(level.par);
     lines.push(result.challengeWon
-      ? `⏱ Défi chrono réussi : ★★★ en moins de ${formatTime(level.par)} !`
-      : `⏱ Défi chrono : ★★★ en moins de ${formatTime(level.par)}${challengeWonBefore ? ' (déjà réussi)' : ''}.`);
+      ? tr({ fr: `⏱ Défi chrono réussi : ★★★ en moins de ${par} !`, en: `⏱ Time challenge won: ★★★ in less than ${par}!` })
+      : tr({ fr: `⏱ Défi chrono : ★★★ en moins de ${par}${challengeWonBefore ? ' (déjà réussi)' : ''}.`, en: `⏱ Time challenge: ★★★ in less than ${par}${challengeWonBefore ? ' (won already)' : ''}.` }));
   }
   return lines;
 }
@@ -71,7 +80,9 @@ function resultLines(level: LevelDef, ev: Evaluation, result: LevelResult, chall
 /** the readability note: from where the cabinet started, to now, and the record */
 function noteHtml(startNote: number, ev: Evaluation, result: LevelResult): string {
   const { note, previousNote } = result;
-  const record = previousNote !== undefined ? ` · record ${Math.max(previousNote, note)}${note > previousNote ? ' — nouveau record !' : ''}` : '';
-  return `<div class="grade"><s>${startNote}</s><span class="to">→</span><b>${note}</b><span>Lisibilité${record}</span></div>`
+  const best = previousNote !== undefined ? Math.max(previousNote, note) : 0;
+  const isNew = previousNote !== undefined && note > previousNote;
+  const record = previousNote !== undefined ? tr({ fr: ` · record ${best}${isNew ? ' — nouveau record !' : ''}`, en: ` · best ${best}${isNew ? ' — new best!' : ''}` }) : '';
+  return `<div class="grade"><s>${startNote}</s><span class="to">→</span><b>${note}</b><span>${tr({ fr: 'Lisibilité', en: 'Readability' })}${record}</span></div>`
     + ev.readability.parts.map((p) => { const t = readabilityText(p); return `<div class="part"><span>${t.name}</span><div class="bar"><div class="fill" style="width:${Math.round(p.value * 100)}%"></div></div><i>${t.tip}</i></div>`; }).join('');
 }

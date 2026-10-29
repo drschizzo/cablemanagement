@@ -111,12 +111,17 @@ s'appelle `CordPick`.
 
 ## Commenter
 
-**Le code et ses commentaires sont en anglais ; ce que lit le joueur et la documentation, en français.** Les
+**Le code et ses commentaires sont en anglais ; la documentation, en français ; ce que lit le joueur, dans chaque langue du jeu.** Les
 textes du jeu ne se mélangent pas au code : `game/` et `play/` n'écrivent ni phrase ni balise HTML. Ils envoient
 des données (`{ kind: 'routeRefused', error: { kind: 'tooShort', missing: 0.12 } }`), et `ui/messages.ts` les met
 en mots, avec ses propres tests. Il en va de même des noms et des niveaux : un niveau n'a pas de titre dans `game/`,
 un service pas de nom, une plaque d'équipement pas de mot ; `ui/names.ts` et `ui/levelTexts.ts` les donnent, et
 `render/` reçoit ce qu'il doit peindre par un rappel (`RackView` : `labelOf`). Le jeu se lit sans traverser le français ; le texte change sans toucher au jeu.
+
+**Un texte s'écrit dans toutes les langues, là où il s'affiche.** `tr({ fr: 'Annulé.', en: 'Undone.' })` : les deux
+versions côte à côte, que le type `Words` exige (une langue ajoutée à `Language` fait lister par le compilateur chaque
+texte à compléter). Ce qui n'est écrit qu'une fois (un bouton, une étape du tutoriel) se réécrit quand la langue
+change (`onLanguageChange`) ; le reste suit au prochain affichage.
 
 **Un commentaire dit pourquoi, ou ce que le code ne peut pas dire** : une unité, une intention, un piège déjà
 rencontré. Ce que fait une ligne, la ligne le dit elle-même.

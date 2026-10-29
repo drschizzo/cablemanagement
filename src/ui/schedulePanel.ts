@@ -6,13 +6,14 @@ import type { Controller } from '../play/controller';
 import { FIBRE_COLORS } from '../game/cordTypes';
 import { SERVICES } from '../game/services';
 import { cleanliness, type Evaluation } from '../game/evaluation';
-import { STRAIN_LABELS, readabilityText } from './messages';
+import { readabilityText, strainLabel } from './messages';
 import { UNLOCK_STARS } from '../game/levels/campaign';
 import type { LevelDef } from '../game/levels/levelDef';
 import { formatCost } from './format';
 import { starsHtml } from './dom';
 import { $ } from '../lib/page';
-import { FIBRE_NAMES, serviceName, serviceWhat } from './names';
+import { fibreName, serviceName, serviceWhat } from './names';
+import { tr } from './language';
 
 /** how long the overall gauge flashes when it goes up (ms) */
 const GAUGE_FLASH_MS = 700;
@@ -31,24 +32,30 @@ export class SchedulePanel {
     this.gaugePercent = -1;
     const windowed = level.downtime !== undefined;
     this.rows = w.circuits.map((c, i) => {
-      const tr = document.createElement('tr');
+      const row = document.createElement('tr');
       const service = SERVICES[c.service];
       const live = windowed && w.maintenance.live.has(i);
-      const prodTip = `En production : chaque seconde coupée coûte ${formatCost(service.weight)}`;
+      const cost = formatCost(service.weight);
+      const prodTip = tr({ fr: `En production : chaque seconde coupée coûte ${cost}`, en: `In production: every second cut costs ${cost}` });
+      const bypassTip = tr({
+        fr: 'Cliquez pour lui poser une dérivation : le trafic passe par un chemin provisoire pendant que vous la recâblez (re-cliquez pour la retirer).',
+        en: 'Click to give it a bypass: the traffic takes a temporary path while you recable it (click again to take it off).',
+      });
       const prod = !live ? '' : level.bypass
-        ? `<button class="prod bypass" title="${prodTip}. Cliquez pour lui poser une dérivation : le trafic passe par un chemin provisoire pendant que vous la recâblez (re-cliquez pour la retirer).">⚡</button>`
+        ? `<button class="prod bypass" title="${prodTip}. ${bypassTip}">⚡</button>`
         : `<span class="prod" title="${prodTip}">⚡</span>`;
-      tr.innerHTML = `<td class="n">${i + 1}${prod}</td><td class="ports">${c.a} <span class="arrow">↔</span> ${c.b}</td>
-        <td><span class="chip" style="background:${FIBRE_COLORS[c.type]}" title="${FIBRE_NAMES[c.type]}">${c.type}</span></td>
-        <td class="svc" title="${serviceName(c.service)} : ${serviceWhat(c.service)}${windowed ? ` — coupée, ${formatCost(service.weight)} par seconde` : ''}"><span class="dot" style="background:${service.color}"></span>${serviceName(c.service)}</td>
-        <td class="st"><i class="s-conn" title="Branchée"></i><i class="s-route" title="Rangée"></i><i class="s-clear" title="Façade dégagée"></i><i class="s-relax" title="Ni tendu ni plié"></i></td>`;
-      tr.onmouseenter = () => ctl.focus(i);
-      tr.onmouseleave = () => ctl.focus(-1);
-      tr.title = 'Cliquez : son bout libre sort du tas et s\'accroche sous son port';
-      tr.onclick = () => ctl.fetchEnd(i);
-      tr.querySelector<HTMLButtonElement>('.bypass')?.addEventListener('click', (e) => { e.stopPropagation(); ctl.toggleBypass(i); });
-      body.appendChild(tr);
-      return tr;
+      const cutTip = windowed ? tr({ fr: ` — coupée, ${cost} par seconde`, en: ` — cut, ${cost} per second` }) : '';
+      row.innerHTML = `<td class="n">${i + 1}${prod}</td><td class="ports">${c.a} <span class="arrow">↔</span> ${c.b}</td>
+        <td><span class="chip" style="background:${FIBRE_COLORS[c.type]}" title="${fibreName(c.type)}">${c.type}</span></td>
+        <td class="svc" title="${serviceName(c.service)}${tr({ fr: ' : ', en: ': ' })}${serviceWhat(c.service)}${cutTip}"><span class="dot" style="background:${service.color}"></span>${serviceName(c.service)}</td>
+        <td class="st"><i class="s-conn" title="${tr({ fr: 'Branchée', en: 'Plugged' })}"></i><i class="s-route" title="${tr({ fr: 'Rangée', en: 'Routed' })}"></i><i class="s-clear" title="${tr({ fr: 'Façade dégagée', en: 'Front clear' })}"></i><i class="s-relax" title="${relaxedTip()}"></i></td>`;
+      row.onmouseenter = () => ctl.focus(i);
+      row.onmouseleave = () => ctl.focus(-1);
+      row.title = tr({ fr: 'Cliquez : son bout libre sort du tas et s\'accroche sous son port', en: 'Click: its loose end comes out of the heap and hooks under its port' });
+      row.onclick = () => ctl.fetchEnd(i);
+      row.querySelector<HTMLButtonElement>('.bypass')?.addEventListener('click', (e) => { e.stopPropagation(); ctl.toggleBypass(i); });
+      body.appendChild(row);
+      return row;
     });
   }
 
@@ -57,17 +64,17 @@ export class SchedulePanel {
     const w = ctl?.world;
     const windowed = level?.downtime !== undefined;
     ev.circuits.forEach((s, i) => {
-      const tr = this.rows[i];
-      if (!tr) return;
-      tr.querySelector('.s-conn')!.className = 's-conn' + (s.connected ? ' ok' : '');
-      tr.querySelector('.s-route')!.className = 's-route' + (s.routed ? ' ok' : '');
-      tr.querySelector('.s-clear')!.className = 's-clear' + (s.clear ? ' ok' : '');
-      tr.querySelector('.s-relax')!.className = 's-relax' + (s.relaxed ? ' ok' : '');
+      const row = this.rows[i];
+      if (!row) return;
+      row.querySelector('.s-conn')!.className = 's-conn' + (s.connected ? ' ok' : '');
+      row.querySelector('.s-route')!.className = 's-route' + (s.routed ? ' ok' : '');
+      row.querySelector('.s-clear')!.className = 's-clear' + (s.clear ? ' ok' : '');
+      row.querySelector('.s-relax')!.className = 's-relax' + (s.relaxed ? ' ok' : '');
       const strain = s.cable >= 0 ? ev.cableStrain[s.cable] : null;
-      tr.querySelector('.s-relax')!.setAttribute('title', strain ? `Cordon ${STRAIN_LABELS[strain]}` : 'Ni tendu ni plié');
-      tr.classList.toggle('done', s.connected && s.routed && s.clear && s.relaxed);
-      tr.classList.toggle('cut', !!w && windowed && w.maintenance.isDown(i));
-      tr.classList.toggle('bypassed', !!w?.maintenance.bypassed.has(i));
+      row.querySelector('.s-relax')!.setAttribute('title', strain ? tr({ fr: `Cordon ${strainLabel(strain)}`, en: `Cord ${strainLabel(strain)}` }) : relaxedTip());
+      row.classList.toggle('done', s.connected && s.routed && s.clear && s.relaxed);
+      row.classList.toggle('cut', !!w && windowed && w.maintenance.isDown(i));
+      row.classList.toggle('bypassed', !!w?.maintenance.bypassed.has(i));
     });
     const n = ev.total;
     this.showDowntime(ev, ctl, level);
@@ -78,13 +85,15 @@ export class SchedulePanel {
     setBar('#bar-bundle', Math.min(ev.bundles, ev.bundlesNeeded), ev.bundlesNeeded);
     $('#bar-bundle').style.display = ev.bundlesNeeded ? '' : 'none';
     this.showGauge(cleanliness(ev));
-    $('#note').innerHTML = `Lisibilité <b>${ev.readability.note}</b>`;
-    $('#note').title = ev.readability.parts.map((p) => { const t = readabilityText(p); return `${t.name} : ${Math.round(p.value * 100)} % (${t.tip})`; }).join('\n');
+    $('#note').innerHTML = `${tr({ fr: 'Lisibilité', en: 'Readability' })} <b>${ev.readability.note}</b>`;
+    $('#note').title = ev.readability.parts.map((p) => { const t = readabilityText(p); return tr({ fr: `${t.name} : ${Math.round(p.value * 100)} % (${t.tip})`, en: `${t.name}: ${Math.round(p.value * 100)}% (${t.tip})` }); }).join('\n');
     $('#live-stars').innerHTML = starsHtml(ev.stars);
     const validate = $<HTMLButtonElement>('#btn-validate');
     validate.disabled = ev.stars < 1;
     validate.classList.toggle('ready', ev.stars >= 1);
-    validate.textContent = ev.stars < 1 ? `Branchez les ${n} liaisons du plan` : ev.stars < UNLOCK_STARS ? 'Valider (rangez pour ★★)' : 'Valider la baie';
+    validate.textContent = ev.stars < 1 ? tr({ fr: `Branchez les ${n} liaisons du plan`, en: `Plug the ${n} links of the schedule` })
+      : ev.stars < UNLOCK_STARS ? tr({ fr: 'Valider (rangez pour ★★)', en: 'Sign off (tidy up for ★★)' })
+      : tr({ fr: 'Valider la baie', en: 'Sign off the cabinet' });
   }
 
   /** the downtime budget: spent, and how fast it goes now */
@@ -94,18 +103,21 @@ export class SchedulePanel {
     if (!w || level?.downtime === undefined) return;
     const rate = [...w.maintenance.live].reduce((sum, i) => sum + (w.circuitUp(i) ? 0 : w.maintenance.cutCost(i)), 0);
     const percent = Math.min(100, (100 * ev.downtime) / ev.budget);
-    el.innerHTML = `⚡ Interruption <b>${Math.round(ev.downtime)}/${ev.budget}</b>${rate > 0 ? ` <em>+${formatCost(rate)}/s</em>` : ''}<div class="bar"><div class="fill" style="width:${percent}%"></div></div>`;
+    el.innerHTML = `⚡ ${tr({ fr: 'Interruption', en: 'Downtime' })} <b>${Math.round(ev.downtime)}/${ev.budget}</b>${rate > 0 ? ` <em>+${formatCost(rate)}/s</em>` : ''}<div class="bar"><div class="fill" style="width:${percent}%"></div></div>`;
     el.className = ev.downtime > ev.budget ? 'full' : rate > 0 ? 'some' : '';
     el.title = ev.downtime > ev.budget
-      ? 'Incident : le budget d\'interruption est dépassé, ★★★ n\'est plus possible.'
-      : 'Budget d\'interruption : chaque seconde où une liaison ⚡ est coupée coûte le poids de son service (survolez un service du plan). Au-delà du budget, plus de ★★★.';
+      ? tr({ fr: 'Incident : le budget d\'interruption est dépassé, ★★★ n\'est plus possible.', en: 'Incident: the downtime budget is overrun, ★★★ is out of reach.' })
+      : tr({
+        fr: 'Budget d\'interruption : chaque seconde où une liaison ⚡ est coupée coûte le poids de son service (survolez un service du plan). Au-delà du budget, plus de ★★★.',
+        en: 'Downtime budget: every second a ⚡ link is cut costs its service\'s weight (hover a service on the schedule). Beyond the budget, no more ★★★.',
+      });
   }
 
   /** the overall gauge (0..1); it flashes when it goes up */
   private showGauge(value: number): void {
     const el = $('#clean');
     const percent = Math.round(value * 100);
-    el.querySelector('b')!.textContent = `${percent} %`;
+    el.querySelector('b')!.textContent = tr({ fr: `${percent} %`, en: `${percent}%` });
     (el.querySelector('.fill') as HTMLElement).style.width = `${percent}%`;
     if (this.gaugePercent >= 0 && percent > this.gaugePercent) {
       el.classList.add('bump');
@@ -114,6 +126,10 @@ export class SchedulePanel {
     }
     this.gaugePercent = percent;
   }
+}
+
+function relaxedTip(): string {
+  return tr({ fr: 'Ni tendu ni plié', en: 'Neither taut nor kinked' });
 }
 
 /** a score bar: `value` of `total` */

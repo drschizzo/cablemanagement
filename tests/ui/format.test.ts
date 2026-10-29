@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { formatCost, formatLength, formatTime } from '../../src/ui/format';
+import { setLanguage } from '../../src/ui/language';
 
 describe('numbers as the player reads them', () => {
   it('writes a cost in points, with a decimal comma', () => {
@@ -19,5 +20,15 @@ describe('numbers as the player reads them', () => {
     expect(formatTime(0)).toBe('0:00');
     expect(formatTime(65.9)).toBe('1:05');
     expect(formatTime(600)).toBe('10:00');
+  });
+});
+
+describe('numbers in English', () => {
+  beforeEach(() => setLanguage('en'));
+  afterEach(() => setLanguage('fr'));
+
+  it('writes a decimal point', () => {
+    expect(formatCost(0.25)).toBe('0.25 pt');
+    expect(formatLength(1.5)).toBe('1.50 m');
   });
 });

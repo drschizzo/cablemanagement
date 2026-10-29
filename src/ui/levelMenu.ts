@@ -11,6 +11,7 @@ import { hide, show, starsHtml } from './dom';
 import { $ } from '../lib/page';
 import { isUnlocked } from './progress';
 import { levelTitle } from './levelTexts';
+import { tr } from './language';
 
 export class LevelMenu {
   private start: (level: LevelDef) => void = () => {};
@@ -20,7 +21,7 @@ export class LevelMenu {
     $('#menu-back').onclick = () => { hide('#menu'); this.back(); };
     const cordCount = $<HTMLInputElement>('#free-n');
     const cordCountLabel = $('#free-n-val');
-    cordCount.oninput = () => { cordCountLabel.textContent = `${cordCount.value} câbles`; };
+    cordCount.oninput = () => { cordCountLabel.textContent = tr({ fr: `${cordCount.value} câbles`, en: `${cordCount.value} cords` }); };
     $('#free-go').onclick = () => this.choose(freeLevel(Number(cordCount.value), Math.floor(Math.random() * 1e9)));
   }
 
@@ -28,6 +29,8 @@ export class LevelMenu {
   show(progress: Progress, start: (level: LevelDef) => void, back: () => void): void {
     this.start = start;
     this.back = back;
+    // its words, in the language spoken now
+    $('#free-n').dispatchEvent(new Event('input'));
     const box = $('#menu-levels');
     box.innerHTML = '';
     box.appendChild(this.tutorialCard());
@@ -43,8 +46,8 @@ export class LevelMenu {
   private tutorialCard(): HTMLElement {
     const card = document.createElement('button');
     card.className = 'level-card tutorial';
-    card.innerHTML = `<div class="num">0</div><div class="t">Tutoriel</div>
-      <div class="meta">Les équipements, les gestes, le score</div>${load('tutorialDone') ? '<div class="best">✓ suivi</div>' : ''}`;
+    card.innerHTML = `<div class="num">0</div><div class="t">${tr({ fr: 'Tutoriel', en: 'Tutorial' })}</div>
+      <div class="meta">${tr({ fr: 'Les équipements, les gestes, le score', en: 'The equipment, the gestures, the score' })}</div>${load('tutorialDone') ? `<div class="best">${tr({ fr: '✓ suivi', en: '✓ done' })}</div>` : ''}`;
     card.onclick = () => this.choose(TUTORIAL);
     return card;
   }
@@ -56,9 +59,9 @@ export class LevelMenu {
     const card = document.createElement('button');
     card.className = 'level-card' + (unlocked ? '' : ' locked');
     card.innerHTML = `<div class="num">${index + 1}</div><div class="t">${levelTitle(level)}</div>
-      <div class="meta">${level.cables} câbles${level.labels ? ' · étiquettes' : ''}</div>
-      <div class="stars">${starsHtml(stars)}${progress.challenges[level.id] ? '<span class="par" title="Défi chrono réussi">⏱</span>' : ''}</div>${best ? `<div class="best">${formatTime(best)}</div>` : ''}
-      ${unlocked ? '' : `<div class="lock">${'★'.repeat(UNLOCK_STARS)} au niveau ${index} pour l'ouvrir</div>`}`;
+      <div class="meta">${tr({ fr: `${level.cables} câbles${level.labels ? ' · étiquettes' : ''}`, en: `${level.cables} cords${level.labels ? ' · labels' : ''}` })}</div>
+      <div class="stars">${starsHtml(stars)}${progress.challenges[level.id] ? `<span class="par" title="${tr({ fr: 'Défi chrono réussi', en: 'Time challenge won' })}">⏱</span>` : ''}</div>${best ? `<div class="best">${formatTime(best)}</div>` : ''}
+      ${unlocked ? '' : `<div class="lock">${tr({ fr: `${'★'.repeat(UNLOCK_STARS)} au niveau ${index} pour l'ouvrir`, en: `${'★'.repeat(UNLOCK_STARS)} on level ${index} to open it` })}</div>`}`;
     if (unlocked) card.onclick = () => this.choose(level);
     return card;
   }

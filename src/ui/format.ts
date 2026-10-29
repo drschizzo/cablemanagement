@@ -1,13 +1,23 @@
-// Numbers as the player reads them (French conventions: decimal comma).
+// Numbers as the player reads them, in the language spoken (a decimal comma
+// in French, a point in English).
+
+import { tr } from './language';
+
+/** a decimal number with the separator of the language spoken */
+export function formatDecimal(value: number, digits: number): string {
+  const text = value.toFixed(digits);
+  return tr({ fr: text.replace('.', ','), en: text });
+}
 
 /** downtime per second, as the budget counts it */
 export function formatCost(points: number): string {
-  return `${Number.isInteger(points) ? points : points.toFixed(2).replace(/0$/, '').replace('.', ',')} pt${points > 1 ? 's' : ''}`;
+  const value = Number.isInteger(points) ? String(points) : formatDecimal(points, 2).replace(/0$/, '');
+  return `${value} pt${points > 1 ? 's' : ''}`;
 }
 
 /** a cord length: in centimetres under a metre, else in metres */
 export function formatLength(metres: number): string {
-  return metres < 1 ? `${Math.round(metres * 100)} cm` : `${metres.toFixed(metres % 1 ? 2 : 0).replace('.', ',')} m`;
+  return metres < 1 ? `${Math.round(metres * 100)} cm` : `${formatDecimal(metres, metres % 1 ? 2 : 0)} m`;
 }
 
 /** a duration as minutes:seconds */

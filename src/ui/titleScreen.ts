@@ -6,6 +6,7 @@ import type { LevelDef } from '../game/levels/levelDef';
 import { load } from './storage';
 import { $ } from '../lib/page';
 import { levelTitle } from './levelTexts';
+import { onLanguageChange, tr } from './language';
 
 export interface TitleActions {
   start(level: LevelDef): void;
@@ -28,6 +29,7 @@ export class TitleScreen {
     byId('title-tuto').onclick = () => actions.start(TUTORIAL);
     byId('title-levels').onclick = () => actions.showMenu();
     byId('title-settings').onclick = () => actions.showSettings();
+    onLanguageChange(() => this.refresh());
   }
 
   /** how far the aisle has fallen (0..1) */
@@ -39,8 +41,10 @@ export class TitleScreen {
   refresh(): void {
     const next = this.actions.nextLevel();
     const play = byId('title-play');
-    play.textContent = this.firstVisit() ? 'Commencer →' : next && next !== LEVELS[0] ? `Continuer · ${levelTitle(next)} →` : 'Jouer →';
-    play.title = this.firstVisit() ? 'Le tutoriel, puis le niveau 1' : '';
+    play.textContent = this.firstVisit() ? tr({ fr: 'Commencer →', en: 'Start →' })
+      : next && next !== LEVELS[0] ? tr({ fr: `Continuer · ${levelTitle(next)} →`, en: `Continue · ${levelTitle(next)} →` })
+      : tr({ fr: 'Jouer →', en: 'Play →' });
+    play.title = this.firstVisit() ? tr({ fr: 'Le tutoriel, puis le niveau 1', en: 'The tutorial, then level 1' }) : '';
   }
 
   /** a first visit starts with the tutorial; afterwards, where the player left off */

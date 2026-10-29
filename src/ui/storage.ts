@@ -5,6 +5,7 @@
 // formats are those of earlier versions, so players keep their progress.
 
 import { AUTO_QUALITY, QUALITY, type QualityChoice } from '../render/quality';
+import { LANGUAGES, preferredLanguage, type Language } from './language';
 
 /** best result per level id: stars (1..3), time (s), readability note (0..100), and the time challenges won */
 export interface Progress {
@@ -57,6 +58,14 @@ const ENTRIES = {
     format: (v: QualityChoice) => JSON.stringify(v),
     valid: isQualityChoice,
   } satisfies Entry<QualityChoice>,
+  /** the language chosen in the settings; the browser's, until then */
+  language: {
+    key: 'cable.language',
+    fallback: (): Language => preferredLanguage(navigator.languages ?? [navigator.language]),
+    parse: (raw: string) => raw as Language,
+    format: (v: Language) => v,
+    valid: (v: Language) => LANGUAGES.some((l) => l.id === v),
+  } satisfies Entry<Language>,
   /** the sound is off */
   muted: {
     key: 'cable.muted',

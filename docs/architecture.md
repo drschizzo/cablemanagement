@@ -84,6 +84,8 @@ src/
     settingsPanel.ts les paramètres : qualité de l'image (auto, préréglages, détails) et son
     progress.ts     la progression du joueur : meilleur score, niveau ouvert, niveau suivant (fonctions pures)
     messages.ts     tous les textes d'une partie : messages, aides, bulle d'un cordon, critères de lisibilité
+    language.ts     la langue parlée (français, anglais) : tr({ fr, en }) choisit les mots, onLanguageChange fait
+                    réécrire ce qui n'est écrit qu'une fois ; pageTexts.ts, les mots de index.html (data-i18n)
     names.ts        le nom des choses : services (et ce qu'ils portent), fournitures, sortes de cordon, plaques des équipements
     levelTexts.ts   les mots de chaque niveau : titre, brief, conseils (ceux de la campagne par id ; les autres d'après ce qu'ils sont)
     tutorial.ts     le tutoriel guidé, par-dessus un niveau
@@ -198,7 +200,7 @@ sur le fil principal.
 ## Données dans le navigateur
 
 `ui/storage.ts` déclare chaque entrée (clé, valeur par défaut, validation) : progression (étoiles et meilleurs temps
-par niveau), tutoriel terminé, qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu) et son
+par niveau), tutoriel terminé, langue (celle du navigateur tant que le joueur n'en a pas choisi), qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu) et son
 coupé. Les clés sont celles des versions précédentes.
 
 ## Ajouter…
@@ -213,6 +215,7 @@ coupé. Les clés sont celles des versions précédentes.
 | un critère de score | `evaluate()` (`game/evaluation.ts`), sa colonne dans le plan (`ui/schedulePanel.ts`) |
 | un panneau de l'interface | un fichier dans `ui/`, créé et appelé par `Hud` (`ui/hud.ts`) |
 | une étape du tutoriel | `STEPS` dans `ui/tutorial.ts` (`done` lit `ctl.counters` ou l'état du monde) |
+| un texte | à l'endroit où il s'affiche, dans chaque langue : `tr({ fr: '…', en: '…' })` (`ui/language.ts`) ; un texte de `index.html` : une clé `data-i18n` et ses mots dans `ui/pageTexts.ts` (un test vérifie les deux listes) ; une langue : une entrée dans `Language` et `LANGUAGES`, le compilateur liste chaque texte à traduire |
 | un message du contrôleur à l'interface | `ControllerEvents` (`play/context.ts`), relié dans `app/app.ts` |
 | un raccourci clavier | `InputRouter.bindKeys` (`play/inputRouter.ts`), son action sur le contrôleur ou l'outil |
 | une option de la page | `readUrlOptions` (`app/urlOptions.ts`) et son test |

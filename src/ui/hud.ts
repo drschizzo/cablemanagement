@@ -27,6 +27,7 @@ import { SettingsPanel, type QualityControl } from './settingsPanel';
 import { confirmLeaving } from './confirmDialog';
 import { recordResult } from './progress';
 import { levelTitle } from './levelTexts';
+import { onLanguageChange, tr } from './language';
 
 /** how long a toast stays (ms) */
 const TOAST_MS = 2200;
@@ -60,10 +61,10 @@ export class Hud {
     this.settings = new SettingsPanel(quality, { isOn: () => !isMuted(), toggle: () => this.toggleSound() });
     this.pause = new PauseMenu({
       help: () => this.level && this.showBrief(this.level),
-      restart: (back) => this.leaveLevel('Recommencer le niveau ?', 'Recommencer', () => this.level && actions.start(this.level), back),
+      restart: (back) => this.leaveLevel(tr({ fr: 'Recommencer le niveau ?', en: 'Restart the level?' }), tr({ fr: 'Recommencer', en: 'Restart' }), () => this.level && actions.start(this.level), back),
       levels: (back) => this.showMenuOverLevel(back),
       settings: (back) => this.settings.show(back),
-      home: (back) => this.leaveLevel('Quitter le niveau ?', 'Quitter', actions.home, back),
+      home: (back) => this.leaveLevel(tr({ fr: 'Quitter le niveau ?', en: 'Leave the level?' }), tr({ fr: 'Quitter', en: 'Leave' }), actions.home, back),
     });
     $('#btn-menu').onclick = () => this.openPause();
     $('#btn-view').onclick = () => this.ctl?.stage.resetView();
@@ -73,6 +74,19 @@ export class Hud {
     window.addEventListener('keydown', (e) => this.onKey(e));
     setMuted(load('muted'));
     this.showSound();
+    onLanguageChange(() => this.rewrite());
+  }
+
+  /** the language changed: what the panels wrote once is written again */
+  private rewrite(): void {
+    this.toolbar.rewrite();
+    const ctl = this.ctl, level = this.level;
+    if (!ctl || !level) return;
+    $('#level-title').textContent = levelTitle(level);
+    this.schedule.build(ctl, level);
+    this.refreshInventory();
+    this.hint(null);
+    this.onEval(ctl.lastEval);
   }
 
   /** a level starts: every panel follows it */
@@ -95,7 +109,7 @@ export class Hud {
 
   /** the levels menu over the level under way: the level chosen replaces it, asked first */
   private showMenuOverLevel(back: () => void): void {
-    const choose = (level: LevelDef) => this.leaveLevel('Changer de niveau ?', 'Changer', () => this.actions.start(level), () => this.showMenuOverLevel(back));
+    const choose = (level: LevelDef) => this.leaveLevel(tr({ fr: 'Changer de niveau ?', en: 'Change level?' }), tr({ fr: 'Changer', en: 'Change' }), () => this.actions.start(level), () => this.showMenuOverLevel(back));
     this.levelMenu.show(this.progress, choose, back);
   }
 
@@ -107,7 +121,7 @@ export class Hud {
   /** the image stepped down by itself to keep up */
   qualityLowered(choice: QualityChoice): void {
     this.settings.qualityLowered(choice);
-    this.toast('Image allégée pour rester fluide (Paramètres pour la régler)');
+    this.toast(tr({ fr: 'Image allégée pour rester fluide (Paramètres pour la régler)', en: 'Image lightened to stay smooth (Settings to adjust it)' }));
   }
 
   showBrief(level: LevelDef): void {

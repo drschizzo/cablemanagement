@@ -11,41 +11,41 @@
     <div id="view"></div>
 
     <header id="topbar">
-      <button id="btn-menu" class="ghost" title="Menu (Échap)">☰ Menu</button>
+      <button id="btn-menu" class="ghost" data-i18n="top.menu" data-i18n-title="top.menuTip"></button>
       <div id="level-title"></div>
       <div id="timer">0:00</div>
       <div id="cuts"></div>
       <div class="spacer"></div>
-      <button id="btn-view" class="ghost" title="Vue de face (R)">⟲ Vue</button>
-      <button id="btn-sound" class="ghost" title="Son (M)">♪</button>
-      <button id="btn-help" class="ghost" title="Consignes">?</button>
+      <button id="btn-view" class="ghost" data-i18n="top.view" data-i18n-title="top.viewTip"></button>
+      <button id="btn-sound" class="ghost" data-i18n-title="top.soundTip">♪</button>
+      <button id="btn-help" class="ghost" data-i18n-title="top.helpTip">?</button>
     </header>
 
     <nav id="toolbar"></nav>
 
     <aside id="side">
-      <h2>Plan de brassage</h2>
+      <h2 data-i18n="side.schedule"></h2>
       <div class="plan-wrap">
         <table id="plan">
-          <thead><tr><th>#</th><th>Liaison</th><th>Fibre</th><th>Service</th><th>État</th></tr></thead>
+          <thead><tr><th>#</th><th data-i18n="side.link"></th><th data-i18n="side.cord"></th><th data-i18n="side.service"></th><th data-i18n="side.state"></th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
-      <div id="clean" title="Propreté de la baie : branchements, rangement, façade, mou"><span>Propreté</span><b>0 %</b><div class="bar"><div class="fill"></div></div></div>
+      <div id="clean" data-i18n-title="side.cleanTip"><span data-i18n="side.clean"></span><b>0 %</b><div class="bar"><div class="fill"></div></div></div>
       <div id="note"></div>
-      <div class="legend"><i class="s-conn ok"></i>branchée <i class="s-route ok"></i>rangée <i class="s-clear ok"></i>façade <i class="s-relax ok"></i>sans tension</div>
+      <div class="legend" data-i18n="side.legend"></div>
       <div id="scores">
-        <div class="score" id="bar-conn"><span>Connexions</span><div class="bar"><div class="fill"></div></div><span class="val"></span></div>
-        <div class="score" id="bar-route"><span>Rangement</span><div class="bar"><div class="fill"></div></div><span class="val"></span></div>
-        <div class="score" id="bar-clear"><span>Façade</span><div class="bar"><div class="fill"></div></div><span class="val"></span></div>
-        <div class="score" id="bar-relax" title="Un cordon bien plus court que son chemin rangé est tendu ; une fibre en angle vif est pliée"><span>Sans tension</span><div class="bar"><div class="fill"></div></div><span class="val"></span></div>
-        <div class="score" id="bar-bundle" title="Velcros serrant au moins 3 câbles, dans un guide-câbles ou une goulotte"><span>Faisceaux</span><div class="bar"><div class="fill"></div></div><span class="val"></span></div>
+        <div class="score" id="bar-conn"><span data-i18n="side.connections"></span><div class="bar"><div class="fill"></div></div><span class="val"></span></div>
+        <div class="score" id="bar-route"><span data-i18n="side.routing"></span><div class="bar"><div class="fill"></div></div><span class="val"></span></div>
+        <div class="score" id="bar-clear"><span data-i18n="side.front"></span><div class="bar"><div class="fill"></div></div><span class="val"></span></div>
+        <div class="score" id="bar-relax" data-i18n-title="side.relaxedTip"><span data-i18n="side.relaxed"></span><div class="bar"><div class="fill"></div></div><span class="val"></span></div>
+        <div class="score" id="bar-bundle" data-i18n-title="side.bundlesTip"><span data-i18n="side.bundles"></span><div class="bar"><div class="fill"></div></div><span class="val"></span></div>
       </div>
       <div id="live-stars"></div>
-      <button id="btn-validate" disabled>Valider la baie</button>
+      <button id="btn-validate" disabled></button>
     </aside>
 
-    <div id="prep"><span><b>Préparation</b> — la baie est figée et le chrono arrêté : lisez le plan, posez vos supports (guide-câbles, goulottes, anneaux) là où les câbles passeront.</span><button id="prep-go" class="primary">Lancer le chantier ▶</button></div>
+    <div id="prep"><span data-i18n="prep.text"></span><button id="prep-go" class="primary" data-i18n="prep.go"></button></div>
     <div id="hint"></div>
     <div id="tooltip"></div>
     <div id="toast"></div>
@@ -54,15 +54,15 @@
 
     <div id="menu" class="overlay">
       <div class="panel wide">
-        <button id="menu-back" class="link back">← Retour</button>
-        <h1>Niveaux</h1>
-        <p class="sub">Deux étoiles à un niveau ouvrent le suivant.</p>
+        <button id="menu-back" class="link back" data-i18n="common.back"></button>
+        <h1 data-i18n="menu.title"></h1>
+        <p class="sub" data-i18n="menu.sub"></p>
         <div id="menu-levels"></div>
         <div class="free">
-          <span>Partie libre :</span>
+          <span data-i18n="menu.free"></span>
           <input id="free-n" type="range" min="4" max="48" step="2" value="16" />
-          <span id="free-n-val">16 câbles</span>
-          <button id="free-go">Générer une baie</button>
+          <span id="free-n-val"></span>
+          <button id="free-go" data-i18n="menu.freeGo"></button>
         </div>
       </div>
     </div>
@@ -73,117 +73,119 @@
         <p id="brief-text"></p>
         <ul id="brief-tips"></ul>
         <p id="brief-inv" class="sub"></p>
-        <button id="brief-go" class="primary">Commencer</button>
+        <button id="brief-go" class="primary" data-i18n="brief.go"></button>
       </div>
     </div>
 
     <div id="result" class="overlay">
       <div class="panel">
-        <h1>Baie validée</h1>
+        <h1 data-i18n="result.title"></h1>
         <div id="result-stars"></div>
         <p id="result-time"></p>
         <div id="result-ba">
-          <figure><img id="ba-before" alt="La baie au départ" /><figcaption>Avant</figcaption></figure>
-          <figure><img id="ba-after" alt="La baie validée" /><figcaption>Après</figcaption></figure>
+          <figure><img id="ba-before" data-i18n-alt="result.beforeAlt" /><figcaption data-i18n="common.before"></figcaption></figure>
+          <figure><img id="ba-after" data-i18n-alt="result.afterAlt" /><figcaption data-i18n="common.after"></figcaption></figure>
         </div>
         <div id="result-note"></div>
         <ul id="result-lines"></ul>
         <div class="row">
-          <button id="result-again" class="ghost">Continuer à ranger</button>
-          <button id="result-home" class="ghost">Accueil</button>
-          <button id="result-menu" class="ghost">Niveaux</button>
-          <button id="result-next" class="primary">Niveau suivant →</button>
+          <button id="result-again" class="ghost" data-i18n="result.again"></button>
+          <button id="result-home" class="ghost" data-i18n="common.home"></button>
+          <button id="result-menu" class="ghost" data-i18n="common.levels"></button>
+          <button id="result-next" class="primary"></button>
         </div>
       </div>
     </div>
 
     <div id="title">
-      <div class="kicker">Un jeu de câblage réseau</div>
+      <div class="kicker" data-i18n="title.kicker"></div>
       <h1 class="logo">Brassage</h1>
       <div class="leds" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-      <p class="tagline">Démêlez, rebranchez, rangez.</p>
+      <p class="tagline" data-i18n="title.tagline"></p>
       <div id="title-load"><div class="bar"><div class="fill"></div></div></div>
       <nav class="menu">
-        <button id="title-play" class="primary">Jouer →</button>
-        <button id="title-tuto" class="ghost">Tutoriel</button>
-        <button id="title-levels" class="ghost">Niveaux</button>
-        <button id="title-settings" class="ghost">Paramètres</button>
+        <button id="title-play" class="primary"></button>
+        <button id="title-tuto" class="ghost" data-i18n="common.tutorial"></button>
+        <button id="title-levels" class="ghost" data-i18n="common.levels"></button>
+        <button id="title-settings" class="ghost" data-i18n="common.settings"></button>
       </nav>
     </div>
 
     <div id="showcase">
       <div class="row">
-        <div id="sc-switch" class="before" role="group" aria-label="Avant / après">
+        <div id="sc-switch" class="before" role="group" data-i18n-aria="showcase.switch">
           <i class="thumb"></i>
-          <button id="sc-before" aria-pressed="true">Avant</button>
-          <button id="sc-after" aria-pressed="false">Après</button>
+          <button id="sc-before" aria-pressed="true" data-i18n="common.before"></button>
+          <button id="sc-after" aria-pressed="false" data-i18n="common.after"></button>
         </div>
-        <button id="sc-new" title="Tirer d'autres baies au hasard" aria-label="Tirer d'autres baies au hasard">↻</button>
+        <button id="sc-new" data-i18n-title="showcase.another" data-i18n-aria="showcase.another">↻</button>
       </div>
       <p id="sc-caption"></p>
     </div>
 
     <div id="tuto">
-      <div class="head"><span id="tuto-n"></span><button id="tuto-skip" class="link">Passer le tutoriel</button></div>
+      <div class="head"><span id="tuto-n"></span><button id="tuto-skip" class="link" data-i18n="tuto.skip"></button></div>
       <h3 id="tuto-title"></h3>
       <p id="tuto-text"></p>
       <div id="tuto-task"></div>
       <div class="row">
-        <button id="tuto-prev" class="ghost">← Précédent</button>
-        <button id="tuto-next" class="primary">Suivant →</button>
+        <button id="tuto-prev" class="ghost" data-i18n="tuto.prev"></button>
+        <button id="tuto-next" class="primary"></button>
       </div>
       <div id="tuto-end" class="row">
-        <button id="tuto-home" class="ghost">Accueil</button>
-        <button id="tuto-play" class="primary">Jouer le niveau 1 →</button>
+        <button id="tuto-home" class="ghost" data-i18n="common.home"></button>
+        <button id="tuto-play" class="primary" data-i18n="tuto.play"></button>
       </div>
     </div>
 
     <div id="pause" class="overlay">
       <div class="panel">
-        <h1>Pause</h1>
+        <h1 data-i18n="pause.title"></h1>
         <p id="pause-level" class="sub"></p>
         <nav class="stack">
-          <button id="pause-resume" class="primary">Reprendre</button>
-          <button id="pause-help" class="ghost">Consignes du niveau</button>
-          <button id="pause-restart" class="ghost">Recommencer le niveau</button>
-          <button id="pause-levels" class="ghost">Choisir un niveau</button>
-          <button id="pause-settings" class="ghost">Paramètres</button>
-          <button id="pause-home" class="ghost">Retour à l'accueil</button>
+          <button id="pause-resume" class="primary" data-i18n="pause.resume"></button>
+          <button id="pause-help" class="ghost" data-i18n="pause.help"></button>
+          <button id="pause-restart" class="ghost" data-i18n="pause.restart"></button>
+          <button id="pause-levels" class="ghost" data-i18n="pause.levels"></button>
+          <button id="pause-settings" class="ghost" data-i18n="common.settings"></button>
+          <button id="pause-home" class="ghost" data-i18n="pause.home"></button>
         </nav>
       </div>
     </div>
     <div id="confirm" class="overlay">
       <div class="panel">
         <h1 id="confirm-title"></h1>
-        <p class="sub">La baie en cours sera perdue.</p>
+        <p class="sub" data-i18n="confirm.lost"></p>
         <div class="row">
-          <button id="confirm-no" class="ghost">Annuler</button>
+          <button id="confirm-no" class="ghost" data-i18n="common.cancel"></button>
           <button id="confirm-yes" class="primary"></button>
         </div>
       </div>
     </div>
     <div id="settings" class="overlay">
       <div class="panel">
-        <button id="settings-back" class="link back">← Retour</button>
-        <h1>Paramètres</h1>
-        <h2>Qualité de l'image</h2>
-        <div id="q-presets" class="choices" role="group" aria-label="Qualité de l'image"></div>
+        <button id="settings-back" class="link back" data-i18n="common.back"></button>
+        <h1 data-i18n="common.settings"></h1>
+        <h2 data-i18n="settings.language"></h2>
+        <div id="lang-choices" class="choices" role="group" data-i18n-aria="settings.language"></div>
+        <h2 data-i18n="settings.quality"></h2>
+        <div id="q-presets" class="choices" role="group" data-i18n-aria="settings.quality"></div>
         <p id="q-status" class="sub"></p>
-        <button id="q-reset" class="link">Revenir à la meilleure image, puis ajuster</button>
+        <button id="q-reset" class="link" data-i18n="settings.reset"></button>
         <details id="q-details">
-          <summary>Réglages détaillés</summary>
+          <summary data-i18n="settings.details"></summary>
           <div class="grid">
-            <label>Définition <select id="q-ratio"></select></label>
-            <label>Ombres <select id="q-shadow"></select></label>
-            <label><input id="q-ao" type="checkbox" /> Occlusion ambiante</label>
-            <label><input id="q-ssr" type="checkbox" /> Reflets au sol</label>
+            <label><span data-i18n="settings.ratio"></span> <select id="q-ratio"></select></label>
+            <label><span data-i18n="settings.shadows"></span> <select id="q-shadow"></select></label>
+            <label><input id="q-ao" type="checkbox" /> <span data-i18n="settings.ao"></span></label>
+            <label><input id="q-ssr" type="checkbox" /> <span data-i18n="settings.ssr"></span></label>
           </div>
         </details>
-        <h2>Son</h2>
-        <label><input id="set-sound" type="checkbox" /> Effets sonores</label>
+        <h2 data-i18n="settings.sound"></h2>
+        <label><input id="set-sound" type="checkbox" /> <span data-i18n="settings.effects"></span></label>
       </div>
     </div>
-    <div id="loading" class="overlay"><div class="panel"><p>Emmêlage des câbles…</p></div></div>
+    <div id="loading" class="overlay"><div class="panel"><p data-i18n="loading"></p></div></div>
 
     <script type="module" src="/src/main.ts"></script>
   </body>

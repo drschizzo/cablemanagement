@@ -1,6 +1,6 @@
-// Entry point: reads the page's options, creates the stage at the quality
-// chosen and the game (app/), then opens the title screen. Every visit opens
-// on it.
+// Entry point: speaks the language chosen, reads the page's options, creates
+// the stage at the quality chosen and the game (app/), then opens the title
+// screen. Every visit opens on it.
 
 import { Stage } from './render/stage';
 import { App } from './app/app';
@@ -14,6 +14,13 @@ import { $ } from './lib/page';
 import { showGpuNotice } from './ui/notice';
 import { load } from './ui/storage';
 import { QUALITY } from './render/quality';
+import { onLanguageChange, setLanguage } from './ui/language';
+import { writePageTexts } from './ui/pageTexts';
+
+// the language first: everything written from now on is in it
+setLanguage(load('language'));
+writePageTexts();
+onLanguageChange(() => writePageTexts());
 
 const options = readUrlOptions(location.search);
 const aisles = aisleSettings(options);

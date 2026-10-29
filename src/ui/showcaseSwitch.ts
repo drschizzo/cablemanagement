@@ -3,16 +3,20 @@
 // this shows it.
 
 import { $ } from '../lib/page';
+import { onLanguageChange, tr } from './language';
 
 type AisleState = 'before' | 'after' | 'moving';
 
 export class ShowcaseSwitch {
   private el = $('#showcase');
+  /** what the caption last said, written again when the language changes */
+  private shown: { state: AisleState; to: 'before' | 'after' | undefined; bays: number } | null = null;
 
   constructor(actions: { toggle(): void; another(): void; state(): AisleState }) {
     $('#sc-before').onclick = () => { if (actions.state() === 'after') actions.toggle(); };
     $('#sc-after').onclick = () => { if (actions.state() === 'before') actions.toggle(); };
     $('#sc-new').onclick = () => actions.another();
+    onLanguageChange(() => { if (this.shown) this.render(this.shown.state, this.shown.to, this.shown.bays); });
   }
 
   show(): void {
@@ -28,6 +32,7 @@ export class ShowcaseSwitch {
 
   /** the switch and its caption; while the aisle moves, the switch is already on its way to `to` */
   render(state: AisleState, to: 'before' | 'after' | undefined, bays: number): void {
+    this.shown = { state, to, bays };
     // the title screen follows the state too (its LEDs, its play button)
     document.body.dataset.sc = state;
     $('#sc-switch').className = state === 'moving' ? `to-${to}` : state;
@@ -36,10 +41,10 @@ export class ShowcaseSwitch {
       button.disabled = state !== (side === 'before' ? 'after' : 'before');
       button.setAttribute('aria-pressed', String(state === side || to === side));
     }
-    const what = bays > 1 ? `${bays} baies` : 'Une baie';
+    const what = bays > 1 ? tr({ fr: `${bays} baies`, en: `${bays} cabinets` }) : tr({ fr: 'Une baie', en: 'A cabinet' });
     $('#sc-caption').textContent =
-      state === 'before' ? `${what}, et le technicien précédent est passé par là.`
-      : state === 'after' ? 'Chaque cordon à sa longueur, rangé, étiqueté.'
-      : to === 'after' ? 'Rangement en cours…' : 'Retour au désordre…';
+      state === 'before' ? tr({ fr: `${what}, et le technicien précédent est passé par là.`, en: `${what}, and the previous technician has been through.` })
+      : state === 'after' ? tr({ fr: 'Chaque cordon à sa longueur, rangé, étiqueté.', en: 'Every cord its own length, routed, labelled.' })
+      : to === 'after' ? tr({ fr: 'Rangement en cours…', en: 'Tidying up…' }) : tr({ fr: 'Retour au désordre…', en: 'Back to the mess…' });
   }
 }
