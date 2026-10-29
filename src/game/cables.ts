@@ -14,6 +14,12 @@ export type NodeIndex = number;
 /** a line of the schedule: its place in World.circuits */
 export type CircuitIndex = number;
 
+/** one end of one cord: what a port holds when something is plugged into it */
+export interface CordEnd {
+  cable: CableIndex;
+  end: EndIndex;
+}
+
 export interface CableEnd {
   /** the port it is plugged into, or null */
   port: string | null;

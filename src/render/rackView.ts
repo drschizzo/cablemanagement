@@ -371,7 +371,7 @@ export class RackView {
    */
   showLeds(okPorts: Set<string>, down = new Set<string>(), bypass = new Set<string>()): void {
     for (const p of this.rack.ports) {
-      this.setLed(p, bypass.has(p.id) && !okPorts.has(p.id) ? 'bypass' : down.has(p.id) ? 'down' : p.plug < 0 ? 'off' : okPorts.has(p.id) ? 'ok' : 'wrong');
+      this.setLed(p, bypass.has(p.id) && !okPorts.has(p.id) ? 'bypass' : down.has(p.id) ? 'down' : !p.plugged ? 'off' : okPorts.has(p.id) ? 'ok' : 'wrong');
     }
   }
 

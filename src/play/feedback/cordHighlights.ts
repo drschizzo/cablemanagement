@@ -62,8 +62,8 @@ export class CordHighlights {
       // cords plugged into either port of the line
       const ci = this.world.circuits[this.focusedLine];
       for (const id of [ci.a, ci.b]) {
-        const pl = this.world.rack.port(id).plug;
-        if (pl >= 0) want.set(pl >> 1, FOCUS_COLOR);
+        const plugged = this.world.rack.port(id).plugged;
+        if (plugged) want.set(plugged.cable, FOCUS_COLOR);
       }
     }
     if (active >= 0) want.set(active, HOVER_COLOR);

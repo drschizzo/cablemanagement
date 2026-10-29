@@ -9,6 +9,7 @@
 import type { StaticBox, StaticCapsule } from '@drschizzo/avbd-cables';
 import type { RackShape } from './physics/rackCableSim';
 import type { ItemKind } from './supplies';
+import type { CableIndex, CordEnd } from './cables';
 import { assertNever } from './exhaustive';
 
 export const U = 0.04445;
@@ -45,8 +46,8 @@ export interface Port {
   index: number;
   x: number;
   y: number;
-  /** cable end plugged in: cable * 2 + end, or −1 */
-  plug: number;
+  /** the cord end plugged into it, or null */
+  plugged: CordEnd | null;
 }
 
 export interface Item {
@@ -119,7 +120,7 @@ export class Rack {
         const span = n <= 12 ? 0.3 : 0.38;
         for (let i = 0; i < n; i++) {
           const x = u.portsAt ? u.portsAt[i] : n === 1 ? 0 : -span / 2 + (span * i) / (n - 1);
-          this.ports.push({ id: `${u.name}${i + 1}`, unit: k, index: i, x, y: this.unitY(k), plug: -1 });
+          this.ports.push({ id: `${u.name}${i + 1}`, unit: k, index: i, x, y: this.unitY(k), plugged: null });
         }
       }
     });
@@ -133,6 +134,12 @@ export class Rack {
   /** bottom height of a unit (0 = top) */
   unitBottom(unit: number): number {
     return this.topY - (unit + 1) * U;
+  }
+
+  /** the cord plugged into both ports, or −1 */
+  cableJoining(a: string, b: string): CableIndex {
+    const pa = this.port(a).plugged, pb = this.port(b).plugged;
+    return pa && pb && pa.cable === pb.cable ? pa.cable : -1;
   }
 
   port(id: string): Port {

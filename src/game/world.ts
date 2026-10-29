@@ -111,13 +111,13 @@ export class World {
   /** a circuit carries traffic: one cord of the right type joins its two ports */
   circuitUp(i: CircuitIndex): boolean {
     const ci = this.circuits[i];
-    const pa = this.rack.port(ci.a).plug, pb = this.rack.port(ci.b).plug;
-    return pa >= 0 && pb >= 0 && pa >> 1 === pb >> 1 && this.cables[pa >> 1].type === ci.type;
+    const cable = this.rack.cableJoining(ci.a, ci.b);
+    return cable >= 0 && this.cables[cable].type === ci.type;
   }
 
   /** the production links a cord carries now (unplugging it cuts them) */
   liveLinksCarriedBy(c: CableIndex): CircuitIndex[] {
-    return [...this.maintenance.live].filter((i) => this.circuitUp(i) && this.rack.port(this.circuits[i].a).plug >> 1 === c);
+    return [...this.maintenance.live].filter((i) => this.circuitUp(i) && this.rack.port(this.circuits[i].a).plugged?.cable === c);
   }
 
   /** bumps when the cords are rebuilt (a cord swapped for another length) */
@@ -277,7 +277,7 @@ export class World {
       return { k, off: p.a - this.cables[k].start, p };
     });
     old.dispose();
-    for (const p of this.rack.ports) p.plug = -1;
+    for (const p of this.rack.ports) p.plugged = null;
     for (const a of append) {
       this.cables.push({ type: a.type, start: 0, count: 0, ends: [{ port: null, label: null }, { port: null, label: null }], color: a.color });
       ends.push([null, null]);
@@ -365,13 +365,13 @@ export class World {
 
   plug(c: CableIndex, e: EndIndex, portId: string): boolean {
     const port = this.rack.port(portId);
-    if (port.plug >= 0) return false;
+    if (port.plugged) return false;
     const end = this.cables[c].ends[e];
     if (end.port) this.unplug(c, e);
     const [n0, n1] = this.endNodes(c, e);
     end.parked = null;
     this.sim.pinEnd(n0, n1, [port.x, port.y, CONNECTOR], [port.x, port.y, CONNECTOR + this.seg]);
-    port.plug = c * 2 + e;
+    port.plugged = { cable: c, end: e };
     end.port = portId;
     this.autoLabel(c);
     return true;
@@ -410,7 +410,7 @@ export class World {
   unplug(c: CableIndex, e: EndIndex): void {
     const end = this.cables[c].ends[e];
     if (!end.port) return;
-    this.rack.port(end.port).plug = -1;
+    this.rack.port(end.port).plugged = null;
     end.port = null;
     const [n0, n1] = this.endNodes(c, e);
     this.sim.unpin(n0);

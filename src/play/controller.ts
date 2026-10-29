@@ -381,12 +381,12 @@ export class Controller implements PlayContext, InputCommands {
    */
   fetchEnd(circuit: CircuitIndex): void {
     const w = this.world, ci = w.circuits[circuit];
-    const free = [ci.a, ci.b].map((id) => w.rack.port(id)).filter((p) => p.plug < 0);
+    const free = [ci.a, ci.b].map((id) => w.rack.port(id)).filter((p) => !p.plugged);
     if (!free.length) { this.events.onToast('Ses deux ports sont occupés.'); return; }
     // its own cord first (the one made for it), else any cord of its type with a loose end
     const loose = (c: number) => w.cables[c].ends.findIndex((e) => !e.port);
-    const plugged = [ci.a, ci.b].map((id) => w.rack.port(id).plug).find((pl) => pl >= 0);
-    const order = [...(plugged !== undefined ? [plugged >> 1] : []), circuit, ...w.cables.map((_, c) => c)];
+    const plugged = [ci.a, ci.b].map((id) => w.rack.port(id).plugged).find((p) => p !== null);
+    const order = [...(plugged ? [plugged.cable] : []), circuit, ...w.cables.map((_, c) => c)];
     const c = order.find((k) => k < w.cables.length && w.cables[k].type === ci.type && loose(k) >= 0);
     if (c === undefined) {
       this.events.onToast('Aucun cordon de ce type n\'a de bout libre : débranchez celui qui est sur un mauvais port.');

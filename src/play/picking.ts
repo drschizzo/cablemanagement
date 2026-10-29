@@ -134,7 +134,7 @@ export function guideUnderPointer(world: World, pointer: Pointer): Guide | null 
 export function freePortUnderPointer(world: World, pointer: Pointer): Port | null {
   let best: Port | null = null, bestDistance = 18;
   for (const p of world.rack.ports) {
-    if (p.plug >= 0) continue;
+    if (p.plugged) continue;
     const d = pointer.screenDistance(p.x, p.y, 0);
     if (d < bestDistance) { bestDistance = d; best = p; }
   }

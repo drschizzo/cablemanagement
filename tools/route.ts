@@ -108,7 +108,7 @@ for (const seed of seeds) for (const c of [0, 1, 2, 3]) {
   tot.moved += moved; tot.movedMax = Math.max(tot.movedMax, movedMax);
   tot.penRest = Math.max(tot.penRest, penRest);
   const plugged = cb.ends[1].port === pb.id;
-  if (env.LAG && !plugged) { const [n0] = w.endNodes(c, 1); console.log('   connector', [0, 1, 2].map((d) => sim.x[3 * n0 + d].toFixed(3)).join(','), 'port', pb.x.toFixed(3), pb.y.toFixed(3), 'plug', pb.plug, 'run.plugged', run.plugged, 'goalW', sim.goalW[n0]); }
+  if (env.LAG && !plugged) { const [n0] = w.endNodes(c, 1); console.log('   connector', [0, 1, 2].map((d) => sim.x[3 * n0 + d].toFixed(3)).join(','), 'port', pb.x.toFixed(3), pb.y.toFixed(3), 'plugged', pb.plugged, 'run.plugged', run.plugged, 'goalW', sim.goalW[n0]); }
   let inG = 0;
   for (let i = cb.start; i < cb.start + cb.count; i++) if (order.some((g) => inside(g.room, sim.x, i))) inG++;
   let peak = 0;

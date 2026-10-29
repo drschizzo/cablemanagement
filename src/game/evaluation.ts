@@ -99,9 +99,7 @@ export function evaluate(w: World): Evaluation {
 
   const cableStrain = w.cables.map((_, c) => cordStrain(w, c));
   const circuits: CircuitStatus[] = w.circuits.map((ci) => {
-    let cable = -1;
-    const pa = w.rack.port(ci.a).plug, pb = w.rack.port(ci.b).plug;
-    if (pa >= 0 && pb >= 0 && pa >> 1 === pb >> 1) cable = pa >> 1;
+    const cable = w.rack.cableJoining(ci.a, ci.b);
     const connected = cable >= 0 && w.cables[cable].type === ci.type;
     const routed = connected && cableRouted[cable];
     const clear = connected && !cableObstructs[cable];

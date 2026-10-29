@@ -41,7 +41,7 @@ describe('plugging and the maintenance window', () => {
   it('unplugging a cord cuts its line and frees its port', () => {
     const port = w.cables[0].ends[0].port!;
     w.unplug(0, 0);
-    expect(w.rack.port(port).plug).toBe(-1);
+    expect(w.rack.port(port).plugged).toBeNull();
     expect(w.circuitUp(0)).toBe(false);
     expect(w.maintenance.liveDown()).toBe(1);
     expect(w.evaluate().stars).toBe(0);

@@ -55,7 +55,7 @@ for (const lv of LEVELS) {
   let failed = 0;
   for (const i of w.maintenance.live) {
     const ci = w.circuits[i];
-    const c = w.rack.port(ci.a).plug >> 1;
+    const c = w.rack.port(ci.a).plugged!.cable;
     const [p] = routePlan(w.rack, [ci]);
     // the way a technician takes: the manager by the first port, down its side, the manager by the other
     const lo = Math.min(p.upper, p.lower), hi = Math.max(p.upper, p.lower);

@@ -87,7 +87,8 @@ export function planRoute(w: World, c: CableIndex, guides: Guide[], portB: Port 
   const pa = ports[a];
   // where the other end goes: the port the stroke ends on, else its own
   let pb = portB ?? ports[b];
-  if (portB && portB.plug >= 0 && portB.plug !== c * 2 + b) return { error: `Le port ${portB.id} est déjà occupé.` };
+  const taken = portB?.plugged;
+  if (taken && !(taken.cable === c && taken.end === b)) return { error: `Le port ${portB.id} est déjà occupé.` };
   if (pb && pb === pa) pb = null;
 
   const drawn = drawnLegs(w, guides, legs, pa, pb);
@@ -601,7 +602,7 @@ export class RouteRun {
     if (this.arrived >= 0 && plan.portB && !this.plugged) {
       const b = 1 - plan.a;
       const [n0] = w.endNodes(plan.cable, b), port = w.rack.port(plan.portB);
-      this.plugged = Math.hypot(x[3 * n0] - port.x, x[3 * n0 + 1] - port.y, x[3 * n0 + 2] - CONNECTOR) < 0.03 && port.plug < 0 && w.plug(plan.cable, b, plan.portB);
+      this.plugged = Math.hypot(x[3 * n0] - port.x, x[3 * n0 + 1] - port.y, x[3 * n0 + 2] - CONNECTOR) < 0.03 && !port.plugged && w.plug(plan.cable, b, plan.portB);
     }
     w.sim.setGoals(cb.start, this.pos, this.wt);
     if (weight <= 0) this.done = true;

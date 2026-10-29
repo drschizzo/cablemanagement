@@ -307,7 +307,7 @@ export class HandTool implements ToolHandler {
     const tip = ctx.world.connectorTip(c.cable, c.end);
     let best: Port | null = null, bestScore = Infinity;
     for (const p of ctx.world.rack.ports) {
-      if (p.plug >= 0) continue;
+      if (p.plugged) continue;
       const inSpace = Math.hypot(tip[0] - p.x, tip[1] - p.y, tip[2]);
       const onScreen = ctx.pointer.screenDistance(p.x, p.y, 0);
       const score = Math.min(inSpace / 0.03, onScreen / 22);

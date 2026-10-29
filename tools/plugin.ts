@@ -45,7 +45,7 @@ for (const seed of seeds) for (const c of [0, 1, 2, 3]) for (const port of ['A2'
   const room = rack.guides().find((g) => g.kind === 'fingerManager')!.room;
   const cb = w.cables[c];
   const pa = rack.port(port);
-  if (pa.plug >= 0) w.unplug(pa.plug >> 1, pa.plug & 1);
+  if (pa.plugged) w.unplug(pa.plugged.cable, pa.plugged.end);
   // the end in the switch stays; the other comes out of the panel
   const e = cb.ends[0].port?.startsWith('S') ? 1 : 0;
   w.unplug(c, e);
