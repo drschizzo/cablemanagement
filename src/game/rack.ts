@@ -75,6 +75,8 @@ export function insideBox(b: { min: [number, number, number]; max: [number, numb
 }
 
 export const DUCT_SPAN = 4;
+/** the id of an item drawn but not installed (installed items are numbered from 1) */
+export const DRAFT_ITEM = 0;
 /** finger radius of the guides */
 export const FINGER_R = 0.003;
 /** height of the upturned tips of a manager's bottom fingers */
@@ -166,10 +168,17 @@ export class Rack {
 
   // ------------------------------------------------------------- items
 
+  /**
+   * An item as it would be installed there (a duct snaps to its slot), without
+   * installing it: the ghost of the supports tool. Its id is DRAFT_ITEM.
+   */
+  draftItem(kind: ItemKind, unit: number, side: number, locked = false): Item {
+    return { id: DRAFT_ITEM, kind, unit: kind === 'duct' ? this.ductStart(unit) : unit, side, span: kind === 'duct' ? DUCT_SPAN : 1, locked };
+  }
+
   addItem(kind: ItemKind, unit: number, side: number, locked = false): Item | null {
     if (!this.canPlace(kind, unit, side)) return null;
-    const it: Item = { id: this.nextItem++, kind, unit, side, span: kind === 'duct' ? DUCT_SPAN : 1, locked };
-    if (kind === 'duct') it.unit = this.ductStart(unit);
+    const it: Item = { ...this.draftItem(kind, unit, side, locked), id: this.nextItem++ };
     this.itemList.push(it);
     return it;
   }

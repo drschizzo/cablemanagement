@@ -18,7 +18,7 @@ const forbid = (layer, banned, message, extra = []) => ({
 });
 
 const layers = [
-  forbid('game', ['render', 'play', 'showcase', 'ui', 'app', 'audio', 'dev', 'storage', 'format'],
+  forbid('game', ['render', 'play', 'showcase', 'ui', 'app', 'audio', 'dev', 'storage', 'format', 'page'],
     'game/ est le cœur : les règles et la physique, sans affichage ni interface. Les autres couches dépendent de lui, pas l\'inverse.',
     [{ group: ['three', 'three/*'], message: 'game/ ne dessine rien : three.js appartient à render/.' }]),
   forbid('render', ['play', 'showcase', 'ui', 'app', 'audio'],

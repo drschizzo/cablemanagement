@@ -1,7 +1,8 @@
 // Small helpers shared by the panels of the interface.
 
-/** the element matching a CSS selector (the page always has it) */
-export const $ = <T extends HTMLElement = HTMLElement>(selector: string) => document.querySelector(selector) as T;
+import { $ } from '../page';
+
+export { $ };
 
 /** an overlay or panel: shown, or hidden */
 export function show(selector: string): void {

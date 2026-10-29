@@ -7,6 +7,7 @@ import type { Controller, Tool } from '../play/controller';
 import { COLUMN_X, SIDE_BACK, SIDE_IN, SIDE_OUT, U, WALL_X, insideBox } from '../game/rack';
 import { sfx } from '../audio/sfx';
 import { save } from '../storage';
+import { $ } from '../page';
 
 type Box = { min: [number, number, number]; max: [number, number, number] };
 
@@ -219,7 +220,7 @@ export class Tutorial {
   private doneAt = -1;
 
   constructor(private ctl: Controller, private hud: { selectTool(t: Tool): void }, private actions: { showcase(): void; play(): void }) {
-    this.el = document.getElementById('tuto')!;
+    this.el = $('#tuto');
     this.el.classList.add('on');
     document.body.classList.add('tutorial');
     (this.el.querySelector('#tuto-prev') as HTMLElement).onclick = () => this.go(this.i - 1);

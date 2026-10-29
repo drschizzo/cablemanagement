@@ -2,6 +2,7 @@
 // (hidden panels leave it all).
 
 import type { Stage } from '../render/stage';
+import { $ } from '../page';
 
 /** height kept free under the view for the tutorial's panel (px) */
 const TUTORIAL_PANEL = 230;
@@ -10,20 +11,20 @@ const BOTTOM_MARGIN = 50;
 
 export function measureInsets(stage: Stage): void {
   const visible = (id: string) => {
-    const el = document.getElementById(id)!;
+    const el = $('#' + id);
     return getComputedStyle(el).display !== 'none' ? el.getBoundingClientRect() : null;
   };
   const toolbar = visible('toolbar'), side = visible('side'), topbar = visible('topbar');
-  const tutorial = document.getElementById('tuto')!.classList.contains('on');
+  const tutorial = $('#tuto').classList.contains('on');
   const titleScreen = document.body.classList.contains('demo');
   // the title slides into place: its resting top, not where it is in its slide
-  const title = document.getElementById('title')!;
+  const title = $('#title');
   const titleTop = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--title-top'));
   stage.setInsets({
     left: toolbar ? toolbar.right : 0,
     right: side ? Math.max(0, window.innerWidth - side.left) : 0,
     top: titleScreen ? titleTop + title.offsetHeight : topbar ? topbar.bottom : 0,
-    bottom: tutorial ? TUTORIAL_PANEL : titleScreen ? document.getElementById('showcase')!.getBoundingClientRect().height + 24 : BOTTOM_MARGIN,
+    bottom: tutorial ? TUTORIAL_PANEL : titleScreen ? $('#showcase').getBoundingClientRect().height + 24 : BOTTOM_MARGIN,
   });
 }
 
@@ -31,5 +32,5 @@ export function measureInsets(stage: Stage): void {
 export function followInsets(stage: Stage): void {
   const measure = () => measureInsets(stage);
   window.addEventListener('resize', measure);
-  new ResizeObserver(measure).observe(document.getElementById('side')!);
+  new ResizeObserver(measure).observe($('#side'));
 }

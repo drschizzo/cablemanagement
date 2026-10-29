@@ -5,6 +5,7 @@ import { LEVELS, TUTORIAL } from '../game/levels/campaign';
 import { freeLevel } from '../game/levels/freeLevel';
 import type { LevelDef } from '../game/levels/levelDef';
 import { load } from '../storage';
+import { $ } from '../page';
 
 export interface TitleActions {
   start(level: LevelDef): void;
@@ -17,10 +18,10 @@ export interface TitleActions {
   hasProgress(): boolean;
 }
 
-const byId = (id: string) => document.getElementById(id)!;
+const byId = (id: string) => $('#' + id);
 
 export class TitleScreen {
-  private progressFill = document.querySelector<HTMLElement>('#title-load .fill')!;
+  private progressFill = $('#title-load .fill');
 
   constructor(private actions: TitleActions) {
     byId('title-play').onclick = () => { if (this.firstVisit()) actions.start(TUTORIAL); else actions.playNext(); };

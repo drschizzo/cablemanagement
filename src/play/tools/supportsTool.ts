@@ -105,8 +105,8 @@ export class SupportsTool implements ToolHandler {
     if (!s) return;
     const rack = ctx.world.rack, k = s.kind;
     const ok = s.existing ? !s.existing.locked : rack.canPlace(k, s.unit, s.side) && ctx.world.stock[k] > 0;
-    const it: Item = s.existing ?? { id: -99, kind: k, unit: k === 'duct' ? rack.ductStart(s.unit) : s.unit, side: s.side, span: k === 'duct' ? 4 : 1, locked: false };
-    this.ghost = buildItem(rack, { ...it, id: -99 }, null, s.existing || !ok ? ghostBadMat : ghostMat);
+    const it = s.existing ?? rack.draftItem(k, s.unit, s.side);
+    this.ghost = buildItem(rack, it, null, s.existing || !ok ? ghostBadMat : ghostMat);
     ctx.stage.scene.add(this.ghost);
   }
 

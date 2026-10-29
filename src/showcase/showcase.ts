@@ -21,6 +21,7 @@ import { sfx } from '../audio/sfx';
 import { Closet } from './closet';
 import { aisleLayout } from './aisleLayout';
 import type { Pause } from './bay';
+import { $ } from '../page';
 
 /** where a closet is drawn out of sight once, before it shows (see Showcase.warm) */
 const warmTarget = new THREE.WebGLRenderTarget(1, 1);
@@ -115,7 +116,7 @@ export class Showcase {
   }
 
   private constructor(private stage: Stage, private actions: { another(): void }) {
-    this.el = document.getElementById('showcase')!;
+    this.el = $('#showcase');
     this.floor = buildRoom(0);
     // hidden until start(): an aisle made ready in the background must not lay its floor over the one on screen
     this.floor.visible = false;
