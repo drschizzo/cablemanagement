@@ -1,7 +1,7 @@
 // The levels of the game, in order, and the guided tutorial.
 
 import type { CampaignLevel, TutorialLevel } from './levelDef';
-import { BLANK, FIREWALL, ROUTER, SERVER, UPS, copperPanel, ethernetSwitch, fingerManager, opticalPanel, opticalSwitch, server } from './equipment';
+import { BLANK, FIREWALL, ROUTER, SERVER, UPS, copperPanel, ethernetSwitch, fingerManager, opticalPanel, server } from './equipment';
 
 /** stars a level needs before the next one opens: connected is not enough, it must be tidy */
 export const UNLOCK_STARS = 2;
@@ -150,9 +150,9 @@ export const LEVELS: CampaignLevel[] = [
 export const TUTORIAL: TutorialLevel = {
   id: 'tuto',
   kind: 'tutorial',
-  units: [BLANK, opticalPanel('A', 12), BLANK, BLANK, BLANK, BLANK, BLANK, opticalSwitch('S', 12), BLANK, BLANK],
+  units: [BLANK, copperPanel('A', 12), BLANK, BLANK, BLANK, BLANK, BLANK, ethernetSwitch('S', 12), BLANK, BLANK],
   cables: 4, wrong: 1, loose: 0, slack: [0.25, 0.35], mess: 2,
-  labels: true, services: 2, types: ['OS2'],
+  labels: true, services: 2, types: ['CU'], colorByService: true,
   inventory: { fingerManager: 1, duct: 1, ring: 1, velcro: 2 },
   preinstalled: [{ kind: 'fingerManager', unit: 2, side: 0 }],
   seed: 5,

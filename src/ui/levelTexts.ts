@@ -76,13 +76,13 @@ const CAMPAIGN: Record<string, Words<LevelText>> = {
   },
   l4: {
     fr: {
-      title: 'Étiquetage',
-      brief: 'Pare-feu, routeur, switch : chaque liaison doit porter l\'étiquette de son service aux deux bouts.',
+      title: 'Les services',
+      brief: 'Pare-feu, routeur, switch : trois services passent par cette baie, et ils ne coûtent pas tous pareil quand on les coupe. Commencez par ce qui coûte le moins.',
       tips: ['Chaque liaison appartient à un service (sa couleur dans le plan). Un cordon branché comme prévu reçoit son étiquette tout seul. Couper la Voix ou l\'Admin coûte bien plus cher que les Données.', LENGTH_TIP.fr],
     },
     en: {
-      title: 'Labelling',
-      brief: 'Firewall, router, switch: each link must carry its service\'s label at both ends.',
+      title: 'Services',
+      brief: 'Firewall, router, switch: three services run through this cabinet, and they do not all cost the same when cut. Start with what costs least.',
       tips: ['Each link belongs to a service (its colour on the schedule). A cord plugged as planned gets its label by itself. Cutting Voice or Admin costs far more than Data.', LENGTH_TIP.en],
     },
   },

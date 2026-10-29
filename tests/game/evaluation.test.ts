@@ -6,7 +6,7 @@ import type { LevelDef } from '../../src/game/levels/levelDef';
 import { strapBundles, tidyKit, tidyLayout } from '../../src/game/idealRoutes';
 
 /** a cabinet of 20 lines with everything done; each test takes one thing away */
-const perfect: StarCounts = { total: 20, connected: 20, routed: 20, clear: 20, labelled: 20, relaxed: 20, bundles: 2, bundlesNeeded: 2, downtime: 50, budget: 50 };
+const perfect: StarCounts = { total: 20, connected: 20, routed: 20, clear: 20, labelled: 20, relaxed: 20, tautShort: 0, bundles: 2, bundlesNeeded: 2, downtime: 50, budget: 50 };
 const stars = (c: Partial<StarCounts>) => starsOf({ ...perfect, ...c });
 
 describe('the stars', () => {
@@ -81,7 +81,7 @@ describe('what the next star needs', () => {
   });
 
   it('the third: everything left, and the incident first when the budget is overrun', () => {
-    expect(next({ relaxed: 18, bundles: 1, downtime: 51 })).toEqual({ stars: 3, needs: [{ kind: 'incident' }, { kind: 'relax', count: 2 }, { kind: 'bundle', count: 1 }] });
+    expect(next({ relaxed: 18, bundles: 1, downtime: 51 })).toEqual({ stars: 3, needs: [{ kind: 'incident' }, { kind: 'relax', count: 2, short: 0 }, { kind: 'bundle', count: 1 }] });
   });
 });
 

@@ -48,6 +48,8 @@ export interface Evaluation {
   /** cords pulled taut or kinked, per cable (null: neither) */
   cableStrain: (Strain | null)[];
   relaxed: number;
+  /** m the tautest cord lacks to be slack enough (0: none taut) */
+  tautShort: number;
   readability: Readability;
   /** velcro bundles (three cords or more, in the management), and how many three stars need */
   bundles: number;
@@ -118,18 +120,19 @@ export function evaluate(w: World): Evaluation {
   const clear = count((s) => s.clear);
   const labelled = w.level.labels ? count((s) => s.labelled) : n;
   const relaxed = count((s) => s.relaxed);
+  const tautShort = w.cables.reduce((most, _, c) => cableStrain[c] === 'taut' ? Math.max(most, TAUT_SHORT * w.routeLength(c)! - w.cableLength(c)) : most, 0);
   const bundles = bundleCount(w, supports);
   const bundlesNeeded = w.level.bundles ?? 0;
-  const stars = starsOf({ total: n, connected, routed, clear, labelled, relaxed, bundles, bundlesNeeded, downtime: w.maintenance.downtime, budget: w.maintenance.budget });
+  const stars = starsOf({ total: n, connected, routed, clear, labelled, relaxed, tautShort, bundles, bundlesNeeded, downtime: w.maintenance.downtime, budget: w.maintenance.budget });
   return {
-    circuits, connected, routed, clear, labelled, relaxed, total: n, stars, cableRouted, cableObstructs, cableStrain,
+    circuits, connected, routed, clear, labelled, relaxed, tautShort, total: n, stars, cableRouted, cableObstructs, cableStrain,
     liveDown: w.maintenance.liveDown(), downtime: w.maintenance.downtime, budget: w.maintenance.budget, bundles, bundlesNeeded,
     readability: readability(w, circuits, cableStrain, supports),
   };
 }
 
 /** the counts the stars are read from */
-export type StarCounts = Pick<Evaluation, 'total' | 'connected' | 'routed' | 'clear' | 'labelled' | 'relaxed' | 'bundles' | 'bundlesNeeded' | 'downtime' | 'budget'>;
+export type StarCounts = Pick<Evaluation, 'total' | 'connected' | 'routed' | 'clear' | 'labelled' | 'relaxed' | 'tautShort' | 'bundles' | 'bundlesNeeded' | 'downtime' | 'budget'>;
 
 /** two stars need this share of the links routed, and this share clear of the ports */
 const TWO_STARS_ROUTED = 0.7;
@@ -147,9 +150,14 @@ export function starsOf(c: StarCounts): number {
   return c.routed >= TWO_STARS_ROUTED * n && c.clear >= TWO_STARS_CLEAR * n ? 2 : 1;
 }
 
-/** one thing the next star still needs: `count` more links (or bundles) to see to; an incident: three stars are out of reach */
+/**
+ * One thing the next star still needs: `count` more links (or bundles) to
+ * see to; for cords taut, how much the tautest lacks (m, 0: only kinks); an
+ * incident: three stars are out of reach.
+ */
 export type StarNeed =
-  | { kind: 'connect' | 'route' | 'clear' | 'label' | 'relax' | 'bundle'; count: number }
+  | { kind: 'connect' | 'route' | 'clear' | 'label' | 'bundle'; count: number }
+  | { kind: 'relax'; count: number; short: number }
   | { kind: 'incident' };
 
 /** the next star, and what it still needs (null: three stars already) */
@@ -158,16 +166,17 @@ export function nextStar(c: StarCounts): { stars: number; needs: StarNeed[] } | 
   if (stars === 3) return null;
   const n = c.total;
   /** `want` of a count (a share of the links rounds up), of which `have` are done */
-  const short = (kind: Exclude<StarNeed['kind'], 'incident'>, have: number, want: number): StarNeed[] => {
+  const short = (kind: Exclude<StarNeed['kind'], 'incident' | 'relax'>, have: number, want: number): StarNeed[] => {
     const count = Math.ceil(want - 1e-9) - have;
     return count > 0 ? [{ kind, count }] : [];
   };
+  const relax: StarNeed[] = c.relaxed < n ? [{ kind: 'relax', count: n - c.relaxed, short: c.tautShort }] : [];
   if (stars === 0) return { stars: 1, needs: short('connect', c.connected, n) };
   if (stars === 1) return { stars: 2, needs: [...short('route', c.routed, TWO_STARS_ROUTED * n), ...short('clear', c.clear, TWO_STARS_CLEAR * n)] };
   const incident: StarNeed[] = c.downtime > c.budget ? [{ kind: 'incident' }] : [];
   return {
     stars: 3,
-    needs: [...incident, ...short('route', c.routed, n), ...short('clear', c.clear, n), ...short('label', c.labelled, n), ...short('relax', c.relaxed, n), ...short('bundle', c.bundles, c.bundlesNeeded)],
+    needs: [...incident, ...short('route', c.routed, n), ...short('clear', c.clear, n), ...short('label', c.labelled, n), ...relax, ...short('bundle', c.bundles, c.bundlesNeeded)],
   };
 }
 

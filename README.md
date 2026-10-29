@@ -102,9 +102,9 @@ ses étoiles et sa lisibilité.
 Il faut **★★** pour ouvrir le niveau suivant : brancher ne suffit pas, il faut
 ranger. Sous le plan, l'**étoile suivante** dit ce qui lui manque encore (« Rangez encore 2 câbles
 dans les supports ») ; le détail des critères, liaison par liaison, se déplie dessous. Un câble qui
-devient propre s'allume en vert avec une note. Chaque niveau cache aussi un **défi chrono**
-(★★★ en moins d'un temps donné) : l'écran de résultat le révèle à la première baie validée, et le
-menu des niveaux le rappelle ensuite.
+devient propre s'allume en vert avec une note. Un cordon tendu dit combien de centimètres il lui
+manque. Chaque niveau a aussi un **défi chrono**
+(★★★ en moins d'un temps donné), annoncé dans son brief et rappelé par le menu des niveaux.
 
 Chaque chantier validé (sauf le tutoriel et le zen) est **payé** : un montant par liaison branchée,
 plus pour une baie rangée, une prime de lisibilité, une autre pour le budget d'interruption épargné,
@@ -192,7 +192,7 @@ cordon, et dans quel ordre, fait partie du plan.
 | 1 | Premier brassage | 4 |
 | 2 | Le mou | 6 |
 | 3 | Erreurs de brassage | 8 |
-| 4 | Étiquetage | 10 · trois services |
+| 4 | Les services | 10 · trois services |
 | 5 | Fibre et cuivre | 12 |
 | 6 | Salle serveurs | 20 · faisceaux, goulottes comptées |
 | 7 | Migration | 24 · budget d'interruption serré |

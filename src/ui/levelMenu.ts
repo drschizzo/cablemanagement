@@ -1,6 +1,6 @@
 // The levels menu, a section at a time: the campaign (the tutorial, then one
-// card per level with its stars, its best time and its time challenge once
-// found, and what opens it while it is locked), or the puzzles (always open,
+// card per level with its stars, its best time and its time challenge,
+// and what opens it while it is locked), or the puzzles (always open,
 // their gestures challenge).
 
 import { LEVELS, TUTORIAL, UNLOCK_STARS } from '../game/levels/campaign';
@@ -10,7 +10,7 @@ import { load, type Progress } from './storage';
 import { formatTime } from './format';
 import { hide, show, starsHtml } from './dom';
 import { $ } from '../lib/page';
-import { isTimeChallengeKnown, isUnlocked } from './progress';
+import { isUnlocked } from './progress';
 import { levelTitle } from './levelTexts';
 import { tr } from './language';
 
@@ -73,13 +73,13 @@ export class LevelMenu {
     return card;
   }
 
-  /** a campaign level: its stars, its best time, and its time challenge once the result screen has told it */
+  /** a campaign level: its stars, its best time, and its time challenge */
   private levelCard(progress: Progress, level: CampaignLevel, index: number): HTMLElement {
     const unlocked = isUnlocked(progress, index);
     const stars = progress.stars[level.id] ?? 0;
     const time = progress.times[level.id];
-    const challenge = isTimeChallengeKnown(progress, level) ? tr({ fr: ` · défi ${formatTime(level.par)}`, en: ` · challenge ${formatTime(level.par)}` }) : '';
-    const best = time ? formatTime(time) + challenge : '';
+    const challenge = tr({ fr: `défi ${formatTime(level.par)}`, en: `challenge ${formatTime(level.par)}` });
+    const best = time ? `${formatTime(time)} · ${challenge}` : challenge;
     const card = document.createElement('button');
     card.className = 'level-card' + (unlocked ? '' : ' locked');
     card.innerHTML = `<div class="num">${index + 1}</div><div class="t">${levelTitle(level)}</div>

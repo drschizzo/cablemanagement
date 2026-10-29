@@ -1,7 +1,7 @@
 // The progress record is plain data: the rules of the best score are tested
 // without a page.
 import { describe, expect, it } from 'vitest';
-import { isTimeChallengeKnown, isUnlocked, knownGestures, knownRules, levelAfter, recordResult, withMet } from '../../src/ui/progress';
+import { isUnlocked, knownGestures, knownRules, levelAfter, recordResult, withMet } from '../../src/ui/progress';
 import { levelRules } from '../../src/game/levels/levelRules';
 import { PUZZLES } from '../../src/game/levels/puzzles';
 import { LEVELS } from '../../src/game/levels/campaign';
@@ -81,13 +81,5 @@ describe('the rules met', () => {
     p.stars[LEVELS[1].id] = 2;
     expect(knownGestures([], p).has('duct')).toBe(true);
     expect(knownGestures(['velcro'], p).has('velcro')).toBe(true);
-  });
-
-  it('the time challenge is known once its level is signed off', () => {
-    const p = empty();
-    expect(isTimeChallengeKnown(p, level)).toBe(false);
-    p.stars[level.id] = 1;
-    expect(isTimeChallengeKnown(p, level)).toBe(true);
-    expect(isTimeChallengeKnown(p, PUZZLES[0])).toBe(false);
   });
 });

@@ -80,11 +80,10 @@ function resultLines(level: LevelDef, ev: Evaluation, result: LevelResult, chall
   return lines;
 }
 
-/** the time challenge of a campaign level: found here, the first time the level is signed off (the brief says nothing of it before) */
+/** the time challenge of a campaign level (its brief told it) */
 function timeChallengeLine(par: number, result: LevelResult, challengeWonBefore: boolean): string {
   const time = formatTime(par);
   if (result.challengeWon) return tr({ fr: `⏱ Défi chrono réussi : ★★★ en moins de ${time} !`, en: `⏱ Time challenge won: ★★★ in less than ${time}!` });
-  if (result.previousStars === 0) return `<span class="found">${tr({ fr: `⏱ Défi débloqué : rejouez la baie pour ★★★ en moins de ${time}.`, en: `⏱ Challenge unlocked: play the cabinet again for ★★★ in less than ${time}.` })}</span>`;
   return tr({ fr: `⏱ Défi chrono : ★★★ en moins de ${time}${challengeWonBefore ? ' (déjà réussi)' : ''}.`, en: `⏱ Time challenge: ★★★ in less than ${time}${challengeWonBefore ? ' (won already)' : ''}.` });
 }
 

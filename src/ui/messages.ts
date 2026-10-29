@@ -154,7 +154,11 @@ export function starNeedText(need: StarNeed): string {
     case 'route': { const n = need.count; return tr({ fr: `Rangez encore ${n} ${plural(n, 'câble', 'câbles')} dans les supports`, en: `Route ${n} more ${plural(n, 'cord', 'cords')} through the supports` }); }
     case 'clear': { const n = need.count; return tr({ fr: `Dégagez la façade : encore ${n} ${plural(n, 'câble passe', 'câbles passent')} devant un port`, en: `Clear the front: ${n} more ${plural(n, 'cord crosses', 'cords cross')} a port` }); }
     case 'label': { const n = need.count; return tr({ fr: `${n} ${plural(n, 'cordon sans', 'cordons sans')} l'étiquette de son service`, en: `${n} ${plural(n, 'cord without', 'cords without')} their service's label` }); }
-    case 'relax': { const n = need.count; return tr({ fr: `${n} ${plural(n, 'cordon tendu ou plié', 'cordons tendus ou pliés')}`, en: `${n} ${plural(n, 'cord taut or kinked', 'cords taut or kinked')}` }); }
+    case 'relax': {
+      const n = need.count, cm = Math.ceil(need.short * 100);
+      const why = cm > 0 ? tr({ fr: ` : il manque jusqu'à ${cm} cm, un cordon plus long au Stock`, en: `: up to ${cm} cm short, a longer cord from the Stock` }) : '';
+      return tr({ fr: `${n} ${plural(n, 'cordon tendu ou plié', 'cordons tendus ou pliés')}`, en: `${n} ${plural(n, 'cord taut or kinked', 'cords taut or kinked')}` }) + why;
+    }
     case 'bundle': { const n = need.count; return tr({ fr: `Serrez encore ${n} ${plural(n, 'faisceau', 'faisceaux')} (un velcro sur 3 câbles ou plus)`, en: `Strap ${n} more ${plural(n, 'bundle', 'bundles')} (a velcro round 3 cords or more)` }); }
     case 'incident': return tr({ fr: 'Budget d\'interruption dépassé : ★★★ n\'est plus possible', en: 'Downtime budget overrun: ★★★ is out of reach' });
     default: return assertNever(need);

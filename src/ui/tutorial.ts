@@ -75,16 +75,16 @@ const BASICS: Step[] = [
   {
     title: { fr: 'Bienvenue dans la baie', en: 'Welcome to the cabinet' },
     text: {
-      fr: 'Voici une baie de brassage 19 pouces. En haut, le <b>tiroir optique</b> (« A ») reçoit les fibres du bâtiment ; en bas, le <b>switch</b> (« S ») est l\'équipement actif du réseau. Le <b>plan de brassage</b>, à droite, dit quel port relier à quel port. Le voyant d\'un port : <span class="ok">vert</span> = liaison conforme au plan, <span class="warn">orange</span> = mauvais port. Votre métier : brancher chaque liaison, puis ranger les câbles.',
-      en: 'This is a 19-inch patching cabinet. At the top, the <b>fibre panel</b> (“A”) takes the fibres from the building; below, the <b>switch</b> (“S”) is the active equipment of the network. The <b>patching schedule</b>, on the right, says which port goes to which. The LED of a port: <span class="ok">green</span> = link as planned, <span class="warn">orange</span> = wrong port. Your job: plug each link, then tidy the cords.',
+      fr: 'Voici une baie de brassage 19 pouces. En haut, le <b>panneau de brassage</b> (« A ») reçoit les câbles des bureaux ; en bas, le <b>switch</b> (« S ») est l\'équipement actif du réseau. Le <b>plan de brassage</b>, à droite, dit quel port relier à quel port. Le voyant d\'un port : <span class="ok">vert</span> = liaison conforme au plan, <span class="warn">orange</span> = mauvais port. Votre métier : brancher chaque liaison, puis ranger les câbles.',
+      en: 'This is a 19-inch patching cabinet. At the top, the <b>patch panel</b> (“A”) takes the cables from the offices; below, the <b>switch</b> (“S”) is the active equipment of the network. The <b>patching schedule</b>, on the right, says which port goes to which. The LED of a port: <span class="ok">green</span> = link as planned, <span class="warn">orange</span> = wrong port. Your job: plug each link, then tidy the cords.',
     },
     spot: (ctl) => ({ min: [-WALL_X, ctl.world.rack.floorY, -0.06], max: [WALL_X, ctl.world.rack.topY, 0.09] }),
   },
   {
-    title: { fr: 'Les jarretières', en: 'The patch cords' },
+    title: { fr: 'Les cordons', en: 'The patch cords' },
     text: {
-      fr: 'Ce sont des câbles optiques terminés par des connecteurs LC. <span class="os2">Jaune</span> : fibre monomode (OS2), <span class="om4">turquoise</span> : multimode (OM4) — on ne les mélange pas, et une fibre ne se plie jamais en angle vif. Survolez un câble : sa bulle dit où il est branché.',
-      en: 'These are fibre cords ending in LC connectors. <span class="os2">Yellow</span>: single-mode fibre (OS2), <span class="om4">aqua</span>: multimode (OM4) — they are never mixed, and a fibre is never bent at a sharp angle. Hover a cord: its tooltip says where it is plugged.',
+      fr: 'Ce sont des cordons cuivre terminés par des prises RJ45. Chaque liaison appartient à un <b>service</b> (sa couleur dans le plan), et son cordon en porte la couleur. Survolez un câble : sa bulle dit où il est branché.',
+      en: 'These are copper cords ending in RJ45 plugs. Each link belongs to a <b>service</b> (its colour on the schedule), and its cord wears that colour. Hover a cord: its tooltip says where it is plugged.',
     },
     task: { fr: 'Survolez deux câbles différents', en: 'Hover two different cords' },
     done: (ctl) => ctl.counters.hovered >= 2,
@@ -125,8 +125,8 @@ const BASICS: Step[] = [
   {
     title: { fr: 'Ranger : l\'outil Chemin', en: 'Tidying: the Route tool' },
     text: {
-      fr: `Pour ranger un câble, on décide par où il passe. Le <b>guide-câbles</b>, ce panneau 1U à doigts sous le tiroir, mène les câbles à l'horizontale jusqu'aux côtés de la baie au lieu de les laisser pendre devant les ports. Outil <b>Chemin</b> (touche ${toolKey('route').toUpperCase()}) : appuyez sur un câble, puis <b>tracez un trait par-dessus le guide-câbles</b> ; chaque guide retenu s'encadre de vert. Si le trait finit sur un port libre, le bout libre s'y branche. Au relâcher, le câble est posé le long du chemin, puis se colore un moment : <span class="ok">vert</span> là où un support le tient, <span class="warn">orange</span> là où il pend.`,
-      en: `To tidy a cord, you decide where it runs. The <b>cable manager</b>, this 1U finger panel under the fibre panel, takes the cords horizontally to the sides of the cabinet instead of letting them hang in front of the ports. <b>Route</b> tool (key ${toolKey('route').toUpperCase()}): press on a cord, then <b>draw a line over the cable manager</b>; each guide taken is framed in green. If the line ends on a free port, the loose end is plugged there. When you let go, the cord is laid along the route, then coloured for a moment: <span class="ok">green</span> where a support holds it, <span class="warn">orange</span> where it hangs.`,
+      fr: `Pour ranger un câble, on décide par où il passe. Le <b>guide-câbles</b>, ce panneau 1U à doigts sous le panneau de brassage, mène les câbles à l'horizontale jusqu'aux côtés de la baie au lieu de les laisser pendre devant les ports. Outil <b>Chemin</b> (touche ${toolKey('route').toUpperCase()}) : appuyez sur un câble, puis <b>tracez un trait par-dessus le guide-câbles</b> ; chaque guide retenu s'encadre de vert. Si le trait finit sur un port libre, le bout libre s'y branche. Au relâcher, le câble est posé le long du chemin, puis se colore un moment : <span class="ok">vert</span> là où un support le tient, <span class="warn">orange</span> là où il pend.`,
+      en: `To tidy a cord, you decide where it runs. The <b>cable manager</b>, this 1U finger panel under the patch panel, takes the cords horizontally to the sides of the cabinet instead of letting them hang in front of the ports. <b>Route</b> tool (key ${toolKey('route').toUpperCase()}): press on a cord, then <b>draw a line over the cable manager</b>; each guide taken is framed in green. If the line ends on a free port, the loose end is plugged there. When you let go, the cord is laid along the route, then coloured for a moment: <span class="ok">green</span> where a support holds it, <span class="warn">orange</span> where it hangs.`,
     },
     task: { fr: 'Rangez un câble dans le guide-câbles', en: 'Route a cord into the cable manager' },
     spot: mgrBox,
@@ -136,8 +136,8 @@ const BASICS: Step[] = [
   {
     title: { fr: 'Les étoiles', en: 'The stars' },
     text: {
-      fr: 'Sous le plan, l\'<b>étoile suivante</b> dit ce qui lui manque. ★ : toutes les liaisons branchées comme prévu. ★★ : la plupart des câbles rangés, la façade dégagée ; il en faut <b>deux</b> pour ouvrir le niveau suivant. ★★★ : tout rangé, et aucun cordon tendu ni fibre pliée. Chaque niveau ajoute ensuite une règle à la fois, annoncée dans son brief. À vous !',
-      en: 'Under the schedule, the <b>next star</b> says what it still needs. ★: every link plugged as planned. ★★: most cords routed, the front clear; it takes <b>two</b> to open the next level. ★★★: everything routed, and no cord taut nor fibre kinked. Each level then adds one rule at a time, told in its brief. Over to you!',
+      fr: 'Sous le plan, l\'<b>étoile suivante</b> dit ce qui lui manque. ★ : toutes les liaisons branchées comme prévu. ★★ : la plupart des câbles rangés, la façade dégagée ; il en faut <b>deux</b> pour ouvrir le niveau suivant. ★★★ : tout rangé, et aucun cordon tendu. Chaque niveau ajoute ensuite une règle à la fois, annoncée dans son brief. À vous !',
+      en: 'Under the schedule, the <b>next star</b> says what it still needs. ★: every link plugged as planned. ★★: most cords routed, the front clear; it takes <b>two</b> to open the next level. ★★★: everything routed, and no cord taut. Each level then adds one rule at a time, told in its brief. Over to you!',
     },
   },
 ];

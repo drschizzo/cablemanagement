@@ -17,7 +17,7 @@ import { tr } from './language';
 import { levelBrief, levelTips, levelTitle } from './levelTexts';
 import { gestureTip, ruleTip } from './ruleTexts';
 import { load } from './storage';
-import { isTimeChallengeKnown, knownGestures, knownRules } from './progress';
+import { knownGestures, knownRules } from './progress';
 
 export class LevelBrief {
   /** the preparation was offered for this level already */
@@ -82,16 +82,15 @@ function knownTips(level: LevelDef, met: Met, services: number[]): string[] {
 }
 
 /**
- * The level's challenge: the gestures of a puzzle; the time of a campaign
- * level, once the result screen has told it (it is found there, not read
- * before the first try).
+ * The level's challenge: the gestures of a puzzle, the time of a campaign
+ * level (told before the first try, so it can be aimed at).
  */
 function challengeTip(level: LevelDef): string | null {
   if (level.kind === 'puzzle') return tr({
     fr: `<b>Défi gestes</b> : ★★★ en ${level.moves} geste${level.moves > 1 ? 's' : ''} au plus. Compte pour un geste : brancher ou débrancher un connecteur (à la main ou au bout d'un chemin), poser ou retirer un support ou un velcro, jeter un cordon au bac, en prendre un au Stock. Ranger (déplacer un câble, poser un chemin, peigner) est gratuit.`,
     en: `<b>Gestures challenge</b>: ★★★ in ${level.moves} gesture${level.moves > 1 ? 's' : ''} at most. A gesture is: plugging or unplugging a connector (by hand or at the end of a route), placing or taking off a support or a velcro, throwing a cord into the crate, taking one from the Stock. Tidying (moving a cord, laying a route, combing) is free.`,
   });
-  if (level.kind === 'campaign' && isTimeChallengeKnown(load('progress'), level)) return tr({ fr: `<b>Défi chrono</b> : ★★★ en moins de ${formatTime(level.par)}.`, en: `<b>Time challenge</b>: ★★★ in less than ${formatTime(level.par)}.` });
+  if (level.kind === 'campaign') return tr({ fr: `<b>Défi chrono</b> : ★★★ en moins de ${formatTime(level.par)}.`, en: `<b>Time challenge</b>: ★★★ in less than ${formatTime(level.par)}.` });
   return null;
 }
 

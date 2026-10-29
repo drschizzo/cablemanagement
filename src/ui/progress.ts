@@ -86,8 +86,3 @@ function knownOf<T>(saved: readonly T[], progress: Progress, of: (level: LevelDe
 export function withMet<T>(saved: readonly T[], met: readonly T[]): T[] {
   return [...new Set([...saved, ...met])];
 }
-
-/** the time challenge shows once the level is signed off: the result screen tells it first */
-export function isTimeChallengeKnown(progress: Progress, level: LevelDef): boolean {
-  return level.kind === 'campaign' && (progress.stars[level.id] ?? 0) > 0;
-}
