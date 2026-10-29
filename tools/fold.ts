@@ -5,7 +5,7 @@
 // already lying there before the hand took the cord.
 //   SEEDS=1,2 ROWS=1 npm run fold
 import { World } from '../src/game/world';
-import { type LevelDef } from '../src/game/levels';
+import type { LevelDef } from '../src/game/levels/levelDef';
 import { env, envParams, envSeeds } from './env';
 
 const params = envParams();

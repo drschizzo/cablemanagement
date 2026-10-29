@@ -16,15 +16,16 @@ import { RackView } from '../render/rackView';
 import { buildRoom } from '../render/room';
 import { CableView } from '../render/cableView';
 import { disposeTree } from '../render/dispose';
-import { CableRain } from '../render/cableRain';
+import { CableRain } from './cableRain';
 import { World } from '../game/world';
-import { SHOWCASE_SETTLE, showcaseRack, type FibreType } from '../game/levels';
+import { SHOWCASE_SETTLE, showcaseRack } from '../game/levels/showcaseRack';
+import type { FibreType } from '../game/cordTypes';
 import { U } from '../game/rack';
 import { resample } from '../game/idealRoutes';
-import { rng } from '../game/tangle';
-import { printOf, type BakedBay } from '../game/baked';
-import { fallInWorker } from '../game/fallWorkerClient';
-import type { CableStart } from '../game/tangle';
+import { rng } from '../game/mess/tangle';
+import { printOf, type BakedBay } from '../game/mess/baked';
+import { fallInWorker } from '../game/mess/fallWorkerClient';
+import type { CableStart } from '../game/mess/tangle';
 
 /** waits a little, so that the page may draw (or not at all) */
 type Pause = () => Promise<void>;

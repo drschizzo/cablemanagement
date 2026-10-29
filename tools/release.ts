@@ -4,7 +4,7 @@
 // upward speed and its kinetic energy over the next half second.
 //   SEEDS=1,2 ROWS=1 PARAMS='{"keepK":8}' npm run release
 import { World } from '../src/game/world';
-import { type LevelDef } from '../src/game/levels';
+import type { LevelDef } from '../src/game/levels/levelDef';
 import { env, envParams, envSeeds } from './env';
 
 const params = envParams();

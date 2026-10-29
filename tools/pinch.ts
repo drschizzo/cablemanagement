@@ -11,9 +11,9 @@
 // its nodes' velocity over the next three seconds, and when it falls asleep.
 //   PARAMS='{"pinchK":8}' npm run pinch
 import { CABLES } from '@drschizzo/avbd-cables';
-import { RackCableSim } from '../src/game/rackCableSim';
+import { RackCableSim } from '../src/game/physics/rackCableSim';
 import { World } from '../src/game/world';
-import { LEVELS } from '../src/game/levels';
+import { LEVELS } from '../src/game/levels/campaign';
 import { envParams } from './env';
 
 const params = envParams();

@@ -2,7 +2,7 @@
 // seen through the cords.
 
 import * as THREE from 'three';
-import type { RackCableSim } from '../../game/rackCableSim';
+import type { RackCableSim } from '../../game/physics/rackCableSim';
 
 export class OtherHandMarker {
   readonly group = new THREE.Group();

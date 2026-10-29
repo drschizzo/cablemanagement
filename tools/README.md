@@ -25,7 +25,7 @@ La physique est chaotique : comparer un changement du solveur sur 20 à 40 tirag
 | `npm run levels` | `levels.ts` | chaque niveau : construction, repos, temps et propreté de départ |
 | `npm run solvable` | `solvable.ts` | une baie parfaite est-elle possible dans chaque niveau, avec son propre stock ? (`WHY`) |
 | `npm run showcase` | `showcase.ts` | la vitrine avant / après sur quelques salles tirées au hasard (`[seeds] [pairs]` en arguments) |
-| `npm run bake` | `bake.ts` | précalcule le désordre de la première salle (`src/game/showcase.bin`) |
+| `npm run bake` | `bake.ts` | précalcule le désordre de la première salle (`src/game/mess/showcase.bin`) |
 
 Deux vérifications n'ont pas de commande et se lancent par `npx vite-node tools/<fichier>` :
 `crate.ts` (jeter des cordons au bac, en prendre au stock) et `length.ts` (échanger un cordon contre une autre

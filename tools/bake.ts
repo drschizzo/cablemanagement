@@ -6,10 +6,10 @@
 // change: until then, the bays whose print no longer matches fall on load.
 declare const process: { argv: string[] };
 import { World } from '../src/game/world';
-import { SHOWCASE_DEFAULT, SHOWCASE_SETTLE, showcaseRack } from '../src/game/levels';
-import { encode, printOf, type BakedBay } from '../src/game/baked';
+import { SHOWCASE_DEFAULT, SHOWCASE_SETTLE, showcaseRack } from '../src/game/levels/showcaseRack';
+import { encode, printOf, type BakedBay } from '../src/game/mess/baked';
 
-const BAKED_FILE = 'src/game/showcase.bin';
+const BAKED_FILE = 'src/game/mess/showcase.bin';
 
 // (Node's own modules, untyped here: the project has no Node types)
 const node = (m: string) => import(m);

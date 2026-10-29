@@ -8,7 +8,9 @@
 // out of the heap the hard way, unplugged: about `REWORK` seconds cut each,
 // at their service's weight. Is the downtime budget enough for that?
 import { World } from '../src/game/world';
-import { CATALOGUE, LEVELS, SERVICES } from '../src/game/levels';
+import { CATALOGUE } from '../src/game/cordTypes';
+import { LEVELS } from '../src/game/levels/campaign';
+import { SERVICES } from '../src/game/services';
 import { polyLength, routePlan, strapBundles, tidyKit, tidyRoutes } from '../src/game/idealRoutes';
 import { planRoute, RouteRun } from '../src/game/routeLaying';
 import type { Guide } from '../src/game/rack';

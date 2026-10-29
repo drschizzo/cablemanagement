@@ -1,5 +1,8 @@
 import type { Controller, Tool } from '../play/controller';
-import { CATALOGUE, FIBRE_NAMES, LEVELS, SERVICES, UNLOCK_STARS, type LevelDef } from '../game/levels';
+import { CATALOGUE, FIBRE_NAMES } from '../game/cordTypes';
+import { LEVELS } from '../game/levels/campaign';
+import { SERVICES } from '../game/services';
+import { UNLOCK_STARS, type LevelDef } from '../game/levels/levelDef';
 import { formatCost, formatTime } from '../format';
 import { STRAIN_LABELS, cleanliness, type Evaluation } from '../game/evaluation';
 import { FIBRE_COLORS } from '../render/cableView';

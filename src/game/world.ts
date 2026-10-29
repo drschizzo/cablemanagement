@@ -4,10 +4,12 @@
 
 import { CABLES, type CableInit, type Pinch } from '@drschizzo/avbd-cables';
 import { bundleCount, cordStrain, evaluate, holdMap, okPorts, type Evaluation, type Strain } from './evaluation';
-import { ThreadedSim } from './threadedSim';
+import { ThreadedSim } from './physics/threadedSim';
 import { CABLE_R, CONNECTOR, Rack, SEG, type Item, type ItemKind } from './rack';
-import { SERVICES, type FibreType, type LevelDef } from './levels';
-import { makeCables, makeSchedule, rng, type CableStart, type Circuit } from './tangle';
+import { SERVICES } from './services';
+import type { FibreType } from './cordTypes';
+import type { LevelDef } from './levels/levelDef';
+import { makeCables, makeSchedule, rng, type CableStart, type Circuit } from './mess/tangle';
 import { pathToNodes, polyLength, resample, tidyRoutes, type V3 } from './idealRoutes';
 
 /** a cord: its place in World.cables */

@@ -1,6 +1,6 @@
 // Headless check of the crate: throw cords in, take new ones from the stock.
 import { World } from '../src/game/world';
-import { LEVELS } from '../src/game/levels';
+import { LEVELS } from '../src/game/levels/campaign';
 
 const w = new World(LEVELS[2]);
 w.preroll(60);

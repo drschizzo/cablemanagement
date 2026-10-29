@@ -3,7 +3,7 @@
 // labelled and relaxed; the stars; and the readability note, beyond the
 // stars. Reads a World, changes nothing.
 
-import { SERVICES } from './levels';
+import { SERVICES } from './services';
 import { insideBox, type SupportBox } from './rack';
 import type { World } from './world';
 

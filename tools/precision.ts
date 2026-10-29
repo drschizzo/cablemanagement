@@ -3,7 +3,8 @@
 // S1 push a cord into a duct and let go; S2 lay a cord along a finger manager;
 // S3 a level settling at rest; S4 the big heap of level 8.
 import { World } from '../src/game/world';
-import { LEVELS, type LevelDef } from '../src/game/levels';
+import { LEVELS } from '../src/game/levels/campaign';
+import type { LevelDef } from '../src/game/levels/levelDef';
 import { U } from '../src/game/rack';
 import { env, envNumber, envParams } from './env';
 

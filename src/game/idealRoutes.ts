@@ -9,10 +9,10 @@
 // points where it drops in.
 
 import { CONNECTOR, DUCT_SPAN, Rack, SEG, SIDE_BACK, SIDE_IN, SIDE_OUT, insideBox, type ItemKind, type Port } from './rack';
-import { makeSchedule, rng, type Circuit } from './tangle';
+import { makeSchedule, rng, type Circuit } from './mess/tangle';
 import type { World } from './world';
 import { bundleCount } from './evaluation';
-import type { LevelDef } from './levels';
+import type { LevelDef } from './levels/levelDef';
 
 export type V3 = [number, number, number];
 

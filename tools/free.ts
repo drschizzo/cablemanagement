@@ -2,7 +2,7 @@
 // and how erratic the other cords get while the hand drags one through them.
 //   NC=48 SEEDS=1,2,3 PARAMS='{"kCapCable":2}' npm run free
 import { World } from '../src/game/world';
-import { freeLevel } from '../src/game/levels';
+import { freeLevel } from '../src/game/levels/freeLevel';
 import { envNumber, envParams, envSeeds } from './env';
 
 const NC = envNumber('NC', 48);

@@ -1,7 +1,7 @@
 // The tooltip of a cord under the pointer: its type, its ends, its length, the
 // line it makes, whether it is strained, and what the hand can do with it.
 
-import { FIBRE_NAMES } from '../game/levels';
+import { FIBRE_NAMES } from '../game/cordTypes';
 import type { World } from '../game/world';
 import { STRAIN_LABELS, type Evaluation } from '../game/evaluation';
 import type { Tool } from './context';

@@ -8,7 +8,7 @@
 // cords (it passes through them while laid).
 //   SEEDS=1,2 SLACK=0.5 ROWS=1 VIA=duct PARAMS='{"goalK":2}' npm run route
 import { World } from '../src/game/world';
-import { type LevelDef } from '../src/game/levels';
+import type { LevelDef } from '../src/game/levels/levelDef';
 import { planRoute, RouteRun } from '../src/game/routeLaying';
 import type { Guide } from '../src/game/rack';
 import type { StaticCapsule } from '@drschizzo/avbd-cables';

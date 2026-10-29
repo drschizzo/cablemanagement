@@ -2,8 +2,9 @@
 // goes to which), the cords (type, length) and the tangled paths they start
 // in. The physics then lets them fall into place.
 
-import { CONNECTOR, Rack, SEG as DEFAULT_SEG, type Port } from './rack';
-import type { FibreType, LevelDef } from './levels';
+import { CONNECTOR, Rack, SEG as DEFAULT_SEG, type Port } from '../rack';
+import type { FibreType } from '../cordTypes';
+import type { LevelDef } from '../levels/levelDef';
 
 export interface Circuit {
   a: string;

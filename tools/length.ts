@@ -1,6 +1,6 @@
 // Headless check of the cord length swap.
 import { World } from '../src/game/world';
-import { LEVELS } from '../src/game/levels';
+import { LEVELS } from '../src/game/levels/campaign';
 
 const w = new World(LEVELS[2]);
 w.preroll(60);

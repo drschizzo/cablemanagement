@@ -4,8 +4,8 @@
 // The page builds its own World from the tangle sent back (without drawing it
 // again), and puts its nodes where they came to rest.
 
-import { World } from './world';
-import { SHOWCASE_SETTLE, showcaseRack } from './levels';
+import { World } from '../world';
+import { SHOWCASE_SETTLE, showcaseRack } from '../levels/showcaseRack';
 import type { CableStart } from './tangle';
 
 export interface FallRequest { seed: number; pairs?: number; chunks: number }

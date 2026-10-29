@@ -6,7 +6,7 @@
 // how fast the cord moved.
 //   SEEDS=1,2 ROWS=1 PARAMS='{"keepK":8}' npm run plugin
 import { World } from '../src/game/world';
-import { type LevelDef } from '../src/game/levels';
+import type { LevelDef } from '../src/game/levels/levelDef';
 import { CONNECTOR } from '../src/game/rack';
 import type { StaticCapsule } from '@drschizzo/avbd-cables';
 import { env, envNumber, envParams, envSeeds } from './env';

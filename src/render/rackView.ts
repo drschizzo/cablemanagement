@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { COLUMN_X, FRONT_Z, Rack, SIDE_BACK, U, WALL_X, type Port } from '../game/rack';
-import type { FibreType } from '../game/levels';
+import type { FibreType } from '../game/cordTypes';
 import { disposeTree, shared } from './dispose';
 import { mergeStatic } from './batch';
 import { bevelBox, bevelTemplate } from './bevel';

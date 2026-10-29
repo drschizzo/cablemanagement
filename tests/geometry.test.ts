@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { pathToNodes, polyLength, resample, type V3 } from '../src/game/idealRoutes';
-import { rng } from '../src/game/tangle';
+import { rng } from '../src/game/mess/tangle';
 import { Rack, DUCT_SPAN, insideBox, type UnitSpec } from '../src/game/rack';
 
 describe('polylines', () => {

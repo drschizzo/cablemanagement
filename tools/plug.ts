@@ -6,7 +6,7 @@
 // cord's nodes left the guides it was in, and how fast the cord moved.
 //   SEEDS=1,2 SLACK=0.1 ROWS=1 PARAMS='{"kCap":2}' npm run plug (MODE=freeze: pinned where let go, not plugged)
 import { World } from '../src/game/world';
-import { type LevelDef } from '../src/game/levels';
+import type { LevelDef } from '../src/game/levels/levelDef';
 import { planRoute, RouteRun } from '../src/game/routeLaying';
 import { CONNECTOR, type Guide } from '../src/game/rack';
 import { env, envNumber, envParams, envSeeds } from './env';

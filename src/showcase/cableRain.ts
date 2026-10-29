@@ -13,10 +13,10 @@
 import * as THREE from 'three';
 import { TubeMesh, TubeNodes } from '@drschizzo/three-cable-tubes';
 import { CABLE_R } from '../game/rack';
-import { SERVICES } from '../game/levels';
-import { rng } from '../game/tangle';
-import { FIBRE_COLORS, connectorGeos } from './cableView';
-import { JACKET_KIND, jacketMaterial, jacketed } from './jacket';
+import { SERVICES } from '../game/services';
+import { rng } from '../game/mess/tangle';
+import { FIBRE_COLORS, connectorGeos } from '../render/cableView';
+import { JACKET_KIND, jacketMaterial, jacketed } from '../render/jacket';
 
 /** cords at most (on screen at once): past it, the oldest, deep in the heap, makes room */
 const POOL = 240;

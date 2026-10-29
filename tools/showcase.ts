@@ -3,7 +3,7 @@
 //   npm run showcase -- [seeds] [pairs]
 declare const process: { argv: string[] };
 import { World } from '../src/game/world';
-import { SHOWCASE_SETTLE, showcaseRack } from '../src/game/levels';
+import { SHOWCASE_SETTLE, showcaseRack } from '../src/game/levels/showcaseRack';
 
 const seeds = process.argv[2] ? process.argv[2].split(',').map(Number) : [1, 2, 3, 4, 5, 6, 7, 8];
 const pairs = process.argv[3] ? Number(process.argv[3]) : undefined;

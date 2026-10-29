@@ -2,7 +2,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { World } from '../src/game/world';
 import { HOLD } from '../src/game/evaluation';
-import { LEVELS, SERVICES, type LevelDef } from '../src/game/levels';
+import { LEVELS } from '../src/game/levels/campaign';
+import { SERVICES } from '../src/game/services';
+import type { LevelDef } from '../src/game/levels/levelDef';
 import { planRoute, RouteRun } from '../src/game/routeLaying';
 
 // level 1, every cord on its planned ports: four copper cords, all in production
