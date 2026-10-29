@@ -34,4 +34,6 @@ export const PUZZLES: PuzzleLevel[] = [
   { ...BASE, id: 'p7', units: SMALL, cables: 3, wrong: 1, seed: 107, moves: 5, services: 2, downtime: 15 },
   // unmarked cords: trace them first
   { ...BASE, id: 'p8', units: SMALL, cables: 3, wrong: 2, seed: 108, moves: 6, blind: true },
+  // a cord broken inside, a new one in stock: test, swap, lay
+  { ...BASE, id: 'p9', units: SMALL, cables: 2, seed: 109, moves: 5, faults: 1, cords: [[0.5, 1], [0.75, 1]] },
 ];

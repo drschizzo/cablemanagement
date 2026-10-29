@@ -161,7 +161,8 @@ export function tidyKit(level: LevelDef): LevelDef {
       for (let k = u; k < u + DUCT_SPAN && k <= span[t.side][1] && stock.ring > 0; k += 2) if (place('ring', k, t.side)) stock.ring--;
     }
   }
-  return { ...level, preinstalled: pre, wrong: 0, loose: 0 };
+  // a careful technician has swapped the cords broken inside for new ones
+  return { ...level, preinstalled: pre, wrong: 0, loose: 0, faults: 0 };
 }
 
 /** the two pinned connector nodes, then the cord leaving the boot towards the manager */

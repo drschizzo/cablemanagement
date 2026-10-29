@@ -51,6 +51,9 @@ export function toastText(t: Toast): string {
     case 'noVelcroLeft': return tr({ fr: 'Plus de velcro.', en: 'No velcro left.' });
     case 'velcroNeedsTwo': return tr({ fr: 'Le trait doit croiser au moins deux câbles qui passent côte à côte.', en: 'The line must cross at least two cords running side by side.' });
     case 'incident': return incidentText(t.incident);
+    case 'cordTested': return t.faulty
+      ? tr({ fr: 'Testeur : rien ne passe. Ce cordon est coupé à l\'intérieur, remplacez-le.', en: 'Tester: nothing gets through. This cord is broken inside, swap it.' })
+      : tr({ fr: 'Testeur : le signal passe, ce cordon est bon.', en: 'Tester: the signal gets through, this cord is sound.' });
     default: return assertNever(t);
   }
 }
@@ -123,6 +126,10 @@ function hoverNoteText(n: HoverNote): string {
     case 'heldByOtherHand': return tr({ fr: 'Tenu par l\'autre main — E : la lâcher', en: 'Held by the other hand — E: let go' });
     case 'stacked': return tr({ fr: `${n.count} câbles sous le curseur — Tab : suivant`, en: `${n.count} cords under the pointer — Tab: next` });
     case 'cycling': return tr({ fr: `${n.index + 1}/${n.count} sous le curseur — Tab : suivant`, en: `${n.index + 1}/${n.count} under the pointer — Tab: next` });
+    case 'testIt': return tr({ fr: 'clic : tester ce cordon', en: 'click: test this cord' });
+    case 'tested': return n.faulty
+      ? `<span class="warn">${tr({ fr: 'testé : coupé à l\'intérieur', en: 'tested: broken inside' })}</span>`
+      : `<span class="ok">${tr({ fr: 'testé : bon', en: 'tested: sound' })}</span>`;
     default: return assertNever(n);
   }
 }

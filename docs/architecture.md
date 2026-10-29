@@ -16,7 +16,8 @@ src/
     sceneLoader.ts  une scène à la fois : voile de chargement, chargement dépassé par un autre
     urlOptions.ts   ?sync, ?bays, ?pairs, ?seed, ?quality : lus depuis une chaîne, donc testables
   game/         LES RÈGLES et la physique de la baie                       sans three.js ni DOM : tourne sous Node
-    world.ts        World, l'état d'une partie : cordons et leurs bouts, branchement, velcros, bac, stock ; montré
+    world.ts        World, l'état d'une partie : cordons et leurs bouts (et ceux coupés à l'intérieur), branchement,
+                    velcros, bac, stock ; montré
                     en lecture seule, changé par ses méthodes
     cables.ts       ce qu'est un cordon (Cable, CableEnd, Strap) et ses indices nommés (CableIndex, EndIndex,
                     NodeIndex, CircuitIndex)
@@ -45,7 +46,7 @@ src/
     context.ts      PlayContext (ce que les outils voient du contrôleur), ToolHandler (l'interface d'un outil),
                     ControllerEvents (ce que le contrôleur dit à l'interface)
     inputRouter.ts  la souris et le clavier, aiguillés vers l'outil qui a un geste en cours, ou vers la vue
-    tools/          un fichier par outil : main, Chemin, velcro, supports
+    tools/          un fichier par outil : main, Chemin, velcro, supports, testeur
     feedback/       les repères dessinés par-dessus la baie : surbrillances et traceur, fil à plomb, autre main,
                     lueurs des connecteurs, port visé, portions tenues / pendantes, cadre du tutoriel
     pointer.ts      la souris sur la vue : pixels, rayon, projections écran ↔ baie

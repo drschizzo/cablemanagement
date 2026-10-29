@@ -459,3 +459,25 @@ describe('incidents in a cabinet', () => {
     expect(w.maintenance.downtime - before).toBeGreaterThan(40);
   });
 });
+
+describe('cords broken inside', () => {
+  const w = new World({ ...L1, faults: 1 });
+  const faulty = w.cables.findIndex((_, c) => w.isFaulty(c));
+
+  it('one cord is broken, and its link is down though plugged as planned', () => {
+    expect(faulty).toBeGreaterThanOrEqual(0);
+    const line = w.circuits.findIndex((ci) => w.rack.cableJoining(ci.a, ci.b) === faulty);
+    expect(w.circuitFaulty(line)).toBe(true);
+    expect(w.circuitUp(line)).toBe(false);
+    expect(w.evaluate().connected).toBe(w.circuits.length - 1);
+  });
+
+  it('it was never in production: the broken link costs no downtime', () => {
+    expect(w.maintenance.live.size).toBe(w.circuits.length - 1);
+  });
+
+  it('a new cord from the stock is sound', () => {
+    const c = w.addCable('CU', 1);
+    expect(w.isFaulty(c)).toBe(false);
+  });
+});

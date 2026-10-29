@@ -6,7 +6,7 @@ import { ITEM_KINDS, type Stock } from '../game/supplies';
 import type { LevelDef } from '../game/levels/levelDef';
 import { $ } from '../lib/page';
 import { countOf } from './names';
-import { iconFingerManager, iconHand, iconRoute, iconStock, iconVelcro } from './icons';
+import { iconFingerManager, iconHand, iconRoute, iconStock, iconTester, iconVelcro } from './icons';
 import { tr, type Words } from './language';
 
 interface ToolButton {
@@ -48,6 +48,13 @@ export const TOOL_BUTTONS: Record<Tool, ToolButton> = {
     help: {
       fr: 'Tracez un trait <b>en travers</b> des câbles à serrer : ceux qu\'il croise s\'allument, et le velcro les serre là où le trait les croise. Il se place là où le plus de câbles passent côte à côte ; un seul service par faisceau, c\'est plus lisible. Cliquez sur un velcro pour l\'enlever.',
       en: 'Draw a line <b>across</b> the cords to strap: those it crosses light up, and the velcro straps them where the line crosses them. It goes where most cords run side by side; one service per bundle reads better. Click a velcro to take it off.',
+    },
+  },
+  tester: {
+    key: '4', name: { fr: 'Testeur', en: 'Tester' }, icon: iconTester(), showsStock: false,
+    help: {
+      fr: 'Cliquez un câble : le testeur envoie un signal d\'un bout à l\'autre et dit s\'il arrive. Un cordon coupé à l\'intérieur ne portera rien, même branché comme prévu : remplacez-le par un cordon neuf.',
+      en: 'Click a cord: the tester sends a signal from one end to the other and says whether it gets through. A cord broken inside carries nothing, even plugged as planned: swap it for a new one.',
     },
   },
 };
@@ -102,7 +109,8 @@ export class Toolbar {
 
   /**
    * What is left of the supports and the velcros; a tool the level gives
-   * nothing for is hidden (the supports stay while some can be taken off).
+   * nothing for is hidden (the supports stay while some can be taken off;
+   * the tester shows where cords may be broken).
    */
   showStock(stock: Stock, level: LevelDef, removableItems: boolean): void {
     const supports = $('.tool[data-tool="supports"]'), velcro = $('.tool[data-tool="velcro"]');
@@ -115,6 +123,8 @@ export class Toolbar {
     velcro.querySelector('.count')!.textContent = String(stock.velcro);
     velcro.classList.toggle('empty', stock.velcro <= 0);
     velcro.style.display = (level.inventory.velcro ?? 0) > 0 ? '' : 'none';
+    // the tester only where some cords are broken inside
+    $('.tool[data-tool="tester"]').style.display = level.faults ? '' : 'none';
   }
 
 }

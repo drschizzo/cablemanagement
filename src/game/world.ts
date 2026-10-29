@@ -17,7 +17,7 @@ import { coilInCrate, minLengthThrough, shapeForLength } from './cordShapes';
 import type { LevelDef } from './levels/levelDef';
 import { makeCables } from './mess/tangle';
 import { makeSchedule, type Circuit } from './schedule';
-import { rng } from '../lib/random';
+import { rng, shuffle } from '../lib/random';
 import { pathToNodes, tidyRoutes } from './idealRoutes';
 import { polyLength, type V3 } from '../lib/vec3';
 
@@ -40,6 +40,8 @@ export class World {
   private newCords: Map<number, number>;
   private itemsChanged = 0;
   private cablesRebuilt = 0;
+  /** cords broken inside: they carry nothing, plugged as planned or not */
+  private faultyCords: Set<CableIndex>;
 
   /** the solver (a new one when the cords are rebuilt) */
   get sim(): ThreadedSim {
@@ -126,6 +128,8 @@ export class World {
       }
     });
     this.simulation.setStatics(this.rack.statics());
+    // their own draws: the faults leave the level's (schedule, mess) as they are
+    this.faultyCords = new Set(shuffle(this.cableList.map((_, c) => c), rng(level.seed + 2)).slice(0, level.faults ?? 0));
     this.supplies = stockOf(level.inventory);
     this.newCords = new Map(level.cords ?? []);
     this.maintenance = new MaintenanceWindow(this.circuits, (i) => this.circuitUp(i), level.downtime ?? Infinity, level.bypass ?? 0);
@@ -164,11 +168,23 @@ export class World {
     if (at) this.unplug(at.cable, at.end);
   }
 
-  /** a circuit carries traffic: one cord of the right type joins its two ports */
+  /** a circuit carries traffic: one sound cord of the right type joins its two ports */
   circuitUp(i: CircuitIndex): boolean {
     const ci = this.circuits[i];
     const cable = this.rack.cableJoining(ci.a, ci.b);
-    return cable >= 0 && this.cableList[cable].type === ci.type;
+    return cable >= 0 && this.cableList[cable].type === ci.type && !this.faultyCords.has(cable);
+  }
+
+  /** a cord broken inside: whatever it is plugged into, it carries nothing (new cords never are) */
+  isFaulty(c: CableIndex): boolean {
+    return this.faultyCords.has(c);
+  }
+
+  /** the circuit's two ports are joined by a cord of its type that carries nothing: broken inside */
+  circuitFaulty(i: CircuitIndex): boolean {
+    const ci = this.circuits[i];
+    const cable = this.rack.cableJoining(ci.a, ci.b);
+    return cable >= 0 && this.cableList[cable].type === ci.type && this.faultyCords.has(cable);
   }
 
   /** the production links a cord carries now (unplugging it cuts them) */

@@ -15,8 +15,8 @@ import type { UndoHistory } from './undoHistory';
 import type { PortHint } from './feedback/portHint';
 import type { HoldView } from './feedback/holdView';
 
-/** the hand, the route (a way drawn over the guides, the cord laid along it), the supports, the velcro */
-export type Tool = 'hand' | 'route' | 'supports' | 'velcro';
+/** the hand, the route (a way drawn over the guides, the cord laid along it), the supports, the velcro, the cable tester */
+export type Tool = 'hand' | 'route' | 'supports' | 'velcro' | 'tester';
 
 /** what the Controller tells the interface (main.ts wires it to the HUD) */
 export interface ControllerEvents {

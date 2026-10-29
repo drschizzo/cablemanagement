@@ -45,6 +45,10 @@ export function keysFor(ctx: KeyContext): KeyCap[] {
       { keys: { fr: 'Clic sur un velcro', en: 'Click a velcro' }, action: { fr: 'l\'enlever', en: 'take it off' } },
       ESCAPE,
     ];
+    case 'tester': return [
+      { keys: { fr: 'Clic sur un câble', en: 'Click a cord' }, action: { fr: 'le tester', en: 'test it' } },
+      ESCAPE,
+    ];
     default: return assertNever(ctx.tool);
   }
 }
@@ -62,6 +66,8 @@ function cordKeys(notes: readonly HoverNote[]): KeyCap[] {
         break;
       case 'pinched': caps.push({ keys: { fr: 'Espace', en: 'Space' }, action: { fr: 'défaire le coude', en: 'undo the bend' } }); break;
       case 'heldByOtherHand': caps.push({ keys: { fr: 'E', en: 'E' }, action: { fr: 'lâcher l\'autre main', en: 'let go of the other hand' } }); break;
+      case 'testIt':
+      case 'tested': break;
       case 'stacked':
       case 'cycling': caps.push({ keys: { fr: 'Tab', en: 'Tab' }, action: { fr: 'câble suivant', en: 'next cord' } }); break;
       default: assertNever(n);

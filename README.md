@@ -130,6 +130,13 @@ appelle** pour une liaison coupée. Un compte à rebours s'affiche en haut de l'
 s'allume dans le plan : rétablie à temps, tout va bien ; trop tard, l'appel coûte 40 points sur le
 budget d'interruption.
 
+### Pannes
+
+Certaines baies (la partie libre à partir de 16 câbles, la baie du jour du vendredi au dimanche, le
+puzzle P9) cachent un **vieux cordon coupé à l'intérieur** : branché comme prévu, il ne porte rien et
+ses voyants clignotent en rouge. Le **Testeur** (touche 4) dit d'un clic si un cordon laisse passer le
+signal ; un cordon coupé se jette au bac et se remplace par un neuf du Stock.
+
 ### Cordons neufs
 
 Le **Stock** fournit des cordons neufs, comptés par longueur ; ils arrivent
@@ -203,6 +210,7 @@ qu'on peut faire en le tenant. L'aide complète d'un outil reste sur son bouton.
 | C | Chemin | tracer le chemin d'un câble à travers les guides ; il y est posé, et branché au port où finit le trait |
 | 2 | Supports | dans une unité vide, un guide-câbles ; dans un couloir latéral, une goulotte (**Maj** : un anneau) ; sur un support posé, le retirer |
 | 3 | Velcro | tracer un trait en travers des câbles à serrer : le velcro serre ceux que le trait croise, s'ils sont côte à côte ; un clic sur un velcro l'enlève |
+| 4 | Testeur | dit si un cordon porte le signal (seulement là où des cordons sont coupés) |
 | 0 | Stock | prend un cordon neuf (type, couleur, longueur), livré dans le bac |
 
 ### Ranger un câble

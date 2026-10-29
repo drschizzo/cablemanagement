@@ -31,6 +31,7 @@ import { HandTool } from './tools/handTool';
 import { RouteTool } from './tools/routeTool';
 import { VelcroTool } from './tools/velcroTool';
 import { SupportsTool } from './tools/supportsTool';
+import { TesterTool } from './tools/testerTool';
 import { InputRouter, type InputCommands } from './inputRouter';
 import type { CableIndex, CircuitIndex } from '../game/cables';
 import type { IncidentEvent } from '../game/incidents';
@@ -125,7 +126,7 @@ export class Controller implements PlayContext, InputCommands {
     this.route = new RouteTool(this);
     this.velcro = new VelcroTool(this);
     this.supports = new SupportsTool(this);
-    this.tools = { hand: this.hand, route: this.route, velcro: this.velcro, supports: this.supports };
+    this.tools = { hand: this.hand, route: this.route, velcro: this.velcro, supports: this.supports, tester: new TesterTool(this) };
     stage.scene.add(this.connectorGlows.group);
     this.cableView = new CableView(this.world);
     this.cableView.lightBy(this.rackView.glow);
@@ -536,6 +537,8 @@ export class Controller implements PlayContext, InputCommands {
       const ci = w.circuits[i];
       for (const id of [ci.a, ci.b]) (w.maintenance.bypassed.has(i) ? bypass : down).add(id);
     }
+    // a cord broken inside, plugged as planned: its ports blink red all the same, no light comes through
+    w.circuits.forEach((ci, i) => { if (w.circuitFaulty(i)) down.add(ci.a).add(ci.b); });
     this.rackView.showLeds(w.okPorts(this.lastEval), down, bypass);
   }
 }

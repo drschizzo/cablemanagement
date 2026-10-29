@@ -59,6 +59,8 @@ interface LevelBase {
   bundles?: number;
   /** old unmarked cords: where one goes only shows once it is traced, or plugged as planned */
   blind?: boolean;
+  /** old cords broken inside: plugged as planned, they carry nothing (the tester finds them) */
+  faults?: number;
 }
 
 /** a level of the campaign, in order */

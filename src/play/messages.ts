@@ -33,6 +33,8 @@ export type Toast =
   | { kind: 'velcroClick' }
   | { kind: 'noVelcroLeft' }
   | { kind: 'velcroNeedsTwo' }
+  /** the tester's verdict on a cord */
+  | { kind: 'cordTested'; faulty: boolean }
   /** something happened in the cabinet without the player: a colleague, a call */
   | { kind: 'incident'; incident: IncidentEvent };
 
@@ -79,4 +81,8 @@ export type HoverNote =
   | { kind: 'pinched' }
   | { kind: 'heldByOtherHand' }
   | { kind: 'stacked'; count: number }
-  | { kind: 'cycling'; index: number; count: number };
+  | { kind: 'cycling'; index: number; count: number }
+  /** the tester in hand, over a cord not tested yet */
+  | { kind: 'testIt' }
+  /** a cord tested already: broken inside, or sound */
+  | { kind: 'tested'; faulty: boolean };

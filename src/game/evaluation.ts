@@ -100,9 +100,10 @@ export function evaluate(w: World): Evaluation {
   }
 
   const cableStrain = w.cables.map((_, c) => cordStrain(w, c));
-  const circuits: CircuitStatus[] = w.circuits.map((ci) => {
+  const circuits: CircuitStatus[] = w.circuits.map((ci, i) => {
     const cable = w.rack.cableJoining(ci.a, ci.b);
-    const connected = cable >= 0 && w.cables[cable].type === ci.type;
+    // a cord broken inside does not connect: the link stays down
+    const connected = w.circuitUp(i);
     const routed = connected && cableRouted[cable];
     const clear = connected && !cableObstructs[cable];
     const labelled = connected && w.cables[cable].ends.every((e) => e.label === ci.service);

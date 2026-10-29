@@ -80,7 +80,11 @@ function briefTips(level: LevelDef, ctl: Controller | null): string[] {
         + (n ? ` You have <b>${n} bypass${n > 1 ? 'es' : ''}</b>: put on a link (click its ⚡ on the schedule), it carries its traffic while it is recabled.` : ''),
     }));
   }
-  tips.push(tr({ fr: 'Les voyants des ports : vert = liaison conforme au plan, orange = mauvais port.', en: 'The port LEDs: green = link as planned, orange = wrong port.' }));
+  if (level.faults) tips.push(tr({
+    fr: `<b>Pannes</b> : ${level.faults > 1 ? `${level.faults} vieux cordons sont coupés` : 'un vieux cordon est coupé'} à l'intérieur. Branché comme prévu, il ne porte rien et ses voyants clignotent en rouge. Le <b>Testeur</b> (4) le trouve d'un clic ; remplacez-le par un cordon neuf du Stock.`,
+    en: `<b>Faults</b>: ${level.faults > 1 ? `${level.faults} old cords are` : 'an old cord is'} broken inside. Plugged as planned, it carries nothing and its LEDs blink red. The <b>Tester</b> (4) finds it in a click; swap it for a new cord from the Stock.`,
+  }));
+  tips.push(tr({ fr: 'Les voyants des ports : vert = liaison conforme au plan, orange = mauvais port, rouge = liaison coupée.', en: 'The port LEDs: green = link as planned, orange = wrong port, red = link down.' }));
   return tips;
 }
 

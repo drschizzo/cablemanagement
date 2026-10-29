@@ -1,6 +1,6 @@
 // The cabinet of the day: drawn from the date, so that every player gets the
 // same one on the same day, small early in the week and bigger towards the
-// weekend, when incidents come too.
+// weekend, when incidents come too, and a cord broken inside from Friday.
 
 import type { DailyLevel } from './levelDef';
 import { freeLevel } from './freeLevel';
@@ -43,6 +43,7 @@ export function dailyLevel(date: string): DailyLevel {
   return {
     ...freeLevel(cables, seed),
     incidents: weekend ? drawIncidents(2, rng(seed ^ 0x51ed)) : undefined,
+    faults: weekday >= 4 ? 1 : 0,
     id: `daily-${date}`,
     kind: 'daily',
     date,

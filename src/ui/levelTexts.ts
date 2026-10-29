@@ -176,6 +176,10 @@ const PUZZLES: Record<string, Words<LevelText>> = {
     fr: { title: 'Dans le noir', brief: 'Des cordons sans marque, deux sur de mauvais ports. Tracez-les (T) avant de les toucher.' },
     en: { title: 'In the dark', brief: 'Unmarked cords, two in wrong ports. Trace them (T) before touching them.' },
   },
+  p9: {
+    fr: { title: 'Le câble muet', brief: 'Tout est branché comme prévu, et pourtant une liaison reste rouge. Testez (4), jetez, remplacez.' },
+    en: { title: 'The silent cord', brief: 'Everything is plugged as planned, and yet a link stays red. Test (4), bin, replace.' },
+  },
 };
 
 /** the campaign levels and the puzzles that have their words (a test checks every one does) */
