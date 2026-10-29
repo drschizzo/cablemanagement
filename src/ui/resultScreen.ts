@@ -40,7 +40,7 @@ export function showResult(ctl: Controller, level: LevelDef, ev: Evaluation, out
   $('#result-menu').onclick = () => { hide('#result'); actions.showModes(); };
   $('#result-home').onclick = () => { hide('#result'); actions.home(); };
   showShare(share);
-  $<HTMLButtonElement>('#result-replay').disabled = !ctl.timelapse.frames.length;
+  $<HTMLButtonElement>('#result-replay').disabled = ctl.timelapse.frames.length < 2;
   $('#result-replay').onclick = () => { hide('#result'); actions.replay(); };
   const after = $<HTMLImageElement>('#ba-after').src;
   $('#result-image').onclick = () => void saveBeforeAfter(ctl.before ?? after, after,

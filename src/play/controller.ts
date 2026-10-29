@@ -23,8 +23,9 @@ import type { HoverNote } from './messages';
 import { captureFront } from '../render/frontImage';
 import { buildFind } from '../render/findView';
 import type * as THREE from 'three';
-import { grabFrame } from '../render/frameGrab';
 import { Timelapse } from './timelapse';
+import { ReplayRecorder, type ReplayKey } from './replay';
+import { ReplayView } from './replayView';
 import { PortHint } from './feedback/portHint';
 import { HoldView, SETTLE_SHOW } from './feedback/holdView';
 import { OtherHandMarker } from './feedback/otherHandMarker';
@@ -44,6 +45,12 @@ import type { IncidentEvent } from '../game/incidents';
 
 export type { ControllerEvents, Tool } from './context';
 
+/** the work played again (see startReplay): before each image, `advance` sets what it shows; `drawn` once it is drawn */
+export interface Playback {
+  advance(dt: number): void;
+  drawn(): void;
+}
+
 /**
  * Where a level is: playing (the clock and the downtime run), paused (a brief
  * or the result is read: the clock waits, the cords still move), or preparing
@@ -58,8 +65,6 @@ const MAX_STEPS_PER_FRAME = 2;
 const EVAL_PERIOD = 0.4;
 /** px from the find on screen within which a click picks it up */
 const FIND_CLICK_PX = 26;
-/** px high, the frames of the timelapse */
-const TIMELAPSE_FRAME_H = 360;
 /** the flight round a signed-off cabinet (s) */
 const FINISH_TOUR_S = 3.2;
 
@@ -76,10 +81,13 @@ export class Controller implements PlayContext, InputCommands {
   /** seconds since the level opened, preparation and pauses included (animations) */
   clock = 0;
   readonly counters: GestureCounters = { moves: 0, hovered: 0, dragged: 0, plugged: 0, unplugged: 0, orbited: 0, deposited: 0, pinched: 0, handedOver: 0, routed: 0 };
-  /** the work as it went, a frame every few seconds of play (JPEG) */
-  readonly timelapse = new Timelapse<Blob>();
-  /** a frame of the timelapse wanted at the next image, whatever the pace (the cabinet signed off) */
+  /** the work as it went, the state of the cabinet a few times a second of play */
+  readonly timelapse = new Timelapse<ReplayKey>();
+  private recorder: ReplayRecorder;
+  /** a key of the timelapse wanted at the next image, whatever the pace (the cabinet signed off) */
   private frameWanted = false;
+  /** the work played again in place of the cabinet, and what drives it */
+  private replay: { view: ReplayView; playback: Playback } | null = null;
   /** the cabinet as the player found it (image), taken on the first frame */
   before: string | null = null;
 
@@ -162,6 +170,7 @@ export class Controller implements PlayContext, InputCommands {
     this.lastEval = this.world.evaluate();
     this.tidyCables = tidyCablesOf(this.lastEval);
     this.refreshLeds();
+    this.recorder = new ReplayRecorder(this.world, this.rackView);
     this.input = new InputRouter(stage, this.pointer, {
       byName: this.tools, withGestures: [this.route, this.velcro, this.comb, this.hand], hand: this.hand, route: this.route, supports: this.supports,
     }, this);
@@ -171,6 +180,7 @@ export class Controller implements PlayContext, InputCommands {
 
   dispose(): void {
     this.disposed = true;
+    this.stopReplay();
     this.stage.setAccent(DEFAULT_LOOK.accent);
     this.world.dispose();
     this.input.dispose();
@@ -243,7 +253,7 @@ export class Controller implements PlayContext, InputCommands {
     const height = (c: number) => Math.max(...w.cables[c].ends.map((e) => (e.port ? w.rack.port(e.port).y : -Infinity)));
     const order = w.cables.map((_, c) => c).sort((a, b) => height(b) - height(a));
     this.tidyGlows.wave(order, this.clock, FINISH_TOUR_S * 0.6);
-    // the timelapse ends on the cabinet as it is signed off, from the front (where the tour starts)
+    // the timelapse ends on the cabinet as it is signed off
     this.frameWanted = true;
     return this.stage.tour(FINISH_TOUR_S);
   }
@@ -283,7 +293,7 @@ export class Controller implements PlayContext, InputCommands {
     this.stepPhysics(dt);
     this.syncCableView();
     this.cableView.update();
-    this.rackView.syncItems(this.world.itemsVersion);
+    if (!this.replay) this.rackView.syncItems(this.world.itemsVersion);
     this.sinceEval += dt;
     if (this.sinceEval > EVAL_PERIOD) {
       this.sinceEval = 0;
@@ -295,19 +305,53 @@ export class Controller implements PlayContext, InputCommands {
     const carried = this.hand.carried;
     this.connectorGlows.update(this.world, this.clock, carried && carried.end >= 0 ? carried : null);
     this.otherHand.follow(this.world.sim);
+    // the first key: the cabinet as the player found it
+    if (this.frameWanted || !this.timelapse.frames.length || (this.currentPhase === 'playing' && this.timelapse.due(dt))) {
+      this.frameWanted = false;
+      this.timelapse.add(this.recorder.key(this.elapsed));
+    }
     if (draw) {
-      this.stage.render();
+      if (this.replay) this.drawReplay(dt, this.replay.playback);
+      else this.stage.render();
       if (!this.before) this.before = this.capture();
-      if (this.frameWanted || (this.currentPhase === 'playing' && this.timelapse.due(dt))) {
-        this.frameWanted = false;
-        this.recordFrame();
-      }
     }
   }
 
-  /** a frame of the timelapse, taken from the image just drawn, encoded meanwhile */
-  private recordFrame(): void {
-    grabFrame(this.stage, TIMELAPSE_FRAME_H).toBlob((jpeg) => { if (jpeg && !this.disposed) this.timelapse.add(jpeg); }, 'image/jpeg', 0.8);
+  // ----------------------------------------------------------- replay
+
+  /**
+   * Plays the recorded work again in place of the cabinet, until stopReplay:
+   * `playback` sets the moment shown before each image (see ReplayView.show).
+   */
+  startReplay(playback: Playback): ReplayView {
+    this.stopReplay();
+    const view = new ReplayView(this.timelapse.frames, this.stage.scene, this.rackView, this.world, this.look.velcro);
+    this.replay = { view, playback };
+    // every frame at full rate: the replay moves all along
+    this.stage.moving = true;
+    return view;
+  }
+
+  /** back to the cabinet as it is */
+  stopReplay(): void {
+    if (!this.replay) return;
+    this.replay.view.dispose();
+    this.replay = null;
+    this.stage.moving = false;
+    this.rackView.syncItems(this.world.itemsVersion);
+    this.refreshLeds();
+    this.stage.resetView();
+  }
+
+  /** an image of the replay: the cabinet's own cords and the overlays hidden meanwhile */
+  private drawReplay(dt: number, playback: Playback): void {
+    playback.advance(dt);
+    const hidden = [this.cableView.group, this.hand.plumbLine.group, this.otherHand.group, this.connectorGlows.group, ...(this.findView ? [this.findView] : [])];
+    const wasVisible = hidden.map((o) => o.visible);
+    for (const o of hidden) o.visible = false;
+    this.stage.render();
+    hidden.forEach((o, i) => { o.visible = wasVisible[i]; });
+    playback.drawn();
   }
 
   /** fixed physics steps for the time passed (none while preparing) */
@@ -587,6 +631,8 @@ export class Controller implements PlayContext, InputCommands {
   }
 
   private refreshLeds(): void {
+    // (the replay sets them as they were)
+    if (this.replay) return;
     const w = this.world, down = new Set<string>(), bypass = new Set<string>();
     for (const i of w.maintenance.live) {
       if (w.circuitUp(i)) continue;

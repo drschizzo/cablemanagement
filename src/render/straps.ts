@@ -7,7 +7,7 @@
 // them exactly cost too much while the cords move.
 
 import * as THREE from 'three';
-import type { World } from '../game/world';
+import type { CordsSource } from './cableView';
 
 /** points round a band */
 const N = 32;
@@ -56,7 +56,7 @@ export class Straps {
     this.mesh = this.make(16);
   }
 
-  update(world: World): void {
+  update(world: CordsSource): void {
     const list = world.straps;
     if (list.length > this.mesh.instanceMatrix.count) {
       const old = this.mesh;
@@ -85,7 +85,7 @@ export class Straps {
   }
 
   /** the matrix of the band round these nodes: across the way most of their cords run, fitted to them */
-  private band(world: World, nodes: number[]): THREE.Matrix4 | null {
+  private band(world: CordsSource, nodes: readonly number[]): THREE.Matrix4 | null {
     const sim = world.sim, x = sim.x, n = nodes.length;
     if (n === 0) return null;
     let cx = 0, cy = 0, cz = 0;

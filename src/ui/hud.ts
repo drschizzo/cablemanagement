@@ -290,7 +290,7 @@ export class Hud {
       if (this.ctl !== ctl) return;
       showResult(ctl, level, ev, outcome, {
         start: this.actions.start,
-        replay: () => this.timelapse.show(ctl.timelapse.frames, fileName(level), () => show('#result')),
+        replay: () => this.timelapse.show(ctl, fileName(level), () => show('#result')),
         showModes: () => this.showModes(() => show('#result')),
         home: this.actions.home,
       });

@@ -6,6 +6,9 @@
 const SWING = 0.55;
 const LIFT = 0.18;
 const CLOSER = 0.82;
+/** how far the replay of the work drifts either side of the front (rad), how much closer it ends */
+const REPLAY_DRIFT = 0.09;
+const REPLAY_CLOSER = 0.92;
 
 /** where the camera is, relative to its resting place */
 export interface TourPose {
@@ -32,6 +35,16 @@ export function tourPose(t: number): TourPose {
   const yaw = SWING * Math.sin(2 * Math.PI * ease(k)) * (1 - 0.4 * k);
   const out = Math.sin(Math.PI * ease(k));
   return { yaw, pitch: LIFT * out, zoom: 1 - (1 - CLOSER) * out };
+}
+
+/**
+ * The pose at `t` (0..1) of the replay of the work: a slow drift from a little
+ * left of the front to a little right, closing in, so that the image is never
+ * quite still.
+ */
+export function replayPose(t: number): TourPose {
+  const k = ease(Math.max(0, Math.min(1, t)));
+  return { yaw: REPLAY_DRIFT * (2 * k - 1), pitch: 0.04, zoom: 1 - (1 - REPLAY_CLOSER) * k };
 }
 
 export class CameraTour {

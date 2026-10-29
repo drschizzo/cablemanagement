@@ -331,6 +331,11 @@ export class Stage {
     if (!on) this.resetView();
   }
 
+  /** the camera at `pose`, relative to its resting place (the replay of the work moves it so) */
+  place(pose: TourPose): void {
+    this.fly(pose);
+  }
+
   /** the camera where the tour puts it, relative to its resting place; home once it is over */
   private fly(pose: TourPose | null): void {
     if (!pose) { this.resetView(); return; }

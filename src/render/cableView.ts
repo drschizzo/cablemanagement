@@ -4,7 +4,6 @@
 
 import * as THREE from 'three';
 import { TubeMesh, TubeNodes, TubeSync } from '@drschizzo/three-cable-tubes';
-import type { World } from '../game/world';
 import { CONNECTOR } from '../game/rack';
 import { SERVICES } from '../game/services';
 import { shared } from './dispose';
@@ -14,10 +13,28 @@ import { ledLit, type LedGlow } from './ledGlow';
 import { JACKET_KIND, jacketMaterial, jacketed } from './jacket';
 import { Straps } from './straps';
 import { DEFAULT_LOOK } from './look';
-import type { CableIndex } from '../game/cables';
+import type { CableIndex, EndIndex, NodeIndex, ReadonlyCable } from '../game/cables';
 import { CORD_KINDS, type CordPlug, type CordType } from '../game/cordTypes';
 import { assertNever } from '../lib/assertNever';
 
+
+/** what the cords are drawn from: a world, or the work played again (see replayView.ts) */
+export interface CordsSource {
+  readonly cables: readonly ReadonlyCable[];
+  readonly straps: readonly { readonly nodes: readonly NodeIndex[] }[];
+  /** cord segment length and radius */
+  readonly seg: number;
+  readonly radius: number;
+  readonly sim: {
+    readonly x: ArrayLike<number>;
+    readonly cables: readonly { start: number; count: number; asleep: boolean }[];
+    readonly pinches: readonly { a: number; n: number; s: number }[];
+    readonly cableOf: ArrayLike<number>;
+    readonly segOK: ArrayLike<number>;
+    readonly radius: ArrayLike<number>;
+  };
+  endNodes(c: CableIndex, e: EndIndex): [NodeIndex, NodeIndex];
+}
 
 interface CableMesh {
   visible: boolean;
@@ -108,7 +125,7 @@ export class CableView {
   private recoloured = new Set<THREE.InstancedMesh>();
 
   /** `velcro`: the colour of the straps (the look's) */
-  constructor(private world: World, velcro = DEFAULT_LOOK.velcro) {
+  constructor(private world: CordsSource, velcro = DEFAULT_LOOK.velcro) {
     this.straps = new Straps(new THREE.MeshStandardMaterial({ color: velcro, roughness: 0.9 }));
     let segments = 0, nodes = 0;
     world.cables.forEach((cb) => {

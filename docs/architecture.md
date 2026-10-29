@@ -61,8 +61,11 @@ src/
     pointer.ts      la souris sur la vue : pixels, rayon, projections écran ↔ baie
     picking.ts      ce qui est sous la souris : cordons (Tab pour le suivant), guides, ports libres
     undoHistory.ts  les états de la baie pour Ctrl+Z
-    timelapse.ts    le chantier tel qu'il s'est passé : une image toutes les quelques secondes de jeu, le tout gardé
-                    même pour un long chantier (une image sur deux part, le rythme ralentit)
+    timelapse.ts    le chantier tel qu'il s'est passé : un relevé quatre fois par seconde de jeu, le tout gardé
+                    même pour un long chantier (un relevé sur deux part, le rythme ralentit)
+    replay.ts       ce relevé : l'état de la baie (nœuds, prises, étiquettes, velcros, supports, LEDs), et le temps
+                    du rejeu (pris là où les câbles bougent), les câbles d'un relevé à l'autre le long d'une courbe
+    replayView.ts   le rejeu dessiné par les vues du jeu, à la place des câbles de la baie
     messages.ts     ce qu'une partie dit au joueur, en données (Toast, Hint, CordInfo, HoverNote) : ui/ les met en mots
     cordInfo.ts     ce que la bulle dit d'un cordon survolé
   showcase/     L'ÉCRAN TITRE : l'allée avant / après, une scène sans partie en cours
@@ -82,7 +85,7 @@ src/
                     tests/render/threeCompat/ (voir docs/mise-a-jour-three.md)
     gpu.ts          la carte graphique utilisée, et le conseil à donner quand elle dessine trop lentement
     frontImage.ts   l'image de face de la baie (avant / après de l'écran de résultat)
-    frameGrab.ts    une petite copie de l'image qui vient d'être dessinée (une image du timelapse, presque gratuite)
+    frameGrab.ts    une copie de l'image qui vient d'être dessinée, sans les panneaux (une image du timelapse)
     findView.ts     une trouvaille dessinée là où elle est posée (un post-it, un canard en plastique…)
     look.ts         ce que le joueur a choisi pour l'image (couleur des velcros, teinte de la lumière) : rien des règles
     cameraTour.ts   le vol de la caméra autour d'une baie validée, puis retour de face (Stage.tour)
@@ -99,7 +102,7 @@ src/
                     jauges repliées, le bouton Valider
     levelBrief.ts   le brief d'un niveau (ses conseils, les règles et les gestes qu'on y rencontre pour la première fois,
                     les autres repliés), puis la préparation ; ruleTexts.ts, les mots de chaque règle et de chaque geste
-    timelapsePlayer.ts le timelapse lu en boucle, et enregistré en vidéo (MediaRecorder) ; beforeAfterImage.ts, la baie
+    timelapsePlayer.ts le timelapse rejoué en boucle en 5 s, la caméra qui dérive, et enregistré en vidéo (MediaRecorder) ; beforeAfterImage.ts, la baie
                     avant / après en une image ; share.ts, l'adresse du jeu et les fichiers offerts au joueur
     resultScreen.ts l'écran de résultat ; modesPanel.ts, les modes de jeu en trois groupes (histoire, défis, partie libre
                     avec son réglage zen et l'éditeur) ; modeLocks.ts, quels modes sont ouverts : la formation et la partie libre d'emblée, le reste à la fin de la formation (fonctions pures) ;

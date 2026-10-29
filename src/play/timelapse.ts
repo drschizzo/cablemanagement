@@ -1,11 +1,12 @@
-// The work as it went: a frame every few seconds of play, for the timelapse
-// shown once the cabinet is signed off. A long job keeps its whole length:
-// when the frames grow too many, one in two goes and the pace halves.
+// The work as it went: a key (the state of the cabinet: see replay.ts) a few
+// times a second of play, for the timelapse shown once the cabinet is signed
+// off. A long job keeps its whole length: when the keys grow too many, one in
+// two goes and the pace halves.
 
-/** frames kept at most (≈ 15 kB each as JPEG) */
-export const MAX_FRAMES = 480;
-/** s of play between two frames, at first */
-export const FIRST_INTERVAL = 1.5;
+/** keys kept at most (≈ 12 B a node each: 30 kB for 40 cords) */
+export const MAX_FRAMES = 600;
+/** s of play between two keys, at first */
+export const FIRST_INTERVAL = 0.25;
 
 export class Timelapse<Frame> {
   readonly frames: Frame[] = [];
@@ -22,7 +23,7 @@ export class Timelapse<Frame> {
     return true;
   }
 
-  /** a frame taken (it may come a little later: encoding takes a moment); too many, one in two goes */
+  /** a key taken; too many, one in two goes */
   add(frame: Frame): void {
     this.frames.push(frame);
     if (this.frames.length < MAX_FRAMES) return;

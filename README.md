@@ -104,8 +104,9 @@ pour ★★★. Les puzzles ajoutent un défi : leurs gestes.
 Une baie validée a droit à son tour d'honneur : la caméra fait le tour de la baie
 pendant que les cordons s'allument de haut en bas, puis l'écran de résultat s'ouvre.
 
-L'écran de fin propose de **revoir le chantier en accéléré** (une image toutes les secondes et demie
-de jeu), de l'**enregistrer en vidéo**, et de télécharger l'**image avant / après** de la baie, avec
+L'écran de fin propose de **revoir le chantier en accéléré** : l'état de la baie, relevé quatre fois
+par seconde de jeu, rejoué en cinq secondes par la vue 3D elle-même, à la cadence de l'écran ; de
+l'**enregistrer en vidéo**, et de télécharger l'**image avant / après** de la baie, avec
 ses étoiles.
 
 Il faut **★★** pour ouvrir le niveau suivant : brancher ne suffit pas, il faut

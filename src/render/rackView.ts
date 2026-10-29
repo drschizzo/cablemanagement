@@ -20,6 +20,9 @@ import { grilleMaterial, railMaterial, softShadow } from './rackTextures';
 const markerGeo = shared(new THREE.RingGeometry(0.0085, 0.0105, 24));
 
 /** what the face plate of a unit says it is (the interface knows the words) */
+/** what an LED shows */
+export type LedState = 'off' | 'ok' | 'wrong' | 'down' | 'bypass';
+
 export type UnitLabeller = (unit: UnitSpec) => string;
 
 export interface RackViewOptions {
@@ -45,7 +48,7 @@ export class RackView {
   private labels: { k: number; light: boolean }[] = [];
   /** so that two cabinets side by side do not blink in step */
   private seed = Math.random() * 1000;
-  private builtVersion = -1;
+  private builtVersion: number | string = -1;
   /** the light of its LEDs, for the cords in front of it */
   readonly glow: LedGlow;
 
@@ -390,9 +393,21 @@ export class RackView {
     }
   }
 
-  setLed(port: Port, state: 'off' | 'ok' | 'wrong' | 'down' | 'bypass'): void {
+  /** every LED as it is shown, by port (the replay of the work records them) */
+  readonly ledStates = new Map<string, LedState>();
+  /** bumps when an LED changes */
+  ledsVersion = 0;
+
+  /** the LEDs as they were (the replay of the work); a port missing is off */
+  showLedStates(states: ReadonlyMap<string, LedState>): void {
+    for (const p of this.rack.ports) if ((this.ledStates.get(p.id) ?? 'off') !== (states.get(p.id) ?? 'off')) this.setLed(p, states.get(p.id) ?? 'off');
+  }
+
+  setLed(port: Port, state: LedState): void {
     const i = this.ledOf.get(port.id);
     if (i === undefined) return;
+    if ((this.ledStates.get(port.id) ?? 'off') !== state) this.ledsVersion++;
+    this.ledStates.set(port.id, state);
     const c = state === 'ok' ? '#39ff6a' : state === 'wrong' ? '#ffae1f' : state === 'down' ? '#ff3b2f' : state === 'bypass' ? '#ffcf4a' : '#000000';
     const col = state === 'off' ? new THREE.Color(0, 0, 0) : ledGlow(new THREE.Color(c));
     col.toArray(this.ledTint.array, 3 * i);
@@ -407,16 +422,20 @@ export class RackView {
     this.leds.instanceColor!.needsUpdate = true;
   }
 
-  /** rebuilds the managers, ducts and rings when the rack items change */
-  syncItems(version: number): void {
+  /**
+   * Rebuilds the managers, ducts and rings when the rack items change; those of
+   * `rack`, another of the same units, when given (the replay of the work: its
+   * versions are its own, apart from the cabinet's)
+   */
+  syncItems(version: number | string, rack = this.rack): void {
     if (version === this.builtVersion) return;
     this.builtVersion = version;
     for (const c of [...this.itemsGroup.children]) {
       this.itemsGroup.remove(c);
       disposeTree(c);
     }
-    const statics = this.rack.statics();
-    for (const it of this.rack.items) this.itemsGroup.add(buildItem(this.rack, it, statics, null));
+    const statics = rack.statics();
+    for (const it of rack.items) this.itemsGroup.add(buildItem(rack, it, statics, null));
     mergeStatic(this.itemsGroup);
     this.glow.light(this.itemsGroup);
   }
