@@ -24,7 +24,8 @@ import type { CordInfo, Hint, HoverNote } from '../play/messages';
 import { StockMenu } from './stockMenu';
 import { SchedulePanel } from './schedulePanel';
 import { LevelBrief } from './levelBrief';
-import { showResult, type Outcome } from './resultScreen';
+import { fileName, showResult, type Outcome } from './resultScreen';
+import { TimelapsePlayer } from './timelapsePlayer';
 import { recordDaily, shareText, streak } from './daily';
 import { LevelMenu } from './levelMenu';
 import { PauseMenu } from './pauseMenu';
@@ -57,6 +58,7 @@ export class Hud {
   private pause: PauseMenu;
   private levelMenu = new LevelMenu();
   private settings: SettingsPanel;
+  private timelapse = new TimelapsePlayer();
   private toastTimer = 0;
   /** the hint of the gesture under way, and the notes of the cord under the pointer (null: none) */
   private liveHint: Hint | null = null;
@@ -254,6 +256,7 @@ export class Hud {
       if (this.ctl !== ctl) return;
       showResult(ctl, level, ev, outcome, {
         start: this.actions.start,
+        replay: () => this.timelapse.show(ctl.timelapse.frames, fileName(level), () => show('#result')),
         showMenu: () => this.showMenu(() => show('#result')),
         home: this.actions.home,
       });

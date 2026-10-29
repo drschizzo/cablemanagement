@@ -20,6 +20,8 @@ import { UndoHistory } from './undoHistory';
 import { cordInfo } from './cordInfo';
 import type { HoverNote } from './messages';
 import { captureFront } from '../render/frontImage';
+import { grabFrame } from '../render/frameGrab';
+import { Timelapse } from './timelapse';
 import { PortHint } from './feedback/portHint';
 import { HoldView, SETTLE_SHOW } from './feedback/holdView';
 import { OtherHandMarker } from './feedback/otherHandMarker';
@@ -50,6 +52,8 @@ export type Phase = 'playing' | 'paused' | 'preparing';
 const MAX_STEPS_PER_FRAME = 2;
 /** how often the cabinet is scored (s) */
 const EVAL_PERIOD = 0.4;
+/** px high, the frames of the timelapse */
+const TIMELAPSE_FRAME_H = 360;
 /** the flight round a signed-off cabinet (s) */
 const FINISH_TOUR_S = 3.2;
 
@@ -66,6 +70,10 @@ export class Controller implements PlayContext, InputCommands {
   /** seconds since the level opened, preparation and pauses included (animations) */
   clock = 0;
   readonly counters: GestureCounters = { moves: 0, hovered: 0, dragged: 0, plugged: 0, unplugged: 0, orbited: 0, deposited: 0, pinched: 0, handedOver: 0, routed: 0 };
+  /** the work as it went, a frame every few seconds of play (JPEG) */
+  readonly timelapse = new Timelapse<Blob>();
+  /** a frame of the timelapse wanted at the next image, whatever the pace (the cabinet signed off) */
+  private frameWanted = false;
   /** the cabinet as the player found it (image), taken on the first frame, and its readability note */
   before: string | null = null;
   startNote = 0;
@@ -218,6 +226,8 @@ export class Controller implements PlayContext, InputCommands {
     const height = (c: number) => Math.max(...w.cables[c].ends.map((e) => (e.port ? w.rack.port(e.port).y : -Infinity)));
     const order = w.cables.map((_, c) => c).sort((a, b) => height(b) - height(a));
     this.tidyGlows.wave(order, this.clock, FINISH_TOUR_S * 0.6);
+    // the timelapse ends on the cabinet as it is signed off, from the front (where the tour starts)
+    this.frameWanted = true;
     return this.stage.tour(FINISH_TOUR_S);
   }
 
@@ -271,7 +281,16 @@ export class Controller implements PlayContext, InputCommands {
     if (draw) {
       this.stage.render();
       if (!this.before) this.before = this.capture();
+      if (this.frameWanted || (this.currentPhase === 'playing' && this.timelapse.due(dt))) {
+        this.frameWanted = false;
+        this.recordFrame();
+      }
     }
+  }
+
+  /** a frame of the timelapse, taken from the image just drawn, encoded meanwhile */
+  private recordFrame(): void {
+    grabFrame(this.stage, TIMELAPSE_FRAME_H).toBlob((jpeg) => { if (jpeg && !this.disposed) this.timelapse.add(jpeg); }, 'image/jpeg', 0.8);
   }
 
   /** fixed physics steps for the time passed (none while preparing) */

@@ -10,9 +10,7 @@ import type { DailyResult } from './storage';
 import type { LevelResult } from './progress';
 import { formatTime } from './format';
 import { tr } from './language';
-
-/** where the game is played, at the end of a shared result */
-export const GAME_URL = 'https://drschizzo.github.io/cablemanagement/';
+import { GAME_URL } from './share';
 
 /** each line of the schedule: 2 tidy (plugged, routed, clear, relaxed), 1 plugged only, 0 not plugged */
 export function linesOf(ev: Evaluation): number[] {

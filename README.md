@@ -82,6 +82,10 @@ Un cordon branché comme prévu reçoit tout seul l'étiquette de son service.
 Une baie validée a droit à son tour d'honneur : la caméra fait le tour de la baie
 pendant que les cordons s'allument de haut en bas, puis l'écran de résultat s'ouvre.
 
+L'écran de fin propose de **revoir le chantier en accéléré** (une image toutes les secondes et demie
+de jeu), de l'**enregistrer en vidéo**, et de télécharger l'**image avant / après** de la baie, avec
+ses étoiles et sa lisibilité.
+
 Il faut **★★** pour ouvrir le niveau suivant : brancher ne suffit pas, il faut
 ranger. La jauge **Propreté** résume les critères ; un câble qui devient propre
 s'allume en vert avec une note. Chaque niveau propose aussi un **défi chrono**

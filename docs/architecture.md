@@ -52,6 +52,8 @@ src/
     pointer.ts      la souris sur la vue : pixels, rayon, projections écran ↔ baie
     picking.ts      ce qui est sous la souris : cordons (Tab pour le suivant), guides, ports libres
     undoHistory.ts  les états de la baie pour Ctrl+Z
+    timelapse.ts    le chantier tel qu'il s'est passé : une image toutes les quelques secondes de jeu, le tout gardé
+                    même pour un long chantier (une image sur deux part, le rythme ralentit)
     messages.ts     ce qu'une partie dit au joueur, en données (Toast, Hint, CordInfo, HoverNote) : ui/ les met en mots
     cordInfo.ts     ce que la bulle dit d'un cordon survolé
   showcase/     L'ÉCRAN TITRE : l'allée avant / après, une scène sans partie en cours
@@ -71,6 +73,7 @@ src/
                     tests/render/threeCompat/ (voir docs/mise-a-jour-three.md)
     gpu.ts          la carte graphique utilisée, et le conseil à donner quand elle dessine trop lentement
     frontImage.ts   l'image de face de la baie (avant / après de l'écran de résultat)
+    frameGrab.ts    une petite copie de l'image qui vient d'être dessinée (une image du timelapse, presque gratuite)
     cameraTour.ts   le vol de la caméra autour d'une baie validée, puis retour de face (Stage.tour)
     rackView.ts     la baie, ses équipements, ports, plaques et voyants
     rackItems.ts    les éléments de rangement, construits à partir de leurs formes de collision (buildItem)
@@ -83,6 +86,8 @@ src/
     toolbar.ts      la barre d'outils et ce qui reste en stock ; stockMenu.ts, le stock de cordons neufs
     schedulePanel.ts le plan de brassage, ses jauges, le budget d'interruption, le bouton Valider
     levelBrief.ts   le brief d'un niveau, puis la préparation
+    timelapsePlayer.ts le timelapse lu en boucle, et enregistré en vidéo (MediaRecorder) ; beforeAfterImage.ts, la baie
+                    avant / après en une image ; share.ts, l'adresse du jeu et les fichiers offerts au joueur
     resultScreen.ts l'écran de résultat ; levelMenu.ts, le menu des niveaux (tutoriel, campagne, partie libre)
     pauseMenu.ts    le menu d'un niveau (☰ Menu, Échap) : le chrono attend ; consignes, recommencer, niveaux,
                     paramètres, accueil ; confirmDialog.ts, la question avant de quitter une baie entamée

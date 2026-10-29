@@ -12,6 +12,8 @@ import { $ } from '../lib/page';
 import { levelAfter, type LevelResult } from './progress';
 import { readabilityText } from './messages';
 import { tr } from './language';
+import { levelTitle } from './levelTexts';
+import { saveBeforeAfter } from './beforeAfterImage';
 
 /** what a signed-off cabinet left in the record */
 export interface Outcome {
@@ -24,6 +26,8 @@ export interface Outcome {
 
 export interface ResultActions {
   start(level: LevelDef): void;
+  /** the timelapse of the work; back to the result after */
+  replay(): void;
   showMenu(): void;
   /** the title screen */
   home(): void;
@@ -50,6 +54,11 @@ export function showResult(ctl: Controller, level: LevelDef, ev: Evaluation, out
   $('#result-menu').onclick = () => { hide('#result'); actions.showMenu(); };
   $('#result-home').onclick = () => { hide('#result'); actions.home(); };
   showShare(share);
+  $<HTMLButtonElement>('#result-replay').disabled = !ctl.timelapse.frames.length;
+  $('#result-replay').onclick = () => { hide('#result'); actions.replay(); };
+  const after = $<HTMLImageElement>('#ba-after').src;
+  $('#result-image').onclick = () => void saveBeforeAfter(ctl.before ?? after, after,
+    { title: levelTitle(level), stars: ev.stars, noteBefore: ctl.startNote, noteAfter: ev.readability.note }, `${fileName(level)}.png`);
   show('#result');
 }
 
@@ -118,4 +127,9 @@ function showShare(share: string | null): void {
     if (navigator.clipboard) navigator.clipboard.writeText(share).then(copied, byHand);
     else byHand();
   };
+}
+
+/** a file name for what a level shares: brassage-l3, brassage-daily-2026-11-05 */
+export function fileName(level: LevelDef): string {
+  return `brassage-${level.id}`;
 }

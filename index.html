@@ -92,6 +92,10 @@
           <figure><img id="ba-before" data-i18n-alt="result.beforeAlt" /><figcaption data-i18n="common.before"></figcaption></figure>
           <figure><img id="ba-after" data-i18n-alt="result.afterAlt" /><figcaption data-i18n="common.after"></figcaption></figure>
         </div>
+        <div class="row media">
+          <button id="result-replay" class="ghost" data-i18n="result.replay"></button>
+          <button id="result-image" class="ghost" data-i18n="result.image"></button>
+        </div>
         <div id="result-note"></div>
         <ul id="result-lines"></ul>
         <div class="row">
@@ -143,6 +147,18 @@
       <div id="tuto-end" class="row">
         <button id="tuto-home" class="ghost" data-i18n="common.home"></button>
         <button id="tuto-play" class="primary" data-i18n="tuto.play"></button>
+      </div>
+    </div>
+
+    <div id="timelapse" class="overlay">
+      <div class="panel wide">
+        <h1 data-i18n="timelapse.title"></h1>
+        <canvas id="tl-canvas"></canvas>
+        <p id="tl-status" class="sub"></p>
+        <div class="row">
+          <button id="tl-close" class="ghost" data-i18n="common.back"></button>
+          <button id="tl-video" class="primary"></button>
+        </div>
       </div>
     </div>
 
