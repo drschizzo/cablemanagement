@@ -5,7 +5,7 @@ import type { Evaluation } from '../../src/game/evaluation';
 import { recordDaily, shareText, streak } from '../../src/ui/daily';
 import type { DailyResult } from '../../src/ui/storage';
 
-const status = (connected: boolean, tidy: boolean) => ({ cable: 0, connected, routed: tidy, clear: tidy, labelled: true, relaxed: tidy });
+const status = (connected: boolean, tidy: boolean) => ({ cable: 0, connected, routed: tidy, clear: tidy, labelled: true, relaxed: tidy, tidy });
 const ev = (stars: number, downtime = 12.4): Evaluation => ({
   stars, downtime, budget: 200,
   circuits: [status(true, true), status(true, false), status(false, false)],

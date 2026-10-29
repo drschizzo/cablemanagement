@@ -14,7 +14,7 @@ import { GAME_URL } from './share';
 
 /** each line of the schedule: 2 tidy (plugged, routed, clear, relaxed), 1 plugged only, 0 not plugged */
 export function linesOf(ev: Evaluation): number[] {
-  return ev.circuits.map((s) => (s.connected && s.routed && s.clear && s.relaxed ? 2 : s.connected ? 1 : 0));
+  return ev.circuits.map((s) => (s.tidy ? 2 : s.connected ? 1 : 0));
 }
 
 /** is `a` better than `b`: more stars, then less downtime, then less time */

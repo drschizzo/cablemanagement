@@ -8,7 +8,7 @@ import { BIG_BAYS, LEVELS } from '../../src/game/levels/campaign';
 import type { Progress } from '../../src/ui/storage';
 
 const empty = (): Progress => ({ stars: {}, times: {}, challenges: {} });
-const level = { ...LEVELS[0], par: 100 };
+const level = LEVELS[0];
 
 describe('the progress record', () => {
   it('keeps the best stars and time, and tells what it held before', () => {
@@ -20,12 +20,10 @@ describe('the progress record', () => {
     expect(second.previousStars).toBe(2);
   });
 
-  it('wins the time challenge with three stars within the time', () => {
+  it('has no challenge on a level of the training, however fast', () => {
     const p = empty();
-    expect(recordResult(p, level, 2, 50, 10).challengeWon).toBe(false);
-    expect(recordResult(p, level, 3, 150, 10).challengeWon).toBe(false);
-    expect(recordResult(p, level, 3, 80, 10).challengeWon).toBe(true);
-    expect(p.challenges[level.id]).toBe(true);
+    expect(recordResult(p, level, 3, 1, 1).challengeWon).toBe(false);
+    expect(p.challenges[level.id]).toBeUndefined();
   });
 
   it('wins the gestures challenge of a puzzle with three stars in few enough gestures', () => {

@@ -6,7 +6,7 @@ import type { LevelDef } from '../../src/game/levels/levelDef';
 import { strapBundles, tidyKit, tidyLayout } from '../../src/game/idealRoutes';
 
 /** a cabinet of 20 lines with everything done; each test takes one thing away */
-const perfect: StarCounts = { total: 20, connected: 20, routed: 20, clear: 20, labelled: 20, relaxed: 20, tautShort: 0, mixedSupports: 0, bundles: 2, bundlesNeeded: 2, downtime: 50, budget: 50 };
+const perfect: StarCounts = { total: 20, connected: 20, routed: 20, clear: 20, labelled: 20, relaxed: 20, tidy: 20, tautShort: 0, mixedSupports: 0, bundles: 2, bundlesNeeded: 2, downtime: 50, budget: 50 };
 const stars = (c: Partial<StarCounts>) => starsOf({ ...perfect, ...c });
 
 describe('the stars', () => {
@@ -15,22 +15,15 @@ describe('the stars', () => {
     expect(stars({ connected: 0, routed: 0, clear: 0 })).toBe(0);
   });
 
-  it('two from 70 % of the cords routed, not one cord fewer', () => {
-    expect(stars({ routed: 14 })).toBe(2);
-    expect(stars({ routed: 13 })).toBe(1);
-  });
-
-  it('two from 85 % of the cords clear of the ports, not one cord fewer', () => {
-    expect(stars({ clear: 17 })).toBe(2);
-    expect(stars({ clear: 16 })).toBe(1);
-    // both thresholds at once
-    expect(stars({ routed: 14, clear: 17 })).toBe(2);
-    expect(stars({ routed: 13, clear: 20 })).toBe(1);
+  it('two with every cord tidy but one per eight links, not one cord fewer', () => {
+    // 20 lines: 3 cords may be left
+    expect(stars({ tidy: 17 })).toBe(2);
+    expect(stars({ tidy: 16 })).toBe(1);
   });
 
   it('three only with everything: each thing missing alone leaves two', () => {
     expect(stars({})).toBe(3);
-    for (const missing of [{ routed: 19 }, { clear: 19 }, { labelled: 19 }, { relaxed: 19 }, { bundles: 1 }]) {
+    for (const missing of [{ tidy: 19 }, { labelled: 19 }, { mixedSupports: 1 }, { bundles: 1 }]) {
       expect([missing, stars(missing)]).toEqual([missing, 2]);
     }
   });
@@ -46,11 +39,10 @@ describe('the stars', () => {
     expect(stars({ bundles: 5 })).toBe(3);
   });
 
-  it('a small cabinet: the thresholds round up to whole cords', () => {
-    // 4 lines: 70 % is 2.8 cords, 85 % is 3.4 cords
-    const small = { total: 4, connected: 4, labelled: 4, relaxed: 4, bundles: 0, bundlesNeeded: 0 };
-    expect(stars({ ...small, routed: 3, clear: 4 })).toBe(2);
-    expect(stars({ ...small, routed: 4, clear: 3 })).toBe(1);
+  it('a small cabinet leaves one cord at least', () => {
+    const small = { total: 4, connected: 4, labelled: 4, bundles: 0, bundlesNeeded: 0 };
+    expect(stars({ ...small, tidy: 3 })).toBe(2);
+    expect(stars({ ...small, tidy: 2 })).toBe(1);
   });
 });
 
@@ -76,12 +68,12 @@ describe('what the next star needs', () => {
     expect(next({ connected: 17 })).toEqual({ stars: 1, needs: [{ kind: 'connect', count: 3 }] });
   });
 
-  it('the second: the links short of 70 % routed and 85 % clear', () => {
-    expect(next({ routed: 10, clear: 15 })).toEqual({ stars: 2, needs: [{ kind: 'route', count: 4 }, { kind: 'clear', count: 2 }] });
+  it('the second: the cords to make tidy beyond those it leaves, and what is wrong with the untidy ones', () => {
+    expect(next({ tidy: 10, routed: 12, clear: 15, relaxed: 18 })).toEqual({ stars: 2, needs: [{ kind: 'tidy', count: 7, allowed: 3, hanging: 8, front: 5, strained: 2, short: 0 }] });
   });
 
   it('the third: everything left, and the incident first when the budget is overrun', () => {
-    expect(next({ relaxed: 18, bundles: 1, downtime: 51 })).toEqual({ stars: 3, needs: [{ kind: 'incident' }, { kind: 'relax', count: 2, short: 0 }, { kind: 'bundle', count: 1 }] });
+    expect(next({ relaxed: 18, tidy: 18, bundles: 1, downtime: 51 })).toEqual({ stars: 3, needs: [{ kind: 'incident' }, { kind: 'tidy', count: 2, allowed: 0, hanging: 0, front: 0, strained: 2, short: 0 }, { kind: 'bundle', count: 1 }] });
   });
 });
 

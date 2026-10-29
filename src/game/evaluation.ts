@@ -1,7 +1,8 @@
 // How tidy a cabinet is: for each line of the schedule, whether its cord is
-// connected, routed through the management, clear of the other ports,
-// labelled and relaxed; the side supports mixing fibre, copper and power,
-// the bundles; the stars, and what the next one needs. Reads a World, changes
+// connected, and whether it is tidy (routed through the management, clear of
+// the other ports, relaxed); the side supports mixing fibre, copper and power,
+// the bundles; the stars, and what the next one needs. The player sees three
+// things: plugged, tidy, within the downtime budget. Reads a World, changes
 // nothing.
 
 import { CORD_KINDS } from './cordTypes';
@@ -17,6 +18,8 @@ export interface CircuitStatus {
   labelled: boolean;
   /** neither pulled taut nor kinked */
   relaxed: boolean;
+  /** connected, routed, clear and relaxed: nothing left to do on its cord */
+  tidy: boolean;
 }
 
 export interface Evaluation {
@@ -25,6 +28,8 @@ export interface Evaluation {
   routed: number;
   clear: number;
   labelled: number;
+  /** links whose cord is tidy */
+  tidy: number;
   total: number;
   stars: number;
   /** per cable: tidy route, obstructs a port */
@@ -101,7 +106,7 @@ export function evaluate(w: World): Evaluation {
     const clear = connected && !cableObstructs[cable];
     const labelled = connected && w.cables[cable].ends.every((e) => e.label === ci.service);
     const relaxed = connected && !cableStrain[cable];
-    return { cable, connected, routed, clear, labelled, relaxed };
+    return { cable, connected, routed, clear, labelled, relaxed, tidy: routed && clear && relaxed };
   });
   const n = circuits.length;
   const count = (f: (s: CircuitStatus) => boolean) => circuits.filter(f).length;
@@ -110,45 +115,52 @@ export function evaluate(w: World): Evaluation {
   const clear = count((s) => s.clear);
   const labelled = w.level.labels ? count((s) => s.labelled) : n;
   const relaxed = count((s) => s.relaxed);
+  const tidy = count((s) => s.tidy);
   const tautShort = w.cables.reduce((most, _, c) => cableStrain[c] === 'taut' ? Math.max(most, TAUT_SHORT * w.routeLength(c)! - w.cableLength(c)) : most, 0);
   const mixedSupports = mixedSupportCount(w, supports);
   const bundles = bundleCount(w, supports);
   const bundlesNeeded = w.level.bundles ?? 0;
-  const stars = starsOf({ total: n, connected, routed, clear, labelled, relaxed, tautShort, mixedSupports, bundles, bundlesNeeded, downtime: w.maintenance.downtime, budget: w.maintenance.budget });
+  const stars = starsOf({ total: n, connected, routed, clear, labelled, relaxed, tidy, tautShort, mixedSupports, bundles, bundlesNeeded, downtime: w.maintenance.downtime, budget: w.maintenance.budget });
   return {
-    circuits, connected, routed, clear, labelled, relaxed, tautShort, total: n, stars, cableRouted, cableObstructs, cableStrain,
+    circuits, connected, routed, clear, labelled, relaxed, tidy, tautShort, total: n, stars, cableRouted, cableObstructs, cableStrain,
     liveDown: w.maintenance.liveDown(), downtime: w.maintenance.downtime, budget: w.maintenance.budget, mixedSupports, bundles, bundlesNeeded,
   };
 }
 
 /** the counts the stars are read from */
-export type StarCounts = Pick<Evaluation, 'total' | 'connected' | 'routed' | 'clear' | 'labelled' | 'relaxed' | 'tautShort' | 'mixedSupports' | 'bundles' | 'bundlesNeeded' | 'downtime' | 'budget'>;
-
-/** two stars need this share of the links routed, and this share clear of the ports */
-const TWO_STARS_ROUTED = 0.7;
-const TWO_STARS_CLEAR = 0.85;
+export type StarCounts = Pick<Evaluation, 'total' | 'connected' | 'routed' | 'clear' | 'labelled' | 'relaxed' | 'tidy' | 'tautShort' | 'mixedSupports' | 'bundles' | 'bundlesNeeded' | 'downtime' | 'budget'>;
 
 /**
- * One star: every line connected. Two: most cords routed and clear of the
- * ports. Three: everything done, each family down its own ducts and rings,
- * and the downtime within its budget (past it, an incident: three stars are out of
- * reach).
+ * How many cords two stars leave to see to: one per eight links, rounded,
+ * one at least. A whole number the player can count.
+ */
+export function untidyAllowed(total: number): number {
+  return Math.max(1, Math.round(total / 8));
+}
+
+/**
+ * One star: every line connected. Two: every cord tidy but a few
+ * (untidyAllowed). Three: every cord tidy and labelled, each family down its
+ * own ducts and rings, the bundles the level asks, and the downtime within
+ * its budget (past it, an incident: three stars are out of reach).
  */
 export function starsOf(c: StarCounts): number {
   const n = c.total;
   if (c.connected < n) return 0;
-  if (c.routed === n && c.clear === n && c.labelled === n && c.relaxed === n && c.mixedSupports === 0 && c.bundles >= c.bundlesNeeded && c.downtime <= c.budget) return 3;
-  return c.routed >= TWO_STARS_ROUTED * n && c.clear >= TWO_STARS_CLEAR * n ? 2 : 1;
+  if (c.tidy === n && c.labelled === n && c.mixedSupports === 0 && c.bundles >= c.bundlesNeeded && c.downtime <= c.budget) return 3;
+  return n - c.tidy <= untidyAllowed(n) ? 2 : 1;
 }
 
 /**
  * One thing the next star still needs: `count` more links (or bundles) to
- * see to; for cords taut, how much the tautest lacks (m, 0: only kinks); an
- * incident: three stars are out of reach.
+ * see to; for cords not tidy yet, how many the star leaves aside, how many
+ * of them hang, cross a port, are strained (a cord may do several), and how
+ * much the tautest lacks (m, 0: none taut); an incident: three stars are out
+ * of reach.
  */
 export type StarNeed =
-  | { kind: 'connect' | 'route' | 'clear' | 'label' | 'separate' | 'bundle'; count: number }
-  | { kind: 'relax'; count: number; short: number }
+  | { kind: 'connect' | 'label' | 'separate' | 'bundle'; count: number }
+  | { kind: 'tidy'; count: number; allowed: number; hanging: number; front: number; strained: number; short: number }
   | { kind: 'incident' };
 
 /** the next star, and what it still needs (null: three stars already) */
@@ -156,20 +168,16 @@ export function nextStar(c: StarCounts): { stars: number; needs: StarNeed[] } | 
   const stars = starsOf(c);
   if (stars === 3) return null;
   const n = c.total;
-  /** `want` of a count (a share of the links rounds up), of which `have` are done */
-  const short = (kind: Exclude<StarNeed['kind'], 'incident' | 'relax'>, have: number, want: number): StarNeed[] => {
-    const count = Math.ceil(want - 1e-9) - have;
-    return count > 0 ? [{ kind, count }] : [];
-  };
-  const relax: StarNeed[] = c.relaxed < n ? [{ kind: 'relax', count: n - c.relaxed, short: c.tautShort }] : [];
+  const short = (kind: 'connect' | 'label' | 'bundle', have: number, want: number): StarNeed[] => (want > have ? [{ kind, count: want - have }] : []);
+  /** `count` more cords to make tidy, and what is wrong with the untidy ones */
+  const tidy = (count: number, allowed = 0): StarNeed[] => (count > 0
+    ? [{ kind: 'tidy', count, allowed, hanging: n - c.routed, front: n - c.clear, strained: n - c.relaxed, short: c.tautShort }]
+    : []);
   const separate: StarNeed[] = c.mixedSupports > 0 ? [{ kind: 'separate', count: c.mixedSupports }] : [];
   if (stars === 0) return { stars: 1, needs: short('connect', c.connected, n) };
-  if (stars === 1) return { stars: 2, needs: [...short('route', c.routed, TWO_STARS_ROUTED * n), ...short('clear', c.clear, TWO_STARS_CLEAR * n)] };
+  if (stars === 1) return { stars: 2, needs: tidy(n - c.tidy - untidyAllowed(n), untidyAllowed(n)) };
   const incident: StarNeed[] = c.downtime > c.budget ? [{ kind: 'incident' }] : [];
-  return {
-    stars: 3,
-    needs: [...incident, ...short('route', c.routed, n), ...short('clear', c.clear, n), ...short('label', c.labelled, n), ...relax, ...separate, ...short('bundle', c.bundles, c.bundlesNeeded)],
-  };
+  return { stars: 3, needs: [...incident, ...tidy(n - c.tidy), ...short('label', c.labelled, n), ...separate, ...short('bundle', c.bundles, c.bundlesNeeded)] };
 }
 
 /** ports of the lines connected as planned (their LEDs are green); without an evaluation, from the plugs alone */

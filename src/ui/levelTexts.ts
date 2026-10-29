@@ -201,12 +201,24 @@ const TICKETS: Words<LevelText>[] = [
     en: { title: 'Forty years of tapes', brief: 'The director had all the archives digitised: forty years of shows, jingles and interviews with mayors. The server that keeps them arrives at the bottom of the cabinet, under its own power strip: its two supplies go to the strip, its two network cards to switch S. It carries the storage: cutting it silences 1986 to 2026.' },
   },
   {
-    fr: { title: 'L\'émission de nuit déménage', brief: 'L\'émission de nuit change de studio : quatre liaisons ne servent plus (leurs cordons sont encore branchés : au bac), quatre nouvelles les remplacent. L\'animateur, lui, est déjà à l\'antenne, et il a votre numéro.' },
-    en: { title: 'The night show moves', brief: 'The night show changes studios: four links are out of service (their cords are still plugged: into the crate), four new ones replace them. The host, for his part, is already on air, and he has your number.' },
+    fr: { title: 'Le collègue du son', brief: 'Deux nouveaux postes pour la régie son, et Gérard, l\'ingénieur du son, qui vient « juste chercher un câble » dans la baie pendant que vous y êtes. Il débranche ce qu\'il ne faut pas, et le standard appelle : rebranchez avant la fin du compte à rebours.' },
+    en: { title: 'The sound engineer', brief: 'Two new desks for the sound control room, and Gérard, the sound engineer, who comes to “just grab a cable” from the cabinet while you are at it. He unplugs what he should not, and the switchboard calls: plug it back before the countdown ends.' },
+  },
+  {
+    fr: { title: 'L\'émission de nuit déménage', brief: 'L\'émission de nuit change de studio : quatre liaisons ne servent plus (leurs cordons sont encore branchés : au bac), quatre nouvelles les remplacent. L\'animateur, lui, est déjà à l\'antenne : ne coupez pas ce qui sert encore.' },
+    en: { title: 'The night show moves', brief: 'The night show changes studios: four links are out of service (their cords are still plugged: into the crate), four new ones replace them. The host, for his part, is already on air: do not cut what is still in use.' },
+  },
+  {
+    fr: { title: 'Un cordon fatigué', brief: 'Deux postes de plus à la rédaction, et une liaison qui reste rouge alors qu\'elle est branchée comme prévu : un vieux cordon, coupé à l\'intérieur. Le Testeur (4) dit lequel ; jetez-le au bac et remplacez-le par un neuf du Stock.' },
+    en: { title: 'A tired cord', brief: 'Two more desks in the newsroom, and a link that stays red though it is plugged as planned: an old cord, broken inside. The Tester (4) tells which one; throw it in the crate and replace it with a new one from the Stock.' },
   },
   {
     fr: { title: 'Le festival de la pinède', brief: 'Trois jours de concerts sous les pins, retransmis en direct. Un deuxième panneau et son switch sont installés sous le premier pour la régie mobile : huit liaisons à créer, et le switch T à relier au pare-feu. Les techniciens son passeront derrière vous ; laissez-leur une baie lisible.' },
     en: { title: 'The pine forest festival', brief: 'Three days of concerts under the pines, broadcast live. A second panel and its switch are installed under the first for the mobile control room: eight links to make, and switch T to link to the firewall. The sound crew will come after you; leave them a cabinet they can read.' },
+  },
+  {
+    fr: { title: 'Le studio de la matinale', brief: 'La matinale refait son studio : trois liaisons de plus. Les techniciens du festival ont apprécié votre travail et vous laissent des velcros. Pour ★★★, un faisceau : au moins trois cordons d\'un même service, serrés dans un guide-câbles ou une goulotte.' },
+    en: { title: 'The morning studio', brief: 'The morning show redoes its studio: three links more. The festival crew liked your work and leave you some velcro. For ★★★, a bundle: at least three cords of one service, strapped in a cable manager or a duct.' },
   },
   {
     fr: { title: 'La nuit de l\'orage', brief: 'La foudre est tombée sur l\'antenne cette nuit. De vieux cordons n\'ont pas survécu, et le standard sonne sans arrêt. Testez, remplacez, rétablissez : la matinale commence dans une heure.' },
@@ -215,6 +227,10 @@ const TICKETS: Words<LevelText>[] = [
   {
     fr: { title: 'Radio Pinède sur internet', brief: 'La radio s\'écoute désormais partout, même à Montréal où vit le cousin du présentateur météo. Le serveur de diffusion se branche sur le switch T. Pour ★★★, deux faisceaux de velcro : le streaming ne pardonne pas le désordre.' },
     en: { title: 'Radio Pinède goes online', brief: 'The station can now be heard anywhere, even in Montreal where the weatherman\'s cousin lives. The streaming server plugs into switch T. For ★★★, two velcro bundles: streaming does not forgive a mess.' },
+  },
+  {
+    fr: { title: 'La soirée électorale', brief: 'Dimanche soir, résultats des municipales en direct, avec un plateau dans chaque mairie du canton. Deux liaisons ne servent plus, trois nouvelles pour les correspondants. Le budget d\'interruption n\'a jamais été aussi serré : rangez autour de ce qui marche, sans le couper.' },
+    en: { title: 'Election night', brief: 'Sunday night, the local election results live, with a set in every town hall of the district. Two links are out of service, three new ones for the correspondents. The downtime budget has never been this tight: tidy around what works, without cutting it.' },
   },
   {
     fr: { title: 'Le direct des 40 ans', brief: 'Ce soir, Radio Pinède fête ses 40 ans en direct, avec le maire, la fanfare et tous les anciens animateurs. Rien de nouveau dans la baie : tout doit être impeccable, serré en quatre faisceaux au moins. Pas un blanc à l\'antenne.' },

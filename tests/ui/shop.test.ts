@@ -36,13 +36,13 @@ describe('the workshop', () => {
   });
 });
 
-describe('when the workshop opens', () => {
-  it('stays closed through the first levels of the campaign', () => {
-    expect(isWorkshopOpen(progress({ l1: 3, l2: 2 }), career(0))).toBe(false);
+describe('when the notebook opens', () => {
+  it('stays closed through the first levels of the training, with nothing found', () => {
+    expect(isWorkshopOpen(progress({ l1: 3, l2: 2 }), workshop())).toBe(false);
   });
 
-  it('opens with level 3 signed off, or a ticket of the career', () => {
-    expect(isWorkshopOpen(progress({ l3: 1 }), career(0))).toBe(true);
-    expect(isWorkshopOpen(progress({}), career(1))).toBe(true);
+  it('opens with the first find, or level 3 signed off', () => {
+    expect(isWorkshopOpen(progress({}), { equipped: {}, finds: ['duck'] })).toBe(true);
+    expect(isWorkshopOpen(progress({ l3: 1 }), workshop())).toBe(true);
   });
 });

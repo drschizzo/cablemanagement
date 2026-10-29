@@ -22,7 +22,6 @@ export const LEVELS: CampaignLevel[] = [
     inventory: { velcro: 2 },
     preinstalled: [fingerManager(2)],
     seed: 11,
-    par: 120,
   },
   {
     id: 'l2',
@@ -37,7 +36,6 @@ export const LEVELS: CampaignLevel[] = [
     inventory: { fingerManager: 1, duct: 2, ring: 2, velcro: 3 },
     preinstalled: [fingerManager(2)],
     seed: 23,
-    par: 240,
   },
   {
     id: 'l3',
@@ -52,7 +50,6 @@ export const LEVELS: CampaignLevel[] = [
     inventory: { fingerManager: 1, duct: 2, ring: 3, velcro: 4 },
     preinstalled: [fingerManager(2), fingerManager(5)],
     seed: 37,
-    par: 300,
   },
   {
     id: 'l4',
@@ -67,7 +64,6 @@ export const LEVELS: CampaignLevel[] = [
     inventory: { fingerManager: 1, duct: 2, ring: 3, velcro: 5 },
     preinstalled: [fingerManager(2), fingerManager(5), fingerManager(7)],
     seed: 41,
-    par: 420,
   },
   {
     id: 'l5',
@@ -82,7 +78,6 @@ export const LEVELS: CampaignLevel[] = [
     inventory: { fingerManager: 2, duct: 4, ring: 4, velcro: 6 },
     preinstalled: [fingerManager(2), fingerManager(4), fingerManager(8), fingerManager(10)],
     seed: 53,
-    par: 540,
   },
 ];
 
@@ -110,7 +105,6 @@ export const BIG_BAYS: CampaignLevel[] = [
     preinstalled: [fingerManager(3), fingerManager(6), fingerManager(9), fingerManager(11)],
     seed: 67,
     bundles: 1,
-    par: 900,
   },
   {
     id: 'l7',
@@ -131,7 +125,6 @@ export const BIG_BAYS: CampaignLevel[] = [
     preinstalled: [fingerManager(6), fingerManager(9), fingerManager(12), fingerManager(14)],
     seed: 79,
     bundles: 3,
-    par: 1200,
   },
   {
     id: 'l8',
@@ -152,7 +145,6 @@ export const BIG_BAYS: CampaignLevel[] = [
     seed: 97,
     bundles: 4,
     blind: true,
-    par: 1500,
   },
 ];
 

@@ -136,8 +136,8 @@ const BASICS: Step[] = [
   {
     title: { fr: 'Les étoiles', en: 'The stars' },
     text: {
-      fr: 'Sous le plan, l\'<b>étoile suivante</b> dit ce qui lui manque. ★ : toutes les liaisons branchées comme prévu. ★★ : la plupart des câbles rangés, la façade dégagée ; il en faut <b>deux</b> pour ouvrir le niveau suivant. ★★★ : tout rangé, et aucun cordon tendu. Chaque niveau ajoute ensuite une règle à la fois, annoncée dans son brief. À vous !',
-      en: 'Under the schedule, the <b>next star</b> says what it still needs. ★: every link plugged as planned. ★★: most cords routed, the front clear; it takes <b>two</b> to open the next level. ★★★: everything routed, and no cord taut. Each level then adds one rule at a time, told in its brief. Over to you!',
+      fr: 'Sous le plan, l\'<b>étoile suivante</b> dit ce qui lui manque. ★ : toutes les liaisons branchées comme prévu. Un câble est <b>propre</b> quand il ne pend pas hors des supports, ne passe devant aucun autre port et n\'est pas tendu. ★★ : tous propres sauf quelques-uns (l\'étoile suivante dit combien) ; il en faut <b>deux</b> pour ouvrir le niveau suivant. ★★★ : tous propres. Chaque niveau ajoute ensuite une règle à la fois, annoncée dans son brief. À vous !',
+      en: 'Under the schedule, the <b>next star</b> says what it still needs. ★: every link plugged as planned. A cord is <b>tidy</b> when it does not hang out of the supports, crosses no other port and is not taut. ★★: all tidy but a few (the next star says how many); it takes <b>two</b> to open the next level. ★★★: all tidy. Each level then adds one rule at a time, told in its brief. Over to you!',
     },
   },
 ];

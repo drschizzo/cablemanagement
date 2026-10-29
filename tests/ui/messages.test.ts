@@ -25,7 +25,7 @@ describe('the messages of a level', () => {
   });
 
   it('tells how much the tautest cord lacks', () => {
-    expect(starNeedText({ kind: 'relax', count: 2, short: 0.123 })).toBe('2 cordons tendus ou pliés : il manque jusqu\'à 13 cm, un cordon plus long au Stock');
-    expect(starNeedText({ kind: 'relax', count: 1, short: 0 })).toBe('1 cordon tendu ou plié');
+    expect(starNeedText({ kind: 'tidy', count: 2, allowed: 0, hanging: 0, front: 0, strained: 2, short: 0.123 })).toBe('Rendez propres encore 2 câbles : 2 tendus ou pliés (il manque jusqu\'à 13 cm : un cordon plus long au Stock)');
+    expect(starNeedText({ kind: 'tidy', count: 1, allowed: 2, hanging: 1, front: 2, strained: 0, short: 0 })).toBe('Rendez propres encore 1 câble (cette étoile en laisse 2 de côté) : 1 pend hors des supports, 2 devant un port');
   });
 });

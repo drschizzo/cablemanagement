@@ -18,12 +18,12 @@ export function ruleTip(rule: Rule, level: LevelDef, services: number[]): string
   switch (rule) {
     case 'leds': return tr({ fr: 'Les voyants des ports : vert = liaison conforme au plan, orange = mauvais port, rouge = liaison coupée.', en: 'The port LEDs: green = link as planned, orange = wrong port, red = link down.' });
     case 'taut': return tr({
-      fr: '<b>Ni tendu</b> : un cordon bien plus court que son chemin rangé ne vaut pas ★★★.',
-      en: '<b>Not taut</b>: a cord much shorter than its tidy route is not worth ★★★.',
+      fr: '<b>Ni tendu</b> : un cordon bien plus court que son chemin rangé n\'est pas propre.',
+      en: '<b>Not taut</b>: a cord much shorter than its tidy route is not tidy.',
     });
     case 'kinked': return tr({
-      fr: '<b>Ni plié</b> : une fibre pliée en angle vif ne vaut pas ★★★. Laissez-lui des courbes douces.',
-      en: '<b>Not kinked</b>: a fibre bent at a sharp angle is not worth ★★★. Give it gentle curves.',
+      fr: '<b>Ni plié</b> : une fibre pliée en angle vif n\'est pas propre. Laissez-lui des courbes douces.',
+      en: '<b>Not kinked</b>: a fibre bent at a sharp angle is not tidy. Give it gentle curves.',
     });
     case 'separation': return tr({
       fr: '<b>Chaque famille son couloir</b> : pour ★★★, aucune goulotte ni anneau ne mêle la fibre, le cuivre et le courant. Descendez-les par des côtés différents ; les guide-câbles, eux, se partagent.',

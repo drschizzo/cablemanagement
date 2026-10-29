@@ -1,5 +1,6 @@
-// The workshop, from the title screen: the stars won, for each slot the looks
-// open or still to win (a swatch each), and the finds picked up so far.
+// The technician's notebook, from the title screen: the finds picked up so
+// far, and where to look for the others; then, as a bonus, for each slot the
+// looks open or still to win with the stars (a swatch each).
 
 import { load, save } from './storage';
 import { hide, show } from './dom';

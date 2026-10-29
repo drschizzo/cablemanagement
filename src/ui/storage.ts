@@ -137,13 +137,6 @@ const ENTRIES = {
     },
     format: (v: Gesture[]) => JSON.stringify(v),
   } satisfies Entry<Gesture[]>,
-  /** free play was opened ahead of the campaign (ui/modeLocks.ts) */
-  freeOpen: {
-    key: 'cable.free-open',
-    fallback: (): boolean => false,
-    parse: (raw: string) => raw === 'on',
-    format: () => 'on',
-  } satisfies Entry<boolean>,
   /** the tutorial was finished or skipped once */
   tutorialDone: {
     key: 'cable.tutorial',

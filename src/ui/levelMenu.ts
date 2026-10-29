@@ -77,19 +77,18 @@ export class LevelMenu {
     return card;
   }
 
-  /** level `index` of `levels` (the training, the big cabinets): its stars, its best time, and its time challenge */
+  /** level `index` of `levels` (the training, the big cabinets): its stars and its best time */
   private levelCard(progress: Progress, levels: readonly CampaignLevel[], index: number): HTMLElement {
     const level = levels[index];
     const unlocked = isUnlocked(progress, levels, index);
     const stars = progress.stars[level.id] ?? 0;
     const time = progress.times[level.id];
-    const challenge = tr({ fr: `défi ${formatTime(level.par)}`, en: `challenge ${formatTime(level.par)}` });
-    const best = time ? `${formatTime(time)} · ${challenge}` : challenge;
+    const best = time ? formatTime(time) : '';
     const card = document.createElement('button');
     card.className = 'level-card' + (unlocked ? '' : ' locked');
     card.innerHTML = `<div class="num">${index + 1}</div><div class="t">${levelTitle(level)}</div>
       <div class="meta">${tr({ fr: `${level.cables} câbles${level.labels ? ' · étiquettes' : ''}`, en: `${level.cables} cords${level.labels ? ' · labels' : ''}` })}</div>
-      <div class="stars">${starsHtml(stars)}${progress.challenges[level.id] ? `<span class="par" title="${tr({ fr: 'Défi chrono réussi', en: 'Time challenge won' })}">⏱</span>` : ''}</div>${best ? `<div class="best">${best}</div>` : ''}
+      <div class="stars">${starsHtml(stars)}</div>${best ? `<div class="best">${best}</div>` : ''}
       ${unlocked ? '' : `<div class="lock">${levels === BIG_BAYS
     ? tr({ fr: `${'★'.repeat(UNLOCK_STARS)} à la baie ${index} pour l'ouvrir`, en: `${'★'.repeat(UNLOCK_STARS)} on cabinet ${index} to open it` })
     : tr({ fr: `${'★'.repeat(UNLOCK_STARS)} au niveau ${index} pour l'ouvrir`, en: `${'★'.repeat(UNLOCK_STARS)} on level ${index} to open it` })}</div>`}`;

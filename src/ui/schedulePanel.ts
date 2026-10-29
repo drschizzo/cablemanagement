@@ -1,11 +1,11 @@
-// The side panel: the patching schedule (one row per link, with its four
-// checks), the downtime budget, what the next star needs, the score bars
+// The side panel: the patching schedule (one row per link: plugged, tidy),
+// the downtime budget, what the next star needs, the score bars
 // (folded), the stars, and the Validate button.
 
 import type { Controller } from '../play/controller';
 import { CORD_KINDS } from '../game/cordTypes';
 import { SERVICES } from '../game/services';
-import { nextStar, type Evaluation } from '../game/evaluation';
+import { nextStar, type CircuitStatus, type Evaluation, type Strain } from '../game/evaluation';
 import { starNeedText, strainLabel } from './messages';
 import { UNLOCK_STARS } from '../game/levels/campaign';
 import type { LevelDef } from '../game/levels/levelDef';
@@ -41,7 +41,7 @@ export class SchedulePanel {
       row.innerHTML = `<td class="n">${i + 1}${prod}</td><td class="ports">${c.a} <span class="arrow">↔</span> ${c.b}</td>
         <td><span class="chip" data-family="${CORD_KINDS[c.type].family}" style="background:${CORD_KINDS[c.type].color}" title="${cordTypeName(c.type)}">${c.type}</span></td>
         <td class="svc" title="${serviceName(c.service)}${tr({ fr: ' : ', en: ': ' })}${serviceWhat(c.service)}${cutTip}"><span class="dot" style="background:${service.color}"></span>${serviceName(c.service)}</td>
-        <td class="st"><i class="s-conn" title="${tr({ fr: 'Branchée', en: 'Plugged' })}"></i><i class="s-route" title="${tr({ fr: 'Rangée', en: 'Routed' })}"></i><i class="s-clear" title="${tr({ fr: 'Façade dégagée', en: 'Front clear' })}"></i><i class="s-relax" title="${relaxedTip()}"></i></td>`;
+        <td class="st"><i class="s-conn" title="${tr({ fr: 'Branchée', en: 'Plugged' })}"></i><i class="s-tidy"></i></td>`;
       row.onmouseenter = () => ctl.focus(i);
       row.onmouseleave = () => ctl.focus(-1);
       row.title = tr({ fr: 'Cliquez : son bout libre sort du tas et s\'accroche sous son port', en: 'Click: its loose end comes out of the heap and hooks under its port' });
@@ -60,12 +60,10 @@ export class SchedulePanel {
       const row = this.rows[i];
       if (!row) return;
       row.querySelector('.s-conn')!.className = 's-conn' + (s.connected ? ' ok' : '');
-      row.querySelector('.s-route')!.className = 's-route' + (s.routed ? ' ok' : '');
-      row.querySelector('.s-clear')!.className = 's-clear' + (s.clear ? ' ok' : '');
-      row.querySelector('.s-relax')!.className = 's-relax' + (s.relaxed ? ' ok' : '');
-      const strain = s.cable >= 0 ? ev.cableStrain[s.cable] : null;
-      row.querySelector('.s-relax')!.setAttribute('title', strain ? tr({ fr: `Cordon ${strainLabel(strain)}`, en: `Cord ${strainLabel(strain)}` }) : relaxedTip());
-      row.classList.toggle('done', s.connected && s.routed && s.clear && s.relaxed);
+      const tidy = row.querySelector('.s-tidy')!;
+      tidy.className = 's-tidy' + (s.tidy ? ' ok' : '');
+      tidy.setAttribute('title', tidyTip(s, s.cable >= 0 ? ev.cableStrain[s.cable] : null));
+      row.classList.toggle('done', s.tidy);
       row.classList.toggle('cut', !!w && windowed && w.maintenance.isDown(i));
       row.classList.toggle('bypassed', !!w?.maintenance.bypassed.has(i));
       row.classList.toggle('called', w?.incidents.call?.link === i);
@@ -73,9 +71,7 @@ export class SchedulePanel {
     const n = ev.total;
     this.showDowntime(ev, ctl, level);
     setBar('#bar-conn', ev.connected, n);
-    setBar('#bar-route', ev.routed, n);
-    setBar('#bar-clear', ev.clear, n);
-    setBar('#bar-relax', ev.relaxed, n);
+    setBar('#bar-tidy', ev.tidy, n);
     setBar('#bar-bundle', Math.min(ev.bundles, ev.bundlesNeeded), ev.bundlesNeeded);
     $('#bar-bundle').style.display = ev.bundlesNeeded ? '' : 'none';
     this.showGoal(ev);
@@ -115,8 +111,16 @@ export class SchedulePanel {
   }
 }
 
-function relaxedTip(): string {
-  return tr({ fr: 'Ni tendu ni plié', en: 'Neither taut nor kinked' });
+/** a link's tidy check: tidy, or what its cord still lacks */
+function tidyTip(s: CircuitStatus, strain: Strain | null): string {
+  if (!s.connected) return tr({ fr: 'Propre : pas encore branchée', en: 'Tidy: not plugged yet' });
+  if (s.tidy) return tr({ fr: 'Propre', en: 'Tidy' });
+  const why = [
+    s.routed ? '' : tr({ fr: 'pend hors des supports', en: 'hangs out of the supports' }),
+    s.clear ? '' : tr({ fr: 'passe devant un port', en: 'crosses a port' }),
+    strain ? strainLabel(strain) : '',
+  ].filter(Boolean).join(', ');
+  return tr({ fr: `Pas encore propre : ${why}`, en: `Not tidy yet: ${why}` });
 }
 
 /** a score bar: `value` of `total` */

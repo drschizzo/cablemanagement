@@ -75,8 +75,6 @@ interface LevelBase {
 /** a level of the campaign, in order */
 export interface CampaignLevel extends LevelBase {
   kind: 'campaign';
-  /** the time challenge: three stars in less than this (s) */
-  par: number;
 }
 
 /** a puzzle: a tiny cabinet, solved in as few gestures as possible */

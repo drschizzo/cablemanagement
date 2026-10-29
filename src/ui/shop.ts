@@ -1,7 +1,7 @@
-// The workshop: looks that open with the stars won, one equipped per slot
-// (the velcros, the light round the cabinet), and the finds picked up. Its
-// catalogue, when it opens, and the rules of equipping: pure functions over
-// the saved record (storage.ts).
+// The technician's notebook (the workshop it was): the finds picked up, and
+// as a bonus looks that open with the stars won, one equipped per slot (the
+// velcros, the light round the cabinet). Its catalogue, when it opens, and the
+// rules of equipping: pure functions over the saved record (storage.ts).
 
 import { DEFAULT_LOOK, type Look } from '../render/look';
 import { BIG_BAYS, LEVELS } from '../game/levels/campaign';
@@ -36,12 +36,12 @@ export const SHOP: LookItem[] = [
   { id: 'accent-red', slot: 'accent', name: { fr: 'Alerte rouge', en: 'Red alert' }, stars: 50, value: '#ff5a5a' },
 ];
 
-/** the campaign level whose sign-off opens the workshop */
+/** the campaign level whose sign-off opens the notebook, finds or not */
 const WORKSHOP_OPENS_AT = 'l3';
 
-/** the workshop shows once the player knows the trade: past the first levels of the campaign, or a ticket of the career done */
-export function isWorkshopOpen(progress: Progress, career: Career): boolean {
-  return (progress.stars[WORKSHOP_OPENS_AT] ?? 0) > 0 || career.done > 0;
+/** the notebook shows with the first find picked up, or once the player knows the trade (level 3 signed off) */
+export function isWorkshopOpen(progress: Progress, workshop: Workshop): boolean {
+  return workshop.finds.length > 0 || (progress.stars[WORKSHOP_OPENS_AT] ?? 0) > 0;
 }
 
 /** the best stars of every cabinet of the training, big cabinet, puzzle and ticket of the career, added up */

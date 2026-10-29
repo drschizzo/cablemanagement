@@ -145,9 +145,7 @@ button:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 1px; margin-right: 5px; vertical-align: 0; border: 1px solid rgba(0, 0, 0, 0.5); }
 .st i, .legend i { display: inline-block; width: 8px; height: 8px; border-radius: 1px; margin-right: 3px; background: #262a27; vertical-align: 0; }
 .st i.ok.s-conn, .legend i.s-conn { background: var(--ok); }
-.st i.ok.s-route, .legend i.s-route { background: #7cc4e8; }
-.st i.ok.s-clear, .legend i.s-clear { background: #b9a3ef; }
-.st i.ok.s-relax, .legend i.s-relax { background: var(--warn); }
+.st i.ok.s-tidy, .legend i.s-tidy { background: #7cc4e8; }
 .legend { font-size: 9.5px; color: var(--dim); }
 .legend i { margin-left: 8px; }
 .legend i:first-child { margin-left: 0; }

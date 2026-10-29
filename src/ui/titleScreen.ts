@@ -1,6 +1,6 @@
 // The buttons of the title screen, and its progress bar while the aisle
 // falls. A first visit offers one way only, Start; the game modes, the
-// cabinet of the day and the workshop show once they are open.
+// cabinet of the day and the notebook show once they are open.
 
 import { LEVELS, TUTORIAL } from '../game/levels/campaign';
 import type { LevelDef } from '../game/levels/levelDef';
@@ -55,7 +55,7 @@ export class TitleScreen {
       : next && next !== LEVELS[0] ? tr({ fr: `Continuer · ${levelTitle(next)} →`, en: `Continue · ${levelTitle(next)} →` })
       : tr({ fr: 'Jouer →', en: 'Play →' });
     play.title = this.firstVisit() ? tr({ fr: 'Le tutoriel, puis le niveau 1', en: 'The tutorial, then level 1' }) : '';
-    byId('title-shop').style.display = isWorkshopOpen(load('progress'), load('career')) ? '' : 'none';
+    byId('title-shop').style.display = isWorkshopOpen(load('progress'), load('workshop')) ? '' : 'none';
     byId('title-modes').style.display = this.firstVisit() ? 'none' : '';
     byId('title-daily').style.display = isModeOpen('daily', savedModeRecords()) ? '' : 'none';
     this.refreshDaily();

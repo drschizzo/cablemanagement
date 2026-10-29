@@ -22,18 +22,13 @@ export interface LevelResult {
   moves: number;
   /** stars recorded before this result */
   previousStars: number;
-  /** three stars within the level's challenge (time, or gestures) */
+  /** three stars within the gestures of a puzzle */
   challengeWon: boolean;
 }
 
-/** three stars within the level's challenge: the time of the campaign, the gestures of a puzzle */
-export function isChallengeWon(level: LevelDef, stars: number, time: number, moves: number): boolean {
-  if (stars < 3) return false;
-  switch (level.kind) {
-    case 'campaign': return time <= level.par;
-    case 'puzzle': return moves <= level.moves;
-    default: return false;
-  }
+/** three stars within the gestures of a puzzle (the only levels with a challenge) */
+export function isChallengeWon(level: LevelDef, stars: number, moves: number): boolean {
+  return stars === 3 && level.kind === 'puzzle' && moves <= level.moves;
 }
 
 /** keeps the best of each in the record, and tells what it held before */
@@ -42,7 +37,7 @@ export function recordResult(progress: Progress, level: LevelDef, stars: number,
   const previousStars = progress.stars[id] ?? 0;
   progress.stars[id] = Math.max(previousStars, stars);
   if (!progress.times[id] || time < progress.times[id]) progress.times[id] = time;
-  const challengeWon = isChallengeWon(level, stars, time, moves);
+  const challengeWon = isChallengeWon(level, stars, moves);
   if (challengeWon) progress.challenges[id] = true;
   return { stars, time, moves, previousStars, challengeWon };
 }

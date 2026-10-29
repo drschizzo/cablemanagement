@@ -103,14 +103,14 @@ src/
     timelapsePlayer.ts le timelapse lu en boucle, et enregistré en vidéo (MediaRecorder) ; beforeAfterImage.ts, la baie
                     avant / après en une image ; share.ts, l'adresse du jeu et les fichiers offerts au joueur
     resultScreen.ts l'écran de résultat ; modesPanel.ts, les modes de jeu en trois groupes (histoire, défis, partie libre
-                    avec son réglage zen et l'éditeur) ; modeLocks.ts, quels modes sont ouverts (fonctions pures, et les données gardées qu'elles lisent) ;
+                    avec son réglage zen et l'éditeur) ; modeLocks.ts, quels modes sont ouverts : la formation et la partie libre d'emblée, le reste à la fin de la formation (fonctions pures) ;
                     levelMenu.ts, une section à la fois (la formation et son tutoriel, les grandes baies, ou les puzzles)
     pauseMenu.ts    le menu d'un niveau (☰ Menu, Échap) : le chrono attend ; consignes, recommencer, niveaux,
                     paramètres, accueil ; confirmDialog.ts, la question avant de quitter une baie entamée
     settingsPanel.ts les paramètres : qualité de l'image (auto, préréglages, détails) et son
-    progress.ts     la progression du joueur : meilleur score, défi réussi (chrono de la formation et des grandes baies, gestes d'un puzzle),
+    progress.ts     la progression du joueur : meilleur score, défi réussi (les gestes d'un puzzle),
                     niveau ouvert, niveau suivant, règles déjà rencontrées (fonctions pures)
-    shop.ts         l'atelier : son catalogue, quand il ouvre, les étoiles gagnées qui ouvrent chaque look, le porter,
+    shop.ts         le carnet du technicien : les trouvailles, puis en prime les teintes ; son catalogue, quand il ouvre, les étoiles gagnées qui ouvrent chaque look, le porter,
                     les trouvailles gardées (fonctions pures) ; shopPanel.ts, son panneau
     editorPanel.ts  l'éditeur de baie : la baie en élévation (une bande par unité, aux couleurs de son équipement), la
                     palette, les règles, jouer ou copier le lien (?rack=CODE)
@@ -238,7 +238,7 @@ sur le fil principal.
 ## Données dans le navigateur
 
 `ui/storage.ts` déclare chaque entrée (clé, valeur par défaut, validation) : progression (étoiles et meilleurs temps
-par niveau), tutoriel terminé, règles et gestes déjà rencontrés, partie libre ouverte d'avance, carrière (tickets faits, la baie du client telle que laissée), dernière baie de l'éditeur, atelier (looks portés, trouvailles ; sous la clé du portefeuille d'avant), baies du jour (le meilleur résultat de chaque date), langue (celle du navigateur tant que le joueur n'en a pas choisi), musique coupée, qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu) et son
+par niveau), tutoriel terminé, règles et gestes déjà rencontrés, carrière (tickets faits, la baie du client telle que laissée), dernière baie de l'éditeur, carnet (looks portés, trouvailles ; sous la clé du portefeuille d'avant), baies du jour (le meilleur résultat de chaque date), langue (celle du navigateur tant que le joueur n'en a pas choisi), musique coupée, qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu) et son
 coupé. Les clés sont celles des versions précédentes.
 
 ## Ajouter…

@@ -14,11 +14,11 @@ import { dailyLevel, dayKey } from '../game/levels/dailyLevel';
 import { freeLevel, zenLevel } from '../game/levels/freeLevel';
 import { $ } from '../lib/page';
 import { hide, show } from './dom';
-import { load, save, type Progress } from './storage';
+import { load, type Progress } from './storage';
 import { streak } from './daily';
 import { tr, type Words } from './language';
 import type { LevelSection } from './levelMenu';
-import { isModeOpen, modeOpensAfter, savedModeRecords, type Mode } from './modeLocks';
+import { isModeOpen, savedModeRecords, TRAINING_END, type Mode } from './modeLocks';
 import { levelTitle } from './levelTexts';
 
 /** where the cards lead; each gets `start` (what a level chosen does) and `back` (back to the modes) */
@@ -66,7 +66,7 @@ export class ModesPanel {
     const lead = (open: () => void) => () => { hide('#modes'); open(); };
     const box = $('#modes-cards');
     box.innerHTML = '';
-    for (const group of this.groups(start, reopen, go, lead)) box.appendChild(this.groupElement(group, reopen));
+    for (const group of this.groups(start, reopen, go, lead)) box.appendChild(this.groupElement(group));
     show('#modes');
   }
 
@@ -128,7 +128,7 @@ export class ModesPanel {
           {
             mode: 'free',
             name: { fr: 'Partie libre', en: 'Free play' },
-            what: { fr: 'Une baie tirée au hasard, de la taille que vous voulez. En zen : rien en production, en musique.', en: 'A cabinet drawn at random, of the size you want. In zen: nothing in production, with music.' },
+            what: { fr: 'Pour expérimenter : une baie tirée au hasard, de la taille que vous voulez. En zen : rien en production, en musique.', en: 'To experiment: a cabinet drawn at random, of the size you want. In zen: nothing in production, with music.' },
             status: () => this.freeStatus(),
             open: () => go(this.zen ? zenLevel(this.freeCords, randomSeed()) : freeLevel(this.freeCords, randomSeed())),
             extra: () => this.freeControls(lead(() => this.actions.editor(start, reopen))),
@@ -138,24 +138,24 @@ export class ModesPanel {
     ];
   }
 
-  private groupElement(group: ModeGroup, reopen: () => void): HTMLElement {
+  private groupElement(group: ModeGroup): HTMLElement {
     const el = document.createElement('section');
     el.className = 'mode-group';
     el.innerHTML = `<h2>${tr(group.name)}</h2>`;
     const cards = document.createElement('div');
     cards.className = 'cards';
-    for (const card of group.cards) cards.appendChild(this.cardElement(card, reopen));
+    for (const card of group.cards) cards.appendChild(this.cardElement(card));
     el.appendChild(cards);
     return el;
   }
 
-  private cardElement(card: ModeCard, reopen: () => void): HTMLElement {
+  private cardElement(card: ModeCard): HTMLElement {
     const el = document.createElement('div');
     const open = isModeOpen(card.mode, savedModeRecords());
     el.className = 'mode-card' + (open ? '' : ' locked');
     el.innerHTML = `<div class="t">${tr(card.name)}<span class="status">${open ? card.status() : ''}</span></div><p>${tr(card.what)}</p>`;
     if (!open) {
-      el.appendChild(this.lockElement(card.mode, reopen));
+      el.appendChild(this.lockElement());
       return el;
     }
     el.tabIndex = 0;
@@ -167,28 +167,13 @@ export class ModesPanel {
     return el;
   }
 
-  /** what opens a mode; free play may be opened ahead, on the player's word */
-  private lockElement(mode: Mode, reopen: () => void): HTMLElement {
+  /** what opens a locked mode: the training, all of it */
+  private lockElement(): HTMLElement {
     const el = document.createElement('div');
     el.className = 'lock';
-    const after = modeOpensAfter(mode);
-    el.textContent = after === null ? ''
-      : 'tickets' in after ? tr({ fr: `🔒 S'ouvre avec le ticket ${after.tickets} de la carrière`, en: `🔒 Opens with ticket ${after.tickets} of the career` })
-      : this.levelLock(after.level);
-    if (mode === 'free') {
-      const button = document.createElement('button');
-      button.className = 'link';
-      button.textContent = tr({ fr: 'Ouvrir maintenant', en: 'Open it now' });
-      button.onclick = () => { save('freeOpen', true); reopen(); };
-      el.appendChild(button);
-    }
+    const last = LEVELS.findIndex((l) => l.id === TRAINING_END);
+    el.textContent = tr({ fr: `🔒 S'ouvre à la fin de la formation · niveau ${last + 1}, ${levelTitle(LEVELS[last])}`, en: `🔒 Opens at the end of the training · level ${last + 1}, ${levelTitle(LEVELS[last])}` });
     return el;
-  }
-
-  /** the training level that opens a mode, by its number and title */
-  private levelLock(id: string): string {
-    const index = LEVELS.findIndex((l) => l.id === id);
-    return tr({ fr: `🔒 S'ouvre avec le niveau ${index + 1} de la formation · ${levelTitle(LEVELS[index])}`, en: `🔒 Opens with level ${index + 1} of the training · ${levelTitle(LEVELS[index])}` });
   }
 
   private freeStatus(): string {

@@ -53,9 +53,7 @@ function resultLines(level: LevelDef, ev: Evaluation, result: LevelResult, chall
   const of = (n: number) => `${n}/${ev.total}`;
   const lines = [
     tr({ fr: `Liaisons branchées : ${of(ev.connected)}`, en: `Links plugged: ${of(ev.connected)}` }),
-    tr({ fr: `Liaisons rangées : ${of(ev.routed)}`, en: `Links routed: ${of(ev.routed)}` }),
-    tr({ fr: `Façade dégagée : ${of(ev.clear)}`, en: `Front clear: ${of(ev.clear)}` }),
-    tr({ fr: `Ni tendus ni pliés : ${of(ev.relaxed)}`, en: `Neither taut nor kinked: ${of(ev.relaxed)}` }),
+    tr({ fr: `Câbles propres : ${of(ev.tidy)}`, en: `Tidy cords: ${of(ev.tidy)}` }),
   ];
   const bundles = `${Math.min(ev.bundles, ev.bundlesNeeded)}/${ev.bundlesNeeded}`;
   if (ev.bundlesNeeded) lines.push(tr({ fr: `Faisceaux : ${bundles}`, en: `Bundles: ${bundles}` }));
@@ -76,15 +74,7 @@ function resultLines(level: LevelDef, ev: Evaluation, result: LevelResult, chall
       ? tr({ fr: `✋ Défi gestes réussi : ★★★ en ${done} geste${done > 1 ? 's' : ''} !`, en: `✋ Gestures challenge won: ★★★ in ${done} gesture${done > 1 ? 's' : ''}!` })
       : tr({ fr: `✋ Défi gestes : ★★★ en ${most} gestes au plus (${done} cette fois)${challengeWonBefore ? ', déjà réussi' : ''}.`, en: `✋ Gestures challenge: ★★★ in ${most} gestures at most (${done} this time)${challengeWonBefore ? ', won already' : ''}.` }));
   }
-  if (level.kind === 'campaign') lines.push(timeChallengeLine(level.par, result, challengeWonBefore));
   return lines;
-}
-
-/** the time challenge of a campaign level (its brief told it) */
-function timeChallengeLine(par: number, result: LevelResult, challengeWonBefore: boolean): string {
-  const time = formatTime(par);
-  if (result.challengeWon) return tr({ fr: `⏱ Défi chrono réussi : ★★★ en moins de ${time} !`, en: `⏱ Time challenge won: ★★★ in less than ${time}!` });
-  return tr({ fr: `⏱ Défi chrono : ★★★ en moins de ${time}${challengeWonBefore ? ' (déjà réussi)' : ''}.`, en: `⏱ Time challenge: ★★★ in less than ${time}${challengeWonBefore ? ' (won already)' : ''}.` });
 }
 
 /** the way on from `level`: the next level (or ticket, or the career after the training), open or what opens it */

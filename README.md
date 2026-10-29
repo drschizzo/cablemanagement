@@ -47,11 +47,12 @@ l'histoire : la **formation** (cinq niveaux), puis la **carrière**. L'écran ti
 
 | Groupe | Modes | S'ouvre |
 |---|---|---|
-| Histoire | la formation, puis la carrière | la carrière à la fin de la formation (niveau 5) |
-| Défis | les puzzles express, la baie du jour, les grandes baies | les puzzles avec le niveau 2, la baie du jour avec le niveau 3, les grandes baies avec le ticket 2 de la carrière |
-| Partie libre | une baie au hasard (réglage zen), ou composée dans l'éditeur | avec le ticket 4 de la carrière, ou tout de suite sur demande |
+| Histoire | la formation, puis la carrière | la formation tout de suite, la carrière à sa fin |
+| Défis | les puzzles express, la baie du jour, les grandes baies | à la fin de la formation (niveau 5) |
+| Partie libre | une baie au hasard (réglage zen), ou composée dans l'éditeur | tout de suite, pour expérimenter |
 
-Un mode pas encore ouvert dit ce qui l'ouvre ; un mode déjà joué reste ouvert.
+Une seule règle, donc : la formation et la partie libre sont ouvertes dès le départ, tout le reste
+s'ouvre quand la formation est finie. Un mode fermé le rappelle.
 
 Dans un niveau, **☰ Menu** (ou **Échap**) met le jeu en pause : consignes,
 recommencer, choisir un autre niveau, paramètres, retour à l'accueil. Quitter
@@ -87,16 +88,18 @@ Un cordon branché comme prévu reçoit tout seul l'étiquette de son service.
 
 Le jeu ajoute ses règles une à une : le brief d'un niveau marque **Nouveau** celles qu'on y
 rencontre pour la première fois (la fenêtre de maintenance au niveau 3, la fibre qui se plie au
-niveau 5, le courant au ticket 3 de la carrière…), et replie les autres sous « Rappel des règles ».
+niveau 5, le courant au ticket 3 de la carrière, les incidents au ticket 4…), et replie les autres sous « Rappel des règles ».
 
 | Étoiles | Condition |
 |---|---|
 | ★ | toutes les liaisons du plan sont branchées |
-| ★★ | et au moins 70 % des câbles rangés, 85 % de la façade dégagée |
-| ★★★ | tout est rangé, dégagé, sans tension, chaque famille dans son couloir (et serré en faisceaux si demandé), dans le budget d'interruption |
+| ★★ | et tous les câbles propres sauf un par huit liaisons (un au moins) |
+| ★★★ | tous les câbles propres, chaque famille dans son couloir (et serrés en faisceaux si le niveau le demande), dans le budget d'interruption |
 
-Les étoiles sont la seule note d'une baie. Le budget d'interruption est une contrainte, et le défi
-du niveau (le chrono, ou les gestes d'un puzzle) un objectif de plus pour qui le veut.
+Le joueur suit trois choses : **branché**, **propre**, **en production**. Un câble est propre quand
+il ne pend nulle part hors des supports, ne passe devant aucun autre port, et n'est ni tendu ni plié
+(règles 2 à 4 ci-dessus). Les étoiles sont la seule note d'une baie. Le budget d'interruption est
+une contrainte ; seuls les puzzles ont en plus un défi, leurs gestes.
 
 Une baie validée a droit à son tour d'honneur : la caméra fait le tour de la baie
 pendant que les cordons s'allument de haut en bas, puis l'écran de résultat s'ouvre.
@@ -106,21 +109,19 @@ de jeu), de l'**enregistrer en vidéo**, et de télécharger l'**image avant / a
 ses étoiles.
 
 Il faut **★★** pour ouvrir le niveau suivant : brancher ne suffit pas, il faut
-ranger. Sous le plan, l'**étoile suivante** dit ce qui lui manque encore (« Rangez encore 2 câbles
-dans les supports ») ; le détail des critères, liaison par liaison, se déplie dessous. Un câble qui
+ranger. Sous le plan, l'**étoile suivante** dit ce qui lui manque encore, en nombre de câbles
+(« Rendez propres encore 2 câbles (cette étoile en laisse 1 de côté) : 1 pend hors des supports,
+1 devant un port ») ; le détail, liaison par liaison (branchée, propre), se déplie dessous. Un câble qui
 devient propre s'allume en vert avec une note. Un cordon tendu dit combien de centimètres il lui
-manque. Chaque niveau a aussi un **défi chrono**
-(★★★ en moins d'un temps donné), annoncé dans son brief et rappelé par le menu des niveaux.
-
-L'**atelier** (écran titre, après le niveau 3 ou un ticket de la carrière) offre des touches
-personnelles : la couleur des velcros, la teinte de la lumière autour de la baie. Chacune s'ouvre
-avec les étoiles gagnées (formation, grandes baies, puzzles et carrière additionnés). Rien de ce qui porte un sens
-(cordons, étiquettes, voyants) ne change.
+manque.
 
 Chaque niveau de la formation et chaque grande baie cache une **trouvaille** laissée par un technicien précédent (un post-it,
 une clé USB, un canard en plastique…) : sur le plancher de la baie sous les câbles, sur son toit ou dans
-le bac. Un clic la ramasse et raconte son histoire ; l'atelier les rassemble, et dit où chercher
-celles qui manquent (deux se cachent ailleurs).
+le bac. Un clic la ramasse et raconte son histoire. Le **carnet du technicien** (écran titre, dès la
+première trouvaille ou le niveau 3) les rassemble, et dit où chercher celles qui manquent (deux se
+cachent ailleurs). En prime, il offre des teintes qui s'ouvrent avec les étoiles gagnées : la couleur
+des velcros, la lumière autour de la baie. Rien de ce qui porte un sens (cordons, étiquettes,
+voyants) ne change.
 
 ### Préparation
 
@@ -153,7 +154,7 @@ liaison coupée clignotent en rouge, ceux d'une liaison dérivée en ambre.
 
 ### Incidents
 
-En partie libre (à partir de 12 câbles) et dans la baie du jour le week-end, le chantier ne se
+Dans la carrière (tickets 4 et 9), en partie libre (à partir de 12 câbles) et dans la baie du jour le week-end, le chantier ne se
 déroule pas tout seul : **un collègue débranche une liaison par erreur**, puis **un utilisateur
 appelle** pour une liaison coupée. Un compte à rebours s'affiche en haut de l'écran et sa ligne
 s'allume dans le plan : rétablie à temps, tout va bien ; trop tard, l'appel coûte 40 points sur le
@@ -161,7 +162,7 @@ budget d'interruption.
 
 ### Pannes
 
-Certaines baies (la partie libre à partir de 16 câbles, la baie du jour du vendredi au dimanche, le
+Certaines baies (les tickets 6 et 9 de la carrière, la partie libre à partir de 16 câbles, la baie du jour du vendredi au dimanche, le
 puzzle P9) cachent un **vieux cordon coupé à l'intérieur** : branché comme prévu, il ne porte rien et
 ses voyants clignotent en rouge. Le **Testeur** (touche 4) dit d'un clic si un cordon laisse passer le
 signal ; un cordon coupé se jette au bac et se remplace par un neuf du Stock.
@@ -203,12 +204,30 @@ deux étoiles à l'une ouvrent la suivante :
 
 ### Carrière
 
-La **carrière**, qui suit la formation, est le cœur du jeu. Elle suit une petite radio locale, Radio Pinède (98.4 FM), sur huit tickets (une liaison coupée, c'est un
+La **carrière**, qui suit la formation, est le cœur du jeu. Elle suit une petite radio locale, Radio Pinède (98.4 FM), sur douze tickets (une liaison coupée, c'est un
 blanc à l'antenne). C'est **toujours la
 même baie** : chaque ticket repart de la baie telle que vous l'avez laissée au précédent (cordons,
 supports, velcros), installe du matériel dans les unités gardées libres (un serveur et son bandeau
 électrique, un deuxième panneau et son switch), crée des liaisons, en retire d'autres dont il faut jeter les cordons. Ce qui a
 été bien rangé le reste ; ce qui a été bâclé vous attend. Le dernier ticket est le direct des 40 ans de la radio.
+
+Chaque ticket apporte au plus une chose nouvelle, et la carrière reprend ainsi tout ce que la
+formation n'a pas montré :
+
+| # | Ticket | Ce qu'il apporte |
+|---|---|---|
+| 1 | Premier jour à Radio Pinède | la baie en désordre à remettre en ordre |
+| 2 | La rédaction s'installe | six liaisons de plus |
+| 3 | Quarante ans de cassettes | un serveur et son courant |
+| 4 | Le collègue du son | les incidents : un collègue débranche, le standard appelle |
+| 5 | L'émission de nuit déménage | des liaisons retirées, leurs cordons au bac |
+| 6 | Un cordon fatigué | une panne, le Testeur |
+| 7 | Le festival de la pinède | un deuxième panneau et son switch |
+| 8 | Le studio de la matinale | un premier faisceau |
+| 9 | La nuit de l'orage | pannes et incidents ensemble |
+| 10 | Radio Pinède sur internet | le serveur de diffusion, deux faisceaux |
+| 11 | La soirée électorale | un budget d'interruption serré |
+| 12 | Le direct des 40 ans | rien de neuf : tout impeccable, quatre faisceaux |
 
 Les **puzzles express** (P1 à P10, tous ouverts) sont de toutes petites baies, une idée chacune : un
 bout libre, deux cordons échangés, un support à poser, un faisceau, des goulottes, une liaison en
