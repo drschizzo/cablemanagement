@@ -1,3 +1,7 @@
+// The cords as the player sees them: one smoothed tube per cord (three-cable-tubes),
+// the connectors at their ends (instanced), the labels, the velcros, and the
+// rings of the pinches. It follows the nodes of the physics every frame.
+
 import * as THREE from 'three';
 import { TubeMesh, TubeNodes, TubeSync } from '@drschizzo/three-cable-tubes';
 import type { World } from '../game/world';

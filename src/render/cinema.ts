@@ -1,3 +1,5 @@
+// The cinema pass: the last full-screen touch of the image.
+
 import * as THREE from 'three';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 

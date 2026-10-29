@@ -1,3 +1,7 @@
+// The 3D stage every scene draws on: the renderer, the camera and its
+// controls, the lights, and the post-processing passes (reflections, ambient
+// occlusion, bloom, the cinema pass), stepped down when the GPU cannot keep up.
+
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';

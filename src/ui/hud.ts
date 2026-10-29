@@ -1,3 +1,8 @@
+// The interface around the cabinet: the toolbar, the patching schedule and
+// its scores, the level brief, the stock, the result screen and the levels menu.
+// It reads the Controller's state and calls its actions; the Controller tells
+// it what changed through ControllerEvents.
+
 import type { Controller, Tool } from '../play/controller';
 import { CATALOGUE, FIBRE_NAMES } from '../game/cordTypes';
 import { LEVELS } from '../game/levels/campaign';

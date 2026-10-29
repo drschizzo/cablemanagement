@@ -49,7 +49,7 @@ Le moteur de câbles et le dessin des tubes sont deux paquets génériques, qui 
 | --- | --- | --- |
 | Moteur physique | `vendor/cable-kit/packages/avbd-cables` (`cableSim.ts`, `threaded.ts`) | le solveur de câbles et son Worker |
 | Tubes | `vendor/cable-kit/packages/three-cable-tubes` (`tube.ts`, `shared.ts`) | les câbles dessinés par le GPU à partir de leurs nœuds |
-| Le jeu et ses câbles | `src/play` (`controller.ts`, `tools/`), `src/game` (`rackCableSim.ts`, `routeLaying.ts`, `world.ts`) | la boucle, les gestes, ce qui mène les câbles, les règles |
+| Le jeu et ses câbles | `src/play` (`controller.ts`, `tools/`), `src/game` (`physics/rackCableSim.ts`, `routeLaying.ts`, `world.ts`) | la boucle, les gestes, ce qui mène les câbles, les règles |
 | Le rendu | `src/render` (`stage.ts`, `cableView.ts`, `rackView.ts`…) | la scène three.js, ses matériaux et ses passes |
 
 `docs/architecture.md` détaille l'organisation du code.
@@ -118,7 +118,7 @@ En général, une frame fait un pas. Une frame en retard en fait deux. Au-delà,
 6. `tidyGlows.update()` et `holdView.update()` (`play/feedback/`) : surbrillance des câbles rangés et du câble tenu.
 7. `stage.render()` : le dessin de l'image (parties 8 et 9).
 
-Les panneaux HTML (chronomètre, plan) ne sont pas mis à jour dans cette boucle : `main.ts` les actualise toutes les 250 ms par un `setInterval`.
+Les panneaux HTML (chronomètre, plan) ne sont pas mis à jour dans cette boucle : `App` (`app/app.ts`) les actualise toutes les 250 ms par un `setInterval`.
 
 ### À retenir
 
@@ -345,7 +345,7 @@ Les réglages du moteur (`SimParams`) sont donnés pour un nombre de sous-pas de
 
 ## 5. Ce que le jeu demande au moteur
 
-`RackCableSim` (`src/game/rackCableSim.ts`) est une sous-classe de `CableSim`. Elle ajoute ce que la baie demande, sans toucher au solveur : au début de chaque pas, `prepare()` pose les cibles du jeu et les drapeaux des câbles ; pendant les itérations, `nodeTerm()` ajoute la traction du creux des guide-câbles ; autour des passes de longueur, `keepHeld()` remet les nœuds retenus à leur place.
+`RackCableSim` (`src/game/physics/rackCableSim.ts`) est une sous-classe de `CableSim`. Elle ajoute ce que la baie demande, sans toucher au solveur : au début de chaque pas, `prepare()` pose les cibles du jeu et les drapeaux des câbles ; pendant les itérations, `nodeTerm()` ajoute la traction du creux des guide-câbles ; autour des passes de longueur, `keepHeld()` remet les nœuds retenus à leur place.
 
 ### 5.1 Les cibles du jeu
 
@@ -383,7 +383,7 @@ Le creux d'un guide-câbles (`keeper`) n'est pas une forme de collision mais une
 
 JavaScript exécute le code d'une page sur un seul fil. Si la physique y prenait 10 ms, il ne resterait que 6 ms pour le reste de la frame. Un Web Worker est un second fil d'exécution, sans accès au DOM, qui communique avec la page par messages (`postMessage`).
 
-`ThreadedSim` (`src/game/threadedSim.ts`) est un `RackCableSim` passé par `threaded()` (`avbd-cables`). Il garde dans la page une copie de la simulation : la topologie et un miroir des positions. Le jeu lit `sim.x` comme si la physique tournait sur place.
+`ThreadedSim` (`src/game/physics/threadedSim.ts`) est un `RackCableSim` passé par `threaded()` (`avbd-cables`). Il garde dans la page une copie de la simulation : la topologie et un miroir des positions. Le jeu lit `sim.x` comme si la physique tournait sur place.
 
 - **Les modifications** (épingler, saisir, poser un velcro, changer la baie) sont appliquées à la copie locale, puis envoyées au Worker sous la forme du nom de la méthode et de ses arguments. Le Worker les rejoue dans le même ordre. Les méthodes concernées sont listées dans `mirrored`.
 - **Ce qui change sans appel**, la position de la main, part avec chaque demande de pas (`stepInput`).
@@ -391,7 +391,7 @@ JavaScript exécute le code d'une page sur un seul fil. Si la physique y prenait
 - **La réponse** porte les positions et les câbles endormis. Le tableau de positions est *transféré* : sa mémoire change de propriétaire au lieu d'être copiée.
 - **Un compteur `gen`** augmente à chaque déplacement forcé (annulation, câble reconstruit). Une réponse calculée avant porte l'ancien numéro et est ignorée.
 
-`src/game/sim.worker.ts` se borne à `hostSimWorker((p) => new RackCableSim(p))`. Le paramètre d'URL `?sync` garde la physique sur le fil principal, ce qui rend le déroulement déterministe pour les tests.
+`src/game/physics/sim.worker.ts` se borne à `hostSimWorker((p) => new RackCableSim(p))`. Le paramètre d'URL `?sync` garde la physique sur le fil principal, ce qui rend le déroulement déterministe pour les tests.
 
 ![Échanges entre la page et le Worker sur quatre frames](frame/schema-worker.png)
 
@@ -637,7 +637,7 @@ Le tableau suit une frame d'un niveau, dans l'ordre d'exécution.
 | 15 | Occlusion ambiante | GPU | `GTAOPass` | chaque frame |
 | 16 | Halo, tone mapping, finitions | GPU | `UnrealBloomPass`, `OutputPass`, `cinema.ts` | chaque frame |
 | 17 | Composition avec le HTML et affichage | navigateur | — | chaque rafraîchissement |
-| — | Panneaux HTML, chronomètre | principal | `main.ts`, `setInterval` | toutes les 250 ms |
+| — | Panneaux HTML, chronomètre | principal | `app/app.ts`, `setInterval` | toutes les 250 ms |
 
 Trois idées en ressortent.
 
@@ -647,12 +647,12 @@ Trois idées en ressortent.
 
 ## 11. L'écran d'accueil
 
-Le jeu s'ouvre sur une allée de baies géantes en désordre, que l'interrupteur Avant / Après range sous les yeux du joueur (`src/ui/showcase.ts`). Elle utilise les mêmes moteur et rendu qu'un niveau, à une autre échelle : des dizaines de milliers de nœuds, que les niveaux de détail de la section 7.4 rendent abordables.
+Le jeu s'ouvre sur une allée de baies géantes en désordre, que l'interrupteur Avant / Après range sous les yeux du joueur (`src/showcase/`). Elle utilise les mêmes moteur et rendu qu'un niveau, à une autre échelle : des dizaines de milliers de nœuds, que les niveaux de détail de la section 7.4 rendent abordables.
 
 - **Une chute précalculée.** Le désordre de la salle par défaut est tombé une fois pour toutes (`npm run bake`) et rangé dans `src/game/showcase.bin` : la position de chaque nœud, en écarts au nœud précédent au dixième de millimètre, compressés. La salle s'affiche donc sans attendre la physique. Si le code qui dispose le désordre change, l'empreinte d'une baie ne correspond plus, et cette baie retombe comme avant jusqu'au prochain précalcul.
-- **La salle suivante, en fond.** Pendant qu'une salle est à l'écran, la suivante, tirée au hasard, tombe dans un Worker par baie (`game/fall.worker.ts`). La page construit chaque baie par petits morceaux, une image entre deux, puis la dessine une fois hors écran pour que shaders et textures soient sur le GPU avant sa première vraie image (`Showcase.warm`). « Une autre salle » l'affiche alors aussitôt.
+- **La salle suivante, en fond.** Pendant qu'une salle est à l'écran, la suivante, tirée au hasard, tombe dans un Worker par baie (`game/mess/fall.worker.ts`). La page construit chaque baie par petits morceaux, une image entre deux, puis la dessine une fois hors écran pour que shaders et textures soient sur le GPU avant sa première vraie image (`Showcase.warm`). « Une autre salle » l'affiche alors aussitôt.
 - **Avant / après.** Les deux états sont deux mondes qui partagent la baie et le plan de brassage : les longs cordons en désordre, et la baie rangée. Le passage de l'un à l'autre est une chorégraphie : chaque cordon est mené le long de son chemin rangé, puis échangé contre le cordon court de l'autre monde là où leurs formes coïncident.
-- **La pluie de câbles** (`render/cableRain.ts`) est un décor, pas le moteur : chaque câble qui tombe est une petite chaîne de points (intégration de Verlet, longueurs projetées), qui se pose sur une carte de hauteur du tas puis se fige.
+- **La pluie de câbles** (`showcase/cableRain.ts`) est un décor, pas le moteur : chaque câble qui tombe est une petite chaîne de points (intégration de Verlet, longueurs projetées), qui se pose sur une carte de hauteur du tas puis se fige.
 
 `?bays=N` règle le nombre de baies de l'allée, `?pairs=N` leur hauteur en paires panneau / switch, `?seed=N` tire toujours la même salle.
 

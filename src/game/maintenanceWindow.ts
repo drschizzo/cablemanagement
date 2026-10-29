@@ -37,7 +37,7 @@ export class MaintenanceWindow {
     return n;
   }
 
-  /** a production link cut now, with no bypass to carry it */
+  /** a production link cut now (a bypass may still carry its traffic) */
   isDown(i: CircuitIndex): boolean {
     return this.live.has(i) && !this.isUp(i);
   }

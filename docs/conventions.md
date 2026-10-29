@@ -1,0 +1,129 @@
+# Conventions
+
+Les règles que suit le code de ce projet, et pourquoi. Chacune renvoie à un exemple du projet : il vaut mieux
+le lire que la règle.
+
+## Découper
+
+**Un dossier répond à une question, un fichier à une seule.** `game/` dit ce qui se passe dans la baie, `render/`
+comment on le dessine, `play/` comment le joueur agit dessus, `app/` quelle scène est à l'écran. Dans `play/`,
+chaque outil a son fichier (`tools/handTool.ts`, `tools/velcroTool.ts`…), et chaque repère visuel le sien
+(`feedback/plumbLine.ts`…).
+
+**Un fichier commence par ce qu'il fait.** Deux ou trois lignes de commentaire, avant les imports :
+
+```ts
+// The maintenance window: the links working when the player arrives are in
+// production, and every second one of them is cut costs the weight of its
+// service from a downtime budget.
+```
+
+Si la phrase a besoin de « et puis… et aussi… », le fichier fait sans doute plusieurs choses.
+
+**La taille est un signal, pas une règle.** Au-delà de 400 à 500 lignes, se demander ce qui pourrait partir dans un
+fichier à soi. `play/controller.ts` faisait 1600 lignes : la souris et le clavier sont partis dans
+`inputRouter.ts`, chaque outil dans `tools/`, chaque repère dans `feedback/`. Certains fichiers restent longs parce
+qu'ils sont cohérents : `game/world.ts` est l'état d'une partie, `game/levels/campaign.ts` est une liste de niveaux.
+
+**Séparer les données, les types et le code qui les fabrique.** `game/levels/` en est l'exemple : `levelDef.ts` dit
+ce qu'est un niveau, `equipment.ts` nomme les équipements, `campaign.ts` ne contient que des données, et
+`showcaseRack.ts` / `freeLevel.ts` sont des générateurs.
+
+## Dépendre
+
+**Une couche n'importe que celles qui sont en dessous d'elle** (le schéma est dans `architecture.md`). Le cœur,
+`game/`, n'importe ni three.js ni le DOM : on peut le tester sous Node, le faire tourner dans un Worker, et changer
+tout l'affichage sans le toucher.
+
+**C'est vérifié, pas seulement écrit.** `eslint.config.js` déclare les couches (`layers`) ; un import qui remonte
+fait échouer `npm run lint` avec un message qui explique la règle. Une règle d'architecture qui n'est pas
+vérifiée finit toujours par être contournée.
+
+**Pour prévenir une couche du dessus, recevoir un rappel au lieu de l'importer.** Le contrôleur ne connaît pas le
+HUD : il reçoit un objet `ControllerEvents` (`play/context.ts`) et appelle `onToast`, `onEval`… C'est `app/app.ts`,
+tout en haut, qui branche ces rappels sur `ui/hud.ts`.
+
+**Dépendre d'une interface étroite plutôt que d'une grosse classe.** Les outils ne voient pas le `Controller` mais
+`PlayContext`, la liste de ce qu'il leur prête. `MaintenanceWindow` ne voit pas le `World` mais une fonction
+`isUp(i)` : c'est ce qui permet de la tester seule (`tests/game/maintenanceWindow.test.ts`).
+
+**Une ressource a un seul propriétaire, qui la libère.** Chaque scène, outil ou repère qui ajoute des objets à la
+scène 3D les retire et libère leur mémoire GPU dans son `dispose()` (`render/dispose.ts`).
+
+## Nommer
+
+**Le nom dit ce qu'est la chose, pas comment elle est faite.** `idealRoutes.ts` plutôt que `tidy.ts`,
+`routeLaying.ts` plutôt que `route.ts` (il y avait deux sortes de « route »), `plumbLine` plutôt que `guide` (un
+`Guide` est déjà un guide-câbles de la baie).
+
+**Fichiers** en `camelCase`, du nom de ce qu'ils exportent : `handTool.ts` exporte `HandTool`. **Types et
+classes** en `PascalCase`. **Constantes de réglage** en `MAJUSCULES`, en tête du fichier, avec leur unité :
+
+```ts
+/** m per physics step the hand may move */
+const MAX_HAND_STEP = 0.035;
+```
+
+Pas de nombre magique au milieu d'un calcul : `0.035` y devient `MAX_HAND_STEP`.
+
+**Les booléens se lisent comme une question** : `isStale(token)`, `isDown(link)`, `hasProgress()`. **Les méthodes
+qui agissent sont des verbes** (`plug`, `remember`, `announceCut`) ; celles qui calculent disent ce qu'elles
+rendent (`liveLinksCarriedBy`, `freePortUnderPointer`).
+
+**Les noms courts restent locaux.** `i`, `k`, `c` pour un indice dans une boucle de trois lignes, oui ; dans une
+signature publique, non. Quand un `number` peut être plusieurs choses, un alias de type le dit :
+`plug(c: CableIndex, e: EndIndex, portId: string)` (`game/world.ts`).
+
+**Ne pas masquer un nom que tout le monde connaît.** Une interface `Pick` cachait le `Pick<>` de TypeScript : elle
+s'appelle `CordPick`.
+
+## Commenter
+
+**Le code et ses commentaires sont en anglais ; ce que lit le joueur et la documentation, en français.** Les
+textes du jeu ne se mélangent pas aux identifiants : `Strain` vaut `'taut' | 'kinked'`, et ses mots français sont
+dans `STRAIN_LABELS` (`game/evaluation.ts`).
+
+**Un commentaire dit pourquoi, ou ce que le code ne peut pas dire** : une unité, une intention, un piège déjà
+rencontré. Ce que fait une ligne, la ligne le dit elle-même.
+
+```ts
+// on the window: a button let go outside the canvas still ends the gesture
+this.on(window, 'pointerup', (e: PointerEvent) => this.pointerUp(e));
+```
+
+**Les champs et les fonctions exportées ont un `/** … */`**, que l'éditeur montre au survol.
+
+## Tester
+
+**`tests/` reprend l'arborescence de `src/`** : le test de `src/game/maintenanceWindow.ts` est
+`tests/game/maintenanceWindow.test.ts`.
+
+**Tester d'abord ce qui est pur.** Une fonction qui reçoit des données et rend un résultat se teste en trois lignes
+(`tests/format.test.ts`, `tests/app/urlOptions.test.ts`). C'est une raison de plus pour sortir la logique des
+classes qui touchent au DOM ou à three.js : `readUrlOptions` lit une chaîne plutôt que `location`.
+
+**Remplacer ce qui est lourd par un double.** `tests/play/undoHistory.test.ts` donne à l'historique un faux monde
+qui numérote ses instantanés ; `tests/game/maintenanceWindow.test.ts` remplace toute la baie par un ensemble de
+liaisons qu'on coupe à la main.
+
+**Ce qui est chaotique se mesure, il ne se teste pas.** La physique des câbles change de résultat au moindre
+changement : les bancs de `tools/` la mesurent sur des dizaines de tirages (`tools/README.md`), et les tests ne
+vérifient que ce qui doit rester vrai (un niveau peut atteindre trois étoiles, le désordre ne s'envole pas).
+
+## Vérifier et livrer
+
+**`npm run check` avant chaque commit** : lint (dont les couches), types, tests. La CI fait la même chose.
+
+**Un commit fait une chose**, qu'on peut relire, et annuler, seule. Le message commence par la zone touchée, puis
+dit ce qui change ; le corps dit pourquoi :
+
+```
+Évaluation : le score de la baie sort de World (game/evaluation.ts)
+
+evaluate, holdMap, la tension des cordons… vivent dans evaluation.ts, en
+fonctions qui lisent un World sans le modifier. Aucun changement de
+comportement.
+```
+
+**Un déplacement de code ne change pas son comportement.** Réorganiser et corriger dans le même commit rend les
+deux impossibles à relire : d'abord on déplace (les tests passent, rien ne change), ensuite on modifie.

@@ -193,20 +193,43 @@ tourne dans le navigateur.
 
 | Dossier | Contenu |
 |---|---|
+| `src/app/` | quelle scène est à l'écran (un niveau ou l'écran titre), et comment passer de l'une à l'autre |
+| `src/game/` | les règles et la physique de la baie, sans affichage : elles tournent aussi sous Node et dans un Worker |
+| `src/play/` | une partie en cours : la boucle, les outils du joueur, les repères visuels |
+| `src/showcase/` | l'écran titre, l'allée de baies avant / après |
+| `src/render/` | le dessin three.js : baie, câbles, connecteurs, éclairage |
+| `src/ui/` | l'interface HTML : plan de brassage, outils, tutoriel, écran de résultat |
+| `tests/` | tests unitaires (Vitest), rangés comme `src/` |
+| `tools/` | bancs d'essai du moteur, des gestes et des niveaux, sans navigateur ([index](tools/README.md)) |
 | `vendor/cable-kit/` | sous-module git, le dépôt [cable-kit](https://github.com/drschizzo/cable-kit) : le moteur de câbles et son Web Worker (`@drschizzo/avbd-cables`), les tubes construits par le GPU (`@drschizzo/three-cable-tubes`) |
-| `src/game/` | la baie, les niveaux, le plan de brassage, les règles et le score |
-| `src/render/` | la scène three.js : baie, câbles, connecteurs |
-| `src/ui/` | l'interface, le tutoriel, la démonstration avant / après |
-| `tests/` | tests unitaires (Vitest) |
-| `tools/` | bancs d'essai du moteur et des niveaux, sans navigateur |
 
-[`docs/architecture.md`](docs/architecture.md) détaille l'organisation du code,
-le sens des dépendances entre ces dossiers et où intervenir pour ajouter un
-niveau, un outil ou un critère de score.
+Chaque dossier ne dépend que de ceux qui sont en dessous de lui (`game` en bas,
+`app` en haut), et ESLint le vérifie à chaque `npm run lint`.
 
-[`docs/anatomie-d-une-frame.md`](docs/anatomie-d-une-frame.md) suit une frame
-de bout en bout, avec schémas et captures : la boucle de jeu, le moteur
-physique des câbles, la préparation de la scène et le pipeline de rendu.
+### Lire le code
+
+Trois documents, du plus général au plus détaillé :
+
+- [`docs/architecture.md`](docs/architecture.md) : l'organisation du code, le
+  sens des dépendances entre les dossiers, et où intervenir pour ajouter un
+  niveau, un outil ou un critère de score ;
+- [`docs/conventions.md`](docs/conventions.md) : les règles que le code suit
+  (découpage, nommage, commentaires, tests, commits), avec un exemple tiré du
+  projet pour chacune ;
+- [`docs/anatomie-d-une-frame.md`](docs/anatomie-d-une-frame.md) : une frame
+  suivie de bout en bout, avec schémas et captures (la boucle de jeu, le
+  moteur physique des câbles, la préparation de la scène, le rendu).
+
+Pour une première lecture, suivre le chemin d'un clic :
+
+1. `src/main.ts` crée l'`App` (`src/app/app.ts`), qui lance un niveau en créant
+   un `Controller` ;
+2. `src/play/controller.ts` fait tourner la boucle (`tick`) et confie la souris
+   à `src/play/inputRouter.ts` ;
+3. le clic arrive à un outil, par exemple `src/play/tools/handTool.ts`, qui
+   saisit le cordon et le branche avec `World.plug` (`src/game/world.ts`) ;
+4. `src/game/evaluation.ts` note la baie, et le contrôleur prévient
+   l'interface (`src/ui/hud.ts`) par un événement.
 
 ### Commandes utiles
 
@@ -214,7 +237,7 @@ physique des câbles, la préparation de la scène et le pipeline de rendu.
 |---|---|
 | `npm run dev` | serveur de développement |
 | `npm run build` | version de production dans `dist/` (publiée sur GitHub Pages à chaque push sur `main`) |
-| `npm run check` | lint, types et tests, à lancer avant de pousser |
+| `npm run check` | lint (dont le sens des dépendances), types et tests, à lancer avant de pousser |
 | `npm run solvable` | vérifie que chaque niveau peut atteindre 3 étoiles avec son seul inventaire ; puis, depuis l'emmêlement de départ, combien de liaisons en production il faudra débrancher, ce que cela coûte face au budget d'interruption, et les cordons neufs qu'il faut |
 | `npm run bench` | performance et stabilité du moteur physique |
 | `npm run precision` | gestes délicats : entrer dans une goulotte, coucher un câble dans un guide-câbles… |
@@ -238,7 +261,7 @@ main, le velcro et les coudes pincés comme des énergies. Un coude pincé garde
 sa forme par *shape matching* : ses nœuds sont tirés vers cette forme,
 tournée et déplacée pour leur aller au mieux. Les câbles immobiles se mettent en
 veille pour que les grosses baies restent fluides. Le moteur tourne dans un
-Web Worker (`src/game/sim.worker.ts`, piloté par `threadedSim.ts`, tous deux bâtis sur `threaded.ts` du moteur) : l'affichage
+Web Worker (`src/game/physics/sim.worker.ts`, piloté par `threadedSim.ts`, tous deux bâtis sur `threaded.ts` du moteur) : l'affichage
 n'attend jamais la physique.
 
 ## Licence

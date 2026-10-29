@@ -1,3 +1,5 @@
+// A light bevelled box, for the thousands of small parts of the equipment.
+
 import * as THREE from 'three';
 
 /**
