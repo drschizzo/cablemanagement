@@ -142,14 +142,51 @@ const CAMPAIGN: Record<string, Words<LevelText>> = {
   },
 };
 
-/** the campaign levels that have their words (a test checks every level does) */
-export function hasCampaignText(id: string): boolean {
-  return id in CAMPAIGN;
+/** the puzzles, by id: a title and the idea, in a sentence */
+const PUZZLES: Record<string, Words<LevelText>> = {
+  p1: {
+    fr: { title: 'Un geste', brief: 'Un cordon, un bout qui pend. Un seul trait de l\'outil Chemin suffit à le ranger et à le brancher.' },
+    en: { title: 'One gesture', brief: 'One cord, one loose end. A single stroke of the Route tool is enough to lay it and plug it.' },
+  },
+  p2: {
+    fr: { title: 'Deux bouts', brief: 'Deux bouts libres, deux gestes.' },
+    en: { title: 'Two ends', brief: 'Two loose ends, two gestures.' },
+  },
+  p3: {
+    fr: { title: 'L\'échange', brief: 'Deux cordons branchés chacun sur le port de l\'autre.' },
+    en: { title: 'The swap', brief: 'Two cords, each plugged into the other\'s port.' },
+  },
+  p4: {
+    fr: { title: 'Le support manquant', brief: 'Pas de guide-câbles : posez-le d\'abord, puis faites-y passer les cordons.' },
+    en: { title: 'The missing support', brief: 'No cable manager: place it first, then run the cords through it.' },
+  },
+  p5: {
+    fr: { title: 'Le faisceau', brief: 'Trois cordons, un seul velcro : un faisceau dans le guide-câbles.' },
+    en: { title: 'The bundle', brief: 'Three cords, a single velcro: one bundle in the cable manager.' },
+  },
+  p6: {
+    fr: { title: 'Le long chemin', brief: 'Le switch est loin sous le panneau : les goulottes descendent les cordons le long des montants.' },
+    en: { title: 'The long way', brief: 'The switch is far below the panel: the ducts take the cords down along the posts.' },
+  },
+  p7: {
+    fr: { title: 'Sous tension', brief: 'Une liaison est sur le mauvais port, en production, sur un budget minuscule : pas le temps d\'hésiter.' },
+    en: { title: 'Live wire', brief: 'A link is in the wrong port, in production, on a tiny budget: no time to hesitate.' },
+  },
+  p8: {
+    fr: { title: 'Dans le noir', brief: 'Des cordons sans marque, deux sur de mauvais ports. Tracez-les (T) avant de les toucher.' },
+    en: { title: 'In the dark', brief: 'Unmarked cords, two in wrong ports. Trace them (T) before touching them.' },
+  },
+};
+
+/** the campaign levels and the puzzles that have their words (a test checks every one does) */
+export function hasLevelText(id: string): boolean {
+  return id in CAMPAIGN || id in PUZZLES;
 }
 
 function textOf(level: LevelDef): LevelText {
   switch (level.kind) {
     case 'campaign': return tr(CAMPAIGN[level.id]);
+    case 'puzzle': return tr(PUZZLES[level.id]);
     case 'tutorial': return { title: tr({ fr: 'Tutoriel', en: 'Tutorial' }), brief: '' };
     case 'free': return tr({
       fr: { title: `Partie libre — ${level.cables} câbles`, brief: 'Une baie générée au hasard.' },

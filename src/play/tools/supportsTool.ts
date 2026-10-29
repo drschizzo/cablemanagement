@@ -90,6 +90,7 @@ export class SupportsTool implements ToolHandler {
       if (!w.placeItem(s.kind, s.unit, s.side)) { ctx.events.onToast({ kind: 'cannotPlace', item: s.kind }); sfx.error(); return; }
       sfx.place();
     }
+    ctx.counters.moves++;
     this.updateGhost(true);
     ctx.events.onInventory();
   }

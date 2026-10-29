@@ -65,6 +65,13 @@ export interface CampaignLevel extends LevelBase {
   par: number;
 }
 
+/** a puzzle: a tiny cabinet, solved in as few gestures as possible */
+export interface PuzzleLevel extends LevelBase {
+  kind: 'puzzle';
+  /** the gestures challenge: three stars in at most this many gestures that change the cabinet */
+  moves: number;
+}
+
 /** the guided tutorial, over a small cabinet */
 export interface TutorialLevel extends LevelBase {
   kind: 'tutorial';
@@ -103,4 +110,4 @@ export interface BenchLevel extends LevelBase {
   kind: 'bench';
 }
 
-export type LevelDef = CampaignLevel | TutorialLevel | FreeLevel | ZenLevel | DailyLevel | ShowcaseLevel | BenchLevel;
+export type LevelDef = CampaignLevel | PuzzleLevel | TutorialLevel | FreeLevel | ZenLevel | DailyLevel | ShowcaseLevel | BenchLevel;

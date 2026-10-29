@@ -143,6 +143,7 @@ export class RouteTool implements ToolHandler {
     w.unpark(sk.cable, b);
     this.laying = new RouteRun(w, res.plan);
     ctx.counters.routed++;
+    ctx.counters.moves++;
     if (res.plan.slack > 0.2) ctx.events.onToast({ kind: 'routeSlack', extra: res.plan.slack });
     sfx.whoosh();
   }

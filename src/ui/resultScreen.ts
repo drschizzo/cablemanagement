@@ -79,6 +79,12 @@ function resultLines(level: LevelDef, ev: Evaluation, result: LevelResult, chall
         en: '★★★: everything routed, the front all clear, no cord taut or kinked' + (ev.bundlesNeeded ? `, ${ev.bundlesNeeded} bundles` : '') + (windowed ? ', the downtime budget kept' : '') + '.',
       }));
   }
+  if (level.kind === 'puzzle') {
+    const most = level.moves, done = result.moves;
+    lines.push(result.challengeWon
+      ? tr({ fr: `✋ Défi gestes réussi : ★★★ en ${done} geste${done > 1 ? 's' : ''} !`, en: `✋ Gestures challenge won: ★★★ in ${done} gesture${done > 1 ? 's' : ''}!` })
+      : tr({ fr: `✋ Défi gestes : ★★★ en ${most} gestes au plus (${done} cette fois)${challengeWonBefore ? ', déjà réussi' : ''}.`, en: `✋ Gestures challenge: ★★★ in ${most} gestures at most (${done} this time)${challengeWonBefore ? ', won already' : ''}.` }));
+  }
   if (level.kind === 'campaign') {
     const par = formatTime(level.par);
     lines.push(result.challengeWon

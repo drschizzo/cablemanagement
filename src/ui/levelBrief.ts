@@ -60,6 +60,10 @@ export class LevelBrief {
 /** the level's own tips, then those of its rules (time challenge, tension, maintenance window, LEDs) */
 function briefTips(level: LevelDef, ctl: Controller | null): string[] {
   const tips = levelTips(level);
+  if (level.kind === 'puzzle') tips.push(tr({
+    fr: `<b>Défi gestes</b> : ★★★ en ${level.moves} geste${level.moves > 1 ? 's' : ''} au plus. Compte pour un geste : un cordon déplacé ou branché, un chemin posé, un support ou un velcro posé ou retiré, un cordon jeté au bac ou pris au Stock.`,
+    en: `<b>Gestures challenge</b>: ★★★ in ${level.moves} gesture${level.moves > 1 ? 's' : ''} at most. A gesture is: a cord moved or plugged, a route laid, a support or a velcro placed or taken off, a cord thrown into the crate or taken from the Stock.`,
+  }));
   if (level.kind === 'campaign') tips.push(tr({ fr: `<b>Défi chrono</b> : ★★★ en moins de ${formatTime(level.par)}.`, en: `<b>Time challenge</b>: ★★★ in less than ${formatTime(level.par)}.` }));
   tips.push(tr({
     fr: '<b>Ni tendu ni plié</b> : un cordon bien plus court que son chemin rangé, ou une fibre pliée en angle vif, ne vaut pas ★★★.',

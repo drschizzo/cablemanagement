@@ -46,6 +46,8 @@ export const PAGE_TEXTS: Record<string, Words> = {
   'menu.title': { fr: 'Niveaux', en: 'Levels' },
   'menu.sub': { fr: 'Deux étoiles à un niveau ouvrent le suivant.', en: 'Two stars on a level open the next one.' },
   'menu.free': { fr: 'Partie libre :', en: 'Free play:' },
+  'menu.puzzles': { fr: 'Puzzles express', en: 'Express puzzles' },
+  'menu.puzzlesSub': { fr: 'Une idée par baie, à résoudre en peu de gestes. Tous ouverts.', en: 'One idea per cabinet, to solve in few gestures. All open.' },
   'menu.freeGo': { fr: 'Générer une baie', en: 'Generate a cabinet' },
   'menu.zen': { fr: 'Mode zen', en: 'Zen mode' },
   'menu.zenTip': { fr: 'Une grande baie, sans chrono ni budget, en musique', en: 'A big cabinet, no clock, no budget, with music' },

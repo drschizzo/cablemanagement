@@ -63,7 +63,7 @@ export class Controller implements PlayContext, InputCommands {
   debug = false;
   /** seconds since the level opened, preparation and pauses included (animations) */
   clock = 0;
-  readonly counters: GestureCounters = { hovered: 0, dragged: 0, plugged: 0, unplugged: 0, orbited: 0, deposited: 0, pinched: 0, handedOver: 0, routed: 0 };
+  readonly counters: GestureCounters = { moves: 0, hovered: 0, dragged: 0, plugged: 0, unplugged: 0, orbited: 0, deposited: 0, pinched: 0, handedOver: 0, routed: 0 };
   /** the cabinet as the player found it (image), taken on the first frame, and its readability note */
   before: string | null = null;
   startNote = 0;
@@ -382,6 +382,7 @@ export class Controller implements PlayContext, InputCommands {
     this.history.remember();
     this.world.depositCable(c);
     this.counters.deposited++;
+    this.counters.moves++;
     sfx.unplug();
     this.announceCut(cut);
     this.setHover(null);
@@ -398,6 +399,7 @@ export class Controller implements PlayContext, InputCommands {
       return false;
     }
     sfx.place();
+    this.counters.moves++;
     this.afterRewire();
     return true;
   }
@@ -436,6 +438,7 @@ export class Controller implements PlayContext, InputCommands {
     this.history.remember();
     this.route.stopLaying();
     w.park(c, e, [[p.x, p.y - 0.035, 0.09], [p.x, p.y - 0.035 - w.seg, 0.09]]);
+    this.counters.moves++;
     this.holdView.show(c, this.clock + SETTLE_SHOW);
     sfx.whoosh();
   }

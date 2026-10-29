@@ -2,6 +2,7 @@
 // without a page.
 import { describe, expect, it } from 'vitest';
 import { isUnlocked, levelAfter, recordResult } from '../../src/ui/progress';
+import { PUZZLES } from '../../src/game/levels/puzzles';
 import { LEVELS } from '../../src/game/levels/campaign';
 import type { Progress } from '../../src/ui/storage';
 
@@ -11,8 +12,8 @@ const level = { ...LEVELS[0], par: 100 };
 describe('the progress record', () => {
   it('keeps the best stars, time and note, and tells what it held before', () => {
     const p = empty();
-    recordResult(p, level, 2, 90, 60);
-    const second = recordResult(p, level, 1, 120, 70);
+    recordResult(p, level, 2, 90, 10, 60);
+    const second = recordResult(p, level, 1, 120, 10, 70);
     expect(p.stars[level.id]).toBe(2);
     expect(p.times[level.id]).toBe(90);
     expect(p.notes[level.id]).toBe(70);
@@ -21,15 +22,22 @@ describe('the progress record', () => {
   });
 
   it('a first result has no previous note', () => {
-    expect(recordResult(empty(), level, 1, 50, 40).previousNote).toBeUndefined();
+    expect(recordResult(empty(), level, 1, 50, 10, 40).previousNote).toBeUndefined();
   });
 
   it('wins the time challenge with three stars within the time', () => {
     const p = empty();
-    expect(recordResult(p, level, 2, 50, 0).challengeWon).toBe(false);
-    expect(recordResult(p, level, 3, 150, 0).challengeWon).toBe(false);
-    expect(recordResult(p, level, 3, 80, 0).challengeWon).toBe(true);
+    expect(recordResult(p, level, 2, 50, 10, 0).challengeWon).toBe(false);
+    expect(recordResult(p, level, 3, 150, 10, 0).challengeWon).toBe(false);
+    expect(recordResult(p, level, 3, 80, 10, 0).challengeWon).toBe(true);
     expect(p.challenges[level.id]).toBe(true);
+  });
+
+  it('wins the gestures challenge of a puzzle with three stars in few enough gestures', () => {
+    const puzzle = { ...PUZZLES[2], moves: 4 };
+    expect(recordResult(empty(), puzzle, 3, 999, 5, 0).challengeWon).toBe(false);
+    expect(recordResult(empty(), puzzle, 2, 10, 2, 0).challengeWon).toBe(false);
+    expect(recordResult(empty(), puzzle, 3, 999, 4, 0).challengeWon).toBe(true);
   });
 });
 

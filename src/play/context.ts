@@ -35,8 +35,10 @@ export interface ControllerEvents {
   unitLabel(unit: UnitSpec): string;
 }
 
-/** what the player did, for the tutorial */
+/** what the player did, for the tutorial and the puzzles */
 export interface GestureCounters {
+  /** gestures that changed the cabinet: a cord moved or plugged, a route laid, a support or a velcro placed or taken off, a cord to the crate or out of the stock */
+  moves: number;
   hovered: number;
   /** metres the hand has travelled carrying a cord */
   dragged: number;

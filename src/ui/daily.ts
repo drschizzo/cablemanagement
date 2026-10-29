@@ -27,12 +27,12 @@ function isBetter(a: DailyResult, b: DailyResult): boolean {
 }
 
 /** keeps the day's best result in the record, and tells what it held before */
-export function recordDaily(record: Record<string, DailyResult>, level: DailyLevel, ev: Evaluation, time: number): LevelResult {
+export function recordDaily(record: Record<string, DailyResult>, level: DailyLevel, ev: Evaluation, time: number, moves: number): LevelResult {
   const before = record[level.date];
   // no budget (Infinity) is kept as 0: JSON has no Infinity
   const now: DailyResult = { stars: ev.stars, time, note: ev.readability.note, downtime: Math.round(ev.downtime), budget: Number.isFinite(ev.budget) ? ev.budget : 0, lines: linesOf(ev) };
   if (!before || isBetter(now, before)) record[level.date] = now;
-  return { stars: ev.stars, time, note: now.note, previousStars: before?.stars ?? 0, previousNote: before?.note, challengeWon: false };
+  return { stars: ev.stars, time, moves, note: now.note, previousStars: before?.stars ?? 0, previousNote: before?.note, challengeWon: false };
 }
 
 /** days in a row with a cabinet signed off, up to today (or to yesterday, while today's is still to do) */

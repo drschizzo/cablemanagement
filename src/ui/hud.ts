@@ -211,9 +211,15 @@ export class Hud {
     $('#stats').textContent = text;
   }
 
-  /** the timer, a few times a second */
+  /** the timer, and the gestures of a puzzle, a few times a second */
   tick(): void {
-    if (this.ctl) $('#timer').textContent = formatTime(this.ctl.elapsed);
+    if (!this.ctl) return;
+    $('#timer').textContent = formatTime(this.ctl.elapsed);
+    if (this.level?.kind === 'puzzle') {
+      const moves = this.ctl.counters.moves, most = this.level.moves;
+      $('#moves').textContent = tr({ fr: `Gestes ${moves}/${most}`, en: `Gestures ${moves}/${most}` });
+      $('#moves').classList.toggle('over', moves > most);
+    }
   }
 
   private toggleStock(): void {
@@ -226,7 +232,7 @@ export class Hud {
     if (!ctl || !level) return;
     const ev = ctl.world.evaluate();
     if (ev.stars < 1 || document.body.classList.contains('touring')) return;
-    const outcome = this.record(level, ev, ctl.elapsed);
+    const outcome = this.record(level, ev, ctl.elapsed, ctl.counters.moves);
     sfx.win();
     // the panels step aside while the camera flies round the work
     document.body.classList.add('touring');
@@ -243,17 +249,17 @@ export class Hud {
   }
 
   /** keeps the result where its kind of level keeps it; what the result screen shows of it */
-  private record(level: LevelDef, ev: Evaluation, time: number): Outcome {
+  private record(level: LevelDef, ev: Evaluation, time: number, moves: number): Outcome {
     // zen keeps no score
-    if (level.kind === 'zen') return { result: { stars: ev.stars, time, note: ev.readability.note, previousStars: 0, previousNote: undefined, challengeWon: false }, challengeWonBefore: false, share: null };
+    if (level.kind === 'zen') return { result: { stars: ev.stars, time, moves, note: ev.readability.note, previousStars: 0, previousNote: undefined, challengeWon: false }, challengeWonBefore: false, share: null };
     if (level.kind === 'daily') {
       const days = load('daily');
-      const result = recordDaily(days, level, ev, time);
+      const result = recordDaily(days, level, ev, time, moves);
       save('daily', days);
       return { result, challengeWonBefore: false, share: shareText(level, days[level.date], streak(days, level.date)) };
     }
     const challengeWonBefore = !!this.progress.challenges[level.id];
-    const result = recordResult(this.progress, level, ev.stars, time, ev.readability.note);
+    const result = recordResult(this.progress, level, ev.stars, time, moves, ev.readability.note);
     save('progress', this.progress);
     return { result, challengeWonBefore, share: null };
   }

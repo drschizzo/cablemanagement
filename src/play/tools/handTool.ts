@@ -190,7 +190,9 @@ export class HandTool implements ToolHandler {
   private letGo(hook: boolean): void {
     const ctx = this.ctx, c = this.carry!;
     const port = ctx.portHint.current;
+    // a mere click changed nothing: no gesture to undo, nor to count
     if (ctx.counters.dragged - c.travelAtStart < CLICK_TRAVEL && !port && !(c.end >= 0) && !c.pinched) ctx.history.forgetLast();
+    else ctx.counters.moves++;
     this.plumbLine.hide();
     ctx.events.onHint(null);
     this.carry = null;

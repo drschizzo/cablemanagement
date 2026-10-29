@@ -76,6 +76,7 @@ export class VelcroTool implements ToolHandler {
     }
     if (!hit) return false;
     ctx.world.removeStrap(hit);
+    ctx.counters.moves++;
     sfx.remove();
     ctx.events.onInventory();
     return true;
@@ -110,6 +111,7 @@ export class VelcroTool implements ToolHandler {
     if (ctx.world.stock.velcro <= 0) { ctx.events.onToast({ kind: 'noVelcroLeft' }); sfx.error(); return; }
     if (line.nodes.length < 2) { ctx.events.onToast({ kind: 'velcroNeedsTwo' }); sfx.error(); return; }
     ctx.world.strapNodes(line.nodes);
+    ctx.counters.moves++;
     sfx.velcro();
     ctx.events.onInventory();
   }

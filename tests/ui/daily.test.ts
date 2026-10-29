@@ -17,11 +17,11 @@ describe('the cabinets of the day', () => {
 
   it('keeps the best result of the day, and tells what it held before', () => {
     const record: Record<string, DailyResult> = {};
-    recordDaily(record, level, ev(2, 70), 300);
-    const second = recordDaily(record, level, ev(1, 90), 100);
+    recordDaily(record, level, ev(2, 70), 300, 7);
+    const second = recordDaily(record, level, ev(1, 90), 100, 7);
     expect(record['2026-11-05'].stars).toBe(2);
     expect(second.previousStars).toBe(2);
-    recordDaily(record, level, ev(2, 80), 400);
+    recordDaily(record, level, ev(2, 80), 400, 7);
     expect(record['2026-11-05'].note).toBe(80);
   });
 
@@ -34,7 +34,7 @@ describe('the cabinets of the day', () => {
 
   it('shares the stars, the time and a grid of the links', () => {
     const record: Record<string, DailyResult> = {};
-    recordDaily(record, level, ev(2, 70), 245);
+    recordDaily(record, level, ev(2, 70), 245, 7);
     const text = shareText(level, record['2026-11-05'], 3);
     expect(text).toContain(`n° ${level.number}`);
     expect(text).toContain('★★☆ · ⏱ 4:05 · lisibilité 70 · ⚡ 12/200');

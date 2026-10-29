@@ -35,8 +35,8 @@ src/
     physics/        le solveur tel que le jeu le mène (rackCableSim : mains, ports, creux des guides), et son Worker
     mess/           le désordre de départ : les chemins emmêlés des cordons (tangle), leur chute dans un Worker,
                     sa version précalculée pour l'écran titre (baked, showcase.bin)
-    levels/         ce qu'est un niveau (levelDef : une union par sorte, campagne, tutoriel, partie libre, zen, baie du
-                    jour, vitrine, banc), les équipements nommés, la campagne et le tutoriel, la partie libre et le zen, la baie du jour
+    levels/         ce qu'est un niveau (levelDef : une union par sorte, campagne, puzzle, tutoriel, partie libre, zen,
+                    baie du jour, vitrine, banc), les équipements nommés, la campagne et le tutoriel, les puzzles, la partie libre et le zen, la baie du jour
                     (tirée de la date : la même pour tous), les baies de la vitrine
   play/         UNE PARTIE EN COURS : relie game, render et l'interface
     controller.ts   Controller : la boucle à pas fixe, ce que la baie montre de son état, les actions du HUD
@@ -84,7 +84,8 @@ src/
     pauseMenu.ts    le menu d'un niveau (☰ Menu, Échap) : le chrono attend ; consignes, recommencer, niveaux,
                     paramètres, accueil ; confirmDialog.ts, la question avant de quitter une baie entamée
     settingsPanel.ts les paramètres : qualité de l'image (auto, préréglages, détails) et son
-    progress.ts     la progression du joueur : meilleur score, niveau ouvert, niveau suivant (fonctions pures)
+    progress.ts     la progression du joueur : meilleur score, défi réussi (chrono de la campagne, gestes d'un puzzle),
+                    niveau ouvert, niveau suivant (fonctions pures)
     daily.ts        les baies du jour réussies : le meilleur de chaque jour, les jours de suite, le résultat à partager
     messages.ts     tous les textes d'une partie : messages, aides, bulle d'un cordon, critères de lisibilité
     keyHints.ts     les touches qui comptent à l'instant (outil en main, cordon survolé), en touches de clavier sous la baie
@@ -212,7 +213,7 @@ coupé. Les clés sont celles des versions précédentes.
 
 | Évolution | Où |
 |---|---|
-| un niveau | une entrée dans `LEVELS` (`game/levels/campaign.ts`), bâtie avec les équipements de `game/levels/equipment.ts`, et ses mots dans `ui/levelTexts.ts` (un test vérifie qu'aucun ne manque) ; `tests/game/levels/levels.test.ts` vérifie son plan, qu'il ne se gagne pas sans rien faire et qu'il peut atteindre 3 étoiles avec son seul inventaire (`tidyKit`) |
+| un niveau | une entrée dans `LEVELS` (`game/levels/campaign.ts`), bâtie avec les équipements de `game/levels/equipment.ts`, et ses mots dans `ui/levelTexts.ts` (un test vérifie qu'aucun ne manque) ; un puzzle, de même dans `PUZZLES` (`game/levels/puzzles.ts`) ; `tests/game/levels/levels.test.ts` vérifie son plan, qu'il ne se gagne pas sans rien faire et qu'il peut atteindre 3 étoiles avec son seul inventaire (`tidyKit`) |
 | un équipement de baie | `UnitSpec` et le constructeur de `Rack` (`game/rack.ts`), son rendu dans `render/rackView.ts` |
 | un élément de rangement | `ItemKind`, `canPlace`, `statics` et `supports` dans `game/rack.ts`, `buildItem` dans `render/rackItems.ts`, un outil dans `TOOLS` (`ui/toolbar.ts`) |
 | un outil | un `ToolHandler` dans `play/tools/`, son nom dans `Tool` (`play/context.ts`) et dans `Controller.tools`, son bouton dans `TOOLS` (`ui/toolbar.ts`) |

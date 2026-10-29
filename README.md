@@ -142,6 +142,12 @@ cordon, et dans quel ordre, fait partie du plan.
 | 7 | Migration | 24 · budget d'interruption serré |
 | 8 | Le plat de spaghettis | 28 · cordons sans marque, à tracer |
 
+Les **puzzles express** (P1 à P8, tous ouverts) sont de toutes petites baies, une idée chacune : un
+bout libre, deux cordons échangés, un support à poser, un faisceau, des goulottes, une liaison en
+production sur un budget minuscule, des cordons sans marque. Leur défi : ★★★ en peu de **gestes**
+(un cordon déplacé ou branché, un chemin posé, un support ou un velcro posé ou retiré, un cordon au
+bac ou pris au Stock), compté en haut de l'écran.
+
 La **partie libre** génère une baie au hasard, de 4 à 48 câbles.
 
 Le **mode zen** (menu des niveaux) : une grande baie de 36 câbles, rien en production, pas de chrono,

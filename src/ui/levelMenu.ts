@@ -1,12 +1,13 @@
 // The levels menu: the tutorial, the cabinet of the day, then one card per
 // level of the campaign with its stars, its best time, and what opens it
-// while it is locked; a free game of as many cords as asked, and the zen
-// mode.
+// while it is locked; the puzzles; a free game of as many cords as asked,
+// and the zen mode.
 
 import { LEVELS, TUTORIAL, UNLOCK_STARS } from '../game/levels/campaign';
 import { freeLevel, zenLevel } from '../game/levels/freeLevel';
 import { dailyLevel, dayKey } from '../game/levels/dailyLevel';
-import type { LevelDef } from '../game/levels/levelDef';
+import { PUZZLES } from '../game/levels/puzzles';
+import type { LevelDef, PuzzleLevel } from '../game/levels/levelDef';
 import { load, type Progress } from './storage';
 import { formatTime } from './format';
 import { hide, show, starsHtml } from './dom';
@@ -39,6 +40,9 @@ export class LevelMenu {
     box.appendChild(this.tutorialCard());
     box.appendChild(this.dailyCard());
     LEVELS.forEach((level, i) => box.appendChild(this.levelCard(progress, level, i)));
+    const puzzles = $('#menu-puzzles');
+    puzzles.innerHTML = '';
+    PUZZLES.forEach((level, i) => puzzles.appendChild(this.puzzleCard(progress, level, i)));
     show('#menu');
   }
 
@@ -65,6 +69,18 @@ export class LevelMenu {
     card.innerHTML = `<div class="num">☀</div><div class="t">${levelTitle(level)}</div>
       <div class="meta">${tr({ fr: `${level.cables} câbles · la même pour tous`, en: `${level.cables} cords · the same for all` })}</div>
       <div class="stars">${starsHtml(best?.stars ?? 0)}</div>${best ? `<div class="best">${formatTime(best.time)}</div>` : ''}`;
+    card.onclick = () => this.choose(level);
+    return card;
+  }
+
+  /** a puzzle: always open, its stars, and the hand once its gestures challenge is won */
+  private puzzleCard(progress: Progress, level: PuzzleLevel, index: number): HTMLElement {
+    const card = document.createElement('button');
+    card.className = 'level-card puzzle';
+    const won = progress.challenges[level.id];
+    card.innerHTML = `<div class="num">P${index + 1}</div><div class="t">${levelTitle(level)}</div>
+      <div class="meta">${tr({ fr: `${level.cables} câble${level.cables > 1 ? 's' : ''} · ${level.moves} geste${level.moves > 1 ? 's' : ''}`, en: `${level.cables} cord${level.cables > 1 ? 's' : ''} · ${level.moves} gesture${level.moves > 1 ? 's' : ''}` })}</div>
+      <div class="stars">${starsHtml(progress.stars[level.id] ?? 0)}${won ? `<span class="par" title="${tr({ fr: 'Défi gestes réussi', en: 'Gestures challenge won' })}">✋</span>` : ''}</div>`;
     card.onclick = () => this.choose(level);
     return card;
   }

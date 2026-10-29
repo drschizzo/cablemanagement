@@ -4,11 +4,12 @@ import { World } from '../../../src/game/world';
 import { ITEM_KINDS } from '../../../src/game/supplies';
 import { LEVELS, TUTORIAL } from '../../../src/game/levels/campaign';
 import { freeLevel } from '../../../src/game/levels/freeLevel';
+import { PUZZLES } from '../../../src/game/levels/puzzles';
 import { showcaseRack } from '../../../src/game/levels/showcaseRack';
-import type { CampaignLevel, LevelDef } from '../../../src/game/levels/levelDef';
+import type { LevelDef } from '../../../src/game/levels/levelDef';
 import { strapBundles, tidyKit, tidyLayout, tidyTargets } from '../../../src/game/idealRoutes';
 
-const ALL: LevelDef[] = [...LEVELS, TUTORIAL, freeLevel(30, 1), showcaseRack('mess', 1), showcaseRack('tidy', 1)];
+const ALL: LevelDef[] = [...LEVELS, ...PUZZLES, TUTORIAL, freeLevel(30, 1), showcaseRack('mess', 1), showcaseRack('tidy', 1)];
 
 describe.each(ALL.map((lv) => [lv.id, lv] as const))('%s', (_, lv) => {
   const w = new World(lv);
@@ -44,11 +45,11 @@ describe('levels', () => {
 });
 
 /** the cabinet of a level finished by a careful technician, settled and labelled */
-function finished(lv: CampaignLevel) {
+function finished(lv: LevelDef) {
   return finishedWorld(lv).evaluate();
 }
 
-function finishedWorld(lv: CampaignLevel) {
+function finishedWorld(lv: LevelDef) {
   const kit = tidyKit(lv);
   const w = new World(kit, tidyLayout(kit).starts);
   for (let f = 0; f < 240; f++) w.sim.step();
@@ -59,7 +60,7 @@ function finishedWorld(lv: CampaignLevel) {
 }
 
 describe('no level is won before the player does anything', () => {
-  for (const lv of LEVELS) {
+  for (const lv of [...LEVELS, ...PUZZLES]) {
     it(lv.id, () => {
       const w = new World(lv);
       w.preroll(60);
@@ -69,7 +70,7 @@ describe('no level is won before the player does anything', () => {
 });
 
 describe('three stars are possible, with the level\'s own stock', () => {
-  for (const lv of LEVELS) {
+  for (const lv of [...LEVELS, ...PUZZLES]) {
     it(lv.id, () => {
       const kit = tidyKit(lv);
       const added = kit.preinstalled.slice(lv.preinstalled.length);

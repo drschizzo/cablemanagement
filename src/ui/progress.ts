@@ -1,5 +1,6 @@
 // The player's progress, level by level: best stars, best time, best
-// readability note, time challenge won. Pure functions over the saved record:
+// readability note, challenge won (the time challenge of the campaign, the
+// gestures challenge of the puzzles). Pure functions over the saved record:
 // saving it is the caller's business (storage.ts).
 
 import type { Progress } from './storage';
@@ -11,25 +12,37 @@ export interface LevelResult {
   stars: number;
   /** seconds of play */
   time: number;
+  /** gestures that changed the cabinet */
+  moves: number;
   note: number;
   /** stars and note recorded before this result (note: undefined if never validated) */
   previousStars: number;
   previousNote: number | undefined;
-  /** three stars within the level's time challenge */
+  /** three stars within the level's challenge (time, or gestures) */
   challengeWon: boolean;
 }
 
+/** three stars within the level's challenge: the time of the campaign, the gestures of a puzzle */
+export function isChallengeWon(level: LevelDef, stars: number, time: number, moves: number): boolean {
+  if (stars < 3) return false;
+  switch (level.kind) {
+    case 'campaign': return time <= level.par;
+    case 'puzzle': return moves <= level.moves;
+    default: return false;
+  }
+}
+
 /** keeps the best of each in the record, and tells what it held before */
-export function recordResult(progress: Progress, level: LevelDef, stars: number, time: number, note: number): LevelResult {
+export function recordResult(progress: Progress, level: LevelDef, stars: number, time: number, moves: number, note: number): LevelResult {
   const id = level.id;
   const previousStars = progress.stars[id] ?? 0;
   const previousNote = progress.notes[id];
   progress.stars[id] = Math.max(previousStars, stars);
   if (!progress.times[id] || time < progress.times[id]) progress.times[id] = time;
   progress.notes[id] = Math.max(previousNote ?? 0, note);
-  const challengeWon = level.kind === 'campaign' && stars === 3 && time <= level.par;
+  const challengeWon = isChallengeWon(level, stars, time, moves);
   if (challengeWon) progress.challenges[id] = true;
-  return { stars, time, note, previousStars, previousNote, challengeWon };
+  return { stars, time, moves, note, previousStars, previousNote, challengeWon };
 }
 
 /** a level can be played: the first one, one after a tidy enough level, or one already played */
