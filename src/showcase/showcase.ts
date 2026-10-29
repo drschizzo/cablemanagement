@@ -215,6 +215,7 @@ export class Showcase {
     const side = Math.max(...ends.map((p) => Math.abs(p.x)));
     const near = Math.max(...ends.map((p) => p.z));
     this.stage.view = this.view;
+    this.stage.floorY = bounds.floorY;
     this.stage.frame((bounds.topY + bounds.floorY) / 2 + 0.02, bounds.topY - bounds.floorY + 0.1, side + (n > 1 ? 0.15 : 0.6), n > 1 ? 0 : 0.03, side + 0.6, near);
     this.stage.sway(true);
     this.stage.dragPans(true);

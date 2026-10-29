@@ -14,7 +14,7 @@ import { DepthOfFieldPass } from './depthOfField';
 import { LED_CLOCK_WRAP, ledClock, ledViewHeight } from './leds';
 import { ledGlows } from './ledGlow';
 import { gpuAdvice, gpuInfo, type GpuAdvice, type GpuInfo } from './gpu';
-import { addLights, createControls, createRenderer } from './stageSetup';
+import { addLights, createControls, createRenderer, MAX_POLAR } from './stageSetup';
 import { AUTO_QUALITY, QUALITY, drawAlike, settingsOf, type QualityChoice, type QualitySettings } from './quality';
 import { CameraTour, type TourPose } from './cameraTour';
 
@@ -32,6 +32,10 @@ const MAX_ZOOM_OUT = 1.6;
 const SHARP_REACH = 0.8;
 /** how far what the camera looks at may be panned from the middle of the subject, × the subject's size */
 const PAN_REACH = 0.6;
+/** how high above the floor the camera stays (m): its near plane must not cut into it */
+const ABOVE_FLOOR = 0.1;
+/** how high above the floor what the camera looks at stays (m) */
+const TARGET_ABOVE_FLOOR = 0.05;
 
 /** colour of the backdrop where the floor fades out (also the fog) */
 const HORIZON = '#1a1e21';
@@ -68,6 +72,8 @@ export class Stage {
    * the middle of the subject it looks (m). null: the framing as it is.
    */
   view: { zoom: number; elevation: number; lower: number } | null = null;
+  /** the height of the room's floor: the camera, and what it looks at, stay above it */
+  floorY = -Infinity;
   /** slow sway of the camera around the cabinet (demo), stopped by the player */
   private swaying = false;
   private swayT = 0;
@@ -381,6 +387,27 @@ export class Stage {
     this.camera.position.add(back);
   }
 
+  /**
+   * Stops the orbit where the camera would go under the floor: the lowest it
+   * may look from, at the distance it stands, is where it meets the floor.
+   */
+  private holdOrbitAboveFloor(): void {
+    const t = this.controls.target, r = this.camera.position.distanceTo(t);
+    const below = (this.floorY + ABOVE_FLOOR - t.y) / Math.max(r, 1e-6);
+    this.controls.maxPolarAngle = Math.min(MAX_POLAR, Math.acos(THREE.MathUtils.clamp(below, -1, 1)));
+  }
+
+  /**
+   * The point looked at, panned down, and the camera, zoomed out under the
+   * orbit's limit, lifted back above the floor.
+   */
+  private keepAboveFloor(): void {
+    const t = this.controls.target, p = this.camera.position;
+    const lift = this.floorY + TARGET_ABOVE_FLOOR - t.y;
+    if (lift > 0) { t.y += lift; p.y += lift; }
+    p.y = Math.max(p.y, this.floorY + ABOVE_FLOOR);
+  }
+
   private fitBloom(): void {
     const d = this.camera.position.distanceTo(this.controls.target);
     const { near, far } = BLOOM;
@@ -409,8 +436,10 @@ export class Stage {
       this.controls.target.copy(this.home.target);
     }
     if (this.touring) this.fly(this.touring.advance(dt));
+    this.holdOrbitAboveFloor();
     this.controls.update();
     this.keepNearSubject();
+    this.keepAboveFloor();
     // same array, refilled: the pass keeps a reference to it
     this.mirrors.length = 0;
     this.scene.traverseVisible((o) => { if (o.userData.reflective) this.mirrors.push(o as THREE.Mesh); });

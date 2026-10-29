@@ -21,6 +21,9 @@ export function createRenderer(): THREE.WebGLRenderer {
 }
 
 /** the camera turns with the right button, pans with the middle one or the arrows, never quite behind the cabinet */
+/** the lowest the camera may orbit to (rad from straight above); lower still where the floor stops it */
+export const MAX_POLAR = 2.1;
+
 export function createControls(camera: THREE.PerspectiveCamera, canvas: HTMLCanvasElement): OrbitControls {
   const controls = new OrbitControls(camera, canvas);
   controls.mouseButtons = { LEFT: null as unknown as THREE.MOUSE, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE };
@@ -29,7 +32,7 @@ export function createControls(camera: THREE.PerspectiveCamera, canvas: HTMLCanv
   controls.minAzimuthAngle = -0.75;
   controls.maxAzimuthAngle = 0.75;
   controls.minPolarAngle = 0.9;
-  controls.maxPolarAngle = 2.1;
+  controls.maxPolarAngle = MAX_POLAR;
   controls.minDistance = 0.35;
   controls.maxDistance = 9;
   controls.zoomSpeed = 0.8;

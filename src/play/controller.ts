@@ -10,7 +10,7 @@ import { DEFAULT_LOOK, type Look } from '../render/look';
 import { disposeTree } from '../render/dispose';
 import { World } from '../game/world';
 import type { Evaluation } from '../game/evaluation';
-import type { Port } from '../game/rack';
+import { ROOM_FLOOR, type Port } from '../game/rack';
 import { SERVICES } from '../game/services';
 import { levelSite } from '../game/levels/site';
 import { seedOf } from '../lib/random';
@@ -175,6 +175,7 @@ export class Controller implements PlayContext, InputCommands {
     }
     const rack = this.world.rack;
     // the cabinet and, at its right, the crate on the floor
+    stage.floorY = rack.open ? rack.floorY : ROOM_FLOOR(rack);
     stage.frame((rack.topY + rack.floorY) / 2 + 0.01, rack.topY - rack.floorY + 0.16, 0.6, 0.16);
     this.rackView.syncItems(this.world.itemsVersion);
     this.cableView.update(true);
