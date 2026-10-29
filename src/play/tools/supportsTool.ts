@@ -4,7 +4,8 @@
 
 import * as THREE from 'three';
 import { sfx } from '../../audio/sfx';
-import { buildItem, ghostBadMat, ghostMat } from '../../render/rackView';
+import { buildItem } from '../../render/rackItems';
+import { ghostBadMat, ghostMat } from '../../render/rackMaterials';
 import { disposeTree } from '../../render/dispose';
 import { COLUMN_X, U, WALL_X, type Item, type ItemKind } from '../../game/rack';
 import type { PlayContext, ToolHandler } from '../context';

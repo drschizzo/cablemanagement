@@ -1,53 +1,20 @@
+// The cabinet as the player sees it: its frame, its equipment and their
+// ports, the name plates, the LEDs, and the cable management items.
+
 import * as THREE from 'three';
-import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { COLUMN_X, FRONT_Z, Rack, SIDE_BACK, SIDE_IN, SIDE_OUT, U, WALL_X, type Item, type Port } from '../game/rack';
-import type { RackShape } from '../game/rackSim';
+import { COLUMN_X, FRONT_Z, Rack, SIDE_BACK, U, WALL_X, type Port } from '../game/rack';
 import type { FibreType } from '../game/levels';
 import { disposeTree, shared } from './dispose';
 import { mergeStatic } from './batch';
 import { bevelBox, bevelTemplate } from './bevel';
 import { LedGlow, ledGlows } from './ledGlow';
 import { STEADY, activity, blinkable, ledGlow, ledMesh, pulse, type LedSpec } from './leds';
-
-// warm graphite powder-coat rather than blue-grey steel
-const mat = {
-  frame: new THREE.MeshStandardMaterial({ color: '#333134', roughness: 0.5, metalness: 0.65 }),
-  wall: new THREE.MeshStandardMaterial({ color: '#211f21', roughness: 0.62, metalness: 0.4 }),
-  back: new THREE.MeshStandardMaterial({ color: '#131213', roughness: 0.9, metalness: 0.2 }),
-  body: new THREE.MeshStandardMaterial({ color: '#1d1e20', roughness: 0.55, metalness: 0.5 }),
-  floor: new THREE.MeshStandardMaterial({ color: '#46494b', roughness: 0.7, metalness: 0.3 }),
-  panel: new THREE.MeshStandardMaterial({ color: '#d6d5d2', roughness: 0.42, metalness: 0.45 }),
-  switchFace: new THREE.MeshStandardMaterial({ color: '#272629', roughness: 0.48, metalness: 0.5 }),
-  blank: new THREE.MeshStandardMaterial({ color: '#201f22', roughness: 0.65, metalness: 0.4 }),
-  hole: new THREE.MeshStandardMaterial({ color: '#050505', roughness: 1 }),
-  cage: new THREE.MeshStandardMaterial({ color: '#aba8a3', roughness: 0.32, metalness: 0.9 }),
-  adapterSM: new THREE.MeshStandardMaterial({ color: '#2d6fd8', roughness: 0.45 }),
-  adapterMM: new THREE.MeshStandardMaterial({ color: '#d8cfa8', roughness: 0.45 }),
-  ring: new THREE.MeshStandardMaterial({ color: '#19181a', roughness: 0.45, metalness: 0.1 }),
-  duct: new THREE.MeshStandardMaterial({ color: '#353437', roughness: 0.55, metalness: 0.1 }),
-  ductBack: new THREE.MeshStandardMaterial({ color: '#2f2e31', roughness: 0.8 }),
-  mgrPlate: new THREE.MeshStandardMaterial({ color: '#19181b', roughness: 0.55, metalness: 0.3 }),
-  copperFace: new THREE.MeshStandardMaterial({ color: '#1e1d20', roughness: 0.5, metalness: 0.5 }),
-  // a shade off white and matt: under the lamp, a brighter one passed the threshold of the bloom
-  keystone: new THREE.MeshStandardMaterial({ color: '#dcd9d2', roughness: 0.65 }),
-  firewall: new THREE.MeshStandardMaterial({ color: '#7a2020', roughness: 0.45, metalness: 0.5 }),
-  router: new THREE.MeshStandardMaterial({ color: '#173c6e', roughness: 0.45, metalness: 0.5 }),
-  ups: new THREE.MeshStandardMaterial({ color: '#2d2c30', roughness: 0.55, metalness: 0.4 }),
-  crate: new THREE.MeshStandardMaterial({ color: '#2c2f32', roughness: 0.6, metalness: 0.0 }),
-  // the core of the lamp passes the bloom threshold (see leds.ts); its lens and the screen, larger
-  // surfaces, stay just below it: they would have spread into a blot
-  core: new THREE.MeshStandardMaterial({ color: '#fff1dc', emissive: '#ffd7a3', emissiveIntensity: 5 }),
-  // the diffuser of the cabinet's lamp: bright, but under the threshold, like the screen
-  lens: new THREE.MeshStandardMaterial({ color: '#fff6ea', emissive: '#ffe2bd', emissiveIntensity: 1.8, roughness: 0.9 }),
-  lcd: new THREE.MeshStandardMaterial({ color: '#0a1a14', emissive: '#3ff0a8', emissiveIntensity: 3 }),
-};
-
-// made once, used by every level
-for (const m of Object.values(mat)) shared(m);
-
-export const ghostMat = shared(new THREE.MeshStandardMaterial({ color: '#6fd3ff', transparent: true, opacity: 0.45, emissive: '#1f6f99', depthWrite: false }));
-export const ghostBadMat = shared(new THREE.MeshStandardMaterial({ color: '#ff6f6f', transparent: true, opacity: 0.4, emissive: '#992020', depthWrite: false }));
+import { rackMat } from './rackMaterials';
+import { buildItem } from './rackItems';
+import { crateWall, roundedBox } from './shapes';
+import { buildRoom } from './room';
+import { grilleMaterial, railMaterial, softShadow } from './rackTextures';
 
 const markerGeo = shared(new THREE.RingGeometry(0.0085, 0.0105, 24));
 
@@ -173,42 +140,42 @@ export class RackView {
     const cy = (roofY + bot) / 2;
     // walls, back of the side channels, floor, roof
     for (const s of [-1, 1]) {
-      this.add(rbox(0.02, h, 0.5 + FRONT_Z - 0.004, 0.004), mat.wall, s * (WALL_X + 0.01), cy, (FRONT_Z - 0.004 - 0.5) / 2);
-      this.add(bevelBox(WALL_X - COLUMN_X, h, 0.02, 0.003), mat.back, s * (COLUMN_X + WALL_X) / 2, cy, SIDE_BACK - 0.01);
+      this.add(roundedBox(0.02, h, 0.5 + FRONT_Z - 0.004, 0.004), rackMat.wall, s * (WALL_X + 0.01), cy, (FRONT_Z - 0.004 - 0.5) / 2);
+      this.add(bevelBox(WALL_X - COLUMN_X, h, 0.02, 0.003), rackMat.back, s * (COLUMN_X + WALL_X) / 2, cy, SIDE_BACK - 0.01);
       // rails with their square holes
-      const rail = this.add(bevelBox(0.018, top + 0.06, 0.012, 0.0015), mat.frame, s * (COLUMN_X - 0.004), top / 2, -0.004);
+      const rail = this.add(bevelBox(0.018, top + 0.06, 0.012, 0.0015), rackMat.frame, s * (COLUMN_X - 0.004), top / 2, -0.004);
       rail.material = railMaterial(top + 0.06);
       // front posts of the cabinet
-      this.add(rbox(0.034, h, 0.032, 0.006), mat.frame, s * (WALL_X + 0.006), cy, FRONT_Z - 0.014);
+      this.add(roundedBox(0.034, h, 0.032, 0.006), rackMat.frame, s * (WALL_X + 0.006), cy, FRONT_Z - 0.014);
     }
     // the cabinet floor is lighter, so that fallen cords stand out on it
-    this.add(rbox(0.84, 0.03, 0.5 + FRONT_Z, 0.004), mat.floor, 0, bot - 0.015, (FRONT_Z - 0.5) / 2);
+    this.add(roundedBox(0.84, 0.03, 0.5 + FRONT_Z, 0.004), rackMat.floor, 0, bot - 0.015, (FRONT_Z - 0.5) / 2);
     // kick plate in front of the floor
-    this.add(rbox(0.866, 0.03, 0.02, 0.005), mat.frame, 0, bot - 0.015, FRONT_Z - 0.008);
+    this.add(roundedBox(0.866, 0.03, 0.02, 0.005), rackMat.frame, 0, bot - 0.015, FRONT_Z - 0.008);
     // (the body casts no shadow: it would darken the inside, where the play is)
-    this.add(rbox(0.86, 0.035, 0.5 + FRONT_Z + 0.006, 0.008), mat.wall, 0, roofY + 0.0175, (FRONT_Z + 0.006 - 0.5) / 2);
+    this.add(roundedBox(0.86, 0.035, 0.5 + FRONT_Z + 0.006, 0.008), rackMat.wall, 0, roofY + 0.0175, (FRONT_Z + 0.006 - 0.5) / 2);
     // front cross bar under the roof, carrying the name plate
-    this.add(rbox(WALL_X * 2 - 0.02, 0.055, 0.032, 0.006), mat.frame, 0, roofY - 0.0275, FRONT_Z - 0.014);
+    this.add(roundedBox(WALL_X * 2 - 0.02, 0.055, 0.032, 0.006), rackMat.frame, 0, roofY - 0.0275, FRONT_Z - 0.014);
     // the lamp is one spot, which lights a round pool in the middle: a round downlight under the
     // middle of the cross bar, where it shines from (a bar the width of the cabinet promised an even light)
     const lampY = roofY - 0.055 - 0.008, lampZ = FRONT_Z - 0.02;
-    this.add(new THREE.CylinderGeometry(0.03, 0.032, 0.008, 32), mat.frame, 0, lampY + 0.004, lampZ, false);
+    this.add(new THREE.CylinderGeometry(0.03, 0.032, 0.008, 32), rackMat.frame, 0, lampY + 0.004, lampZ, false);
     // its lens, a shallow dome: seen from the front it stays an oval a few pixels tall, and lit below
     // the bloom (a thin lens over the threshold flashed from a line to a blot as the camera moved)
-    const lens = this.add(new THREE.SphereGeometry(0.024, 32, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), mat.lens, 0, lampY, lampZ, false);
+    const lens = this.add(new THREE.SphereGeometry(0.024, 32, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), rackMat.lens, 0, lampY, lampZ, false);
     lens.scale.y = 0.4;
     // the bulb behind it, peeking out of its middle: the only part that glows, a little
-    this.add(new THREE.SphereGeometry(0.011, 24, 6, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), mat.core, 0, lampY, lampZ, false);
+    this.add(new THREE.SphereGeometry(0.011, 24, 6, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), rackMat.core, 0, lampY, lampZ, false);
     const lamp = new THREE.SpotLight('#ffd2a1', 1.4, 0, 1.15, 1, 2);
     lamp.position.set(0, lampY - 0.006, lampZ);
     lamp.target.position.set(0, bot, 0.02);
     this.group.add(lamp, lamp.target);
     // low lip at the front of the floor (no front bar: it hid the floor)
-    const lip = this.add(new THREE.CylinderGeometry(0.007, 0.007, WALL_X * 2, 16), mat.frame, 0, bot + 0.012, FRONT_Z - 0.008);
+    const lip = this.add(new THREE.CylinderGeometry(0.007, 0.007, WALL_X * 2, 16), rackMat.frame, 0, bot + 0.012, FRONT_Z - 0.008);
     lip.rotation.z = Math.PI / 2;
     lip.castShadow = true;
     // plinth below the first unit
-    this.add(bevelBox(COLUMN_X * 2 - 0.02, -0.02 - bot, 0.02, 0.003), mat.back, 0, (bot - 0.02) / 2, -0.01);
+    this.add(bevelBox(COLUMN_X * 2 - 0.02, -0.02 - bot, 0.02, 0.003), rackMat.back, 0, (bot - 0.02) / 2, -0.01);
     this.buildCrate();
     if (this.opts.roomFloor !== false) {
       this.group.add(buildRoom(bot - 0.03));
@@ -227,19 +194,19 @@ export class RackView {
     const t = 0.008, cw = c.max[0] - c.min[0], ch = c.max[1] - c.min[1], cd = c.max[2] - c.min[2];
     const cx = (c.min[0] + c.max[0]) / 2, cy = (c.min[1] + c.max[1]) / 2, cz = (c.min[2] + c.max[2]) / 2;
     const front = crateWall(cw, ch, t), side = crateWall(cd - 2 * t + 0.002, ch, t);
-    for (const z of [c.min[2] + t / 2, c.max[2] - t / 2]) this.add(front, mat.crate, cx, cy, z).castShadow = true;
+    for (const z of [c.min[2] + t / 2, c.max[2] - t / 2]) this.add(front, rackMat.crate, cx, cy, z).castShadow = true;
     for (const x of [c.min[0] + t / 2, c.max[0] - t / 2]) {
-      const m = this.add(side, mat.crate, x, cy, cz);
+      const m = this.add(side, rackMat.crate, x, cy, cz);
       m.rotation.y = Math.PI / 2;
       m.castShadow = true;
     }
     // thicker rim around the top edge
     const rimY = c.max[1] - 0.005, rt = t + 0.006;
-    for (const z of [c.min[2] + t / 2, c.max[2] - t / 2]) this.add(rbox(cw + 0.006, 0.012, rt, 0.003), mat.crate, cx, rimY, z).castShadow = true;
-    for (const x of [c.min[0] + t / 2, c.max[0] - t / 2]) this.add(rbox(rt, 0.012, cd - 2 * t, 0.003), mat.crate, x, rimY, cz).castShadow = true;
+    for (const z of [c.min[2] + t / 2, c.max[2] - t / 2]) this.add(roundedBox(cw + 0.006, 0.012, rt, 0.003), rackMat.crate, cx, rimY, z).castShadow = true;
+    for (const x of [c.min[0] + t / 2, c.max[0] - t / 2]) this.add(roundedBox(rt, 0.012, cd - 2 * t, 0.003), rackMat.crate, x, rimY, cz).castShadow = true;
     // bottom with a few stiffening ribs
-    this.add(rbox(cw - 0.004, 0.006, cd - 0.004, 0.002), mat.crate, cx, c.min[1] + 0.003, cz);
-    for (let i = -1; i <= 1; i++) this.add(rbox(0.006, 0.003, cd - 2 * t, 0.0012), mat.crate, cx + i * cw * 0.25, c.min[1] + 0.0065, cz);
+    this.add(roundedBox(cw - 0.004, 0.006, cd - 0.004, 0.002), rackMat.crate, cx, c.min[1] + 0.003, cz);
+    for (let i = -1; i <= 1; i++) this.add(roundedBox(0.006, 0.003, cd - 2 * t, 0.0012), rackMat.crate, cx + i * cw * 0.25, c.min[1] + 0.0065, cz);
   }
 
   /** an open two-post rack: two uprights on feet, a top bar */
@@ -247,13 +214,13 @@ export class RackView {
     const r = this.rack;
     const top = r.topY + 0.03, bot = r.floorY;
     for (const s of [-1, 1]) {
-      const rail = this.add(bevelBox(0.022, top - bot, 0.03, 0.002), mat.frame, s * (COLUMN_X - 0.002), (top + bot) / 2, -0.012);
+      const rail = this.add(bevelBox(0.022, top - bot, 0.03, 0.002), rackMat.frame, s * (COLUMN_X - 0.002), (top + bot) / 2, -0.012);
       rail.material = railMaterial(top - bot);
       rail.castShadow = true;
-      this.add(rbox(0.06, 0.012, 0.42, 0.004), mat.frame, s * (COLUMN_X - 0.002), bot + 0.006, -0.1).castShadow = true;
+      this.add(roundedBox(0.06, 0.012, 0.42, 0.004), rackMat.frame, s * (COLUMN_X - 0.002), bot + 0.006, -0.1).castShadow = true;
     }
-    this.add(rbox(COLUMN_X * 2 + 0.02, 0.03, 0.03, 0.005), mat.frame, 0, top + 0.015, -0.012);
-    this.add(bevelBox(COLUMN_X * 2 - 0.02, -0.02 - bot, 0.02, 0.003), mat.back, 0, (bot - 0.02) / 2, -0.01);
+    this.add(roundedBox(COLUMN_X * 2 + 0.02, 0.03, 0.03, 0.005), rackMat.frame, 0, top + 0.015, -0.012);
+    this.add(bevelBox(COLUMN_X * 2 - 0.02, -0.02 - bot, 0.02, 0.003), rackMat.back, 0, (bot - 0.02) / 2, -0.01);
     if (this.opts.roomFloor !== false) this.group.add(buildRoom(bot));
   }
 
@@ -263,9 +230,9 @@ export class RackView {
     const y = r.unitY(k);
     const w = COLUMN_X * 2 - 0.036;
     // the body of the equipment behind its face: seen from the side, and it gives the rack a solid shadow
-    if (u.kind !== 'hmgr' && u.kind !== 'blank') this.add(bevelBox(w - 0.01, U - 0.003, 0.3, 0.002), mat.body, 0, y, -0.16).castShadow = true;
+    if (u.kind !== 'hmgr' && u.kind !== 'blank') this.add(bevelBox(w - 0.01, U - 0.003, 0.3, 0.002), rackMat.body, 0, y, -0.16).castShadow = true;
     if (u.kind === 'blank') {
-      this.add(rbox(w, U - 0.001, 0.01, 0.0015), mat.blank, 0, y, -0.005).castShadow = true;
+      this.add(roundedBox(w, U - 0.001, 0.01, 0.0015), rackMat.blank, 0, y, -0.005).castShadow = true;
       return;
     }
     if (u.kind === 'hmgr') return;
@@ -275,8 +242,8 @@ export class RackView {
       if (!u.portsAt) return;
     }
     const style = u.style ?? (u.kind === 'panel' ? 'fibre' : 'switch');
-    const face = style === 'fibre' ? mat.panel : style === 'copper' ? mat.copperFace : style === 'firewall' ? mat.firewall : style === 'router' ? mat.router : mat.switchFace;
-    if (u.kind !== 'server') this.add(rbox(w, U - 0.0012, 0.01, 0.0015), face, 0, y, -0.005);
+    const face = style === 'fibre' ? rackMat.panel : style === 'copper' ? rackMat.copperFace : style === 'firewall' ? rackMat.firewall : style === 'router' ? rackMat.router : rackMat.switchFace;
+    if (u.kind !== 'server') this.add(roundedBox(w, U - 0.0012, 0.01, 0.0015), face, 0, y, -0.005);
     // active equipment: power and a status light at the right end of its face
     if (u.kind === 'switch') {
       const s = this.seed + y * 1000, x = w / 2 - 0.016;
@@ -289,14 +256,14 @@ export class RackView {
     for (const p of r.ports.filter((q) => q.unit === k)) {
       if (style === 'copper') {
         // white keystone jack with its RJ45 opening
-        this.part(bevelTemplate(0.0135, 0.0135, 0.005, 0.0008), mat.keystone, p.x, p.y - 0.002, 0.0025);
-        this.part(bevelTemplate(0.0115, 0.0085, 0.002, 0.0005), mat.hole, p.x, p.y - 0.003, 0.0052);
+        this.part(bevelTemplate(0.0135, 0.0135, 0.005, 0.0008), rackMat.keystone, p.x, p.y - 0.002, 0.0025);
+        this.part(bevelTemplate(0.0115, 0.0085, 0.002, 0.0005), rackMat.hole, p.x, p.y - 0.003, 0.0052);
       } else if (u.kind === 'panel') {
-        this.part(bevelTemplate(0.0095, 0.0105, 0.006, 0.0008), type === 'OS2' ? mat.adapterSM : mat.adapterMM, p.x, p.y - 0.002, 0.003);
-        this.part(bevelTemplate(0.0055, 0.0065, 0.002, 0.0005), mat.hole, p.x, p.y - 0.002, 0.0062);
+        this.part(bevelTemplate(0.0095, 0.0105, 0.006, 0.0008), type === 'OS2' ? rackMat.adapterSM : rackMat.adapterMM, p.x, p.y - 0.002, 0.003);
+        this.part(bevelTemplate(0.0055, 0.0065, 0.002, 0.0005), rackMat.hole, p.x, p.y - 0.002, 0.0062);
       } else {
-        this.part(bevelTemplate(0.011, 0.0115, 0.004, 0.0006), mat.cage, p.x, p.y - 0.002, 0.002);
-        this.part(bevelTemplate(0.0085, 0.008, 0.002, 0.0005), mat.hole, p.x, p.y - 0.002, 0.0042);
+        this.part(bevelTemplate(0.011, 0.0115, 0.004, 0.0006), rackMat.cage, p.x, p.y - 0.002, 0.002);
+        this.part(bevelTemplate(0.0085, 0.008, 0.002, 0.0005), rackMat.hole, p.x, p.y - 0.002, 0.0042);
       }
       this.ledOf.set(p.id, this.ledOf.size);
     }
@@ -358,12 +325,12 @@ export class RackView {
 
   /** a 1U server: bezel with a vent grille, drive bays and blinking lights */
   private buildServer(y: number, w: number): void {
-    this.add(rbox(w, U - 0.0012, 0.012, 0.0018), mat.switchFace, 0, y, -0.006);
+    this.add(roundedBox(w, U - 0.0012, 0.012, 0.0018), rackMat.switchFace, 0, y, -0.006);
     // drive bays on the left, network ports in the middle, vents on the right
     // every other drive busy: a green light flickering with its reads and writes
     const s = this.seed + y * 1000;
     for (let i = 0; i < 6; i++) {
-      this.add(rbox(0.03, U * 0.55, 0.003, 0.001), mat.blank, -0.2 + i * 0.033, y, 0.0015);
+      this.add(roundedBox(0.03, U * 0.55, 0.003, 0.001), rackMat.blank, -0.2 + i * 0.033, y, 0.0015);
       if (i % 2 === 0) this.light(-0.188 + i * 0.033, y - U * 0.18, '#39ff6a', activity(s + i, 0.55));
     }
     // power
@@ -373,9 +340,9 @@ export class RackView {
 
   /** a 1U UPS: lit status display and a row of buttons */
   private buildUps(y: number, w: number): void {
-    this.add(rbox(w, U - 0.0012, 0.014, 0.0018), mat.ups, 0, y, -0.007);
-    this.add(rbox(0.06, 0.018, 0.002, 0.0008), mat.lcd, -0.12, y, 0.001);
-    for (let i = 0; i < 4; i++) this.add(new THREE.CylinderGeometry(0.003, 0.003, 0.003, 12).rotateX(Math.PI / 2), mat.cage, -0.07 + i * 0.012, y, 0.0015);
+    this.add(roundedBox(w, U - 0.0012, 0.014, 0.0018), rackMat.ups, 0, y, -0.007);
+    this.add(roundedBox(0.06, 0.018, 0.002, 0.0008), rackMat.lcd, -0.12, y, 0.001);
+    for (let i = 0; i < 4; i++) this.add(new THREE.CylinderGeometry(0.003, 0.003, 0.003, 12).rotateX(Math.PI / 2), rackMat.cage, -0.07 + i * 0.012, y, 0.0015);
     // on line
     this.light(-0.07, y + U * 0.3, '#39ff6a');
     this.add(new THREE.PlaneGeometry(w * 0.45, U * 0.6), grilleMaterial(), w * 0.2, y, 0.0005, false);
@@ -440,102 +407,8 @@ export class RackView {
   }
 }
 
-/** meshes of an item, built from its own collision shapes so that what you see is what holds */
-export function buildItem(rack: Rack, it: Item, statics: RackShape[] | null, ghost: THREE.Material | null): THREE.Group {
-  const g = new THREE.Group();
-  const shapes = (statics ?? itemShapes(rack, it)).filter((s) => s.owner === it.id && s.kind !== 'keeper');
-  const ringMat = ghost ?? (it.kind === 'duct' ? mat.duct : mat.ring);
-  for (const s of shapes) {
-    if (s.kind === 'capsule') {
-      const a = new THREE.Vector3(s.ax, s.ay, s.az), b = new THREE.Vector3(s.bx, s.by, s.bz);
-      const len = a.distanceTo(b);
-      if (it.kind !== 'vring') {
-        // duct and manager fingers are flat plastic strips
-        const dir = b.clone().sub(a);
-        const t = 2 * s.r + 0.0008;
-        const strip = new THREE.Mesh(bevelBox(Math.abs(dir.x) + t, Math.abs(dir.y) + t, Math.abs(dir.z) + t, 0.0012), ringMat);
-        strip.position.copy(a).add(b).multiplyScalar(0.5);
-        strip.castShadow = !ghost; strip.receiveShadow = true;
-        g.add(strip);
-        continue;
-      }
-      const cyl = new THREE.Mesh(new THREE.CylinderGeometry(s.r, s.r, len, 10), ringMat);
-      cyl.position.copy(a).add(b).multiplyScalar(0.5);
-      cyl.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
-      cyl.castShadow = !ghost; cyl.receiveShadow = true;
-      g.add(cyl);
-      for (const p of [a, b]) {
-        const sph = new THREE.Mesh(new THREE.SphereGeometry(s.r, 10, 8), ringMat);
-        sph.position.copy(p);
-        g.add(sph);
-      }
-    } else {
-      const sx = s.max[0] - s.min[0], sy = s.max[1] - s.min[1], sz = s.max[2] - s.min[2];
-      const box = new THREE.Mesh(bevelBox(sx, sy, sz, 0.0015), ghost ?? mat.ductBack);
-      box.position.set((s.max[0] + s.min[0]) / 2, (s.max[1] + s.min[1]) / 2, (s.max[2] + s.min[2]) / 2);
-      box.receiveShadow = true;
-      g.add(box);
-    }
-  }
-  // backing plates
-  if (it.kind === 'hmgr') {
-    const plate = new THREE.Mesh(rbox(COLUMN_X * 2 - 0.036, U - 0.001, 0.01, 0.0015), ghost ?? mat.mgrPlate);
-    plate.position.set(0, rack.unitY(it.unit), -0.004);
-    plate.receiveShadow = true;
-    g.add(plate);
-  } else if (it.kind === 'duct') {
-    const yTop = rack.topY - it.unit * U, yBot = rack.topY - (it.unit + it.span) * U;
-    const back = new THREE.Mesh(bevelBox(SIDE_OUT - SIDE_IN, yTop - yBot, 0.004, 0.0015), ghost ?? mat.ductBack);
-    back.position.set((it.side * (SIDE_IN + SIDE_OUT)) / 2, (yTop + yBot) / 2, SIDE_BACK + 0.002);
-    back.receiveShadow = true;
-    g.add(back);
-  }
-  return g;
-}
-
-function itemShapes(rack: Rack, it: Item): RackShape[] {
-  // a throw-away rack holding only this item gives its shapes
-  const tmp = Object.create(Rack.prototype) as Rack;
-  Object.assign(tmp, rack, { items: [it] });
-  return tmp.statics();
-}
-
-let grille: THREE.CanvasTexture | null = null;
-let grilleMat: THREE.MeshStandardMaterial | null = null;
-function grilleMaterial(): THREE.MeshStandardMaterial {
-  return (grilleMat ??= shared(new THREE.MeshStandardMaterial({ map: grilleTexture(), roughness: 0.6, metalness: 0.6, transparent: true })));
-}
-
 function fractOf(x: number): number {
   return x - Math.floor(x);
-}
-
-function grilleTexture(): THREE.CanvasTexture {
-  if (grille) return grille;
-  const c = document.createElement('canvas');
-  c.width = 256; c.height = 64;
-  const g = c.getContext('2d')!;
-  g.fillStyle = '#2a3038'; g.fillRect(0, 0, 256, 64);
-  g.fillStyle = '#07090c';
-  for (let y = 6; y < 60; y += 9) for (let x = 6 + ((y / 9) % 2) * 4; x < 252; x += 9) { g.beginPath(); g.arc(x, y, 3, 0, Math.PI * 2); g.fill(); }
-  grille = shared(new THREE.CanvasTexture(c));
-  grille.colorSpace = THREE.SRGBColorSpace;
-  return grille;
-}
-
-function railMaterial(height: number): THREE.MeshStandardMaterial {
-  const c = document.createElement('canvas');
-  c.width = 32; c.height = 128;
-  const g = c.getContext('2d')!;
-  g.fillStyle = '#3a4049'; g.fillRect(0, 0, 32, 128);
-  g.fillStyle = '#07090b';
-  // three square holes per unit
-  for (let i = 0; i < 3; i++) g.fillRect(11, 8 + i * 42, 10, 10);
-  const t = new THREE.CanvasTexture(c);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.repeat.set(1, height / U);
-  t.colorSpace = THREE.SRGBColorSpace;
-  return new THREE.MeshStandardMaterial({ map: t, roughness: 0.5, metalness: 0.7 });
 }
 
 /** size of the name plate of a unit on its texture (px) */
@@ -560,201 +433,4 @@ function drawLabel(g: CanvasRenderingContext2D, rack: Rack, k: number, light: bo
   g.fillStyle = light ? '#59616b' : '#8d97a3';
   g.textAlign = 'right';
   g.fillText(u.label ?? '', W - 16, H - 26);
-}
-
-/** a box with rounded edges (r: bevel radius); made once per size, then copied (the faces of the units repeat) */
-function rbox(w: number, h: number, d: number, r: number): THREE.BufferGeometry {
-  const key = `${w} ${h} ${d} ${r}`;
-  let g = rounded.get(key);
-  if (!g) rounded.set(key, (g = new RoundedBoxGeometry(w, h, d, 2, r)));
-  return g.clone();
-}
-
-const rounded = new Map<string, THREE.BufferGeometry>();
-
-/** a centred rounded rectangle (a shape, or a hole when `hole`) */
-function roundRect(w: number, h: number, r: number, x = 0, y = 0, hole = false): THREE.Shape | THREE.Path {
-  const p = hole ? new THREE.Path() : new THREE.Shape();
-  const x0 = x - w / 2, y0 = y - h / 2;
-  r = Math.min(r, w / 2, h / 2);
-  p.moveTo(x0 + r, y0);
-  p.lineTo(x0 + w - r, y0);
-  p.quadraticCurveTo(x0 + w, y0, x0 + w, y0 + r);
-  p.lineTo(x0 + w, y0 + h - r);
-  p.quadraticCurveTo(x0 + w, y0 + h, x0 + w - r, y0 + h);
-  p.lineTo(x0 + r, y0 + h);
-  p.quadraticCurveTo(x0, y0 + h, x0, y0 + h - r);
-  p.lineTo(x0, y0 + r);
-  p.quadraticCurveTo(x0, y0, x0 + r, y0);
-  return p;
-}
-
-/** a crate wall (w × h, t thick, centred, facing z): a handle slot near the top, vent slots below */
-function crateWall(w: number, h: number, t: number): THREE.BufferGeometry {
-  const s = roundRect(w, h, 0.006) as THREE.Shape;
-  s.holes.push(roundRect(Math.min(0.11, w * 0.4), 0.02, 0.01, 0, h / 2 - 0.025, true) as THREE.Path);
-  const n = Math.floor((w - 0.06) / 0.028);
-  for (let i = 0; i <= n; i++) s.holes.push(roundRect(0.011, 0.045, 0.0055, (i - n / 2) * 0.028, -h / 2 + 0.037, true) as THREE.Path);
-  const bev = 0.0018;
-  const g = new THREE.ExtrudeGeometry(s, { depth: t - 2 * bev, bevelEnabled: true, bevelThickness: bev, bevelSize: bev, bevelOffset: -bev, bevelSegments: 2, curveSegments: 6 });
-  g.translate(0, 0, -(t - 2 * bev) / 2);
-  return dropDegenerate(g);
-}
-
-/**
- * Removes the triangles of no area from a non-indexed geometry. The bevel of an
- * extrusion leaves some where a rounded end turns back on itself (the ends of
- * the vent slots): their normal is zero, which the shader normalises into NaN,
- * and the bloom spread that one pixel over the whole screen (the image went
- * black at some distances).
- */
-function dropDegenerate(g: THREE.BufferGeometry): THREE.BufferGeometry {
-  const n = g.attributes.normal, keep: number[] = [];
-  for (let t = 0; t < n.count; t += 3) {
-    let ok = true;
-    for (let v = t; v < t + 3; v++) if (!(Math.hypot(n.getX(v), n.getY(v), n.getZ(v)) > 1e-4)) ok = false;
-    if (ok) keep.push(t);
-  }
-  if (keep.length * 3 === n.count) return g;
-  const out = new THREE.BufferGeometry();
-  for (const [name, a] of Object.entries(g.attributes)) {
-    const arr = new (a.array.constructor as Float32ArrayConstructor)(keep.length * 3 * a.itemSize);
-    keep.forEach((t, k) => arr.set(a.array.subarray(t * a.itemSize, (t + 3) * a.itemSize) as Float32Array, k * 3 * a.itemSize));
-    out.setAttribute(name, new THREE.BufferAttribute(arr, a.itemSize));
-  }
-  g.dispose();
-  return out;
-}
-
-/** an abstract stage around the rack: a floor lit in a pool under it, fading into the backdrop */
-export function buildRoom(floorY: number): THREE.Group {
-  const g = new THREE.Group();
-  const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(9, 9),
-    new THREE.MeshStandardMaterial({
-      color: STAGE_FLOOR, map: poolTexture(), transparent: true, roughness: 0.8, metalness: 0,
-      normalMap: tileNormals(), normalScale: new THREE.Vector2(1, 1),
-    }),
-  );
-  floor.rotation.x = -Math.PI / 2;
-  floor.position.set(0, floorY, 0.3);
-  floor.receiveShadow = true;
-  // picked up by the screen-space reflections of the stage
-  floor.userData.reflective = true;
-  g.add(floor);
-  return g;
-}
-
-const STAGE_FLOOR = '#2f3438';
-
-let pool: THREE.CanvasTexture | null = null;
-/** raised-floor tiles (60 cm), white, bright in the middle, darker then transparent towards the edges */
-function poolTexture(): THREE.CanvasTexture {
-  if (pool) return pool;
-  const N = 2048, c = document.createElement('canvas');
-  c.width = c.height = N;
-  const g = c.getContext('2d')!;
-  const grad = g.createRadialGradient(N / 2, N / 2, 0, N / 2, N / 2, N / 2);
-  grad.addColorStop(0, 'rgba(255,255,255,1)');
-  grad.addColorStop(0.18, 'rgba(225,225,225,1)');
-  grad.addColorStop(0.45, 'rgba(120,120,120,0.85)');
-  grad.addColorStop(1, 'rgba(60,60,60,0)');
-  g.fillStyle = grad;
-  g.fillRect(0, 0, N, N);
-  // the plane is 9 m wide: 15 tiles, the cabinet centred on one of them
-  const tile = N / 15;
-  g.globalCompositeOperation = 'source-atop';
-  for (let i = 0; i < 15; i++) for (let j = 0; j < 15; j++) {
-    const k = Math.sin(i * 12.9898 + j * 78.233) * 43758.5453;
-    g.fillStyle = `rgba(0,0,0,${0.03 + 0.04 * (k - Math.floor(k))})`;
-    g.fillRect(i * tile, j * tile, tile, tile);
-  }
-  for (let i = 0; i <= 15; i++) {
-    const x = Math.round(i * tile);
-    // a light seam: the relief comes from the normal map
-    g.fillStyle = 'rgba(0,0,0,0.12)';
-    g.fillRect(x - 1, 0, 3, N); g.fillRect(0, x - 1, N, 3);
-  }
-  // a light speckle in the colour (about 4 mm a pixel), as in a vinyl tile
-  const img = g.getImageData(0, 0, N, N), px = img.data;
-  for (let i = 0; i < px.length; i += 4) {
-    const k = Math.sin(i * 0.000917 + (i % 7919) * 12.9898) * 43758.5453;
-    const f = 0.95 + 0.1 * (k - Math.floor(k));
-    px[i] *= f; px[i + 1] *= f; px[i + 2] *= f;
-  }
-  g.putImageData(img, 0, 0);
-  // a faint trace of the interface's green at the foot of the cabinet
-  const hint = g.createRadialGradient(N / 2, N * 0.48, 0, N / 2, N * 0.48, N * 0.07);
-  hint.addColorStop(0, 'rgba(139,227,180,0.10)');
-  hint.addColorStop(1, 'rgba(139,227,180,0)');
-  g.fillStyle = hint;
-  g.fillRect(0, 0, N, N);
-  pool = shared(new THREE.CanvasTexture(c));
-  pool.anisotropy = 8;
-  pool.colorSpace = THREE.SRGBColorSpace;
-  return pool;
-}
-
-let tileN: THREE.DataTexture | null = null;
-/** normals of one 60 cm tile, repeated over the floor: rounded edges down to a narrow seam */
-function tileNormals(): THREE.DataTexture {
-  if (tileN) return tileN;
-  const N = 512, h = new Float32Array(N * N);
-  // about 0.85 px per mm: a 12 mm rounded edge falling 2 mm, then a 2 mm gap between tiles
-  const B = 10, D = 1.6;
-  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-    const e = Math.min(x + 0.5, N - 0.5 - x, y + 0.5, N - 0.5 - y);
-    const t = Math.max(0, 1 - e / B);
-    h[y * N + x] = e < 1 ? -D - 1.5 : -D * (1 - Math.sqrt(1 - t * t));
-  }
-  const data = new Uint8Array(N * N * 4);
-  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-    const hx = h[y * N + ((x + 1) % N)] - h[y * N + ((x + N - 1) % N)];
-    const hy = h[((y + 1) % N) * N + x] - h[((y + N - 1) % N) * N + x];
-    // rows go up the texture (v), so the slope along v is +hy
-    let nx = -hx, ny = -hy, nz = 1;
-    const l = Math.hypot(nx, ny, nz); nx /= l; ny /= l; nz /= l;
-    const o = (y * N + x) * 4;
-    data[o] = (nx * 0.5 + 0.5) * 255; data[o + 1] = (ny * 0.5 + 0.5) * 255; data[o + 2] = (nz * 0.5 + 0.5) * 255; data[o + 3] = 255;
-  }
-  tileN = shared(new THREE.DataTexture(data, N, N));
-  tileN.wrapS = tileN.wrapT = THREE.RepeatWrapping;
-  tileN.repeat.set(15, 15);
-  tileN.magFilter = THREE.LinearFilter;
-  tileN.minFilter = THREE.LinearMipmapLinearFilter;
-  tileN.generateMipmaps = true;
-  tileN.anisotropy = 8;
-  tileN.needsUpdate = true;
-  return tileN;
-}
-
-/** a dark soft-edged plane lying on the floor: the contact shadow a light map would give */
-function softShadow(w: number, d: number, x: number, y: number, z: number, opacity: number): THREE.Mesh {
-  const m = new THREE.Mesh(
-    new THREE.PlaneGeometry(w, d),
-    new THREE.MeshBasicMaterial({ map: blobTexture(), transparent: true, opacity, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, color: '#000000' }),
-  );
-  m.rotation.x = -Math.PI / 2;
-  m.position.set(x, y + 0.0005, z);
-  m.renderOrder = -1;
-  return m;
-}
-
-let blob: THREE.CanvasTexture | null = null;
-function blobTexture(): THREE.CanvasTexture {
-  if (blob) return blob;
-  const N = 128, c = document.createElement('canvas');
-  c.width = c.height = N;
-  const g = c.getContext('2d')!;
-  // stacked faint rounded rectangles: dense in the middle, fading at the edges
-  g.fillStyle = 'rgba(255,255,255,0.07)';
-  for (let i = 0; i < 24; i++) {
-    const m = 2 + i * 1.4;
-    g.beginPath();
-    g.roundRect(m, m, N - 2 * m, N - 2 * m, 30 - i);
-    g.fill();
-  }
-  // only the alpha counts: the material colour is black
-  blob = shared(new THREE.CanvasTexture(c));
-  return blob;
 }

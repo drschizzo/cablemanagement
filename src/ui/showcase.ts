@@ -12,7 +12,8 @@
 
 import * as THREE from 'three';
 import type { Stage } from '../render/stage';
-import { RackView, buildRoom } from '../render/rackView';
+import { RackView } from '../render/rackView';
+import { buildRoom } from '../render/room';
 import { CableView } from '../render/cableView';
 import { disposeTree } from '../render/dispose';
 import { CableRain } from '../render/cableRain';

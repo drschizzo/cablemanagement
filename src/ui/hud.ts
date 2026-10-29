@@ -1,17 +1,18 @@
 import type { Controller, Tool } from '../play/controller';
 import { CATALOGUE, FIBRE_NAMES, LEVELS, SERVICES, UNLOCK_STARS, type LevelDef } from '../game/levels';
-import { formatCost } from '../format';
+import { formatCost, formatTime } from '../format';
 import { cleanliness, type Evaluation } from '../game/evaluation';
 import { FIBRE_COLORS } from '../render/cableView';
 import { isMuted, setMuted, sfx } from '../audio/sfx';
 import { load, save } from '../storage';
+import { iconFingerManager, iconHand, iconRoute, iconStock, iconVelcro } from './icons';
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector(sel) as T;
 
 const TOOLS: { tool: Tool; key: string; name: string; icon: string; help: string }[] = [
   { tool: 'hand', key: '1', name: 'Main', icon: iconHand(), help: 'Saisir, tirer, débrancher et brancher ; un connecteur lâché en l\'air y reste accroché (Alt en lâchant : il pend). Survol d\'un câble : <b>T</b> le trace, <b>Suppr</b> le jette au bac. Maj : profondeur ; Espace : pincer un coude ; E : l\'autre main. Glisser dans le vide : déplacer la vue.' },
   { tool: 'route', key: 'c', name: 'Chemin', icon: iconRoute(), help: 'Partez d\'un câble et tracez son chemin par-dessus les guides, dans l\'ordre où il doit les traverser ; finissez sur un port libre pour l\'y brancher. Relâchez : le câble est posé le long du chemin, par l\'ouverture de chaque guide.' },
-  { tool: 'supports', key: '2', name: 'Supports', icon: iconHmgr(), help: 'Cliquez une unité vide : un guide-câbles. Un couloir latéral : une goulotte (Maj : un anneau). Cliquez un support posé pour le retirer.' },
+  { tool: 'supports', key: '2', name: 'Supports', icon: iconFingerManager(), help: 'Cliquez une unité vide : un guide-câbles. Un couloir latéral : une goulotte (Maj : un anneau). Cliquez un support posé pour le retirer.' },
   { tool: 'velcro', key: '3', name: 'Velcro', icon: iconVelcro(), help: 'Tracez un trait <b>en travers</b> des câbles à serrer : ceux qu\'il croise s\'allument, et le velcro les serre là où le trait les croise. Il se place là où le plus de câbles passent côte à côte ; un seul service par faisceau, c\'est plus lisible. Cliquez sur un velcro pour l\'enlever.' },
 ];
 
@@ -48,7 +49,7 @@ export class Hud {
       const best = this.progress.times[lv.id];
       card.innerHTML = `<div class="num">${i + 1}</div><div class="t">${lv.title}</div>
         <div class="meta">${lv.cables} câbles${lv.labels ? ' · étiquettes' : ''}</div>
-        <div class="stars">${starsHtml(stars)}${this.progress.challenges[lv.id] ? '<span class="par" title="Défi chrono réussi">⏱</span>' : ''}</div>${best ? `<div class="best">${fmtTime(best)}</div>` : ''}
+        <div class="stars">${starsHtml(stars)}${this.progress.challenges[lv.id] ? '<span class="par" title="Défi chrono réussi">⏱</span>' : ''}</div>${best ? `<div class="best">${formatTime(best)}</div>` : ''}
         ${unlocked ? '' : `<div class="lock">${'★'.repeat(UNLOCK_STARS)} au niveau ${i} pour l'ouvrir</div>`}`;
       if (unlocked) card.onclick = () => { this.hide('#menu'); this.start(lv); };
       box.appendChild(card);
@@ -60,7 +61,7 @@ export class Hud {
     $('#brief-title').textContent = level.title;
     $('#brief-text').textContent = level.brief;
     const tips = [...(level.tips ?? [])];
-    if (level.par) tips.push(`<b>Défi chrono</b> : ★★★ en moins de ${fmtTime(level.par)}.`);
+    if (level.par) tips.push(`<b>Défi chrono</b> : ★★★ en moins de ${formatTime(level.par)}.`);
     tips.push('<b>Ni tendu ni plié</b> : un cordon bien plus court que son chemin rangé, ou une fibre pliée en angle vif, ne vaut pas ★★★.');
     if (level.downtime !== undefined) {
       const used = [...new Set(this.ctl?.world.circuits.map((c) => c.service) ?? [])].sort((a, b) => SERVICES[b].weight - SERVICES[a].weight);
@@ -313,7 +314,7 @@ export class Hud {
     save('progress', this.progress);
     sfx.win();
     $('#result-stars').innerHTML = starsHtml(ev.stars, true);
-    $('#result-time').textContent = `Temps : ${fmtTime(t)}`;
+    $('#result-time').textContent = `Temps : ${formatTime(t)}`;
     $<HTMLImageElement>('#ba-before').src = ctl.before ?? '';
     $<HTMLImageElement>('#ba-after').src = ctl.capture();
     const lines = [
@@ -325,7 +326,7 @@ export class Hud {
     if (ev.bundlesNeeded) lines.push(`Faisceaux : ${Math.min(ev.bundles, ev.bundlesNeeded)}/${ev.bundlesNeeded}`);
     if (lv.downtime !== undefined) lines.push(ev.downtime > ev.budget ? `<span class="bad">Incident : ${Math.round(ev.downtime)} pts d'interruption pour un budget de ${ev.budget}.</span>` : `Interruption : ${Math.round(ev.downtime)} pts sur ${ev.budget}.`);
     if (ev.stars < 3) lines.push(ev.stars === 1 ? '★★ : rangez au moins 70 % des liaisons, façade dégagée à 85 %.' : '★★★ : tout rangé, façade entièrement dégagée, aucun cordon tendu ni plié' + (ev.bundlesNeeded ? `, ${ev.bundlesNeeded} faisceaux` : '') + (lv.downtime !== undefined ? ', budget d\'interruption tenu' : '') + '.');
-    if (lv.par) lines.push(parWon ? `⏱ Défi chrono réussi : ★★★ en moins de ${fmtTime(lv.par)} !` : `⏱ Défi chrono : ★★★ en moins de ${fmtTime(lv.par)}${this.progress.challenges[lv.id] ? ' (déjà réussi)' : ''}.`);
+    if (lv.par) lines.push(parWon ? `⏱ Défi chrono réussi : ★★★ en moins de ${formatTime(lv.par)} !` : `⏱ Défi chrono : ★★★ en moins de ${formatTime(lv.par)}${this.progress.challenges[lv.id] ? ' (déjà réussi)' : ''}.`);
     $('#result-lines').innerHTML = lines.map((l) => `<li>${l}</li>`).join('');
     $('#result-note').innerHTML = `<div class="grade"><s>${ctl.startNote}</s><span class="to">→</span><b>${note}</b><span>Lisibilité${bestNote !== undefined ? ` · record ${Math.max(bestNote, note)}${note > bestNote ? ' — nouveau record !' : ''}` : ''}</span></div>`
       + ev.readability.parts.map((p) => `<div class="part"><span>${p.name}</span><div class="bar"><div class="fill" style="width:${Math.round(p.value * 100)}%"></div></div><i>${p.tip}</i></div>`).join('');
@@ -374,7 +375,7 @@ export class Hud {
   }
 
   tick(): void {
-    if (this.ctl) $('#timer').textContent = fmtTime(this.ctl.elapsed);
+    if (this.ctl) $('#timer').textContent = formatTime(this.ctl.elapsed);
   }
 
   private toggleSound(): void {
@@ -413,17 +414,3 @@ function starsHtml(n: number, big = false): string {
   for (let i = 0; i < 3; i++) s += `<span class="star${i < n ? ' on' : ''}${big ? ' big' : ''}">★</span>`;
   return s;
 }
-
-export function fmtTime(t: number): string {
-  const m = Math.floor(t / 60), s = Math.floor(t % 60);
-  return `${m}:${String(s).padStart(2, '0')}`;
-}
-
-function svg(body: string): string {
-  return `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
-}
-function iconRoute(): string { return svg('<circle cx="5" cy="5" r="2"/><path d="M5 7v4a3 3 0 0 0 3 3h8a3 3 0 0 1 3 3v2"/><path d="M16 17l3 3 3-3"/>'); }
-function iconHand(): string { return svg('<path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V11m0-1V4.5a1.5 1.5 0 0 1 3 0V11m0-5.5a1.5 1.5 0 0 1 3 0V12m0-4.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-1.5a6 6 0 0 1-4.9-2.6L4.3 14a1.6 1.6 0 0 1 2.6-1.8L8 13.5"/>'); }
-function iconHmgr(): string { return svg('<rect x="2" y="9" width="20" height="6" rx="1"/><path d="M5 9V6h3v3M10.5 9V6h3v3M16 9V6h3v3"/>'); }
-function iconVelcro(): string { return svg('<path d="M4 8c3-3 13-3 16 0M4 16c3 3 13 3 16 0"/><path d="M4 8v8M20 8v8"/><path d="M9 10.5v3M12 10v4M15 10.5v3"/>'); }
-function iconStock(): string { return svg('<path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/>'); }
