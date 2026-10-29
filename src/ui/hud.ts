@@ -29,6 +29,7 @@ import { recordOutcome } from './outcome';
 import { TimelapsePlayer } from './timelapsePlayer';
 import { ShopPanel } from './shopPanel';
 import { CareerPanel } from './careerPanel';
+import { EditorPanel } from './editorPanel';
 import { FINDS, type FindId } from '../game/finds';
 import { findName, findStory } from './names';
 import { LevelMenu } from './levelMenu';
@@ -60,7 +61,8 @@ export class Hud {
   private schedule = new SchedulePanel();
   private brief: LevelBrief;
   private pause: PauseMenu;
-  private levelMenu = new LevelMenu();
+  private editor = new EditorPanel();
+  private levelMenu = new LevelMenu((start, back) => this.editor.show(start, back));
   private settings: SettingsPanel;
   private timelapse = new TimelapsePlayer();
   private shop = new ShopPanel();

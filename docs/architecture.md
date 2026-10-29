@@ -14,7 +14,7 @@ src/
   app/          QUELLE SCÈNE est à l'écran, et comment passer de l'une à l'autre
     app.ts          App : un niveau (Controller, avec ou sans tutoriel) ou l'écran titre (Showcase)
     sceneLoader.ts  une scène à la fois : voile de chargement, chargement dépassé par un autre
-    urlOptions.ts   ?sync, ?bays, ?pairs, ?seed, ?quality : lus depuis une chaîne, donc testables
+    urlOptions.ts   ?sync, ?bays, ?pairs, ?seed, ?quality, ?rack : lus depuis une chaîne, donc testables
   game/         LES RÈGLES et la physique de la baie                       sans three.js ni DOM : tourne sous Node
     world.ts        World, l'état d'une partie : cordons et leurs bouts (et ceux coupés à l'intérieur), branchement,
                     velcros, bac, stock ; montré
@@ -44,7 +44,8 @@ src/
                     sa version précalculée pour l'écran titre (baked, showcase.bin)
     levels/         ce qu'est un niveau (levelDef : une union par sorte, campagne, puzzle, ticket, tutoriel, partie libre,
                     zen, baie du jour, vitrine, banc), les équipements nommés, la campagne et le tutoriel, les puzzles,
-                    la carrière (un client, ses tickets, chacun bâti sur la baie laissée par le précédent), la partie libre et le zen, la baie du jour
+                    la carrière (un client, ses tickets, chacun bâti sur la baie laissée par le précédent),
+                    la baie sur mesure de l'éditeur (customLevel : sa palette, ses règles, son code de partage), la partie libre et le zen, la baie du jour
                     (tirée de la date : la même pour tous), les baies de la vitrine
   play/         UNE PARTIE EN COURS : relie game, render et l'interface
     controller.ts   Controller : la boucle à pas fixe, ce que la baie montre de son état, les actions du HUD
@@ -103,6 +104,7 @@ src/
                     niveau ouvert, niveau suivant (fonctions pures)
     shop.ts         l'atelier : son catalogue, acheter et porter un look (fonctions pures) ; shopPanel.ts, son panneau
     wallet.ts       le salaire encaissé : un niveau rejoué ne paie que ce qu'il ajoute à sa meilleure fiche de paie
+    editorPanel.ts  l'éditeur de baie : équipements empilés, règles, jouer ou copier le lien (?rack=CODE)
     outcome.ts      ce que laisse une baie validée, selon sa sorte de niveau : record, salaire, partage, niveau suivant
     career.ts       la carrière : le ticket à jouer, le ticket validé (la baie gardée) ; careerPanel.ts, son panneau
     daily.ts        les baies du jour réussies : le meilleur de chaque jour, les jours de suite, le résultat à partager
@@ -225,7 +227,7 @@ sur le fil principal.
 ## Données dans le navigateur
 
 `ui/storage.ts` déclare chaque entrée (clé, valeur par défaut, validation) : progression (étoiles et meilleurs temps
-par niveau), tutoriel terminé, carrière (tickets faits, la baie du client telle que laissée), portefeuille (salaire, cosmétiques achetés, trouvailles), baies du jour (le meilleur résultat de chaque date), langue (celle du navigateur tant que le joueur n'en a pas choisi), musique coupée, qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu) et son
+par niveau), tutoriel terminé, carrière (tickets faits, la baie du client telle que laissée), dernière baie de l'éditeur, portefeuille (salaire, cosmétiques achetés, trouvailles), baies du jour (le meilleur résultat de chaque date), langue (celle du navigateur tant que le joueur n'en a pas choisi), musique coupée, qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu) et son
 coupé. Les clés sont celles des versions précédentes.
 
 ## Ajouter…

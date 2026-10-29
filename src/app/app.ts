@@ -16,6 +16,8 @@ import { nextLevelToPlay } from '../game/levels/campaign';
 import type { LevelDef } from '../game/levels/levelDef';
 import { SHOWCASE_DEFAULT } from '../game/levels/showcaseRack';
 import { dailyLevel, dayKey } from '../game/levels/dailyLevel';
+import { customLevel, decodeSpec } from '../game/levels/customLevel';
+import { customErrorText } from '../ui/editorPanel';
 import type { BakedBay } from '../game/mess/baked';
 import { SceneLoader } from './sceneLoader';
 import { TitleScreen } from '../ui/titleScreen';
@@ -128,6 +130,13 @@ export class App {
   /** frames the cabinet in the screen the panels leave free (they change with the scene) */
   private reframe(): void {
     this.stage.setPanelMargins(panelMargins());
+  }
+
+  /** a cabinet of the editor shared by its link; a code that is none says why, over the title screen */
+  openRack(code: string): void {
+    const spec = decodeSpec(code);
+    if ('kind' in spec) this.hud.toast(customErrorText(spec));
+    else this.startLevel(customLevel(spec));
   }
 
   /** the first level not yet tidy enough to open the next one, or the menu once they all are */

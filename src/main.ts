@@ -31,6 +31,8 @@ stage.setQuality(options.quality !== null ? { kind: 'fixed', settings: QUALITY[o
 const baked = aisles.isDefault && aisles.firstSeed === SHOWCASE_DEFAULT.seed ? loadBaked(bakedUrl) : Promise.resolve(null);
 const app = new App(stage, aisles, !options.syncPhysics, baked);
 app.startShowcase();
+// a cabinet shared by its link opens at once
+if (options.rack) app.openRack(options.rack);
 
 // dev handle
 (window as any).game = {

@@ -14,6 +14,8 @@ import { recordDaily, shareText, streak } from './daily';
 import { currentTicket, recordTicket } from './career';
 import { earn } from './wallet';
 import { load, save, type Progress } from './storage';
+import { customLink } from './share';
+import { tr } from './language';
 
 /** a job's payslip, what was paid of it (a replay pays only what it adds), and the € on hand after */
 export interface Pay {
@@ -70,13 +72,21 @@ export function recordOutcome(level: LevelDef, ev: Evaluation, w: World, time: n
       const next = after && after.ticket === level.ticket + 1 ? { level: after, open: true } : null;
       return { result, challengeWonBefore: false, share: null, pay: pay(level, ev, false), next };
     }
+    // a cabinet of the editor pays nothing (it could be made to pay anything), but its link is to share
+    case 'custom':
+      return { ...unrecorded(ev, time, moves), share: tr({ fr: `Ma baie sur Brassage, à vous de la ranger : ${customLink(level.spec)}`, en: `My cabinet on Brassage, your turn to tidy it: ${customLink(level.spec)}` }) };
     // nothing kept: the zen keeps no score; the title screen and the benches are never signed off
     case 'zen':
     case 'showcase':
     case 'bench':
-      return { result: { stars: ev.stars, time, moves, note: ev.readability.note, previousStars: 0, previousNote: undefined, challengeWon: false }, challengeWonBefore: false, share: null, pay: null, next: null };
+      return unrecorded(ev, time, moves);
     default: return assertNever(level);
   }
+}
+
+/** a result kept nowhere, paying nothing */
+function unrecorded(ev: Evaluation, time: number, moves: number): Outcome {
+  return { result: { stars: ev.stars, time, moves, note: ev.readability.note, previousStars: 0, previousNote: undefined, challengeWon: false }, challengeWonBefore: false, share: null, pay: null, next: null };
 }
 
 /** the job's payslip, paid into the wallet (a replay pays only what it adds) */

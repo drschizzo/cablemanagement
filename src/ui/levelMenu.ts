@@ -1,7 +1,7 @@
 // The levels menu: the tutorial, the cabinet of the day, then one card per
 // level of the campaign with its stars, its best time, and what opens it
 // while it is locked; the puzzles; a free game of as many cords as asked,
-// and the zen mode.
+// the zen mode, and the way to the cabinet editor.
 
 import { LEVELS, TUTORIAL, UNLOCK_STARS } from '../game/levels/campaign';
 import { freeLevel, zenLevel } from '../game/levels/freeLevel';
@@ -20,8 +20,10 @@ export class LevelMenu {
   private start: (level: LevelDef) => void = () => {};
   private back: () => void = () => {};
 
-  constructor() {
+  /** `openEditor`: the cabinet editor, its Play doing what a level chosen here does, its Back back to this menu */
+  constructor(openEditor: (start: (level: LevelDef) => void, back: () => void) => void) {
     $('#menu-back').onclick = () => { hide('#menu'); this.back(); };
+    $('#editor-go').onclick = () => { hide('#menu'); openEditor(this.start, () => show('#menu')); };
     const cordCount = $<HTMLInputElement>('#free-n');
     const cordCountLabel = $('#free-n-val');
     cordCount.oninput = () => { cordCountLabel.textContent = tr({ fr: `${cordCount.value} câbles`, en: `${cordCount.value} cords` }); };

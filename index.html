@@ -69,6 +69,7 @@
           <span id="free-n-val"></span>
           <button id="free-go" data-i18n="menu.freeGo"></button>
           <button id="zen-go" class="ghost" data-i18n="menu.zen" data-i18n-title="menu.zenTip"></button>
+          <button id="editor-go" class="ghost" data-i18n="menu.editor"></button>
         </div>
       </div>
     </div>
@@ -186,6 +187,34 @@
         <div class="row">
           <button id="confirm-no" class="ghost" data-i18n="common.cancel"></button>
           <button id="confirm-yes" class="primary"></button>
+        </div>
+      </div>
+    </div>
+    <div id="editor" class="overlay">
+      <div class="panel wide">
+        <button id="ed-back" class="link back" data-i18n="common.back"></button>
+        <h1 data-i18n="editor.title"></h1>
+        <p class="sub" data-i18n="editor.sub"></p>
+        <div class="ed-body">
+          <div>
+            <h2 data-i18n="editor.units"></h2>
+            <div id="ed-units"></div>
+            <div id="ed-palette"></div>
+          </div>
+          <div class="ed-rules">
+            <h2 data-i18n="editor.rules"></h2>
+            <label><input id="ed-cables" type="range" min="1" max="48" /> <span id="ed-cables-val"></span></label>
+            <label><span data-i18n="editor.services"></span> <input id="ed-services" type="range" min="1" max="6" /> <span id="ed-services-val"></span></label>
+            <label><span data-i18n="editor.difficulty"></span> <select id="ed-difficulty"></select></label>
+            <label><input id="ed-maintenance" type="checkbox" /> <span data-i18n="editor.maintenance"></span></label>
+            <p id="ed-error" class="sub"></p>
+            <div class="row">
+              <button id="ed-link" class="ghost"></button>
+              <button id="ed-play" class="primary" data-i18n="editor.play"></button>
+            </div>
+            <h2 data-i18n="editor.import"></h2>
+            <div class="row"><input id="ed-code" type="text" data-i18n-placeholder="editor.code" /><button id="ed-import" class="ghost" data-i18n="editor.open"></button></div>
+          </div>
         </div>
       </div>
     </div>

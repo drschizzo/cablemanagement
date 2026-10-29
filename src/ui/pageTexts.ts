@@ -58,6 +58,18 @@ export const PAGE_TEXTS: Record<string, Words> = {
   'menu.puzzlesSub': { fr: 'Une idée par baie, à résoudre en peu de gestes. Tous ouverts.', en: 'One idea per cabinet, to solve in few gestures. All open.' },
   'menu.freeGo': { fr: 'Générer une baie', en: 'Generate a cabinet' },
   'menu.zen': { fr: 'Mode zen', en: 'Zen mode' },
+  'menu.editor': { fr: 'Éditeur de baie', en: 'Cabinet editor' },
+  'editor.title': { fr: 'Éditeur de baie', en: 'Cabinet editor' },
+  'editor.sub': { fr: 'Composez votre baie, du haut vers le bas, puis jouez-la, ou partagez son lien.', en: 'Compose your cabinet, top to bottom, then play it, or share its link.' },
+  'editor.units': { fr: 'Équipements', en: 'Equipment' },
+  'editor.rules': { fr: 'Règles', en: 'Rules' },
+  'editor.services': { fr: 'Services', en: 'Services' },
+  'editor.difficulty': { fr: 'Désordre', en: 'Mess' },
+  'editor.maintenance': { fr: 'Fenêtre de maintenance (liaisons en production)', en: 'Maintenance window (links in production)' },
+  'editor.play': { fr: 'Jouer →', en: 'Play →' },
+  'editor.import': { fr: 'Ouvrir un code', en: 'Open a code' },
+  'editor.code': { fr: 'Collez un lien ou un code de baie', en: 'Paste a link or a cabinet code' },
+  'editor.open': { fr: 'Ouvrir', en: 'Open' },
   'menu.zenTip': { fr: 'Une grande baie, sans chrono ni budget, en musique', en: 'A big cabinet, no clock, no budget, with music' },
   'brief.go': { fr: 'Commencer', en: 'Start' },
   'result.title': { fr: 'Baie validée', en: 'Cabinet signed off' },
@@ -95,7 +107,7 @@ export const PAGE_TEXTS: Record<string, Words> = {
 };
 
 /** the attributes a key may write, besides the content */
-const ATTRIBUTES = { title: 'title', aria: 'aria-label', alt: 'alt' } as const;
+const ATTRIBUTES = { title: 'title', aria: 'aria-label', alt: 'alt', placeholder: 'placeholder' } as const;
 
 /** writes every text of the page in the language being spoken */
 export function writePageTexts(root: ParentNode = document): void {

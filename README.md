@@ -191,6 +191,11 @@ La **partie libre** génère une baie au hasard, de 4 à 48 câbles.
 Le **mode zen** (menu des niveaux) : une grande baie de 36 câbles, rien en production, pas de chrono,
 du matériel en abondance, et une musique d'ambiance générée à la volée (coupable dans les Paramètres).
 
+L'**éditeur de baie** (menu des niveaux) compose une baie avec une palette d'équipements (panneaux,
+switchs, pare-feu, routeur, serveurs, onduleur, unités vides), du haut vers le bas, et règle ses
+câbles, son désordre, ses services et sa fenêtre de maintenance. On la joue aussitôt, ou on copie
+son **lien** (`?rack=CODE`), qui l'ouvre telle quelle chez quelqu'un d'autre.
+
 La **baie du jour** est la même pour tout le monde à une date donnée : petite le lundi, plus grosse le
 week-end. Le jeu garde le meilleur résultat de chaque jour et compte les jours de suite ; l'écran de
 fin propose de **copier le résultat** (étoiles, temps, lisibilité, interruption, et une grille d'un

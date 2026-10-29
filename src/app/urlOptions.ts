@@ -4,6 +4,7 @@
 //   ?pairs=N     how many panel / switch pairs each of them holds (1..16)
 //   ?seed=N      the same first aisle every time
 //   ?quality=N   the image held at that level of quality (0: full, see QUALITY), never adapted nor saved
+//   ?rack=CODE   a cabinet of the editor, opened at once (its code: game/levels/customLevel.ts)
 
 import { SHOWCASE_DEFAULT } from '../game/levels/showcaseRack';
 import { QUALITY } from '../render/quality';
@@ -17,6 +18,8 @@ export interface UrlOptions {
   seed: number;
   /** a level of QUALITY; null: not given */
   quality: number | null;
+  /** the code of a cabinet of the editor; null: not given */
+  rack: string | null;
 }
 
 export function readUrlOptions(search: string): UrlOptions {
@@ -28,6 +31,7 @@ export function readUrlOptions(search: string): UrlOptions {
     pairs: Math.max(0, Math.min(16, int('pairs'))),
     seed: int('seed'),
     quality: params.has('quality') ? Math.max(0, Math.min(QUALITY.length - 1, int('quality'))) : null,
+    rack: params.get('rack'),
   };
 }
 

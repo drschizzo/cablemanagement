@@ -9,6 +9,7 @@ import type { FibreType } from '../cordTypes';
 import type { CableStart, StrapStart } from '../cables';
 import type { IncidentSpec } from '../incidents';
 import type { FindId } from '../finds';
+import type { CustomSpec } from './customLevel';
 
 /** what every level has, whatever its kind */
 interface LevelBase {
@@ -107,6 +108,13 @@ export interface ZenLevel extends LevelBase {
   kind: 'zen';
 }
 
+/** a cabinet composed in the editor (customLevel.ts) */
+export interface CustomLevel extends LevelBase {
+  kind: 'custom';
+  /** what the editor set: its code shares it */
+  spec: CustomSpec;
+}
+
 /** the cabinet of the day: the same for every player on a given date */
 export interface DailyLevel extends LevelBase {
   kind: 'daily';
@@ -130,4 +138,4 @@ export interface BenchLevel extends LevelBase {
   kind: 'bench';
 }
 
-export type LevelDef = CampaignLevel | PuzzleLevel | TicketLevel | TutorialLevel | FreeLevel | ZenLevel | DailyLevel | ShowcaseLevel | BenchLevel;
+export type LevelDef = CampaignLevel | PuzzleLevel | TicketLevel | TutorialLevel | FreeLevel | ZenLevel | CustomLevel | DailyLevel | ShowcaseLevel | BenchLevel;

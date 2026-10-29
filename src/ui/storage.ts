@@ -102,6 +102,13 @@ const ENTRIES = {
     format: (v: Wallet) => JSON.stringify(v),
     valid: (v: Wallet) => typeof v.coins === 'number' && isRecord(v.best) && Array.isArray(v.owned) && isRecord(v.equipped) && Array.isArray(v.finds),
   } satisfies Entry<Wallet>,
+  /** the code of the last cabinet composed in the editor ('' : none yet) */
+  editorDraft: {
+    key: 'cable.editor',
+    fallback: (): string => '',
+    parse: (raw: string) => raw,
+    format: (v: string) => v,
+  } satisfies Entry<string>,
   /** the tutorial was finished or skipped once */
   tutorialDone: {
     key: 'cable.tutorial',

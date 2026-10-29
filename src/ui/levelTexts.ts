@@ -245,6 +245,10 @@ function textOf(level: LevelDef): LevelText {
       fr: { title: 'Mode zen', brief: `Une grande baie de ${level.cables} câbles, rien en production, pas de chrono : prenez votre temps. Le matériel ne manque pas.` },
       en: { title: 'Zen mode', brief: `A big cabinet of ${level.cables} cords, nothing in production, no clock: take your time. There is material to spare.` },
     });
+    case 'custom': return tr({
+      fr: { title: `Baie sur mesure — ${level.cables} câbles`, brief: 'Une baie composée dans l\'éditeur. Son lien la partage telle quelle.' },
+      en: { title: `Custom cabinet — ${level.cables} cords`, brief: 'A cabinet composed in the editor. Its link shares it as it is.' },
+    });
     case 'daily': return tr({
       fr: { title: `Baie du jour n° ${level.number}`, brief: `La même baie pour tout le monde aujourd'hui : ${level.cables} câbles. Branchez, rangez, et comparez votre résultat.` },
       en: { title: `Cabinet of the day #${level.number}`, brief: `The same cabinet for everyone today: ${level.cables} cords. Plug, tidy, and compare your result.` },
