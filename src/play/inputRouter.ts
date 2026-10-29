@@ -37,6 +37,8 @@ export interface InputCommands {
   deposit(cable: CableIndex): void;
   undo(): void;
   cyclePick(): void;
+  /** cords still being laid (a route, a comb stroke) are let go where they are */
+  stopLaying(): void;
   /** a click on the find the cabinet hides picks it up: true when there was one under the pointer */
   takeFindUnderPointer(): boolean;
 }
@@ -81,7 +83,7 @@ export class InputRouter {
     if (e.button !== 0) return;
     this.pointer.update(e);
     // any gesture stops a cord being laid where it is
-    this.tools.route.stopLaying();
+    this.level.stopLaying();
     // whatever the tool, a click on the find picks it up
     if (this.level.takeFindUnderPointer()) return;
     // preparing, the cabinet stands still: the view moves, the cords wait

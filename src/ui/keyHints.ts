@@ -45,6 +45,10 @@ export function keysFor(ctx: KeyContext): KeyCap[] {
       { keys: { fr: 'Clic sur un velcro', en: 'Click a velcro' }, action: { fr: 'l\'enlever', en: 'take it off' } },
       ESCAPE,
     ];
+    case 'comb': return [
+      { keys: { fr: 'Glisser le long d\'un faisceau', en: 'Drag along a bundle' }, action: { fr: 'peigner les câbles', en: 'comb the cords' } },
+      ESCAPE,
+    ];
     case 'tester': return [
       { keys: { fr: 'Clic sur un câble', en: 'Click a cord' }, action: { fr: 'le tester', en: 'test it' } },
       ESCAPE,

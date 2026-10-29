@@ -103,6 +103,9 @@ export function hintHtml(h: Hint): string {
     case 'velcroLine': return h.cords >= 2
       ? tr({ fr: `<b>${h.cords} câbles</b> : relâchez, le velcro les serre là où le trait les croise.`, en: `<b>${h.cords} cords</b>: let go, the velcro straps them where the line crosses them.` })
       : tr({ fr: 'Tracez le trait <b>en travers</b> des câbles à serrer, là où ils passent côte à côte : ceux qu\'il prend s\'allument.', en: 'Draw the line <b>across</b> the cords to strap, where they run side by side: those it takes light up.' });
+    case 'comb': return h.cords >= 2
+      ? tr({ fr: `<b>${h.cords} câbles</b> dans le peigne : glissez le long du faisceau, ils se rangent côte à côte.`, en: `<b>${h.cords} cords</b> in the comb: slide along the bundle, they line up side by side.` })
+      : tr({ fr: 'Glissez le peigne <b>le long</b> des câbles, là où ils passent ensemble.', en: 'Slide the comb <b>along</b> the cords, where they run together.' });
     default: return assertNever(h);
   }
 }

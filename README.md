@@ -245,6 +245,7 @@ qu'on peut faire en le tenant. L'aide complète d'un outil reste sur son bouton.
 | C | Chemin | tracer le chemin d'un câble à travers les guides ; il y est posé, et branché au port où finit le trait |
 | 2 | Supports | dans une unité vide, un guide-câbles ; dans un couloir latéral, une goulotte (**Maj** : un anneau) ; sur un support posé, le retirer |
 | 3 | Velcro | tracer un trait en travers des câbles à serrer : le velcro serre ceux que le trait croise, s'ils sont côte à côte ; un clic sur un velcro l'enlève |
+| 5 | Peigne | glissé le long d'un faisceau, il range côte à côte les câbles qu'il traverse, dans leur ordre, et défait leurs croisements |
 | 4 | Testeur | dit si un cordon porte le signal (seulement là où des cordons sont coupés) |
 | 0 | Stock | prend un cordon neuf (type, couleur, longueur), livré dans le bac |
 

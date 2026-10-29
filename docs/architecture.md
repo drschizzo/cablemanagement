@@ -39,6 +39,7 @@ src/
     services.ts     les services du plan (données, voix…) : couleur, poids d'une coupure (leurs noms : ui/names.ts)
     idealRoutes.ts  la route idéale de chaque cordon, la baie « finie » d'un niveau (tidyKit), les cordons couchés
                     sur leurs routes (tidyLayout, la baie rangée de la vitrine)
+    comb.ts         le peigne côté règles : les couloirs des câbles qu'il a traversés, posés le long de son chemin
     routeLaying.ts  l'outil Chemin côté règles : le chemin planifié (planRoute), le câble posé (RouteRun)
     physics/        le solveur tel que le jeu le mène (rackCableSim : mains, ports, creux des guides), et son Worker
     mess/           le désordre de départ : les chemins emmêlés des cordons (tangle), leur chute dans un Worker,
@@ -53,7 +54,7 @@ src/
     context.ts      PlayContext (ce que les outils voient du contrôleur), ToolHandler (l'interface d'un outil),
                     ControllerEvents (ce que le contrôleur dit à l'interface)
     inputRouter.ts  la souris et le clavier, aiguillés vers l'outil qui a un geste en cours, ou vers la vue
-    tools/          un fichier par outil : main, Chemin, velcro, supports, testeur
+    tools/          un fichier par outil : main, Chemin, velcro, supports, peigne, testeur
     feedback/       les repères dessinés par-dessus la baie : surbrillances et traceur, fil à plomb, autre main,
                     lueurs des connecteurs, port visé, portions tenues / pendantes, cadre du tutoriel
     pointer.ts      la souris sur la vue : pixels, rayon, projections écran ↔ baie
