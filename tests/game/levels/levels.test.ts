@@ -1,11 +1,11 @@
 // Every level builds, its schedule makes sense, and a perfect cabinet is possible.
 import { describe, it, expect } from 'vitest';
-import { World } from '../src/game/world';
-import { LEVELS, TUTORIAL } from '../src/game/levels/campaign';
-import { freeLevel } from '../src/game/levels/freeLevel';
-import { showcaseRack } from '../src/game/levels/showcaseRack';
-import type { LevelDef } from '../src/game/levels/levelDef';
-import { strapBundles, tidyKit } from '../src/game/idealRoutes';
+import { World } from '../../../src/game/world';
+import { LEVELS, TUTORIAL } from '../../../src/game/levels/campaign';
+import { freeLevel } from '../../../src/game/levels/freeLevel';
+import { showcaseRack } from '../../../src/game/levels/showcaseRack';
+import type { LevelDef } from '../../../src/game/levels/levelDef';
+import { strapBundles, tidyKit } from '../../../src/game/idealRoutes';
 
 const ALL: LevelDef[] = [...LEVELS, TUTORIAL, freeLevel(30, 1), showcaseRack('mess', 1), showcaseRack('tidy', 1)];
 

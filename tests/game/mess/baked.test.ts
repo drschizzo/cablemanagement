@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { World } from '../src/game/world';
-import { SHOWCASE_DEFAULT, showcaseRack } from '../src/game/levels/showcaseRack';
-import { decode, encode, printOf } from '../src/game/mess/baked';
+import { World } from '../../../src/game/world';
+import { SHOWCASE_DEFAULT, showcaseRack } from '../../../src/game/levels/showcaseRack';
+import { decode, encode, printOf } from '../../../src/game/mess/baked';
 
 // (Node's own module, untyped here: the project has no Node types)
 const node = (m: string) => import(m);

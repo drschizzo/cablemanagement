@@ -111,7 +111,7 @@ export function tidyRoutes(rack: Rack, circuits: Circuit[], radius: number, seg 
  * equipment in use, its ducts (then its rings) down the side channels the
  * cords take, and every cord cut to its tidy route and plugged as planned.
  * Its score says whether the level can reach three stars (tools/solvable.ts,
- * tests/levels.test.ts).
+ * tests/game/levels/levels.test.ts).
  */
 export function tidyKit(level: LevelDef): LevelDef {
   const pre = [...level.preinstalled];
@@ -244,7 +244,7 @@ export function pathToNodes(path: V3[], seg: number): number[] {
 /**
  * Straps a settled tidy cabinet into `n` bundles, as a technician would: where
  * three cords or more run side by side in a manager or a duct (the checks of
- * three stars, tools/solvable.ts and tests/levels.test.ts).
+ * three stars, tools/solvable.ts and tests/game/levels/levels.test.ts).
  */
 export function strapBundles(w: World, n: number): void {
   const supports = w.rack.supports();

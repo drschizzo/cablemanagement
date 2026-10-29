@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cleanliness, type Evaluation } from '../src/game/evaluation';
+import { cleanliness, type Evaluation } from '../../src/game/evaluation';
 
 /** an evaluation with only the counts cleanliness reads */
 const counts = (c: Partial<Evaluation>): Evaluation =>
