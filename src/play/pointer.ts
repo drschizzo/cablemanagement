@@ -29,10 +29,10 @@ export class Pointer {
 
   /** follows a mouse event */
   update(e: PointerEvent | WheelEvent): void {
-    const r = this.canvas.getBoundingClientRect();
-    this.px.x = e.clientX - r.left;
-    this.px.y = e.clientY - r.top;
-    this.ndc.set((this.px.x / r.width) * 2 - 1, -(this.px.y / r.height) * 2 + 1);
+    const rect = this.canvas.getBoundingClientRect();
+    this.px.x = e.clientX - rect.left;
+    this.px.y = e.clientY - rect.top;
+    this.ndc.set((this.px.x / rect.width) * 2 - 1, -(this.px.y / rect.height) * 2 + 1);
   }
 
   /** the ray from the camera through the pointer */
@@ -43,8 +43,8 @@ export class Pointer {
 
   /** the ray from the camera through a point of the canvas (px) */
   rayAt(p: ScreenPoint): THREE.Ray {
-    const r = this.canvas.getBoundingClientRect();
-    this.raycaster.setFromCamera(new THREE.Vector2((p.x / r.width) * 2 - 1, -(p.y / r.height) * 2 + 1), this.stage.camera);
+    const rect = this.canvas.getBoundingClientRect();
+    this.raycaster.setFromCamera(new THREE.Vector2((p.x / rect.width) * 2 - 1, -(p.y / rect.height) * 2 + 1), this.stage.camera);
     return this.raycaster.ray;
   }
 
@@ -58,8 +58,8 @@ export class Pointer {
   /** a point of the scene on the canvas (px) */
   toScreen(x: number, y: number, z: number): ScreenPoint {
     const v = new THREE.Vector3(x, y, z).project(this.stage.camera);
-    const r = this.canvas.getBoundingClientRect();
-    return { x: (v.x * 0.5 + 0.5) * r.width, y: (-v.y * 0.5 + 0.5) * r.height };
+    const rect = this.canvas.getBoundingClientRect();
+    return { x: (v.x * 0.5 + 0.5) * rect.width, y: (-v.y * 0.5 + 0.5) * rect.height };
   }
 
   /** how far (px) a point of the scene is from the pointer, on the screen */

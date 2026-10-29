@@ -152,15 +152,15 @@ export class Showcase {
     this.started = true;
     for (const c of this.closets) c.visible = true;
     this.floor.visible = this.rain.group.visible = true;
-    const r = { floorY: this.closets[0].tidy.world.rack.floorY, topY: this.topY };
-    this.floor.position.y = r.floorY;
+    const bounds = { floorY: this.closets[0].tidy.world.rack.floorY, topY: this.topY };
+    this.floor.position.y = bounds.floorY;
     const n = this.closets.length;
     // the whole half circle, as close as it fits: the racks at its ends come towards the camera
     const ends = this.closets.map((c) => c.mess.group.position);
     const side = Math.max(...ends.map((p) => Math.abs(p.x)));
     const near = Math.max(...ends.map((p) => p.z));
     this.stage.view = this.view;
-    this.stage.frame((r.topY + r.floorY) / 2 + 0.02, r.topY - r.floorY + 0.1, side + (n > 1 ? 0.15 : 0.6), n > 1 ? 0 : 0.03, side + 0.6, near);
+    this.stage.frame((bounds.topY + bounds.floorY) / 2 + 0.02, bounds.topY - bounds.floorY + 0.1, side + (n > 1 ? 0.15 : 0.6), n > 1 ? 0 : 0.03, side + 0.6, near);
     document.body.classList.add('demo');
     this.el.classList.add('on');
     (this.el.querySelector('#sc-before') as HTMLElement).onclick = () => { if (this.state === 'after') this.toggle(); };

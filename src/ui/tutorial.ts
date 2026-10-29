@@ -14,41 +14,41 @@ interface Step {
   title: string;
   text: string;
   task?: string;
-  spot?: (c: Controller) => Box | null;
+  spot?: (ctl: Controller) => Box | null;
   tool?: Tool;
-  enter?: (c: Controller) => void;
-  done?: (c: Controller) => boolean;
+  enter?: (ctl: Controller) => void;
+  done?: (ctl: Controller) => boolean;
 }
 
-const unitBox = (c: Controller, kind: string): Box | null => {
-  const r = c.world.rack;
-  const k = r.units.findIndex((u) => u.kind === kind);
+const unitBox = (ctl: Controller, kind: string): Box | null => {
+  const rack = ctl.world.rack;
+  const k = rack.units.findIndex((u) => u.kind === kind);
   if (k < 0) return null;
-  return { min: [-COLUMN_X + 0.005, r.unitBottom(k) - 0.002, -0.004], max: [COLUMN_X - 0.005, r.unitBottom(k) + U + 0.002, 0.075] };
+  return { min: [-COLUMN_X + 0.005, rack.unitBottom(k) - 0.002, -0.004], max: [COLUMN_X - 0.005, rack.unitBottom(k) + U + 0.002, 0.075] };
 };
 
-const mgrBox = (c: Controller): Box | null => {
-  const r = c.world.rack;
-  const it = r.items.find((i) => i.kind === 'hmgr');
+const mgrBox = (ctl: Controller): Box | null => {
+  const rack = ctl.world.rack;
+  const it = rack.items.find((i) => i.kind === 'hmgr');
   if (!it) return null;
-  return { min: [-COLUMN_X + 0.005, r.unitBottom(it.unit), -0.004], max: [COLUMN_X - 0.005, r.unitBottom(it.unit) + U, 0.08] };
+  return { min: [-COLUMN_X + 0.005, rack.unitBottom(it.unit), -0.004], max: [COLUMN_X - 0.005, rack.unitBottom(it.unit) + U, 0.08] };
 };
 
 /** the panel and the manager under it: where a cord leaves its port and turns down into the fingers */
-const portToMgrBox = (c: Controller): Box | null => {
-  const p = unitBox(c, 'panel'), m = mgrBox(c);
+const portToMgrBox = (ctl: Controller): Box | null => {
+  const p = unitBox(ctl, 'panel'), m = mgrBox(ctl);
   if (!p || !m) return p ?? m;
   return { min: [p.min[0], Math.min(p.min[1], m.min[1]), p.min[2]], max: [p.max[0], Math.max(p.max[1], m.max[1]), 0.09] };
 };
 
-const sideBox = (c: Controller): Box => {
-  const r = c.world.rack;
-  return { min: [SIDE_IN, r.unitBottom(r.units.length - 2), SIDE_BACK], max: [SIDE_OUT, r.topY - U, 0.075] };
+const sideBox = (ctl: Controller): Box => {
+  const rack = ctl.world.rack;
+  return { min: [SIDE_IN, rack.unitBottom(rack.units.length - 2), SIDE_BACK], max: [SIDE_OUT, rack.topY - U, 0.075] };
 };
 
 /** nodes of any cord inside the holding volume of an item kind */
-function held(c: Controller, kind: 'hmgr' | 'duct'): number {
-  const w = c.world;
+function held(ctl: Controller, kind: 'hmgr' | 'duct'): number {
+  const w = ctl.world;
   const ids = new Set(w.rack.items.filter((i) => i.kind === kind).map((i) => i.id));
   const boxes = w.rack.supports().filter((s) => ids.has(s.item));
   const x = w.sim.x;
@@ -68,47 +68,47 @@ const STEPS: Step[] = [
   {
     title: 'Bienvenue dans la baie',
     text: 'Voici une baie de brassage 19 pouces. Les équipements s\'y empilent en <b>unités</b> (1U = 4,45 cm). Votre métier : brancher chaque liaison sur les bons ports, puis ranger les câbles pour que la baie reste lisible et accessible.',
-    spot: (c) => ({ min: [-WALL_X, c.world.rack.floorY, -0.06], max: [WALL_X, c.world.rack.topY, 0.09] }),
+    spot: (ctl) => ({ min: [-WALL_X, ctl.world.rack.floorY, -0.06], max: [WALL_X, ctl.world.rack.topY, 0.09] }),
   },
   {
     title: 'Le tiroir optique',
     text: 'Le <b>tiroir optique</b> (ici « A ») reçoit les fibres qui arrivent du bâtiment ou d\'une autre salle. Chaque port est l\'extrémité d\'une fibre, sur laquelle on branche une jarretière.',
-    spot: (c) => unitBox(c, 'panel'),
+    spot: (ctl) => unitBox(ctl, 'panel'),
   },
   {
     title: 'Le commutateur',
     text: 'Le <b>commutateur</b> (« S ») est l\'équipement actif du réseau. Le <b>plan de brassage</b>, à droite, dit quel port du tiroir relier à quel port du commutateur. Le voyant au-dessus d\'un port : <span class="ok">vert</span> = liaison conforme au plan, <span class="warn">orange</span> = mauvais port.',
-    spot: (c) => unitBox(c, 'switch'),
+    spot: (ctl) => unitBox(ctl, 'switch'),
   },
   {
     title: 'Les jarretières',
     text: 'Ce sont des câbles optiques terminés par des connecteurs LC. <span class="os2">Jaune</span> : fibre monomode (OS2), <span class="om4">turquoise</span> : multimode (OM4) — on ne les mélange pas. Survolez un câble : sa bulle dit où il est branché.',
     task: 'Survolez deux câbles différents',
-    done: (c) => c.counters.hovered >= 2,
+    done: (ctl) => ctl.counters.hovered >= 2,
   },
   {
     title: 'Saisir et tirer',
     text: '<b>Clic gauche</b> sur un câble, puis glissez : il suit la main, glisse et frotte contre les autres comme un vrai câble. Pour le passer devant ou derrière un autre câble, <b>maintenez Maj</b> en tirant : la souris vers le haut le pousse vers le fond, vers le bas le ramène vers vous (un fil à plomb montre où il est).',
     task: 'Déplacez un câble d\'une trentaine de centimètres',
     tool: 'hand',
-    done: (c) => c.counters.dragged >= 0.3,
+    done: (ctl) => ctl.counters.dragged >= 0.3,
   },
   {
     title: 'Regarder autour',
     text: '<b>Clic droit</b> + glisser pour tourner autour de la baie, <b>glisser dans le vide</b> (ou les flèches) pour déplacer la vue, <b>molette</b> pour zoomer, <b>R</b> pour revenir de face. Quand plusieurs câbles sont empilés sous le curseur, <b>Tab</b> passe au suivant.',
     task: 'Tournez la vue',
-    done: (c) => c.counters.orbited >= 1,
+    done: (ctl) => ctl.counters.orbited >= 1,
   },
   {
     title: 'Débrancher, rebrancher',
     text: 'Une liaison est sur le mauvais port : son voyant est orange et ses deux bons ports sont entourés. Saisissez le <b>connecteur</b> et <b>tirez-le de quelques centimètres</b> : il se débranche. Amenez-le devant le port entouré : le port se surligne en jaune quand il est à portée, et le connecteur s\'y enfiche quand vous le relâchez. Lâché ailleurs, en l\'air, il reste <b>accroché</b> là (une lueur ambrée), sauf si vous tenez <b>Alt</b> en le lâchant : il pend alors librement ; un bout tombé dans le tas brille en bleu. Un clic sur une ligne du plan sort son bout libre du tas et l\'accroche sous son port. Une erreur ? <b>Ctrl+Z</b>.',
     task: 'Branchez toutes les liaisons du plan',
     tool: 'hand',
-    enter: (c) => {
-      const ev = c.world.evaluate();
-      c.focus(ev.circuits.findIndex((s) => !s.connected));
+    enter: (ctl) => {
+      const ev = ctl.world.evaluate();
+      ctl.focus(ev.circuits.findIndex((s) => !s.connected));
     },
-    done: (c) => c.world.evaluate().circuits.every((s) => s.connected),
+    done: (ctl) => ctl.world.evaluate().circuits.every((s) => s.connected),
   },
 
   {
@@ -123,7 +123,7 @@ const STEPS: Step[] = [
     task: 'Rangez un câble dans le guide-câbles',
     spot: mgrBox,
     tool: 'route',
-    done: (c) => held(c, 'hmgr') >= 6,
+    done: (ctl) => held(ctl, 'hmgr') >= 6,
   },
 
 
@@ -133,14 +133,14 @@ const STEPS: Step[] = [
     task: 'Pincez un coude ferme à la sortie d\'un port',
     spot: portToMgrBox,
     tool: 'hand',
-    done: (c) => c.world.sim.pinches.some((p) => p.s >= 0.7 && p !== c.world.sim.pinchHeld),
+    done: (ctl) => ctl.world.sim.pinches.some((p) => p.s >= 0.7 && p !== ctl.world.sim.pinchHeld),
   },
   {
     title: 'Voir et défaire un coude',
     text: 'Survolez un câble : ses coudes pincés apparaissent en <b>anneaux</b>, plus vifs quand le coude est ferme. Le coude sous le curseur devient <span class="warn">orange</span> : <b>Espace</b> le défait. Pour changer la forme d\'un coude, pincez de nouveau au même endroit : le nouveau coude remplace l\'ancien.',
     task: 'Survolez un coude pincé',
     tool: 'hand',
-    done: (c) => c.cableView.pinchHover >= 0,
+    done: (ctl) => ctl.cableView.pinchHover >= 0,
   },
   {
     title: 'La goulotte',
@@ -148,7 +148,7 @@ const STEPS: Step[] = [
     task: 'Posez une goulotte',
     spot: sideBox,
     tool: 'supports',
-    done: (c) => c.world.rack.items.some((i) => i.kind === 'duct'),
+    done: (ctl) => ctl.world.rack.items.some((i) => i.kind === 'duct'),
   },
 
   {
@@ -156,7 +156,7 @@ const STEPS: Step[] = [
     text: 'Avec l\'outil <b>Chemin</b>, tracez le chemin d\'un câble par le guide-câbles, puis le long de la goulotte, jusqu\'à son port. Le câble entre dans la goulotte par la <b>fente</b> de sa face avant, et sa longueur en trop y pend en boucle.',
     task: 'Mettez un câble dans la goulotte',
     tool: 'route',
-    done: (c) => held(c, 'duct') >= 4,
+    done: (ctl) => held(ctl, 'duct') >= 4,
   },
 
 
@@ -164,12 +164,12 @@ const STEPS: Step[] = [
     title: 'La seconde main',
     text: 'À la main, il faut parfois tenir un câble à deux endroits : avec une seule main, tirer le bout défait ce qu\'on vient de poser. Tenez le câble là où il doit rester et appuyez sur <b>E</b> : <b>l\'autre main</b> le tient sur place (une lueur ambrée la signale) et la vôtre est libre. Saisissez le câble plus loin, amenez-le dans la goulotte et pincez le virage avec <b>Espace</b>. Enfin, sans rien tenir, appuyez sur <b>E</b> : l\'autre main lâche le câble.',
     task: 'Passez un câble à l\'autre main (E)',
-    spot: (c) => {
-      const m = mgrBox(c), s = sideBox(c);
+    spot: (ctl) => {
+      const m = mgrBox(ctl), s = sideBox(ctl);
       return m ? { min: [Math.min(m.min[0], s.min[0]), Math.min(m.min[1], s.min[1]), Math.min(m.min[2], s.min[2])], max: [Math.max(m.max[0], s.max[0]), Math.max(m.max[1], s.max[1]), Math.max(m.max[2], s.max[2])] } : s;
     },
     tool: 'hand',
-    done: (c) => c.counters.handedOver >= 1,
+    done: (ctl) => ctl.counters.handedOver >= 1,
   },
   {
     title: 'L\'anneau',
@@ -181,22 +181,22 @@ const STEPS: Step[] = [
     text: 'Le <b>velcro</b> (touche 3) serre en faisceau des câbles côte à côte. <b>Tracez un trait en travers</b> des câbles à serrer : ceux qu\'il croise s\'allument, et au relâcher le velcro les serre là où le trait les croise. Il se place là où le plus de câbles passent côte à côte, et laisse de côté un câble croisé plus loin. Cliquez sur un velcro pour l\'enlever. Un faisceau d\'un seul service se lit mieux. Jamais de collier serré sur une fibre : il l\'écrase !',
     task: 'Posez un velcro',
     tool: 'velcro',
-    done: (c) => c.world.straps.length > 0,
+    done: (ctl) => ctl.world.straps.length > 0,
   },
 
   {
     title: 'Le bon cordon',
     text: 'Un rangement parfait passe par des cordons <b>à la bonne longueur</b> : trop longs, ils font du mou partout ; trop courts, ils sont <b>tendus</b> et ne valent pas ★★★. Le <b>Stock</b> (touche 0) fournit des cordons neufs, en nombre limité par longueur : ils arrivent dans le bac. Pour remplacer un cordon branché, il faut le débrancher, et donc couper sa liaison le temps de changer.',
     task: 'Prenez un cordon neuf au Stock',
-    done: (c) => c.world.cablesVersion > 0,
+    done: (ctl) => ctl.world.cablesVersion > 0,
   },
   {
     title: 'Le bac et le traceur',
     text: 'Comme un vrai technicien, on peut tout <b>débrancher et déposer</b> dans le bac au sol : survolez un câble et appuyez sur <b>Suppr</b>. Reprenez-le à la main quand vous voulez. Pour savoir où va un câble dans le tas, survolez-le et appuyez sur <b>T</b> : il clignote et ses deux ports s\'entourent.',
-    spot: (c) => { const k = c.world.rack.crate(); return { min: k.min, max: k.max }; },
+    spot: (ctl) => { const k = ctl.world.rack.crate(); return { min: k.min, max: k.max }; },
     task: 'Déposez un câble dans le bac (Suppr)',
     tool: 'hand',
-    done: (c) => c.counters.deposited > 0,
+    done: (ctl) => ctl.counters.deposited > 0,
   },
 
   {

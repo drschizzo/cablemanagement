@@ -125,9 +125,9 @@ export class Controller implements PlayContext, InputCommands {
     this.cableView = new CableView(this.world);
     this.cableView.lightBy(this.rackView.glow);
     stage.scene.add(this.rackView.group, this.cableView.group);
-    const r = this.world.rack;
+    const rack = this.world.rack;
     // the cabinet and, at its right, the crate on the floor
-    stage.frame((r.topY + r.floorY) / 2 + 0.01, r.topY - r.floorY + 0.16, 0.6, 0.16);
+    stage.frame((rack.topY + rack.floorY) / 2 + 0.01, rack.topY - rack.floorY + 0.16, 0.6, 0.16);
     this.rackView.syncItems(this.world.itemsVersion);
     this.cableView.update(true);
     this.lastEval = this.world.evaluate();
@@ -283,9 +283,9 @@ export class Controller implements PlayContext, InputCommands {
     const next = this.picker.next();
     if (!next) return;
     this.setHover(next.pick);
-    const r = this.stage.renderer.domElement.getBoundingClientRect();
+    const rect = this.stage.renderer.domElement.getBoundingClientRect();
     const px = this.pointer.px;
-    this.events.onHover(`${this.describe(next.pick)}<br><i>${next.index + 1}/${next.count} sous le curseur — Tab : suivant</i>`, r.left + px.x, r.top + px.y);
+    this.events.onHover(`${this.describe(next.pick)}<br><i>${next.index + 1}/${next.count} sous le curseur — Tab : suivant</i>`, rect.left + px.x, rect.top + px.y);
   }
 
   clearHover(): void {

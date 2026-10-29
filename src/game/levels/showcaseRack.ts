@@ -18,94 +18,33 @@ export const SHOWCASE_SETTLE = { frames: 40, solver: { substeps: 1, refSubsteps:
 export const SHOWCASE_DEFAULT = { bays: 5, pairs: [10, 8, 10, 8, 10], seed: 368410640 };
 
 /**
- * The before/after cabinet: an open rack, packed like a real wiring closet.
- * Four copper patch panels, each above its switch; a firewall, a router, two
- * linked servers, two more and a UPS. 100 cords: every panel port to the same
- * port of the switch right below, the switches' uplinks to the firewall and
- * the router, the servers' two NICs.
+ * A cabinet of the before/after aisle: an open rack packed like a real wiring
+ * closet, drawn from `seed` (both worlds of a bay, the mess and the tidy one,
+ * get the same closet). Copper patch panels and their switches, in one of
+ * three layouts; a firewall and a router taking the switches' uplinks; one or
+ * two servers patched to both, more servers and a UPS or two. Each panel
+ * patches most of its ports across to another switch, through the side ducts.
  * 'mess': the cords are long and tangled, nothing is managed.
  * 'tidy': short cords on their tidy routes, managers and ducts installed.
  * `pairs`: as many panel / switch pairs instead of 3 or 4 (a taller rack, far
  * beyond any real one), with servers in proportion.
  */
 export function showcaseRack(state: 'mess' | 'tidy', seed: number, pairs?: number): LevelDef {
-  // the closet is drawn from the seed: both worlds of the demo get the same one
-  const r = rng(seed);
-  const pick = <T>(a: T[]): T => a[Math.floor(r() * a.length)];
-  const cu = (name: string) => copperPanel(name, 24);
-  const sw = (name: string) => ethernetSwitch(name, 24);
-  const drawn = 3 + Math.floor(r() * 2);
-  pairs ??= drawn;
-  // past the first four, two letters (none of them F, R, X, Y: the other units)
-  const named = (first: string, more: string) => [...Array(pairs).keys()].map((k) => (k < 4 ? first[k] : more + String.fromCharCode(65 + k - 4)));
-  const panels = named('ABCD', 'P'), switches = named('STUV', 'Q');
-  // three ways to fill a closet, all of them patched across through the side ducts:
-  // the panels above the switches, the switches between two banks of panels,
-  // or panel / switch pairs patched to each other's switch
-  const layout = pick(['grouped', 'sandwich', 'pairs'] as const);
-  const units: UnitSpec[] = [BLANK];
-  if (layout === 'grouped') {
-    for (const p of panels) units.push(cu(p), BLANK);
-    for (const n of switches) units.push(sw(n), BLANK);
-  } else if (layout === 'sandwich') {
-    const top = Math.ceil(pairs / 2);
-    for (const p of panels.slice(0, top)) units.push(cu(p), BLANK);
-    for (const n of switches) units.push(sw(n), BLANK);
-    for (const p of panels.slice(top)) units.push(cu(p), BLANK);
-  } else panels.forEach((p, k) => units.push(cu(p), BLANK, sw(switches[k]), BLANK));
-  // an uplink per switch, then the servers' links
-  const up = Math.max(4, pairs);
-  const fw = firewall(up + 4);
-  const rt = router(up + 4);
-  units.push(...(r() < 0.5 ? [fw, BLANK, rt, BLANK] : [rt, BLANK, fw, BLANK]));
-  const servers = r() < 0.7 ? ['X', 'Y'] : ['X'];
-  for (const n of servers) {
-    const at = 0.02 + r() * 0.1;
-    units.push(server(n, at));
-  }
-  for (let k = Math.floor(r() * 3) + Math.max(0, pairs - drawn); k > 0; k--) units.push(SERVER);
-  units.push(BLANK);
-  for (let k = 1 + Math.floor(r() * 2); k > 0; k--) units.push(UPS);
-  // a finger manager on every blank next to a panel or a switch
-  const cabled = (k: number) => units[k] && (units[k].kind === 'panel' || units[k].kind === 'switch');
-  const managers = units.map((u, k) => (k > 0 && u.kind === 'blank' && (cabled(k - 1) || cabled(k + 1)) ? k : -1)).filter((k) => k >= 0);
-  // ducts down both sides, from the top manager to the bottom one
-  const ducts: number[] = [];
-  for (let u = managers[0]; u - 1 <= managers[managers.length - 1]; u += 4) ducts.push(u);
-  // the patching: a share of each panel's ports, to its switch, coloured by service
-  const out: Circuit[] = [];
-  const shuffle = <T>(a: T[]): T[] => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
-  const special = pick([0, 7, 11]);
-  // each switch has 22 ports for the panels (the last two are its uplinks)
-  const free = switches.map(() => shuffle([...Array(22).keys()].map((i) => i + 1)));
-  panels.forEach((p, k) => {
-    const svc = pick([0, 0, 1, 2, 4, 5]);
-    const used = shuffle([...Array(22).keys()].map((i) => i + 1)).slice(0, 16 + Math.floor(r() * 7)).sort((a, b) => a - b);
-    used.forEach((i) => {
-      // any switch but the one next to the panel, as long as it has ports left (in a taller
-      // rack than drawn, one of the closest: across the whole of it, the cords grew too long to fall)
-      const others = switches.map((_, j) => j).filter((j) => j !== k && free[j].length > 0 && (pairs === drawn || Math.abs(j - k) <= 2));
-      const j = others.length ? pick(others) : k;
-      if (!free[j].length) return;
-      out.push({ a: `${p}${i}`, b: `${switches[j]}${free[j].pop()}`, type: 'CU', service: special && i % special === 0 ? 3 : svc });
-    });
-  });
-  switches.forEach((n, k) => {
-    out.push({ a: `${n}23`, b: `F${k + 1}`, type: 'CU', service: 3 });
-    out.push({ a: `${n}24`, b: `R${k + 1}`, type: 'CU', service: 2 });
-  });
-  servers.forEach((n, k) => {
-    out.push({ a: `F${up + 1 + k}`, b: `${n}1`, type: 'CU', service: 4 });
-    out.push({ a: `R${up + 1 + k}`, b: `${n}2`, type: 'CU', service: 4 });
-  });
+  const random = rng(seed);
+  // the draws come in a fixed order: the baked mess of the title screen depends on it
+  const drawnPairs = 3 + Math.floor(random() * 2);
+  const pairCount = pairs ?? drawnPairs;
+  const closet = drawEquipment(random, pairCount, drawnPairs);
+  const { managers, ducts } = placeSupports(closet.units);
+  const circuits = drawPatching(random, closet, pairCount === drawnPairs);
   // a taller rack, longer cords: they still have to reach the floor from the top
-  const tall = Math.sqrt((4 * pairs + 10) / (4 * drawn + 10));
-  const lo = (1.3 + r() * 0.3) * tall;
+  const tall = Math.sqrt((4 * pairCount + 10) / (4 * drawnPairs + 10));
+  const shortest = (1.3 + random() * 0.3) * tall;
   return {
     id: `showcase-${state}`,
     title: 'Avant / Après',
     brief: '',
-    units, cables: out.length, wrong: 0, loose: 0, slack: [0, 0], mess: 3,
+    units: closet.units, cables: circuits.length, wrong: 0, loose: 0, slack: [0, 0], mess: 3,
     labels: true, services: 6, types: ['CU'],
     inventory: { velcro: 60 },
     preinstalled: [
@@ -122,9 +61,100 @@ export function showcaseRack(state: 'mess' | 'tidy', seed: number, pairs?: numbe
     seg: state === 'mess' ? 0.05 * Math.min(1.4, tall) : 0.025,
     radius: 0.0028,
     // most detours start low, close to where they will end up
-    messSpread: { x: 0.45 + r() * 0.15, z: [0.02, 0.3 + r() * 0.1], fall: 2.5 },
-    messLength: [lo, lo + (1.2 + r() * 0.6) * tall],
+    messSpread: { x: 0.45 + random() * 0.15, z: [0.02, 0.3 + random() * 0.1], fall: 2.5 },
+    messLength: [shortest, shortest + (1.2 + random() * 0.6) * tall],
     colorByService: true,
-    schedule: () => out,
+    schedule: () => circuits,
   };
+}
+
+/** the equipment of a closet, and the names its patching needs */
+interface Closet {
+  units: UnitSpec[];
+  panels: string[];
+  switches: string[];
+  /** the servers patched to the firewall and the router */
+  servers: string[];
+  /** ports of the firewall and the router taken by the switches' uplinks */
+  uplinks: number;
+}
+
+function drawEquipment(random: () => number, pairCount: number, drawnPairs: number): Closet {
+  const pick = <T>(a: T[]): T => a[Math.floor(random() * a.length)];
+  const panel = (name: string) => copperPanel(name, 24);
+  const sw = (name: string) => ethernetSwitch(name, 24);
+  // past the first four, two letters (none of them F, R, X, Y: the other units)
+  const named = (first: string, more: string) => [...Array(pairCount).keys()].map((k) => (k < 4 ? first[k] : more + String.fromCharCode(65 + k - 4)));
+  const panels = named('ABCD', 'P'), switches = named('STUV', 'Q');
+  // three ways to fill a closet, all of them patched across through the side ducts:
+  // the panels above the switches, the switches between two banks of panels,
+  // or panel / switch pairs patched to each other's switch
+  const layout = pick(['grouped', 'sandwich', 'pairs'] as const);
+  const units: UnitSpec[] = [BLANK];
+  if (layout === 'grouped') {
+    for (const p of panels) units.push(panel(p), BLANK);
+    for (const n of switches) units.push(sw(n), BLANK);
+  } else if (layout === 'sandwich') {
+    const top = Math.ceil(pairCount / 2);
+    for (const p of panels.slice(0, top)) units.push(panel(p), BLANK);
+    for (const n of switches) units.push(sw(n), BLANK);
+    for (const p of panels.slice(top)) units.push(panel(p), BLANK);
+  } else panels.forEach((p, k) => units.push(panel(p), BLANK, sw(switches[k]), BLANK));
+  // an uplink per switch, then the servers' links
+  const uplinks = Math.max(4, pairCount);
+  const fw = firewall(uplinks + 4);
+  const rt = router(uplinks + 4);
+  units.push(...(random() < 0.5 ? [fw, BLANK, rt, BLANK] : [rt, BLANK, fw, BLANK]));
+  const servers = random() < 0.7 ? ['X', 'Y'] : ['X'];
+  for (const n of servers) units.push(server(n, 0.02 + random() * 0.1));
+  for (let k = Math.floor(random() * 3) + Math.max(0, pairCount - drawnPairs); k > 0; k--) units.push(SERVER);
+  units.push(BLANK);
+  for (let k = 1 + Math.floor(random() * 2); k > 0; k--) units.push(UPS);
+  return { units, panels, switches, servers, uplinks };
+}
+
+/** a finger manager on every blank next to a panel or a switch; ducts down both sides, from the top manager to the bottom one */
+function placeSupports(units: UnitSpec[]): { managers: number[]; ducts: number[] } {
+  const cabled = (k: number) => units[k] && (units[k].kind === 'panel' || units[k].kind === 'switch');
+  const managers = units.map((u, k) => (k > 0 && u.kind === 'blank' && (cabled(k - 1) || cabled(k + 1)) ? k : -1)).filter((k) => k >= 0);
+  const ducts: number[] = [];
+  for (let u = managers[0]; u - 1 <= managers[managers.length - 1]; u += 4) ducts.push(u);
+  return { managers, ducts };
+}
+
+/**
+ * The patching: a share of each panel's ports to another switch, coloured by
+ * service; the switches' uplinks; the servers' two cards. `allSwitches` false: in a
+ * taller rack than drawn, each panel patches to one of the closest switches
+ * (across the whole of it, the cords grew too long to fall).
+ */
+function drawPatching(random: () => number, closet: Closet, allSwitches: boolean): Circuit[] {
+  const { panels, switches, servers, uplinks } = closet;
+  const pick = <T>(a: T[]): T => a[Math.floor(random() * a.length)];
+  const shuffle = <T>(a: T[]): T[] => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const out: Circuit[] = [];
+  // every n-th port of a panel is an admin link (0: none)
+  const adminEvery = pick([0, 7, 11]);
+  // each switch has 22 ports for the panels (the last two are its uplinks)
+  const free = switches.map(() => shuffle([...Array(22).keys()].map((i) => i + 1)));
+  panels.forEach((p, k) => {
+    const service = pick([0, 0, 1, 2, 4, 5]);
+    const used = shuffle([...Array(22).keys()].map((i) => i + 1)).slice(0, 16 + Math.floor(random() * 7)).sort((a, b) => a - b);
+    used.forEach((i) => {
+      // any switch but the one next to the panel, as long as it has ports left
+      const others = switches.map((_, j) => j).filter((j) => j !== k && free[j].length > 0 && (allSwitches || Math.abs(j - k) <= 2));
+      const j = others.length ? pick(others) : k;
+      if (!free[j].length) return;
+      out.push({ a: `${p}${i}`, b: `${switches[j]}${free[j].pop()}`, type: 'CU', service: adminEvery && i % adminEvery === 0 ? 3 : service });
+    });
+  });
+  switches.forEach((n, k) => {
+    out.push({ a: `${n}23`, b: `F${k + 1}`, type: 'CU', service: 3 });
+    out.push({ a: `${n}24`, b: `R${k + 1}`, type: 'CU', service: 2 });
+  });
+  servers.forEach((n, k) => {
+    out.push({ a: `F${uplinks + 1 + k}`, b: `${n}1`, type: 'CU', service: 4 });
+    out.push({ a: `R${uplinks + 1 + k}`, b: `${n}2`, type: 'CU', service: 4 });
+  });
+  return out;
 }

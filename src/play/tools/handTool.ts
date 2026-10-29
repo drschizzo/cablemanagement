@@ -191,8 +191,8 @@ export class HandTool implements ToolHandler {
 
   /** a connector let go there stays hooked: in front of the cabinet, not over the crate nor on the floor */
   private canHook(t: THREE.Vector3): boolean {
-    const r = this.ctx.world.rack;
-    return t.z > 0 && Math.abs(t.x) < WALL_X && t.y > r.floorY + 0.06;
+    const rack = this.ctx.world.rack;
+    return t.z > 0 && Math.abs(t.x) < WALL_X && t.y > rack.floorY + 0.06;
   }
 
   /** a physics step: the hand moves towards the pointer, at a bounded speed */
@@ -218,18 +218,18 @@ export class HandTool implements ToolHandler {
     t.add(move);
     ctx.counters.dragged += move.length();
     // keep the hand out of the equipment
-    const r = ctx.world.rack;
-    if (Math.abs(t.x) < COLUMN_X && t.y > -0.02 && t.y < r.topY + 0.02) t.z = Math.max(t.z, 0.006);
+    const rack = ctx.world.rack;
+    if (Math.abs(t.x) < COLUMN_X && t.y > -0.02 && t.y < rack.topY + 0.02) t.z = Math.max(t.z, 0.006);
     // beside the cabinet (over the crate, say), the hand stays in front of its
     // walls rather than being thrown sideways into them
     t.x = THREE.MathUtils.clamp(t.x, -0.75, 0.75);
-    if (!r.open && Math.abs(t.x) > WALL_X - 0.005) t.z = Math.max(t.z, FRONT_Z + 0.01);
+    if (!rack.open && Math.abs(t.x) > WALL_X - 0.005) t.z = Math.max(t.z, FRONT_Z + 0.01);
     const inside = t.z < FRONT_Z;
-    t.y = THREE.MathUtils.clamp(t.y, (inside || r.open ? r.floorY : ROOM_FLOOR(r)) + 0.004, r.topY + 0.1);
+    t.y = THREE.MathUtils.clamp(t.y, (inside || rack.open ? rack.floorY : ROOM_FLOOR(rack)) + 0.004, rack.topY + 0.1);
     t.z = THREE.MathUtils.clamp(t.z, -0.055, 0.7);
     const g = ctx.world.sim.grabTarget;
     g[0] = t.x; g[1] = t.y; g[2] = t.z;
-    this.plumbLine.place(t, c.depthMode, r);
+    this.plumbLine.place(t, c.depthMode, rack);
     if (c.pull && t.distanceTo(c.pull.from) > UNPLUG_PULL) this.pullOut(c);
   }
 

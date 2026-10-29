@@ -14,6 +14,7 @@ import { CinemaPass } from './cinema';
 import { ledClock, ledViewHeight } from './leds';
 import { ledGlows } from './ledGlow';
 import { gpuAdvice, gpuInfo, showNotice, type GpuInfo } from './gpu';
+import { addLights, createAmbientOcclusionPass, createBloomPass, createControls, createReflectionPass, createRenderer } from './stageSetup';
 
 /** colour of the backdrop where the floor fades out (also the fog) */
 const HORIZON = '#1a1e21';
@@ -75,21 +76,13 @@ export class Stage {
   private reflect = true;
 
   constructor(host: HTMLElement) {
-    // no multisampling on the canvas: it only takes the full-screen quad of the last pass
-    // (the scene is multisampled in the reflection pass, see below)
-    // only a hint: on Windows the GPU is chosen for the whole browser (see gpu.ts)
-    this.renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+    this.renderer = createRenderer();
     this.gpu = gpuInfo(this.renderer);
     // (the GPU's own clock, EXT_disjoint_timer_query, would measure the GPU alone; but through ANGLE on
     // Metal it read 33 ms a frame for frames that came at 60 a second)
     try {
       new PerformanceObserver(() => { this.longTask = true; }).observe({ type: 'longtask' });
     } catch { /* no long tasks reported (Safari, Firefox): the busy flag alone */ }
-    this.renderer.shadowMap.enabled = true;
-    // PCF in three r183 samples a rotated Vogel disk of `shadow.radius` (PCFSoft is deprecated into it)
-    this.renderer.shadowMap.type = THREE.PCFShadowMap;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.15;
     host.appendChild(this.renderer.domElement);
 
     // an abstract dark, neutral backdrop (the tone of the panels): the rack is the only subject
@@ -100,99 +93,20 @@ export class Stage {
     this.scene.environmentIntensity = 0.5;
 
     this.camera = new THREE.PerspectiveCamera(32, 1, 0.05, 20);
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.mouseButtons = { LEFT: null as unknown as THREE.MOUSE, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE };
-    this.controls.enableDamping = true;
-    this.controls.dampingFactor = 0.12;
-    this.controls.minAzimuthAngle = -0.75;
-    this.controls.maxAzimuthAngle = 0.75;
-    this.controls.minPolarAngle = 0.9;
-    this.controls.maxPolarAngle = 2.1;
-    this.controls.minDistance = 0.35;
-    this.controls.maxDistance = 9;
-    this.controls.zoomSpeed = 0.8;
-    // arrow keys pan the view too
-    this.controls.listenToKeyEvents(window);
-    this.controls.keyPanSpeed = 14;
+    this.controls = createControls(this.camera, this.renderer.domElement);
     this.controls.addEventListener('start', () => { this.swaying = false; });
 
-    // neutral key, cool fill: the cords carry the only strong colours
-    this.scene.add(new THREE.HemisphereLight('#dde4ea', '#16191b', 0.75));
-    this.key = new THREE.DirectionalLight('#f3f4f5', 2.6);
-    this.key.position.set(0, 2.2, 2.0);
-    this.key.castShadow = true;
-    this.key.shadow.mapSize.set(2048, 2048);
-    this.key.shadow.bias = -0.0004;
-    this.key.shadow.normalBias = 0.01;
-    this.key.shadow.radius = 3;
-    this.scene.add(this.key, this.key.target);
-    const fill = new THREE.DirectionalLight('#a9c4e8', 0.4);
-    fill.position.set(-1.5, 0.5, 1.5);
-    this.scene.add(fill);
+    this.key = addLights(this.scene);
 
     // half float, for the bloom; not multisampled: every pass after the first draws a full-screen
     // quad, and resolving 4 samples a pixel after each of them took a third of the frame for nothing
     const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType });
     this.composer = new EffectComposer(this.renderer, target);
-    // the scene itself (multisampled here, the antialiasing of the whole image), plus soft
-    // screen-space reflections on the floor only
-    this.ssr = new SSRPass({ renderer: this.renderer, scene: this.scene, camera: this.camera, width: 1, height: 1, selects: this.mirrors, groundReflector: null });
-    this.ssr.beautyRenderTarget.samples = 4;
-    // the pass ships a 16-bit depth buffer: the port openings and the unit faces, a few mm apart,
-    // fought in it and flickered from frame to frame
-    this.ssr.beautyRenderTarget.depthTexture!.type = THREE.UnsignedIntType;
-    // half resolution and a short reach (m): a polished-vinyl sheen, not a mirror, at a fraction of the cost
-    this.ssr.resolutionScale = 0.5;
-    this.ssr.opacity = 0.2;
-    this.ssr.maxDistance = 0.5;
-    // (m) how far behind a surface a ray still counts as hitting it: about a cord's radius; at 2 cm
-    // every ray passing under a cord took its colour, and its reflection spread into a flat ribbon
-    this.ssr.thickness = 0.003;
-    this.ssr.blur = true;
-    // the reflections are computed at half resolution and blurred: they bled over the edges of
-    // the cords and units, so the overlay is cut by the full-resolution mask of the floor
-    const copy = this.ssr.copyMaterial, ssr = this.ssr;
-    copy.uniforms.tMask = { value: ssr.metalnessRenderTarget.texture };
-    copy.uniforms.masked = { get value() { return copy.uniforms.tDiffuse.value === ssr.blurRenderTarget2.texture ? 1 : 0; } };
-    copy.fragmentShader = copy.fragmentShader
-      .replace('uniform sampler2D tDiffuse;', 'uniform sampler2D tDiffuse;\nuniform sampler2D tMask;\nuniform float masked;')
-      .replace(/}\s*$/, '\tif ( masked > 0.5 ) gl_FragColor.a *= texture2D( tMask, vUv ).r;\n}');
+    this.ssr = createReflectionPass(this.renderer, this.scene, this.camera, this.mirrors, () => this.reflect);
     this.composer.addPass(this.ssr);
-    // the reflections cut (see QUALITY): the pass still draws the scene, multisampled, and only copies it on;
-    // its own output modes all compute the normals, the reflections and their blur first
-    const reflected = this.ssr.render.bind(this.ssr);
-    const renderPass = (ssr as unknown as { _renderPass(r: THREE.WebGLRenderer, m: THREE.Material, t: THREE.WebGLRenderTarget | null): void })._renderPass.bind(ssr);
-    this.ssr.render = (renderer, writeBuffer, ...rest) => {
-      if (this.reflect) return reflected(renderer, writeBuffer, ...rest);
-      renderer.setRenderTarget(ssr.beautyRenderTarget);
-      renderer.clear();
-      renderer.render(this.scene, this.camera);
-      copy.uniforms.tDiffuse.value = ssr.beautyRenderTarget.texture;
-      copy.blending = THREE.NoBlending;
-      renderPass(renderer, copy, ssr.renderToScreen ? null : writeBuffer);
-    };
-    this.ao = new GTAOPass(this.scene, this.camera, 1, 1);
-    // metres: a short reach darkens the corners, the ports and under the cords;
-    // longer, a tangle of cords goes muddy and loses its colours
-    // 8 samples look the same as 16 once denoised, and save about 0.8 ms at 1800² px (what the bloom costs)
-    this.ao.updateGtaoMaterial({ radius: 0.03, distanceExponent: 1.5, thickness: 0.3, scale: 1, samples: 8 });
-    this.ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 8 });
-    this.ao.blendIntensity = 0.6;
+    this.ao = createAmbientOcclusionPass(this.scene, this.camera);
     this.composer.addPass(this.ao);
-    // the scene is still linear HDR here (half float): the threshold sits above any lit surface (lower,
-    // the white patch panels under the lamp washed out) and below the lights (LED_LUMA in leds.ts),
-    // so that only the LEDs, the light strips and the screens glow
-    // (its bright pass runs at half resolution, where one bilinear read averages each 2×2 block: at a
-    // quarter, it read 4 pixels of 16, and a light of a few pixels flashed in and out as the camera moved)
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), BLOOM.near.strength, BLOOM.near.radius, 3);
-    // a pixel of the scene that is not a number (or infinite, past the half float) on some GPUs:
-    // the blur spread it over its whole mip chain, and the screen flashed black. Its bright pass
-    // reads it as nothing, and caps the rest (far above any light)
-    const high = this.bloom.materialHighPassFilter;
-    high.fragmentShader = high.fragmentShader.replace(
-      'vec4 texel = texture2D( tDiffuse, vUv );',
-      'vec4 texel = texture2D( tDiffuse, vUv );\n\t\t\tif ( any( isnan( texel ) ) || any( isinf( texel ) ) ) texel = vec4( 0.0 );\n\t\t\ttexel = min( texel, vec4( 1000.0 ) );',
-    );
+    this.bloom = createBloomPass(BLOOM.near.strength, BLOOM.near.radius);
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
     this.cinema = new CinemaPass();

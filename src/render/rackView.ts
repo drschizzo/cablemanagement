@@ -127,9 +127,9 @@ export class RackView {
   }
 
   private buildCabinet(): void {
-    const r = this.rack;
-    const top = r.topY, bot = r.floorY;
-    if (r.open) {
+    const rack = this.rack;
+    const top = rack.topY, bot = rack.floorY;
+    if (rack.open) {
       this.buildOpenFrame();
       return;
     }
@@ -180,7 +180,7 @@ export class RackView {
     if (this.opts.roomFloor !== false) {
       this.group.add(buildRoom(bot - 0.03));
       // contact shadows of the cabinet and the crate on the room floor
-      const c = r.crate();
+      const c = rack.crate();
       this.group.add(
         softShadow(0.98, 0.86, 0, bot - 0.03, (FRONT_Z - 0.5) / 2, 0.55),
         softShadow(c.max[0] - c.min[0] + 0.07, c.max[2] - c.min[2] + 0.07, (c.min[0] + c.max[0]) / 2, bot - 0.03, (c.min[2] + c.max[2]) / 2, 0.6),
@@ -211,8 +211,8 @@ export class RackView {
 
   /** an open two-post rack: two uprights on feet, a top bar */
   private buildOpenFrame(): void {
-    const r = this.rack;
-    const top = r.topY + 0.03, bot = r.floorY;
+    const rack = this.rack;
+    const top = rack.topY + 0.03, bot = rack.floorY;
     for (const s of [-1, 1]) {
       const rail = this.add(bevelBox(0.022, top - bot, 0.03, 0.002), rackMat.frame, s * (COLUMN_X - 0.002), (top + bot) / 2, -0.012);
       rail.material = railMaterial(top - bot);
@@ -225,9 +225,9 @@ export class RackView {
   }
 
   private buildUnit(k: number, type: FibreType): void {
-    const r = this.rack;
-    const u = r.units[k];
-    const y = r.unitY(k);
+    const rack = this.rack;
+    const u = rack.units[k];
+    const y = rack.unitY(k);
     const w = COLUMN_X * 2 - 0.036;
     // the body of the equipment behind its face: seen from the side, and it gives the rack a solid shadow
     if (u.kind !== 'hmgr' && u.kind !== 'blank') this.add(bevelBox(w - 0.01, U - 0.003, 0.3, 0.002), rackMat.body, 0, y, -0.16).castShadow = true;
@@ -253,7 +253,7 @@ export class RackView {
     }
     // ears with the name of the equipment
     this.labels.push({ k, light: style === 'fibre' });
-    for (const p of r.ports.filter((q) => q.unit === k)) {
+    for (const p of rack.ports.filter((q) => q.unit === k)) {
       if (style === 'copper') {
         // white keystone jack with its RJ45 opening
         this.part(bevelTemplate(0.0135, 0.0135, 0.005, 0.0008), rackMat.keystone, p.x, p.y - 0.002, 0.0025);

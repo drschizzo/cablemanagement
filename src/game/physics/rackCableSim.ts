@@ -368,13 +368,13 @@ export class RackCableSim extends CableSim {
 
   restore(s: SimSnapshot): void {
     super.restore(s);
-    const r = s as RackSnapshot;
-    this.handled.set(r.handled);
-    this.lastHand.set(r.lastHand);
-    this.goal.set(r.goal);
-    this.goalW.set(r.goalW);
+    const snapshot = s as RackSnapshot;
+    this.handled.set(snapshot.handled);
+    this.lastHand.set(snapshot.lastHand);
+    this.goal.set(snapshot.goal);
+    this.goalW.set(snapshot.goalW);
     // connectors on their way into a port go on from where they are
-    for (const q of r.plugs) this.pinEnd(q.i0, q.i1, q.a, q.b);
+    for (const q of snapshot.plugs) this.pinEnd(q.i0, q.i1, q.a, q.b);
   }
 
   /** the hand, where the pointer has taken it this frame */

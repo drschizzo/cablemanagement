@@ -60,16 +60,16 @@ export class SupportsTool implements ToolHandler {
     const ctx = this.ctx;
     const p = ctx.pointer.ray().intersectPlane(new THREE.Plane(new THREE.Vector3(0, 0, 1), -0.03), new THREE.Vector3());
     if (!p) return null;
-    const r = ctx.world.rack;
-    const unit = Math.floor((r.topY - p.y) / U);
-    if (unit < 0 || unit >= r.units.length) return null;
+    const rack = ctx.world.rack;
+    const unit = Math.floor((rack.topY - p.y) / U);
+    if (unit < 0 || unit >= rack.units.length) return null;
     if (Math.abs(p.x) < COLUMN_X) {
-      const existing = r.itemAt('hmgr', unit, 0);
+      const existing = rack.itemAt('hmgr', unit, 0);
       return { kind: 'hmgr', unit, side: 0, existing };
     }
     if (Math.abs(p.x) < COLUMN_X - 0.03 || Math.abs(p.x) > WALL_X + 0.04) return null;
     const side = Math.sign(p.x);
-    const existing = r.itemAt('duct', unit, side);
+    const existing = rack.itemAt('duct', unit, side);
     if (existing) return { kind: existing.kind, unit, side, existing };
     const kind: ItemKind = this.shift || ctx.world.inventory.duct <= 0 ? 'vring' : 'duct';
     return { kind, unit, side };

@@ -22,6 +22,7 @@ src/
     cables.ts       ce qu'est un cordon (Cable, CableEnd, Strap) et ses indices nommés (CableIndex, EndIndex,
                     NodeIndex, CircuitIndex)
     cordShapes.ts   la géométrie d'un cordon hors physique : remis à une autre longueur, enroulé dans le bac
+    vec3.ts         les points (V3) et la géométrie de base : distance, interpolation, longueur d'un chemin
     evaluation.ts   le score : chaque liaison (branchée, rangée, dégagée, étiquetée, sans tension), étoiles,
                     lisibilité, propreté — des fonctions qui lisent un World sans le modifier
     maintenanceWindow.ts  liaisons en production, budget d'interruption, dérivations
@@ -55,7 +56,9 @@ src/
     aisleLayout.ts  où se tiennent les baies : un demi-cercle autour du spectateur
     cableRain.ts    le décor : des câbles qui tombent et s'entassent au milieu de la salle
   render/       LE DESSIN (three.js) de ce que game décrit
-    stage.ts        renderer, caméra, lumières et passes (reflets SSR, occlusion GTAO, bloom, cinema)
+    stage.ts        Stage : la scène, la caméra, le cadrage, le rendu et sa qualité adaptée au GPU
+    stageSetup.ts   la construction du renderer, des contrôles, des lumières et des passes (reflets SSR,
+                    occlusion GTAO, bloom), avec les correctifs qu'elles ont demandés
     rackView.ts     la baie, ses équipements, ports, plaques et voyants
     rackItems.ts    les éléments de rangement, construits à partir de leurs formes de collision (buildItem)
     rackMaterials.ts, rackTextures.ts, shapes.ts, room.ts   matériaux, textures, formes, sol de la salle

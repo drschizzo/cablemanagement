@@ -70,9 +70,30 @@ Pas de nombre magique au milieu d'un calcul : `0.035` y devient `MAX_HAND_STEP`.
 qui agissent sont des verbes** (`plug`, `remember`, `announceCut`) ; celles qui calculent disent ce qu'elles
 rendent (`liveLinksCarriedBy`, `freePortUnderPointer`).
 
-**Les noms courts restent locaux.** `i`, `k`, `c` pour un indice dans une boucle de trois lignes, oui ; dans une
-signature publique, non. Quand un `number` peut être plusieurs choses, un alias de type le dit :
-`plug(c: CableIndex, e: EndIndex, portId: string)` (`game/world.ts`).
+**Les noms courts sont convenus, ou locaux.** Le code de `game/` manipule sans cesse les mêmes objets ; quelques
+abréviations y sont donc **convenues**, et toujours dans ce sens (la baie s'écrit `rack`, un tirage au sort
+`random`, un rectangle de l'écran `rect`) :
+
+| Nom | Ce que c'est | Nom | Ce que c'est |
+|---|---|---|---|
+| `w` | le `World` | `cb` | un `Cable` (`w.cables[c]`) |
+| `ctl` | le `Controller` | `ev` | une `Evaluation` |
+| `c` | l'indice d'un cordon (`CableIndex`) | `ci` | une ligne du plan (`Circuit`) |
+| `e` | un bout de cordon, 0 ou 1 (`EndIndex`) ; dans un écouteur, l'événement | `x` | les positions du solveur, `x[3 * i]` à `x[3 * i + 2]` |
+| `i` | un nœud du solveur (`NodeIndex`) ; ou une ligne du plan (`CircuitIndex`) | `sim` | le solveur (`w.sim`) |
+| `k` | un rang le long d'un cordon, ou dans une liste | `r` | un rayon (d'un cordon, d'un doigt de guide) |
+
+Toute autre abréviation reste locale : `t` dans une boucle de trois lignes, oui ; dans une signature publique,
+non (`formatTime(seconds)`, `aisleLayout(bayCount, seed)`). Et quand un `number` peut être plusieurs choses,
+un alias de type le dit : `plug(c: CableIndex, e: EndIndex, portId: string)` (`game/world.ts`).
+
+**Une fonction se lit d'une traite.** Au-delà d'une soixantaine de lignes, elle fait sans doute plusieurs étapes :
+les nommer. `planRoute` (`game/routeLaying.ts`) faisait 200 lignes ; c'est maintenant une suite d'appels qui se lit
+comme son commentaire (quel bout reste, le chemin en points, ajusté à la longueur du cordon, la place de chaque
+nœud, le trajet de chaque nœud), et chaque étape a son nom et sa documentation.
+
+**Ne pas recopier.** Une petite fonction utile partout a une seule maison : `dist`, `lerp` et `polyLength` sont
+dans `game/vec3.ts`, et nulle part ailleurs.
 
 **Ne pas masquer un nom que tout le monde connaît.** Une interface `Pick` cachait le `Pick<>` de TypeScript : elle
 s'appelle `CordPick`.
