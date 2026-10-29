@@ -131,36 +131,28 @@ export function evaluate(w: World): Evaluation {
 export type StarCounts = Pick<Evaluation, 'total' | 'connected' | 'routed' | 'clear' | 'labelled' | 'relaxed' | 'tidy' | 'tautShort' | 'mixedSupports' | 'bundles' | 'bundlesNeeded' | 'downtime' | 'budget'>;
 
 /**
- * How many cords two stars leave to see to: one per eight links, rounded,
- * one at least. A whole number the player can count.
- */
-export function untidyAllowed(total: number): number {
-  return Math.max(1, Math.round(total / 8));
-}
-
-/**
- * One star: every line connected. Two: every cord tidy but a few
- * (untidyAllowed). Three: every cord tidy and labelled, each family down its
- * own ducts and rings, the bundles the level asks, and the downtime within
- * its budget (past it, an incident: three stars are out of reach).
+ * One star: every line connected. Two: every cord tidy. Three: every cord
+ * tidy and labelled, and what the level asks besides: each family down its
+ * own ducts and rings, the bundles, the downtime within its budget (past it,
+ * an incident: three stars are out of reach). A level that asks nothing
+ * besides gives three stars as soon as everything is tidy.
  */
 export function starsOf(c: StarCounts): number {
   const n = c.total;
   if (c.connected < n) return 0;
-  if (c.tidy === n && c.labelled === n && c.mixedSupports === 0 && c.bundles >= c.bundlesNeeded && c.downtime <= c.budget) return 3;
-  return n - c.tidy <= untidyAllowed(n) ? 2 : 1;
+  if (c.tidy < n) return 1;
+  return c.labelled === n && c.mixedSupports === 0 && c.bundles >= c.bundlesNeeded && c.downtime <= c.budget ? 3 : 2;
 }
 
 /**
  * One thing the next star still needs: `count` more links (or bundles) to
- * see to; for cords not tidy yet, how many the star leaves aside, how many
- * of them hang, cross a port, are strained (a cord may do several), and how
- * much the tautest lacks (m, 0: none taut); an incident: three stars are out
- * of reach.
+ * see to; for cords not tidy yet, how many of them hang, cross a port, are
+ * strained (a cord may do several), and how much the tautest lacks (m, 0:
+ * none taut); an incident: three stars are out of reach.
  */
 export type StarNeed =
   | { kind: 'connect' | 'label' | 'separate' | 'bundle'; count: number }
-  | { kind: 'tidy'; count: number; allowed: number; hanging: number; front: number; strained: number; short: number }
+  | { kind: 'tidy'; count: number; hanging: number; front: number; strained: number; short: number }
   | { kind: 'incident' };
 
 /** the next star, and what it still needs (null: three stars already) */
@@ -168,16 +160,14 @@ export function nextStar(c: StarCounts): { stars: number; needs: StarNeed[] } | 
   const stars = starsOf(c);
   if (stars === 3) return null;
   const n = c.total;
-  const short = (kind: 'connect' | 'label' | 'bundle', have: number, want: number): StarNeed[] => (want > have ? [{ kind, count: want - have }] : []);
-  /** `count` more cords to make tidy, and what is wrong with the untidy ones */
-  const tidy = (count: number, allowed = 0): StarNeed[] => (count > 0
-    ? [{ kind: 'tidy', count, allowed, hanging: n - c.routed, front: n - c.clear, strained: n - c.relaxed, short: c.tautShort }]
-    : []);
-  const separate: StarNeed[] = c.mixedSupports > 0 ? [{ kind: 'separate', count: c.mixedSupports }] : [];
-  if (stars === 0) return { stars: 1, needs: short('connect', c.connected, n) };
-  if (stars === 1) return { stars: 2, needs: tidy(n - c.tidy - untidyAllowed(n), untidyAllowed(n)) };
-  const incident: StarNeed[] = c.downtime > c.budget ? [{ kind: 'incident' }] : [];
-  return { stars: 3, needs: [...incident, ...tidy(n - c.tidy), ...short('label', c.labelled, n), ...separate, ...short('bundle', c.bundles, c.bundlesNeeded)] };
+  if (stars === 0) return { stars: 1, needs: [{ kind: 'connect', count: n - c.connected }] };
+  if (stars === 1) return { stars: 2, needs: [{ kind: 'tidy', count: n - c.tidy, hanging: n - c.routed, front: n - c.clear, strained: n - c.relaxed, short: c.tautShort }] };
+  const needs: StarNeed[] = [];
+  if (c.downtime > c.budget) needs.push({ kind: 'incident' });
+  if (c.labelled < n) needs.push({ kind: 'label', count: n - c.labelled });
+  if (c.mixedSupports > 0) needs.push({ kind: 'separate', count: c.mixedSupports });
+  if (c.bundles < c.bundlesNeeded) needs.push({ kind: 'bundle', count: c.bundlesNeeded - c.bundles });
+  return { stars: 3, needs };
 }
 
 /** ports of the lines connected as planned (their LEDs are green); without an evaluation, from the plugs alone */

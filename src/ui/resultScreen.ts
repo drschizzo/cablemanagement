@@ -53,7 +53,7 @@ function resultLines(level: LevelDef, ev: Evaluation, result: LevelResult, chall
   const of = (n: number) => `${n}/${ev.total}`;
   const lines = [
     tr({ fr: `Liaisons branchées : ${of(ev.connected)}`, en: `Links plugged: ${of(ev.connected)}` }),
-    tr({ fr: `Câbles propres : ${of(ev.tidy)}`, en: `Tidy cords: ${of(ev.tidy)}` }),
+    tr({ fr: `Câbles rangés : ${of(ev.tidy)}`, en: `Tidy cords: ${of(ev.tidy)}` }),
   ];
   const bundles = `${Math.min(ev.bundles, ev.bundlesNeeded)}/${ev.bundlesNeeded}`;
   if (ev.bundlesNeeded) lines.push(tr({ fr: `Faisceaux : ${bundles}`, en: `Bundles: ${bundles}` }));

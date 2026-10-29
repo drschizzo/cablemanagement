@@ -30,7 +30,7 @@ export class StockMenu {
       const stock = ctl.world.cordStock;
       const bypasses = ctl.world.maintenance.bypassesLeft;
       const head = tr({
-        fr: 'Stock de cordons neufs<span>Ils arrivent enroulés dans le bac, au sol. Remplacer un cordon branché coupe sa liaison le temps de changer.</span>',
+        fr: 'Stock de câbles neufs<span>Ils arrivent enroulés dans le bac, au sol. Remplacer un câble branché coupe sa liaison le temps de changer.</span>',
         en: 'Stock of new cords<span>They arrive coiled in the crate, on the floor. Swapping a plugged cord cuts its link while it is changed.</span>',
       });
       const foot = tr({ fr: `Dérivations : <b>${bypasses}</b><span>Cliquez le ⚡ d'une liaison du plan.</span>`, en: `Bypasses: <b>${bypasses}</b><span>Click the ⚡ of a link on the schedule.</span>` });
@@ -45,7 +45,7 @@ export class StockMenu {
         b.onclick = () => {
           const length = Number(b.dataset.l);
           if (!ctl.newCord(type, length, CORD_KINDS[type].takesServiceColor ? color : undefined)) return;
-          this.onTaken(tr({ fr: `Cordon ${cordTypeName(type)} de ${formatLength(length)} dans le bac.`, en: `A ${formatLength(length)} ${cordTypeName(type)} cord in the crate.` }));
+          this.onTaken(tr({ fr: `Câble ${cordTypeName(type)} de ${formatLength(length)} dans le bac.`, en: `A ${formatLength(length)} ${cordTypeName(type)} cord in the crate.` }));
           render();
         };
       });

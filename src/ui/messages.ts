@@ -30,13 +30,13 @@ export function toastText(t: Toast): string {
         : tr({ fr: `Liaison ${names} coupée, mais sa dérivation porte le trafic.`, en: `Link ${names} cut, but its bypass carries the traffic.` });
     }
     case 'nothingToUndo': return tr({ fr: 'Rien à annuler.', en: 'Nothing to undo.' });
-    case 'undoBlocked': return tr({ fr: 'Impossible d\'annuler au-delà d\'un changement de cordon.', en: 'Cannot undo past a change of cord.' });
+    case 'undoBlocked': return tr({ fr: 'Impossible d\'annuler au-delà d\'un changement de câble.', en: 'Cannot undo past a change of cord.' });
     case 'undone': return tr({ fr: 'Annulé.', en: 'Undone.' });
-    case 'noCordOfThatLength': return tr({ fr: 'Plus aucun cordon de cette longueur en stock.', en: 'No cord of that length left in stock.' });
+    case 'noCordOfThatLength': return tr({ fr: 'Plus aucun câble de cette longueur en stock.', en: 'No cord of that length left in stock.' });
     case 'noBypassLeft': return tr({ fr: 'Plus de dérivation en stock.', en: 'No bypass left in stock.' });
     case 'notInProduction': return tr({ fr: 'Seules les liaisons en production (⚡) se dérivent.', en: 'Only links in production (⚡) can be bypassed.' });
     case 'portsTaken': return tr({ fr: 'Ses deux ports sont occupés.', en: 'Both its ports are taken.' });
-    case 'noLooseEnd': return tr({ fr: 'Aucun cordon de ce type n\'a de bout libre : débranchez celui qui est sur un mauvais port.', en: 'No cord of that type has a loose end: unplug the one in a wrong port.' });
+    case 'noLooseEnd': return tr({ fr: 'Aucun câble de ce type n\'a de bout libre : débranchez celui qui est sur un mauvais port.', en: 'No cord of that type has a loose end: unplug the one in a wrong port.' });
     case 'itemLocked': return tr({ fr: 'Cet élément est fixé à la baie.', en: 'This item is fixed to the cabinet.' });
     case 'noSupportLeft': return tr({ fr: `Plus de ${supplyName(t.item)} en stock.`, en: `No ${supplyName(t.item)} left in stock.` });
     case 'cannotPlace': return t.item === 'fingerManager'
@@ -44,7 +44,7 @@ export function toastText(t: Toast): string {
       : tr({ fr: 'Emplacement occupé.', en: 'That slot is taken.' });
     case 'routeRefused': return routeErrorText(t.error);
     case 'routeSlack': return tr({
-      fr: `Ce cordon a ${Math.round(t.extra * 100)} cm de trop pour ce chemin : le mou est rangé dans les guides, ou pend (un cordon plus court se prend au Stock).`,
+      fr: `Ce câble a ${Math.round(t.extra * 100)} cm de trop pour ce chemin : le mou est rangé dans les guides, ou pend (un câble plus court se prend au Stock).`,
       en: `This cord is ${Math.round(t.extra * 100)} cm too long for this route: the slack is stowed in the guides, or hangs (a shorter cord comes from the Stock).`,
     });
     case 'connectorHeldBack': return tr({ fr: 'Le connecteur n\'a pas pu atteindre le port : quelque chose le retient.', en: 'The connector could not reach the port: something holds it back.' });
@@ -53,8 +53,8 @@ export function toastText(t: Toast): string {
     case 'velcroNeedsTwo': return tr({ fr: 'Le trait doit croiser au moins deux câbles qui passent côte à côte.', en: 'The line must cross at least two cords running side by side.' });
     case 'incident': return incidentText(t.incident);
     case 'cordTested': return t.faulty
-      ? tr({ fr: 'Testeur : rien ne passe. Ce cordon est coupé à l\'intérieur, remplacez-le.', en: 'Tester: nothing gets through. This cord is broken inside, swap it.' })
-      : tr({ fr: 'Testeur : le signal passe, ce cordon est bon.', en: 'Tester: the signal gets through, this cord is sound.' });
+      ? tr({ fr: 'Testeur : rien ne passe. Ce câble est coupé à l\'intérieur, remplacez-le.', en: 'Tester: nothing gets through. This cord is broken inside, swap it.' })
+      : tr({ fr: 'Testeur : le signal passe, ce câble est bon.', en: 'Tester: the signal gets through, this cord is sound.' });
     default: return assertNever(t);
   }
 }
@@ -75,7 +75,7 @@ function routeErrorText(e: RouteError): string {
     case 'noGuide': return tr({ fr: 'Tracez le chemin par-dessus les guides (ou jusqu\'à un port).', en: 'Draw the route over the guides (or up to a port).' });
     case 'portTaken': return tr({ fr: `Le port ${e.port} est déjà occupé.`, en: `Port ${e.port} is taken already.` });
     case 'tooShort': return tr({
-      fr: `Ce cordon est trop court pour ce chemin : il manque ${Math.ceil(e.missing * 100)} cm (un cordon plus long se prend au Stock).`,
+      fr: `Ce câble est trop court pour ce chemin : il manque ${Math.ceil(e.missing * 100)} cm (un câble plus long se prend au Stock).`,
       en: `This cord is too short for this route: ${Math.ceil(e.missing * 100)} cm are missing (a longer cord comes from the Stock).`,
     });
     default: return assertNever(e);
@@ -130,7 +130,7 @@ function hoverNoteText(n: HoverNote): string {
     case 'heldByOtherHand': return tr({ fr: 'Tenu par l\'autre main — E : la lâcher', en: 'Held by the other hand — E: let go' });
     case 'stacked': return tr({ fr: `${n.count} câbles sous le curseur — Tab : suivant`, en: `${n.count} cords under the pointer — Tab: next` });
     case 'cycling': return tr({ fr: `${n.index + 1}/${n.count} sous le curseur — Tab : suivant`, en: `${n.index + 1}/${n.count} under the pointer — Tab: next` });
-    case 'testIt': return tr({ fr: 'clic : tester ce cordon', en: 'click: test this cord' });
+    case 'testIt': return tr({ fr: 'clic : tester ce câble', en: 'click: test this cord' });
     case 'tested': return n.faulty
       ? `<span class="warn">${tr({ fr: 'testé : coupé à l\'intérieur', en: 'tested: broken inside' })}</span>`
       : `<span class="ok">${tr({ fr: 'testé : bon', en: 'tested: sound' })}</span>`;
@@ -154,16 +154,15 @@ export function starNeedText(need: StarNeed): string {
       const n = need.count;
       const why = [
         need.hanging ? tr({ fr: `${need.hanging} ${plural(need.hanging, 'pend', 'pendent')} hors des supports`, en: `${need.hanging} ${plural(need.hanging, 'hangs', 'hang')} out of the supports` }) : '',
-        need.front ? tr({ fr: `${need.front} devant un port`, en: `${need.front} across a port` }) : '',
+        need.front ? tr({ fr: `${need.front} ${plural(need.front, 'passe', 'passent')} devant un port`, en: `${need.front} across a port` }) : '',
         need.strained ? tr({ fr: `${need.strained} ${plural(need.strained, 'tendu ou plié', 'tendus ou pliés')}`, en: `${need.strained} taut or kinked` })
-          + (need.short > 0 ? tr({ fr: ` (il manque jusqu'à ${Math.ceil(need.short * 100)} cm : un cordon plus long au Stock)`, en: ` (up to ${Math.ceil(need.short * 100)} cm short: a longer cord from the Stock)` }) : '') : '',
+          + (need.short > 0 ? tr({ fr: ` (il manque jusqu'à ${Math.ceil(need.short * 100)} cm : prenez un câble plus long au Stock)`, en: ` (up to ${Math.ceil(need.short * 100)} cm short: a longer cord from the Stock)` }) : '') : '',
       ].filter(Boolean).join(', ');
-      const aside = need.allowed ? tr({ fr: ` (cette étoile en laisse ${need.allowed} de côté)`, en: ` (this star leaves ${need.allowed} aside)` }) : '';
-      return tr({ fr: `Rendez propres encore ${n} ${plural(n, 'câble', 'câbles')}`, en: `Make ${n} more ${plural(n, 'cord', 'cords')} tidy` }) + aside + (why ? ` : ${why}` : '');
+      return tr({ fr: `Encore ${n} ${plural(n, 'câble', 'câbles')} à ranger`, en: `${n} more ${plural(n, 'cord', 'cords')} to tidy` }) + (why ? ` : ${why}` : '');
     }
-    case 'label': { const n = need.count; return tr({ fr: `${n} ${plural(n, 'cordon sans', 'cordons sans')} l'étiquette de son service`, en: `${n} ${plural(n, 'cord without', 'cords without')} their service's label` }); }
-    case 'separate': { const n = need.count; return tr({ fr: `${n} ${plural(n, 'goulotte ou anneau mêle', 'goulottes ou anneaux mêlent')} fibre, cuivre ou courant`, en: `${n} ${plural(n, 'duct or ring mixes', 'ducts or rings mix')} fibre, copper or power` }); }
-    case 'bundle': { const n = need.count; return tr({ fr: `Serrez encore ${n} ${plural(n, 'faisceau', 'faisceaux')} (un velcro sur 3 câbles ou plus d'un même service)`, en: `Strap ${n} more ${plural(n, 'bundle', 'bundles')} (a velcro round 3 cords or more of one service)` }); }
+    case 'label': { const n = need.count; return tr({ fr: `${n} ${plural(n, 'câble sans l\'étiquette de son service', 'câbles sans l\'étiquette de leur service')}`, en: `${n} ${plural(n, 'cord without', 'cords without')} their service's label` }); }
+    case 'separate': { const n = need.count; return tr({ fr: `Séparez fibre, cuivre et courant : ${n} ${plural(n, 'goulotte ou anneau les mêle', 'goulottes ou anneaux les mêlent')}`, en: `Keep fibre, copper and power apart: ${n} ${plural(n, 'duct or ring mixes', 'ducts or rings mix')} them` }); }
+    case 'bundle': { const n = need.count; return tr({ fr: `Serrez encore ${n} ${plural(n, 'faisceau', 'faisceaux')} : un velcro autour de 3 câbles ou plus du même service`, en: `Strap ${n} more ${plural(n, 'bundle', 'bundles')} (a velcro round 3 cords or more of one service)` }); }
     case 'incident': return tr({ fr: 'Budget d\'interruption dépassé : ★★★ n\'est plus possible', en: 'Downtime budget overrun: ★★★ is out of reach' });
     default: return assertNever(need);
   }

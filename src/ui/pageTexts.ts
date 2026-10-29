@@ -37,12 +37,12 @@ export const PAGE_TEXTS: Record<string, Words> = {
   'side.next': { fr: 'Étoile suivante', en: 'Next star' },
   'side.details': { fr: 'Le détail, liaison par liaison', en: 'The details, link by link' },
   'side.legend': {
-    fr: '<i class="s-conn ok"></i>branchée <i class="s-tidy ok"></i>propre : dans les supports, hors de la façade, ni tendue ni pliée',
+    fr: '<i class="s-conn ok"></i>branchée <i class="s-tidy ok"></i>câble rangé : dans les supports, devant aucun port, ni tendu ni plié',
     en: '<i class="s-conn ok"></i>plugged <i class="s-tidy ok"></i>tidy: in the supports, off the front, neither taut nor kinked',
   },
   'side.connections': { fr: 'Branchées', en: 'Plugged' },
-  'side.tidy': { fr: 'Propres', en: 'Tidy' },
-  'side.tidyTip': { fr: 'Un câble propre ne pend nulle part de plus de 20 cm hors des supports, ne passe devant aucun autre port, n\'est ni tendu ni plié', en: 'A tidy cord hangs nowhere more than 20 cm out of the supports, crosses no other port, is neither taut nor kinked' },
+  'side.tidy': { fr: 'Rangés', en: 'Tidy' },
+  'side.tidyTip': { fr: 'Un câble rangé ne pend nulle part de plus de 20 cm hors des supports, ne passe devant aucun autre port, n\'est ni tendu ni plié', en: 'A tidy cord hangs nowhere more than 20 cm out of the supports, crosses no other port, is neither taut nor kinked' },
   'side.bundles': { fr: 'Faisceaux', en: 'Bundles' },
   'side.bundlesTip': { fr: 'Velcros serrant au moins 3 câbles, dans un guide-câbles ou une goulotte', en: 'Velcros round 3 cords or more, in a cable manager or a duct' },
   'prep.text': {

@@ -84,7 +84,7 @@ function knownTips(level: LevelDef, met: Met, services: number[]): string[] {
 /** the gestures challenge of a puzzle (told before the first try, so it can be aimed at) */
 function challengeTip(level: LevelDef): string | null {
   if (level.kind === 'puzzle') return tr({
-    fr: `<b>Défi gestes</b> : ★★★ en ${level.moves} geste${level.moves > 1 ? 's' : ''} au plus. Compte pour un geste : brancher ou débrancher un connecteur (à la main ou au bout d'un chemin), poser ou retirer un support ou un velcro, jeter un cordon au bac, en prendre un au Stock. Ranger (déplacer un câble, poser un chemin, peigner) est gratuit.`,
+    fr: `<b>Défi gestes</b> : ★★★ en ${level.moves} geste${level.moves > 1 ? 's' : ''} au plus. Compte pour un geste : brancher ou débrancher un connecteur (à la main ou au bout d'un chemin), poser ou retirer un support ou un velcro, jeter un câble au bac, en prendre un au Stock. Ranger (déplacer un câble, poser un chemin, peigner) est gratuit.`,
     en: `<b>Gestures challenge</b>: ★★★ in ${level.moves} gesture${level.moves > 1 ? 's' : ''} at most. A gesture is: plugging or unplugging a connector (by hand or at the end of a route), placing or taking off a support or a velcro, throwing a cord into the crate, taking one from the Stock. Tidying (moving a cord, laying a route, combing) is free.`,
   });
   return null;
@@ -109,6 +109,6 @@ function splitMet(level: LevelDef): Met {
 function materialLine(level: LevelDef): string {
   const parts = ALL_SUPPLIES.filter((s) => level.inventory[s]).map((s) => countOf(s, level.inventory[s]!));
   const cords = (level.cords ?? []).map(([length, count]) => `${count} × ${formatLength(length)}`);
-  if (cords.length) parts.push(tr({ fr: `cordons neufs : ${cords.join(', ')}`, en: `new cords: ${cords.join(', ')}` }));
+  if (cords.length) parts.push(tr({ fr: `câbles neufs : ${cords.join(', ')}`, en: `new cords: ${cords.join(', ')}` }));
   return parts.length ? tr({ fr: `Matériel : ${parts.join(', ')}.`, en: `Supplies: ${parts.join(', ')}.` }) : '';
 }

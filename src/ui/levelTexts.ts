@@ -14,7 +14,7 @@ interface LevelText {
 }
 
 const LENGTH_TIP: Words = {
-  fr: 'Un cordon trop long se remplace par un cordon neuf du Stock (0), qui arrive dans le bac : il faut couper la liaison le temps de changer. Le stock est compté : choisissez bien qui reçoit quel cordon.',
+  fr: 'Un câble trop long se remplace par un câble neuf du Stock (0), qui arrive dans le bac : il faut couper la liaison le temps de changer. Le stock est compté : choisissez bien qui reçoit quel câble.',
   en: 'A cord too long is swapped for a new one from the Stock (0), which arrives in the crate: the link is cut while it is changed. The stock is counted: choose well which link gets which cord.',
 };
 
@@ -23,7 +23,7 @@ const CAMPAIGN: Record<string, Words<LevelText>> = {
   l1: {
     fr: {
       title: 'Premier brassage',
-      brief: 'Quatre cordons pendent devant le switch, et l\'un d\'eux n\'est même plus branché. Rebranchez-le, puis couchez-les dans le guide-câbles pour dégager la façade.',
+      brief: 'Quatre câbles pendent devant le switch, et l\'un d\'eux n\'est même plus branché. Rebranchez-le, puis couchez-les dans le guide-câbles pour dégager la façade.',
       tips: [
         'Glissez un câble avec le clic gauche pour le déplacer. Maj en tirant : le pousser vers le fond ou le ramener vers vous.',
         'Le bout qui pend : saisissez son connecteur et relâchez-le devant le port entouré du plan (survolez sa ligne).',
@@ -45,7 +45,7 @@ const CAMPAIGN: Record<string, Words<LevelText>> = {
   l2: {
     fr: {
       title: 'Le mou',
-      brief: 'Les cordons sont beaucoup trop longs, et l\'un d\'eux est sur le mauvais port. Corrigez-le, puis remplacez les cordons par d\'autres à la bonne longueur, ou rangez le surplus dans une goulotte.',
+      brief: 'Les câbles sont beaucoup trop longs, et l\'un d\'eux est sur le mauvais port. Corrigez-le, puis remplacez les câbles par d\'autres à la bonne longueur, ou rangez le surplus dans une goulotte.',
       tips: [LENGTH_TIP.fr, 'Un guide-câbles de plus se pose avec l\'outil Supports, dans une unité vide.'],
     },
     en: {
@@ -57,7 +57,7 @@ const CAMPAIGN: Record<string, Words<LevelText>> = {
   l3: {
     fr: {
       title: 'Erreurs de brassage',
-      brief: 'Quelqu\'un a brassé à l\'aveugle et a relié le pare-feu au hasard. Suivez le plan : rebranchez chaque cordon sur le bon port, puis rangez.',
+      brief: 'Quelqu\'un a brassé à l\'aveugle et a relié le pare-feu au hasard. Suivez le plan : rebranchez chaque câble sur le bon port, puis rangez.',
       tips: [
         'Saisissez un connecteur et tirez pour le débrancher, relâchez-le devant un port libre pour le brancher. Ctrl+Z annule le dernier geste.',
         'Traceur : survolez un câble et appuyez sur T, il clignote et ses deux ports s\'entourent.',
@@ -78,7 +78,7 @@ const CAMPAIGN: Record<string, Words<LevelText>> = {
     fr: {
       title: 'Les services',
       brief: 'Pare-feu, routeur, switch : trois services passent par cette baie, et ils ne coûtent pas tous pareil quand on les coupe. Commencez par ce qui coûte le moins.',
-      tips: ['Chaque liaison appartient à un service (sa couleur dans le plan). Un cordon branché comme prévu reçoit son étiquette tout seul. Couper la Voix ou l\'Admin coûte bien plus cher que les Données.', LENGTH_TIP.fr],
+      tips: ['Chaque liaison appartient à un service (sa couleur dans le plan). Un câble branché comme prévu reçoit son étiquette tout seul. Couper la Voix ou l\'Admin coûte bien plus cher que les Données.', LENGTH_TIP.fr],
     },
     en: {
       title: 'Services',
@@ -89,7 +89,7 @@ const CAMPAIGN: Record<string, Words<LevelText>> = {
   l5: {
     fr: {
       title: 'Fibre et cuivre',
-      brief: 'Un tiroir optique, un panneau cuivre et deux serveurs. Ne mélangez pas les fibres et le cuivre : chaque cordon a son type.',
+      brief: 'Un tiroir optique, un panneau cuivre et deux serveurs. Ne mélangez pas les fibres et le cuivre : chaque câble a son type.',
     },
     en: {
       title: 'Fibre and copper',
@@ -101,7 +101,7 @@ const CAMPAIGN: Record<string, Words<LevelText>> = {
       title: 'Salle serveurs',
       brief: 'Deux panneaux, deux switchs, le cœur de réseau et les serveurs : 25 liaisons. Déposez ce qui gêne dans le bac, rebrassez proprement, et serrez les câbles en faisceaux.',
       tips: [
-        'Suppr sur un câble : il est débranché et jeté dans le bac. Le Stock (0) fournit des cordons neufs, en nombre limité.',
+        'Suppr sur un câble : il est débranché et jeté dans le bac. Le Stock (0) fournit des câbles neufs, en nombre limité.',
         'Seulement 4 goulottes : choisissez les couloirs où elles servent le plus.',
       ],
     },
@@ -129,7 +129,7 @@ const CAMPAIGN: Record<string, Words<LevelText>> = {
   l8: {
     fr: {
       title: 'Le plat de spaghettis',
-      brief: 'Le local technique que personne n\'ose ouvrir : quatre panneaux, quatre switchs, le pare-feu, le routeur, les serveurs. Les vieux cordons ne portent aucune marque : tracez-les pour savoir où ils vont. Bonne chance.',
+      brief: 'Le local technique que personne n\'ose ouvrir : quatre panneaux, quatre switchs, le pare-feu, le routeur, les serveurs. Les vieux câbles ne portent aucune marque : tracez-les pour savoir où ils vont. Bonne chance.',
     },
     en: {
       title: 'The spaghetti bowl',
@@ -141,7 +141,7 @@ const CAMPAIGN: Record<string, Words<LevelText>> = {
 /** the puzzles, by id: a title and the idea, in a sentence */
 const PUZZLES: Record<string, Words<LevelText>> = {
   p1: {
-    fr: { title: 'Un geste', brief: 'Un cordon, un bout qui pend. Un seul trait de l\'outil Chemin suffit à le ranger et à le brancher.' },
+    fr: { title: 'Un geste', brief: 'Un câble, un bout qui pend. Un seul trait de l\'outil Chemin suffit à le ranger et à le brancher.' },
     en: { title: 'One gesture', brief: 'One cord, one loose end. A single stroke of the Route tool is enough to lay it and plug it.' },
   },
   p2: {
@@ -149,19 +149,19 @@ const PUZZLES: Record<string, Words<LevelText>> = {
     en: { title: 'Two ends', brief: 'Two loose ends, two gestures.' },
   },
   p3: {
-    fr: { title: 'L\'échange', brief: 'Deux cordons branchés chacun sur le port de l\'autre.' },
+    fr: { title: 'L\'échange', brief: 'Deux câbles branchés chacun sur le port de l\'autre.' },
     en: { title: 'The swap', brief: 'Two cords, each plugged into the other\'s port.' },
   },
   p4: {
-    fr: { title: 'Le support manquant', brief: 'Pas de guide-câbles : posez-le d\'abord, puis faites-y passer les cordons.' },
+    fr: { title: 'Le support manquant', brief: 'Pas de guide-câbles : posez-le d\'abord, puis faites-y passer les câbles.' },
     en: { title: 'The missing support', brief: 'No cable manager: place it first, then run the cords through it.' },
   },
   p5: {
-    fr: { title: 'Le faisceau', brief: 'Trois cordons, un seul velcro : un faisceau dans le guide-câbles.' },
+    fr: { title: 'Le faisceau', brief: 'Trois câbles, un seul velcro : un faisceau dans le guide-câbles.' },
     en: { title: 'The bundle', brief: 'Three cords, a single velcro: one bundle in the cable manager.' },
   },
   p6: {
-    fr: { title: 'Le long chemin', brief: 'Le switch est loin sous le panneau : les goulottes descendent les cordons le long des montants.' },
+    fr: { title: 'Le long chemin', brief: 'Le switch est loin sous le panneau : les goulottes descendent les câbles le long des montants.' },
     en: { title: 'The long way', brief: 'The switch is far below the panel: the ducts take the cords down along the posts.' },
   },
   p7: {
@@ -169,7 +169,7 @@ const PUZZLES: Record<string, Words<LevelText>> = {
     en: { title: 'Live wire', brief: 'A link is in the wrong port, in production, on a tiny budget: no time to hesitate.' },
   },
   p8: {
-    fr: { title: 'Dans le noir', brief: 'Des cordons sans marque, deux sur de mauvais ports. Tracez-les (T) avant de les toucher.' },
+    fr: { title: 'Dans le noir', brief: 'Des câbles sans marque, deux sur de mauvais ports. Tracez-les (T) avant de les toucher.' },
     en: { title: 'In the dark', brief: 'Unmarked cords, two in wrong ports. Trace them (T) before touching them.' },
   },
   p9: {
@@ -193,7 +193,7 @@ const TICKETS: Words<LevelText>[] = [
     en: { title: 'First day at Radio Pinède', brief: 'Radio Pinède, 98.4 FM, the voice of the coast since 1986. The technician before you retired, leaving the cabinet like a bowl of noodles and a post-it: “Good luck”. The morning show is on air while you work: every cut is dead air for the listeners. What you tidy today, you will find again on every visit.' },
   },
   {
-    fr: { title: 'La rédaction s\'installe', brief: 'Six journalistes rejoignent la radio pour le journal de midi. Six postes à brasser du panneau A au switch S. Le stagiaire a déjà tiré les cordons « pour aider ». Merci, le stagiaire.' },
+    fr: { title: 'La rédaction s\'installe', brief: 'Six journalistes rejoignent la radio pour le journal de midi. Six postes à brasser du panneau A au switch S. Le stagiaire a déjà tiré les câbles « pour aider ». Merci, le stagiaire.' },
     en: { title: 'The newsroom moves in', brief: 'Six journalists join the station for the midday news. Six desks to patch from panel A to switch S. The intern has already run the cords “to help”. Thank you, intern.' },
   },
   {
@@ -205,11 +205,11 @@ const TICKETS: Words<LevelText>[] = [
     en: { title: 'The sound engineer', brief: 'Two new desks for the sound control room, and Gérard, the sound engineer, who comes to “just grab a cable” from the cabinet while you are at it. He unplugs what he should not, and the switchboard calls: plug it back before the countdown ends.' },
   },
   {
-    fr: { title: 'L\'émission de nuit déménage', brief: 'L\'émission de nuit change de studio : quatre liaisons ne servent plus (leurs cordons sont encore branchés : au bac), quatre nouvelles les remplacent. L\'animateur, lui, est déjà à l\'antenne : ne coupez pas ce qui sert encore.' },
+    fr: { title: 'L\'émission de nuit déménage', brief: 'L\'émission de nuit change de studio : quatre liaisons ne servent plus (leurs câbles sont encore branchés : au bac), quatre nouvelles les remplacent. L\'animateur, lui, est déjà à l\'antenne : ne coupez pas ce qui sert encore.' },
     en: { title: 'The night show moves', brief: 'The night show changes studios: four links are out of service (their cords are still plugged: into the crate), four new ones replace them. The host, for his part, is already on air: do not cut what is still in use.' },
   },
   {
-    fr: { title: 'Un cordon fatigué', brief: 'Deux postes de plus à la rédaction, et une liaison qui reste rouge alors qu\'elle est branchée comme prévu : un vieux cordon, coupé à l\'intérieur. Le Testeur (4) dit lequel ; jetez-le au bac et remplacez-le par un neuf du Stock.' },
+    fr: { title: 'Un câble fatigué', brief: 'Deux postes de plus à la rédaction, et une liaison qui reste rouge alors qu\'elle est branchée comme prévu : un vieux câble, coupé à l\'intérieur. Le Testeur (4) dit lequel ; jetez-le au bac et remplacez-le par un neuf du Stock.' },
     en: { title: 'A tired cord', brief: 'Two more desks in the newsroom, and a link that stays red though it is plugged as planned: an old cord, broken inside. The Tester (4) tells which one; throw it in the crate and replace it with a new one from the Stock.' },
   },
   {
@@ -217,11 +217,11 @@ const TICKETS: Words<LevelText>[] = [
     en: { title: 'The pine forest festival', brief: 'Three days of concerts under the pines, broadcast live. A second panel and its switch are installed under the first for the mobile control room: eight links to make, and switch T to link to the firewall. The sound crew will come after you; leave them a cabinet they can read.' },
   },
   {
-    fr: { title: 'Le studio de la matinale', brief: 'La matinale refait son studio : trois liaisons de plus. Les techniciens du festival ont apprécié votre travail et vous laissent des velcros. Pour ★★★, un faisceau : au moins trois cordons d\'un même service, serrés dans un guide-câbles ou une goulotte.' },
+    fr: { title: 'Le studio de la matinale', brief: 'La matinale refait son studio : trois liaisons de plus. Les techniciens du festival ont apprécié votre travail et vous laissent des velcros. Pour ★★★, un faisceau : au moins trois câbles d\'un même service, serrés dans un guide-câbles ou une goulotte.' },
     en: { title: 'The morning studio', brief: 'The morning show redoes its studio: three links more. The festival crew liked your work and leave you some velcro. For ★★★, a bundle: at least three cords of one service, strapped in a cable manager or a duct.' },
   },
   {
-    fr: { title: 'La nuit de l\'orage', brief: 'La foudre est tombée sur l\'antenne cette nuit. De vieux cordons n\'ont pas survécu, et le standard sonne sans arrêt. Testez, remplacez, rétablissez : la matinale commence dans une heure.' },
+    fr: { title: 'La nuit de l\'orage', brief: 'La foudre est tombée sur l\'antenne cette nuit. De vieux câbles n\'ont pas survécu, et le standard sonne sans arrêt. Testez, remplacez, rétablissez : la matinale commence dans une heure.' },
     en: { title: 'The night of the storm', brief: 'Lightning struck the mast last night. Some old cords did not survive, and the switchboard will not stop ringing. Test, replace, restore: the morning show starts in an hour.' },
   },
   {

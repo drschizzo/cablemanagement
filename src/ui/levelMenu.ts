@@ -33,12 +33,12 @@ export class LevelMenu {
     box.innerHTML = '';
     if (section === 'campaign') {
       $('#menu-title').textContent = tr({ fr: 'Formation', en: 'Training' });
-      $('#menu-sub').textContent = tr({ fr: 'Deux étoiles à un niveau ouvrent le suivant ; la carrière suit le dernier.', en: 'Two stars on a level open the next one; the career follows the last.' });
+      $('#menu-sub').textContent = tr({ fr: 'Un niveau tout rangé (★★) ouvre le suivant ; la carrière suit le dernier.', en: 'A level all tidy (★★) opens the next one; the career follows the last.' });
       box.appendChild(this.tutorialCard());
       LEVELS.forEach((level, i) => box.appendChild(this.levelCard(progress, LEVELS, i)));
     } else if (section === 'big') {
       $('#menu-title').textContent = tr({ fr: 'Grandes baies', en: 'Big cabinets' });
-      $('#menu-sub').textContent = tr({ fr: 'Des salles chargées où toutes les règles se croisent. Deux étoiles à l\'une ouvrent la suivante.', en: 'Busy rooms where every rule meets the others. Two stars on one open the next.' });
+      $('#menu-sub').textContent = tr({ fr: 'Des salles chargées où toutes les règles se croisent. Une salle toute rangée (★★) ouvre la suivante.', en: 'Busy rooms where every rule meets the others. One all tidy (★★) opens the next.' });
       BIG_BAYS.forEach((level, i) => box.appendChild(this.levelCard(progress, BIG_BAYS, i)));
     } else {
       $('#menu-title').textContent = tr({ fr: 'Puzzles express', en: 'Express puzzles' });

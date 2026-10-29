@@ -15,15 +15,14 @@ describe('the stars', () => {
     expect(stars({ connected: 0, routed: 0, clear: 0 })).toBe(0);
   });
 
-  it('two with every cord tidy but one per eight links, not one cord fewer', () => {
-    // 20 lines: 3 cords may be left
-    expect(stars({ tidy: 17 })).toBe(2);
-    expect(stars({ tidy: 16 })).toBe(1);
+  it('one while a single cord is not tidy: two take every cord tidy', () => {
+    expect(stars({ tidy: 19 })).toBe(1);
+    expect(stars({ tidy: 0 })).toBe(1);
   });
 
-  it('three only with everything: each thing missing alone leaves two', () => {
+  it('three only with everything: each thing the level asks besides, missing alone, leaves two', () => {
     expect(stars({})).toBe(3);
-    for (const missing of [{ tidy: 19 }, { labelled: 19 }, { mixedSupports: 1 }, { bundles: 1 }]) {
+    for (const missing of [{ labelled: 19 }, { mixedSupports: 1 }, { bundles: 1 }]) {
       expect([missing, stars(missing)]).toEqual([missing, 2]);
     }
   });
@@ -37,12 +36,6 @@ describe('the stars', () => {
   it('a level with no bundle asked: none needed, more are fine', () => {
     expect(stars({ bundles: 0, bundlesNeeded: 0 })).toBe(3);
     expect(stars({ bundles: 5 })).toBe(3);
-  });
-
-  it('a small cabinet leaves one cord at least', () => {
-    const small = { total: 4, connected: 4, labelled: 4, bundles: 0, bundlesNeeded: 0 };
-    expect(stars({ ...small, tidy: 3 })).toBe(2);
-    expect(stars({ ...small, tidy: 2 })).toBe(1);
   });
 });
 
@@ -68,12 +61,12 @@ describe('what the next star needs', () => {
     expect(next({ connected: 17 })).toEqual({ stars: 1, needs: [{ kind: 'connect', count: 3 }] });
   });
 
-  it('the second: the cords to make tidy beyond those it leaves, and what is wrong with the untidy ones', () => {
-    expect(next({ tidy: 10, routed: 12, clear: 15, relaxed: 18 })).toEqual({ stars: 2, needs: [{ kind: 'tidy', count: 7, allowed: 3, hanging: 8, front: 5, strained: 2, short: 0 }] });
+  it('the second: every cord not tidy yet, and what is wrong with them', () => {
+    expect(next({ tidy: 10, routed: 12, clear: 15, relaxed: 18 })).toEqual({ stars: 2, needs: [{ kind: 'tidy', count: 10, hanging: 8, front: 5, strained: 2, short: 0 }] });
   });
 
-  it('the third: everything left, and the incident first when the budget is overrun', () => {
-    expect(next({ relaxed: 18, tidy: 18, bundles: 1, downtime: 51 })).toEqual({ stars: 3, needs: [{ kind: 'incident' }, { kind: 'tidy', count: 2, allowed: 0, hanging: 0, front: 0, strained: 2, short: 0 }, { kind: 'bundle', count: 1 }] });
+  it('the third: what the level asks besides, the incident first when the budget is overrun', () => {
+    expect(next({ bundles: 1, downtime: 51 })).toEqual({ stars: 3, needs: [{ kind: 'incident' }, { kind: 'bundle', count: 1 }] });
   });
 });
 

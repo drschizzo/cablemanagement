@@ -77,14 +77,14 @@ Chaque niveau fournit un **plan de brassage** : la liste des liaisons à établi
 2. ranger les câbles : aucune portion de plus de 20 cm ne doit pendre hors d'un
    guide-câbles, d'une goulotte ou d'un anneau ;
 3. dégager la façade : aucun câble ne doit passer devant le port d'un autre ;
-4. ne rien tendre ni plier : un cordon bien plus court que son chemin rangé
+4. ne rien tendre ni plier : un câble bien plus court que son chemin dans les supports
    est tendu, une fibre en angle vif est pliée ;
-5. quand la baie mêle fibre, cuivre ou courant, donner à chaque famille son couloir : aucune
-   goulotte ni anneau ne les mêle (les guide-câbles, eux, se partagent) ;
+5. quand la baie mêle fibre, cuivre ou courant, donner à chaque famille son couloir : elles ne
+   partagent ni goulotte ni anneau (les guide-câbles, eux, se partagent) ;
 6. quand le niveau le demande, serrer les câbles en faisceaux : des velcros qui
    tiennent chacun au moins trois câbles d'un même service, dans un guide-câbles ou une goulotte.
 
-Un cordon branché comme prévu reçoit tout seul l'étiquette de son service.
+Un câble branché comme prévu reçoit tout seul l'étiquette de son service.
 
 Le jeu ajoute ses règles une à une : le brief d'un niveau marque **Nouveau** celles qu'on y
 rencontre pour la première fois (la fenêtre de maintenance au niveau 3, la fibre qui se plie au
@@ -93,16 +93,18 @@ niveau 5, le courant au ticket 3 de la carrière, les incidents au ticket 4…),
 | Étoiles | Condition |
 |---|---|
 | ★ | toutes les liaisons du plan sont branchées |
-| ★★ | et tous les câbles propres sauf un par huit liaisons (un au moins) |
-| ★★★ | tous les câbles propres, chaque famille dans son couloir (et serrés en faisceaux si le niveau le demande), dans le budget d'interruption |
+| ★★ | et tous les câbles sont rangés |
+| ★★★ | et les consignes du niveau sont respectées : chaque famille dans son couloir, les faisceaux, le budget d'interruption (un niveau qui n'en a pas donne ★★★ dès que tout est rangé) |
 
-Le joueur suit trois choses : **branché**, **propre**, **en production**. Un câble est propre quand
+Le joueur suit trois choses : **branché**, **rangé**, **en production**. Un câble est rangé quand
 il ne pend nulle part hors des supports, ne passe devant aucun autre port, et n'est ni tendu ni plié
-(règles 2 à 4 ci-dessus). Les étoiles notent la baie ; le budget d'interruption est une contrainte
-pour ★★★. Les puzzles ajoutent un défi : leurs gestes.
+(règles 2 à 4 ci-dessus). Les puzzles ajoutent un défi : leurs gestes.
+
+Le jeu dit toujours *câble* pour l'objet qu'on tient et *liaison* pour une ligne du plan ; un câble est
+*rangé*, une liaison *branchée*. Une règle s'écrit en une phrase, sans exception entre parenthèses.
 
 Une baie validée a droit à son tour d'honneur : la caméra fait le tour de la baie
-pendant que les cordons s'allument de haut en bas, puis l'écran de résultat s'ouvre.
+pendant que les câbles s'allument de haut en bas, puis l'écran de résultat s'ouvre.
 
 L'écran de fin propose de **revoir le chantier en accéléré** : l'état de la baie, relevé quatre fois
 par seconde de jeu, rejoué en cinq secondes par la vue 3D elle-même, à la cadence de l'écran ; de
@@ -111,9 +113,9 @@ ses étoiles.
 
 Il faut **★★** pour ouvrir le niveau suivant : brancher ne suffit pas, il faut
 ranger. Sous le plan, l'**étoile suivante** dit ce qui lui manque encore, en nombre de câbles
-(« Rendez propres encore 2 câbles (cette étoile en laisse 1 de côté) : 1 pend hors des supports,
-1 devant un port ») ; le détail, liaison par liaison (branchée, propre), se déplie dessous. Un câble qui
-devient propre s'allume en vert avec une note. Un cordon tendu dit combien de centimètres il lui
+(« Encore 2 câbles à ranger : 1 pend hors des supports, 1 passe devant un port ») ; le détail,
+liaison par liaison (branchée, rangé), se déplie dessous. Un câble qui
+devient rangé s'allume en vert avec une note. Un câble tendu dit combien de centimètres il lui
 manque.
 
 Chaque niveau de la formation et chaque grande baie cache une **trouvaille** laissée par un technicien précédent (un post-it,
@@ -121,7 +123,7 @@ une clé USB, un canard en plastique…) : sur le plancher de la baie sous les c
 le bac. Un clic la ramasse et raconte son histoire. Le **carnet du technicien** (écran titre, dès la
 première trouvaille ou le niveau 3) les rassemble, et dit où chercher celles qui manquent (deux se
 cachent ailleurs). En prime, il offre des teintes qui s'ouvrent avec les étoiles gagnées : la couleur
-des velcros, la lumière autour de la baie. Rien de ce qui porte un sens (cordons, étiquettes,
+des velcros, la lumière autour de la baie. Rien de ce qui porte un sens (câbles, étiquettes,
 voyants) ne change.
 
 ### Préparation
@@ -164,23 +166,23 @@ budget d'interruption.
 ### Pannes
 
 Certaines baies (les tickets 6 et 9 de la carrière, la partie libre à partir de 16 câbles, la baie du jour du vendredi au dimanche, le
-puzzle P9) cachent un **vieux cordon coupé à l'intérieur** : branché comme prévu, il ne porte rien et
-ses voyants clignotent en rouge. Le **Testeur** (touche 4) dit d'un clic si un cordon laisse passer le
-signal ; un cordon coupé se jette au bac et se remplace par un neuf du Stock.
+puzzle P9) cachent un **vieux câble coupé à l'intérieur** : branché comme prévu, il ne porte rien et
+ses voyants clignotent en rouge. Le **Testeur** (touche 4) dit d'un clic si un câble laisse passer le
+signal ; un câble coupé se jette au bac et se remplace par un neuf du Stock.
 
 ### Courant
 
 Certaines baies (le ticket 3 de la carrière et la suite, le puzzle P10, les baies de l'éditeur qui ont un bandeau électrique) alimentent
-leurs serveurs : des **cordons d'alimentation** noirs, raides, à fiche C13, vont des prises du
+leurs serveurs : des **câbles d'alimentation** noirs, raides, à fiche C13, vont des prises du
 **bandeau électrique** aux deux alimentations de chaque serveur. Couper l'une, c'est couper le service
 du serveur. Pour ★★★, le courant descend par son propre couloir, à part des données.
 
-### Cordons neufs
+### Câbles neufs
 
-Le **Stock** fournit des cordons neufs, comptés par longueur ; ils arrivent
-enroulés dans le bac au pied de la baie. Remplacer un cordon branché, c'est le
+Le **Stock** fournit des câbles neufs, comptés par longueur ; ils arrivent
+enroulés dans le bac au pied de la baie. Remplacer un câble branché, c'est le
 débrancher, donc couper sa liaison le temps de changer : savoir qui reçoit quel
-cordon, et dans quel ordre, fait partie du plan.
+câble, et dans quel ordre, fait partie du plan.
 
 ### Formation et grandes baies
 
@@ -201,15 +203,15 @@ deux étoiles à l'une ouvrent la suivante :
 |---|---|---|
 | 1 | Salle serveurs | 20 · faisceaux, goulottes comptées |
 | 2 | Migration | 24 · budget d'interruption serré |
-| 3 | Le plat de spaghettis | 28 · cordons sans marque, à tracer |
+| 3 | Le plat de spaghettis | 28 · câbles sans marque, à tracer |
 
 ### Carrière
 
 La **carrière**, qui suit la formation, est le cœur du jeu. Elle suit une petite radio locale, Radio Pinède (98.4 FM), sur douze tickets (une liaison coupée, c'est un
 blanc à l'antenne). C'est **toujours la
-même baie** : chaque ticket repart de la baie telle que vous l'avez laissée au précédent (cordons,
+même baie** : chaque ticket repart de la baie telle que vous l'avez laissée au précédent (câbles,
 supports, velcros), installe du matériel dans les unités gardées libres (un serveur et son bandeau
-électrique, un deuxième panneau et son switch), crée des liaisons, en retire d'autres dont il faut jeter les cordons. Ce qui a
+électrique, un deuxième panneau et son switch), crée des liaisons, en retire d'autres dont il faut jeter les câbles. Ce qui a
 été bien rangé le reste ; ce qui a été bâclé vous attend. Le dernier ticket est le direct des 40 ans de la radio.
 
 Chaque ticket apporte au plus une chose nouvelle, et la carrière reprend ainsi tout ce que la
@@ -221,8 +223,8 @@ formation n'a pas montré :
 | 2 | La rédaction s'installe | six liaisons de plus |
 | 3 | Quarante ans de cassettes | un serveur et son courant |
 | 4 | Le collègue du son | les incidents : un collègue débranche, le standard appelle |
-| 5 | L'émission de nuit déménage | des liaisons retirées, leurs cordons au bac |
-| 6 | Un cordon fatigué | une panne, le Testeur |
+| 5 | L'émission de nuit déménage | des liaisons retirées, leurs câbles au bac |
+| 6 | Un câble fatigué | une panne, le Testeur |
 | 7 | Le festival de la pinède | un deuxième panneau et son switch |
 | 8 | Le studio de la matinale | un premier faisceau |
 | 9 | La nuit de l'orage | pannes et incidents ensemble |
@@ -231,8 +233,8 @@ formation n'a pas montré :
 | 12 | Le direct des 40 ans | rien de neuf : tout impeccable, quatre faisceaux |
 
 Les **puzzles express** (P1 à P10, tous ouverts) sont de toutes petites baies, une idée chacune : un
-bout libre, deux cordons échangés, un support à poser, un faisceau, des goulottes, une liaison en
-production sur un budget minuscule, des cordons sans marque, un cordon coupé, un serveur et son courant. Leur défi : ★★★ en peu de **gestes**,
+bout libre, deux câbles échangés, un support à poser, un faisceau, des goulottes, une liaison en
+production sur un budget minuscule, des câbles sans marque, un câble coupé, un serveur et son courant. Leur défi : ★★★ en peu de **gestes**,
 comptés en haut de l'écran : seuls les actes de technicien comptent (brancher, débrancher, poser ou
 retirer un support ou un velcro, le bac, le Stock) ; ranger un câble, à la main, au Chemin ou au
 peigne, est gratuit. Chaque défi laisse un ou deux gestes de marge sur le minimum.
@@ -288,9 +290,9 @@ qu'on peut faire en le tenant. L'aide complète d'un outil reste sur son bouton.
 | C | Chemin | tracer le chemin d'un câble à travers les guides ; il y est posé, et branché au port où finit le trait |
 | 2 | Supports | dans une unité vide, un guide-câbles ; dans un couloir latéral, une goulotte (**Maj** : un anneau) ; sur un support posé, le retirer |
 | 3 | Velcro | tracer un trait en travers des câbles à serrer : le velcro serre ceux que le trait croise, s'ils sont côte à côte ; un clic sur un velcro l'enlève |
-| 4 | Testeur | dit si un cordon porte le signal (seulement là où des cordons sont coupés) |
+| 4 | Testeur | dit si un câble porte le signal (seulement là où des câbles sont coupés) |
 | 5 | Peigne | glissé le long d'un faisceau, il range côte à côte les câbles qu'il traverse, dans leur ordre, et défait leurs croisements |
-| 0 | Stock | prend un cordon neuf (type, couleur, longueur), livré dans le bac |
+| 0 | Stock | prend un câble neuf (type, couleur, longueur), livré dans le bac |
 
 ### Ranger un câble
 
@@ -304,11 +306,11 @@ trait (par une extrémité du guide-câbles plutôt qu'entre ses doigts, par exe
 - Il entre dans chaque élément par son ouverture : par l'avant du guide-câbles,
   au-dessus des pointes des doigts ; par la fente avant de la goulotte ; par le
   coin ouvert de l'anneau, qui forme un crochet.
-- Un cordon trop court pour tout le trait en coupe les détours hors des guides ;
+- Un câble trop court pour tout le trait en coupe les détours hors des guides ;
   il n'est refusé, avec la longueur qui manque, que s'il ne peut pas passer par
   les guides.
 - La longueur en trop est rangée en boucle dans la goulotte, sinon repliée dans
-  le guide-câbles ; ce qui ne tient pas pend. Un cordon plus court se prend au
+  le guide-câbles ; ce qui ne tient pas pend. Un câble plus court se prend au
   Stock.
 
 Tout peut aussi se faire à la main, câble par câble. Après un geste, le câble
@@ -360,7 +362,7 @@ Pour une première lecture, suivre le chemin d'un clic :
 2. `src/play/controller.ts` fait tourner la boucle (`tick`) et confie la souris
    à `src/play/inputRouter.ts` ;
 3. le clic arrive à un outil, par exemple `src/play/tools/handTool.ts`, qui
-   saisit le cordon et le branche avec `World.plug` (`src/game/world.ts`) ;
+   saisit le câble et le branche avec `World.plug` (`src/game/world.ts`) ;
 4. `src/game/evaluation.ts` note la baie, et le contrôleur prévient
    l'interface par un événement : `src/ui/hud.ts` le passe au panneau du plan
    (`src/ui/schedulePanel.ts`).
@@ -372,11 +374,11 @@ Pour une première lecture, suivre le chemin d'un clic :
 | `npm run dev` | serveur de développement |
 | `npm run build` | version de production dans `dist/` (publiée sur GitHub Pages à chaque push sur `main`) |
 | `npm run check` | lint (dont le sens des dépendances), types et tests, à lancer avant de pousser |
-| `npm run solvable` | vérifie que chaque niveau peut atteindre 3 étoiles avec son seul inventaire ; puis, depuis l'emmêlement de départ, combien de liaisons en production il faudra débrancher, ce que cela coûte face au budget d'interruption, et les cordons neufs qu'il faut |
+| `npm run solvable` | vérifie que chaque niveau peut atteindre 3 étoiles avec son seul inventaire ; puis, depuis l'emmêlement de départ, combien de liaisons en production il faudra débrancher, ce que cela coûte face au budget d'interruption, et les câbles neufs qu'il faut |
 | `npm run bench` | performance et stabilité du moteur physique |
 | `npm run precision` | gestes délicats : entrer dans une goulotte, coucher un câble dans un guide-câbles… |
 | `npm run levels` | coût et mise au repos de chaque niveau |
-| `npm run free` | une partie libre de 48 câbles : mise au repos, puis un cordon tiré à travers les autres |
+| `npm run free` | une partie libre de 48 câbles : mise au repos, puis un câble tiré à travers les autres |
 | `npm run pinch` | un coude pincé garde-t-il sa forme une fois lâché |
 | `npm run route` | des câbles posés le long d'un chemin tracé : branchés, dans leurs guides, au repos, sans traverser la baie, et ce qu'ils déplacent des autres câbles |
 | `npm run fold` | un câble couché dans un guide-câbles : le guide prend-il une boucle lointaine du même câble |

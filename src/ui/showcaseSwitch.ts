@@ -44,7 +44,7 @@ export class ShowcaseSwitch {
     const what = bays > 1 ? tr({ fr: `${bays} baies`, en: `${bays} cabinets` }) : tr({ fr: 'Une baie', en: 'A cabinet' });
     $('#sc-caption').textContent =
       state === 'before' ? tr({ fr: `${what}, et le technicien précédent est passé par là.`, en: `${what}, and the previous technician has been through.` })
-      : state === 'after' ? tr({ fr: 'Chaque cordon à sa longueur, rangé, étiqueté.', en: 'Every cord its own length, routed, labelled.' })
+      : state === 'after' ? tr({ fr: 'Chaque câble à sa longueur, rangé, étiqueté.', en: 'Every cord its own length, routed, labelled.' })
       : to === 'after' ? tr({ fr: 'Rangement en cours…', en: 'Tidying up…' }) : tr({ fr: 'Retour au désordre…', en: 'Back to the mess…' });
   }
 }

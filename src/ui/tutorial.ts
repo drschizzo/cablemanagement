@@ -81,9 +81,9 @@ const BASICS: Step[] = [
     spot: (ctl) => ({ min: [-WALL_X, ctl.world.rack.floorY, -0.06], max: [WALL_X, ctl.world.rack.topY, 0.09] }),
   },
   {
-    title: { fr: 'Les cordons', en: 'The patch cords' },
+    title: { fr: 'Les câbles', en: 'The patch cords' },
     text: {
-      fr: 'Ce sont des cordons cuivre terminés par des prises RJ45. Chaque liaison appartient à un <b>service</b> (sa couleur dans le plan), et son cordon en porte la couleur. Survolez un câble : sa bulle dit où il est branché.',
+      fr: 'Ce sont des câbles cuivre terminés par des prises RJ45. Chaque liaison appartient à un <b>service</b> (sa couleur dans le plan), et son câble en porte la couleur. Survolez un câble : sa bulle dit où il est branché.',
       en: 'These are copper cords ending in RJ45 plugs. Each link belongs to a <b>service</b> (its colour on the schedule), and its cord wears that colour. Hover a cord: its tooltip says where it is plugged.',
     },
     task: { fr: 'Survolez deux câbles différents', en: 'Hover two different cords' },
@@ -109,17 +109,27 @@ const BASICS: Step[] = [
     done: (ctl) => ctl.counters.orbited >= 1,
   },
   {
-    title: { fr: 'Débrancher, rebrancher', en: 'Unplug, plug back' },
+    title: { fr: 'Débrancher', en: 'Unplug' },
     text: {
-      fr: 'Une liaison est sur le mauvais port : son voyant est orange et ses deux bons ports sont entourés. Saisissez le <b>connecteur</b> et <b>tirez-le de quelques centimètres</b> : il se débranche. Amenez-le devant le port entouré : le port se surligne en jaune quand il est à portée, et le connecteur s\'y enfiche quand vous le relâchez. Lâché ailleurs, en l\'air, il reste <b>accroché</b> là (une lueur ambrée), sauf si vous tenez <b>Alt</b> en le lâchant : il pend alors librement ; un bout tombé dans le tas brille en bleu. Un clic sur une ligne du plan sort son bout libre du tas et l\'accroche sous son port. Une erreur ? <b>Ctrl+Z</b>.',
-      en: 'A link is in the wrong port: its LED is orange and its two right ports are circled. Grab the <b>connector</b> and <b>pull it a few centimetres</b>: it comes out. Bring it in front of the circled port: the port lights yellow when it is within reach, and the connector goes in when you let go. Let go elsewhere, in the air, it stays <b>hooked</b> there (an amber glow), unless you hold <b>Alt</b> while letting go: it then hangs freely; an end fallen in the heap glows blue. A click on a line of the schedule brings its loose end out of the heap and hooks it under its port. A mistake? <b>Ctrl+Z</b>.',
+      fr: 'Un câble est sur le mauvais port : son voyant est <span class="warn">orange</span>. Saisissez son <b>connecteur</b> et <b>tirez-le de quelques centimètres</b> : il se débranche.',
+      en: 'A cord is in the wrong port: its LED is <span class="warn">orange</span>. Grab its <b>connector</b> and <b>pull it a few centimetres</b>: it comes out.',
     },
-    task: { fr: 'Branchez toutes les liaisons du plan', en: 'Plug every link of the schedule' },
+    task: { fr: 'Débranchez le câble du mauvais port', en: 'Unplug the cord from the wrong port' },
     tool: 'hand',
     enter: (ctl) => {
       const ev = ctl.world.evaluate();
       ctl.focus(ev.circuits.findIndex((s) => !s.connected));
     },
+    done: (ctl) => ctl.counters.unplugged >= 1 || ctl.world.evaluate().circuits.every((s) => s.connected),
+  },
+  {
+    title: { fr: 'Rebrancher', en: 'Plug back' },
+    text: {
+      fr: 'Ses deux bons ports sont entourés. Amenez le connecteur devant l\'un d\'eux : le port s\'allume en jaune. Relâchez, il s\'y branche. Une erreur ? <b>Ctrl+Z</b>.',
+      en: 'Its two right ports are circled. Bring the connector in front of one: the port lights yellow. Let go, it goes in. A mistake? <b>Ctrl+Z</b>.',
+    },
+    task: { fr: 'Branchez toutes les liaisons du plan', en: 'Plug every link of the schedule' },
+    tool: 'hand',
     done: (ctl) => ctl.world.evaluate().circuits.every((s) => s.connected),
   },
   {
@@ -136,8 +146,8 @@ const BASICS: Step[] = [
   {
     title: { fr: 'Les étoiles', en: 'The stars' },
     text: {
-      fr: 'Sous le plan, l\'<b>étoile suivante</b> dit ce qui lui manque. ★ : toutes les liaisons branchées comme prévu. Un câble est <b>propre</b> quand il ne pend pas hors des supports, ne passe devant aucun autre port et n\'est pas tendu. ★★ : tous propres sauf quelques-uns (l\'étoile suivante dit combien) ; il en faut <b>deux</b> pour ouvrir le niveau suivant. ★★★ : tous propres. Chaque niveau ajoute ensuite une règle à la fois, annoncée dans son brief. À vous !',
-      en: 'Under the schedule, the <b>next star</b> says what it still needs. ★: every link plugged as planned. A cord is <b>tidy</b> when it does not hang out of the supports, crosses no other port and is not taut. ★★: all tidy but a few (the next star says how many); it takes <b>two</b> to open the next level. ★★★: all tidy. Each level then adds one rule at a time, told in its brief. Over to you!',
+      fr: '★ : tout est branché. ★★ : tout est rangé, et le niveau suivant s\'ouvre. ★★★ : en plus, la consigne du niveau est respectée. Un câble est <b>rangé</b> quand il ne pend pas hors des supports, ne passe devant aucun port et n\'est pas tendu. Sous le plan, l\'<b>étoile suivante</b> dit ce qui manque. À vous !',
+      en: '★: everything is plugged. ★★: everything is tidy, and the next level opens. ★★★: besides, the level\'s instruction is met. A cord is <b>tidy</b> when it does not hang out of the supports, crosses no port and is not taut. Under the schedule, the <b>next star</b> says what is missing. Over to you!',
     },
   },
 ];

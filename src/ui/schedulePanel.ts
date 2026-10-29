@@ -80,7 +80,7 @@ export class SchedulePanel {
     validate.disabled = ev.stars < 1;
     validate.classList.toggle('ready', ev.stars >= 1);
     validate.textContent = ev.stars < 1 ? tr({ fr: `Branchez les ${n} liaisons du plan`, en: `Plug the ${n} links of the schedule` })
-      : ev.stars < UNLOCK_STARS ? tr({ fr: 'Valider (rangez pour ★★)', en: 'Sign off (tidy up for ★★)' })
+      : ev.stars < UNLOCK_STARS ? tr({ fr: 'Valider · ★ (tout ranger pour ★★)', en: 'Sign off · ★ (tidy everything for ★★)' })
       : tr({ fr: 'Valider la baie', en: 'Sign off the cabinet' });
   }
 
@@ -113,14 +113,14 @@ export class SchedulePanel {
 
 /** a link's tidy check: tidy, or what its cord still lacks */
 function tidyTip(s: CircuitStatus, strain: Strain | null): string {
-  if (!s.connected) return tr({ fr: 'Propre : pas encore branchée', en: 'Tidy: not plugged yet' });
-  if (s.tidy) return tr({ fr: 'Propre', en: 'Tidy' });
+  if (!s.connected) return tr({ fr: 'Pas encore branchée', en: 'Not plugged yet' });
+  if (s.tidy) return tr({ fr: 'Câble rangé', en: 'Cord tidy' });
   const why = [
     s.routed ? '' : tr({ fr: 'pend hors des supports', en: 'hangs out of the supports' }),
     s.clear ? '' : tr({ fr: 'passe devant un port', en: 'crosses a port' }),
     strain ? strainLabel(strain) : '',
   ].filter(Boolean).join(', ');
-  return tr({ fr: `Pas encore propre : ${why}`, en: `Not tidy yet: ${why}` });
+  return tr({ fr: `Câble pas encore rangé : ${why}`, en: `Cord not tidy yet: ${why}` });
 }
 
 /** a score bar: `value` of `total` */

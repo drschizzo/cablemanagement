@@ -60,7 +60,7 @@ export const TOOL_BUTTONS: Record<Tool, ToolButton> = {
   tester: {
     key: '4', name: { fr: 'Testeur', en: 'Tester' }, icon: iconTester(), showsStock: false,
     help: {
-      fr: 'Cliquez un câble : le testeur envoie un signal d\'un bout à l\'autre et dit s\'il arrive. Un cordon coupé à l\'intérieur ne portera rien, même branché comme prévu : remplacez-le par un cordon neuf.',
+      fr: 'Cliquez un câble : le testeur envoie un signal d\'un bout à l\'autre et dit s\'il arrive. Un câble coupé à l\'intérieur ne portera rien, même branché comme prévu : remplacez-le par un câble neuf.',
       en: 'Click a cord: the tester sends a signal from one end to the other and says whether it gets through. A cord broken inside carries nothing, even plugged as planned: swap it for a new one.',
     },
   },
@@ -110,7 +110,7 @@ export class Toolbar {
       button.querySelector('.name')!.textContent = tr(t.name);
     }
     const stock = $('.tool.stock');
-    stock.title = tr({ fr: `Stock (${STOCK_KEY}) — prendre un cordon neuf, il arrive dans le bac au sol`, en: `Stock (${STOCK_KEY}) — take a new cord, it arrives in the crate on the floor` });
+    stock.title = tr({ fr: `Stock (${STOCK_KEY}) — prendre un câble neuf, il arrive dans le bac au sol`, en: `Stock (${STOCK_KEY}) — take a new cord, it arrives in the crate on the floor` });
     stock.querySelector('.name')!.textContent = tr({ fr: 'Stock', en: 'Stock' });
   }
 

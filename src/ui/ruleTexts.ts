@@ -18,16 +18,16 @@ export function ruleTip(rule: Rule, level: LevelDef, services: number[]): string
   switch (rule) {
     case 'leds': return tr({ fr: 'Les voyants des ports : vert = liaison conforme au plan, orange = mauvais port, rouge = liaison coupée.', en: 'The port LEDs: green = link as planned, orange = wrong port, red = link down.' });
     case 'taut': return tr({
-      fr: '<b>Ni tendu</b> : un cordon bien plus court que son chemin rangé n\'est pas propre.',
+      fr: '<b>Ni tendu</b> : un câble bien plus court que son chemin dans les supports est tendu, donc pas rangé.',
       en: '<b>Not taut</b>: a cord much shorter than its tidy route is not tidy.',
     });
     case 'kinked': return tr({
-      fr: '<b>Ni plié</b> : une fibre pliée en angle vif n\'est pas propre. Laissez-lui des courbes douces.',
+      fr: '<b>Ni plié</b> : une fibre pliée en angle vif n\'est pas rangée. Laissez-lui des courbes douces.',
       en: '<b>Not kinked</b>: a fibre bent at a sharp angle is not tidy. Give it gentle curves.',
     });
     case 'separation': return tr({
-      fr: '<b>Chaque famille son couloir</b> : pour ★★★, aucune goulotte ni anneau ne mêle la fibre, le cuivre et le courant. Descendez-les par des côtés différents ; les guide-câbles, eux, se partagent.',
-      en: '<b>Each family its own channel</b>: for ★★★, no duct nor ring mixes fibre, copper and power. Take them down different sides; the cable managers can be shared.',
+      fr: '<b>Chaque famille son couloir</b> : pour ★★★, fibre, cuivre et courant ne partagent ni goulotte ni anneau. Les guide-câbles, eux, se partagent.',
+      en: '<b>Each family its own channel</b>: for ★★★, fibre, copper and power share no duct and no ring. The cable managers, though, can be shared.',
     });
     case 'maintenance': return tr({
       fr: `<b>Fenêtre de maintenance</b> : les liaisons ⚡ sont en production. Chaque seconde où l'une est coupée coûte le poids de son service sur un budget de <b>${level.downtime} pts</b> : ${serviceChips(services)}. Budget dépassé : incident, plus de ★★★.`,
@@ -48,18 +48,18 @@ export function ruleTip(rule: Rule, level: LevelDef, services: number[]): string
       });
     }
     case 'blind': return tr({
-      fr: '<b>Cordons sans marque</b> : survolés, ils ne disent pas où ils vont. Le Traceur (T sur un câble) le révèle, et un cordon branché comme prévu se reconnaît tout seul.',
+      fr: '<b>Câbles sans marque</b> : survolés, ils ne disent pas où ils vont. Le Traceur (T sur un câble) le révèle, et un câble branché comme prévu se reconnaît tout seul.',
       en: '<b>Unmarked cords</b>: hovered, they do not say where they go. The Tracer (T over a cord) reveals it, and a cord plugged as planned is recognised by itself.',
     });
     case 'faults': {
       const n = level.faults ?? 0;
       return tr({
-        fr: `<b>Pannes</b> : ${n > 1 ? `${n} vieux cordons sont coupés` : 'un vieux cordon est coupé'} à l'intérieur. Branché comme prévu, il ne porte rien et ses voyants clignotent en rouge. Le <b>Testeur</b> (${toolKey('tester')}) le trouve d'un clic ; remplacez-le par un cordon neuf du Stock.`,
+        fr: `<b>Pannes</b> : ${n > 1 ? `${n} vieux câbles sont coupés` : 'un vieux câble est coupé'} à l'intérieur. Branché comme prévu, il ne porte rien et ses voyants clignotent en rouge. Le <b>Testeur</b> (${toolKey('tester')}) le trouve d'un clic ; remplacez-le par un câble neuf du Stock.`,
         en: `<b>Faults</b>: ${n > 1 ? `${n} old cords are` : 'an old cord is'} broken inside. Plugged as planned, it carries nothing and its LEDs blink red. The <b>Tester</b> (${toolKey('tester')}) finds it in a click; swap it for a new cord from the Stock.`,
       });
     }
     case 'power': return tr({
-      fr: '<b>Courant</b> : les cordons noirs vont du bandeau électrique aux alimentations des serveurs (couper l\'une, c\'est couper le service du serveur).',
+      fr: '<b>Courant</b> : les câbles noirs vont du bandeau électrique aux alimentations des serveurs (couper l\'une, c\'est couper le service du serveur).',
       en: '<b>Power</b>: the black cords run from the power strip to the servers\' supplies (cutting one cuts the server\'s service).',
     });
     case 'incidents': return tr({
