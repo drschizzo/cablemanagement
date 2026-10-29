@@ -1,12 +1,13 @@
 // The side panel: the patching schedule (one row per link, with its four
-// checks), the score bars, the downtime budget, the overall gauge, the
-// readability note, the stars, and the Validate button.
+// checks), the downtime budget, what the next star needs, the readability
+// note once three stars are in sight, the score bars (folded), the stars,
+// and the Validate button.
 
 import type { Controller } from '../play/controller';
 import { CORD_KINDS } from '../game/cordTypes';
 import { SERVICES } from '../game/services';
-import { cleanliness, type Evaluation } from '../game/evaluation';
-import { readabilityText, strainLabel } from './messages';
+import { nextStar, type Evaluation } from '../game/evaluation';
+import { readabilityText, starNeedText, strainLabel } from './messages';
 import { UNLOCK_STARS } from '../game/levels/campaign';
 import type { LevelDef } from '../game/levels/levelDef';
 import { formatCost } from './format';
@@ -15,21 +16,14 @@ import { $ } from '../lib/page';
 import { cordTypeName, serviceName, serviceWhat } from './names';
 import { tr } from './language';
 
-/** how long the overall gauge flashes when it goes up (ms) */
-const GAUGE_FLASH_MS = 700;
-
 export class SchedulePanel {
   private rows: HTMLTableRowElement[] = [];
-  /** the overall gauge as last shown (%), −1 before the first evaluation */
-  private gaugePercent = -1;
-  private gaugeTimer = 0;
 
   /** one row per link of the level's schedule; hovering a row focuses it, a click fetches its loose end */
   build(ctl: Controller, level: LevelDef): void {
     const w = ctl.world;
     const body = $('#plan tbody');
     body.innerHTML = '';
-    this.gaugePercent = -1;
     const windowed = level.downtime !== undefined;
     this.rows = w.circuits.map((c, i) => {
       const row = document.createElement('tr');
@@ -85,7 +79,9 @@ export class SchedulePanel {
     setBar('#bar-relax', ev.relaxed, n);
     setBar('#bar-bundle', Math.min(ev.bundles, ev.bundlesNeeded), ev.bundlesNeeded);
     $('#bar-bundle').style.display = ev.bundlesNeeded ? '' : 'none';
-    this.showGauge(cleanliness(ev));
+    this.showGoal(ev);
+    // the readability tells apart cabinets of three stars: it shows once two are won
+    $('#note').style.display = ev.stars >= 2 ? '' : 'none';
     $('#note').innerHTML = `${tr({ fr: 'Lisibilité', en: 'Readability' })} <b>${ev.readability.note}</b>`;
     $('#note').title = ev.readability.parts.map((p) => { const t = readabilityText(p); return tr({ fr: `${t.name} : ${Math.round(p.value * 100)} % (${t.tip})`, en: `${t.name}: ${Math.round(p.value * 100)}% (${t.tip})` }); }).join('\n');
     $('#live-stars').innerHTML = starsHtml(ev.stars);
@@ -114,18 +110,13 @@ export class SchedulePanel {
       });
   }
 
-  /** the overall gauge (0..1); it flashes when it goes up */
-  private showGauge(value: number): void {
-    const el = $('#clean');
-    const percent = Math.round(value * 100);
-    el.querySelector('b')!.textContent = tr({ fr: `${percent} %`, en: `${percent}%` });
-    (el.querySelector('.fill') as HTMLElement).style.width = `${percent}%`;
-    if (this.gaugePercent >= 0 && percent > this.gaugePercent) {
-      el.classList.add('bump');
-      clearTimeout(this.gaugeTimer);
-      this.gaugeTimer = window.setTimeout(() => el.classList.remove('bump'), GAUGE_FLASH_MS);
-    }
-    this.gaugePercent = percent;
+  /** the next star, and the list of what it still needs */
+  private showGoal(ev: Evaluation): void {
+    const next = nextStar(ev);
+    $('#goal-stars').innerHTML = starsHtml(next?.stars ?? 3);
+    $('#goal-needs').innerHTML = next
+      ? next.needs.map((need) => `<li${need.kind === 'incident' ? ' class="bad"' : ''}>${starNeedText(need)}</li>`).join('')
+      : `<li class="done">${tr({ fr: 'Tout est en ordre : validez la baie.', en: 'All in order: sign off the cabinet.' })}</li>`;
   }
 }
 

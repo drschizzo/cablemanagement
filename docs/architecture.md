@@ -23,7 +23,7 @@ src/
                     NodeIndex, CircuitIndex)
     cordShapes.ts   la géométrie d'un cordon hors physique : remis à une autre longueur, enroulé dans le bac
     evaluation.ts   le score : chaque liaison (branchée, rangée, dégagée, étiquetée, sans tension), étoiles,
-                    lisibilité, propreté — des fonctions qui lisent un World sans le modifier
+                    ce qui manque à l'étoile suivante (nextStar), lisibilité — des fonctions qui lisent un World sans le modifier
     maintenanceWindow.ts  liaisons en production, budget d'interruption, dérivations
     cabinetState.ts une baie telle que le joueur la laisse (équipements, supports, plan, cordons branchés, velcros),
                     pour la retrouver à la visite suivante (la carrière)
@@ -95,7 +95,8 @@ src/
   ui/           L'INTERFACE HTML autour de la baie
     hud.ts          Hud : assemble les panneaux, et les petites choses (aide, bulle, message, chronomètre)
     toolbar.ts      la barre d'outils et ce qui reste en stock ; stockMenu.ts, le stock de cordons neufs
-    schedulePanel.ts le plan de brassage, ses jauges, le budget d'interruption, le bouton Valider
+    schedulePanel.ts le plan de brassage, le budget d'interruption, l'étoile suivante et ce qui lui manque, la
+                    lisibilité (dès ★★), les jauges repliées, le bouton Valider
     levelBrief.ts   le brief d'un niveau (ses conseils, les règles qu'on y rencontre pour la première fois, les autres
                     repliées), puis la préparation ; ruleTexts.ts, les mots de chaque règle
     timelapsePlayer.ts le timelapse lu en boucle, et enregistré en vidéo (MediaRecorder) ; beforeAfterImage.ts, la baie

@@ -32,8 +32,8 @@ export const PAGE_TEXTS: Record<string, Words> = {
   'side.cord': { fr: 'Type', en: 'Type' },
   'side.service': { fr: 'Service', en: 'Service' },
   'side.state': { fr: 'État', en: 'State' },
-  'side.clean': { fr: 'Propreté', en: 'Tidiness' },
-  'side.cleanTip': { fr: 'Propreté de la baie : branchements, rangement, façade, mou', en: 'How tidy the cabinet is: plugging, routing, front, slack' },
+  'side.next': { fr: 'Étoile suivante', en: 'Next star' },
+  'side.details': { fr: 'Le détail, liaison par liaison', en: 'The details, link by link' },
   'side.legend': {
     fr: '<i class="s-conn ok"></i>branchée <i class="s-route ok"></i>rangée <i class="s-clear ok"></i>façade <i class="s-relax ok"></i>sans tension',
     en: '<i class="s-conn ok"></i>plugged <i class="s-route ok"></i>routed <i class="s-clear ok"></i>front <i class="s-relax ok"></i>no strain',

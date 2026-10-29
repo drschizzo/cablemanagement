@@ -1,11 +1,11 @@
 // Every sentence a level says to the player: the toasts, the hints under the
-// cabinet, the tooltip of a cord, the readability criteria, and why a cabinet
-// of the editor cannot be played. The game sends data (play/messages.ts,
+// cabinet, the tooltip of a cord, what the next star needs, the readability
+// criteria, and why a cabinet of the editor cannot be played. The game sends data (play/messages.ts,
 // game/evaluation.ts, game/levels/customLevel.ts); the words live here.
 
 import type { CordInfo, Hint, HoverNote, PhysicsStats, Toast } from '../play/messages';
 import type { RouteError } from '../game/routeLaying';
-import type { ReadabilityPart, Strain } from '../game/evaluation';
+import type { ReadabilityPart, StarNeed, Strain } from '../game/evaluation';
 import type { IncidentEvent } from '../game/incidents';
 import type { CustomError } from '../game/levels/customLevel';
 import { assertNever } from '../lib/assertNever';
@@ -144,6 +144,21 @@ export function statsText(s: PhysicsStats): string {
     fr: `${s.nodes} nœuds · ${s.contacts} contacts · ${s.awake}/${s.cords} câbles actifs · physique ${s.physicsMs.toFixed(1)} ms${s.inWorker ? ' (worker)' : ''}${s.lostSteps ? ` · ${s.lostSteps} pas perdus` : ''}`,
     en: `${s.nodes} nodes · ${s.contacts} contacts · ${s.awake}/${s.cords} cords awake · physics ${s.physicsMs.toFixed(1)} ms${s.inWorker ? ' (worker)' : ''}${s.lostSteps ? ` · ${s.lostSteps} steps lost` : ''}`,
   });
+}
+
+/** one thing the next star needs, as a line of its list */
+export function starNeedText(need: StarNeed): string {
+  const plural = (n: number, one: string, many: string) => n > 1 ? many : one;
+  switch (need.kind) {
+    case 'connect': { const n = need.count; return tr({ fr: `Branchez ${plural(n, 'la dernière liaison', `encore ${n} liaisons`)} du plan`, en: `Plug ${plural(n, 'the last link', `${n} more links`)} of the schedule` }); }
+    case 'route': { const n = need.count; return tr({ fr: `Rangez encore ${n} ${plural(n, 'câble', 'câbles')} dans les supports`, en: `Route ${n} more ${plural(n, 'cord', 'cords')} through the supports` }); }
+    case 'clear': { const n = need.count; return tr({ fr: `Dégagez la façade : encore ${n} ${plural(n, 'câble passe', 'câbles passent')} devant un port`, en: `Clear the front: ${n} more ${plural(n, 'cord crosses', 'cords cross')} a port` }); }
+    case 'label': { const n = need.count; return tr({ fr: `${n} ${plural(n, 'cordon sans', 'cordons sans')} l'étiquette de son service`, en: `${n} ${plural(n, 'cord without', 'cords without')} their service's label` }); }
+    case 'relax': { const n = need.count; return tr({ fr: `${n} ${plural(n, 'cordon tendu ou plié', 'cordons tendus ou pliés')}`, en: `${n} ${plural(n, 'cord taut or kinked', 'cords taut or kinked')}` }); }
+    case 'bundle': { const n = need.count; return tr({ fr: `Serrez encore ${n} ${plural(n, 'faisceau', 'faisceaux')} (un velcro sur 3 câbles ou plus)`, en: `Strap ${n} more ${plural(n, 'bundle', 'bundles')} (a velcro round 3 cords or more)` }); }
+    case 'incident': return tr({ fr: 'Budget d\'interruption dépassé : ★★★ n\'est plus possible', en: 'Downtime budget overrun: ★★★ is out of reach' });
+    default: return assertNever(need);
+  }
 }
 
 /** a readability criterion: its name, and what it asks for */

@@ -1,7 +1,7 @@
 // How tidy a cabinet is: for each line of the schedule, whether its cord is
 // connected, routed through the management, clear of the other ports,
-// labelled and relaxed; the stars; and the readability note, beyond the
-// stars. Reads a World, changes nothing.
+// labelled and relaxed; the stars, and what the next one needs; and the
+// readability note, beyond the stars. Reads a World, changes nothing.
 
 import { SERVICES } from './services';
 import { CORD_KINDS } from './cordTypes';
@@ -131,6 +131,10 @@ export function evaluate(w: World): Evaluation {
 /** the counts the stars are read from */
 export type StarCounts = Pick<Evaluation, 'total' | 'connected' | 'routed' | 'clear' | 'labelled' | 'relaxed' | 'bundles' | 'bundlesNeeded' | 'downtime' | 'budget'>;
 
+/** two stars need this share of the links routed, and this share clear of the ports */
+const TWO_STARS_ROUTED = 0.7;
+const TWO_STARS_CLEAR = 0.85;
+
 /**
  * One star: every line connected. Two: most cords routed and clear of the
  * ports. Three: everything done, and the downtime within its budget (past
@@ -140,15 +144,31 @@ export function starsOf(c: StarCounts): number {
   const n = c.total;
   if (c.connected < n) return 0;
   if (c.routed === n && c.clear === n && c.labelled === n && c.relaxed === n && c.bundles >= c.bundlesNeeded && c.downtime <= c.budget) return 3;
-  return c.routed >= 0.7 * n && c.clear >= 0.85 * n ? 2 : 1;
+  return c.routed >= TWO_STARS_ROUTED * n && c.clear >= TWO_STARS_CLEAR * n ? 2 : 1;
 }
 
-/** how tidy the cabinet is overall (0..1): the four criteria, plugging counting double */
-export function cleanliness(ev: Evaluation): number {
-  const n = Math.max(1, ev.total);
-  const bundles = ev.bundlesNeeded ? [n * Math.min(1, ev.bundles / ev.bundlesNeeded)] : [];
-  const parts = [ev.connected * 2, ev.routed, ev.clear, ev.relaxed, ...bundles];
-  return parts.reduce((a, b) => a + b, 0) / (n * (parts.length + 1));
+/** one thing the next star still needs: `count` more links (or bundles) to see to; an incident: three stars are out of reach */
+export type StarNeed =
+  | { kind: 'connect' | 'route' | 'clear' | 'label' | 'relax' | 'bundle'; count: number }
+  | { kind: 'incident' };
+
+/** the next star, and what it still needs (null: three stars already) */
+export function nextStar(c: StarCounts): { stars: number; needs: StarNeed[] } | null {
+  const stars = starsOf(c);
+  if (stars === 3) return null;
+  const n = c.total;
+  /** `want` of a count (a share of the links rounds up), of which `have` are done */
+  const short = (kind: Exclude<StarNeed['kind'], 'incident'>, have: number, want: number): StarNeed[] => {
+    const count = Math.ceil(want - 1e-9) - have;
+    return count > 0 ? [{ kind, count }] : [];
+  };
+  if (stars === 0) return { stars: 1, needs: short('connect', c.connected, n) };
+  if (stars === 1) return { stars: 2, needs: [...short('route', c.routed, TWO_STARS_ROUTED * n), ...short('clear', c.clear, TWO_STARS_CLEAR * n)] };
+  const incident: StarNeed[] = c.downtime > c.budget ? [{ kind: 'incident' }] : [];
+  return {
+    stars: 3,
+    needs: [...incident, ...short('route', c.routed, n), ...short('clear', c.clear, n), ...short('label', c.labelled, n), ...short('relax', c.relaxed, n), ...short('bundle', c.bundles, c.bundlesNeeded)],
+  };
 }
 
 /** ports of the lines connected as planned (their LEDs are green); without an evaluation, from the plugs alone */

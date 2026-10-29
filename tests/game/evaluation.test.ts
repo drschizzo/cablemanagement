@@ -1,33 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { cleanliness, starsOf, type Evaluation, type StarCounts } from '../../src/game/evaluation';
+import { nextStar, starsOf, type StarCounts } from '../../src/game/evaluation';
 import { World } from '../../src/game/world';
 import { LEVELS } from '../../src/game/levels/campaign';
 import type { LevelDef } from '../../src/game/levels/levelDef';
 import { strapBundles, tidyKit, tidyLayout } from '../../src/game/idealRoutes';
-
-/** an evaluation with only the counts cleanliness reads */
-const counts = (c: Partial<Evaluation>): Evaluation =>
-  ({ total: 4, connected: 0, routed: 0, clear: 0, relaxed: 0, bundles: 0, bundlesNeeded: 0, ...c }) as Evaluation;
-
-describe('cleanliness', () => {
-  it('is 0 for a cabinet where nothing is done, 1 when everything is', () => {
-    expect(cleanliness(counts({}))).toBe(0);
-    expect(cleanliness(counts({ connected: 4, routed: 4, clear: 4, relaxed: 4 }))).toBe(1);
-  });
-
-  it('counts plugging double', () => {
-    // connected alone: 2 parts of 5
-    expect(cleanliness(counts({ connected: 4 }))).toBeCloseTo(2 / 5);
-    // routed alone: 1 part of 5
-    expect(cleanliness(counts({ routed: 4 }))).toBeCloseTo(1 / 5);
-  });
-
-  it('counts the bundles only when the level asks for some', () => {
-    const done = { connected: 4, routed: 4, clear: 4, relaxed: 4 };
-    expect(cleanliness(counts({ ...done, bundlesNeeded: 2, bundles: 1 }))).toBeCloseTo((8 + 4 + 4 + 4 + 2) / 24);
-    expect(cleanliness(counts({ ...done, bundlesNeeded: 2, bundles: 3 }))).toBe(1);
-  });
-});
 
 /** a cabinet of 20 lines with everything done; each test takes one thing away */
 const perfect: StarCounts = { total: 20, connected: 20, routed: 20, clear: 20, labelled: 20, relaxed: 20, bundles: 2, bundlesNeeded: 2, downtime: 50, budget: 50 };
@@ -88,6 +64,26 @@ function finished(lv: LevelDef): World {
   w.circuits.forEach((ci, i) => w.labelCord(i, ci.service));
   return w;
 }
+
+describe('what the next star needs', () => {
+  const next = (c: Partial<StarCounts>) => nextStar({ ...perfect, ...c });
+
+  it('nothing once there are three stars', () => {
+    expect(next({})).toBeNull();
+  });
+
+  it('the first star: the links still to plug', () => {
+    expect(next({ connected: 17 })).toEqual({ stars: 1, needs: [{ kind: 'connect', count: 3 }] });
+  });
+
+  it('the second: the links short of 70 % routed and 85 % clear', () => {
+    expect(next({ routed: 10, clear: 15 })).toEqual({ stars: 2, needs: [{ kind: 'route', count: 4 }, { kind: 'clear', count: 2 }] });
+  });
+
+  it('the third: everything left, and the incident first when the budget is overrun', () => {
+    expect(next({ relaxed: 18, bundles: 1, downtime: 51 })).toEqual({ stars: 3, needs: [{ kind: 'incident' }, { kind: 'relax', count: 2 }, { kind: 'bundle', count: 1 }] });
+  });
+});
 
 describe('a perfect cabinet spoiled by one thing', () => {
   it('one cord without its label: two stars', () => {

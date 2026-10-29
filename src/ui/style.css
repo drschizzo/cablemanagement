@@ -152,13 +152,19 @@ button:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
 .legend i { margin-left: 8px; }
 .legend i:first-child { margin-left: 0; }
 
-#clean { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 4px 10px; margin: 2px 0 10px; }
-#clean > span { font-size: 10.5px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.08em; }
-#clean > b { font: 600 20px var(--mono); font-variant-numeric: tabular-nums; transition: color 0.3s; }
-#clean .bar { grid-column: 1 / -1; height: 6px; background: rgba(255, 255, 255, 0.07); }
-#clean .fill { height: 100%; width: 0; background: var(--accent); transition: width 0.5s cubic-bezier(.2, .8, .2, 1); }
-#clean.bump > b { color: var(--accent); }
-#note { font-size: 10.5px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.08em; margin: -4px 0 10px; cursor: help; }
+#goal { margin: 2px 0 8px; }
+#goal .head { display: flex; justify-content: space-between; align-items: baseline; font-size: 10.5px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.08em; }
+#goal .head .star { font-size: 14px; margin: 0 1px; }
+#goal ul { list-style: none; margin: 6px 0 0; padding: 0; font-size: 12.5px; line-height: 1.45; color: #c9cec9; }
+#goal li { position: relative; padding-left: 16px; margin: 2px 0; }
+#goal li::before { content: '›'; position: absolute; left: 2px; color: var(--accent); }
+#goal li.bad { color: var(--bad); }
+#goal li.done { color: var(--accent); }
+#goal li.done::before { content: '✓'; left: 0; }
+#scores-box summary { cursor: pointer; font: 10.5px var(--mono); color: var(--dim); margin-bottom: 8px; }
+#scores-box summary:hover { color: var(--text); }
+#scores-box .legend { margin-bottom: 8px; }
+#note { font-size: 10.5px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 10px; cursor: help; }
 #note b { font: 600 13px var(--mono); color: var(--text); margin-left: 6px; letter-spacing: 0; }
 #result-note { margin: 10px 0 4px; text-align: left; }
 #result-note .grade { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }

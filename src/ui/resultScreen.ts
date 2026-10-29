@@ -3,7 +3,7 @@
 // and its record, and the way on (next level, back to work, menu, home).
 
 import type { Controller } from '../play/controller';
-import type { Evaluation } from '../game/evaluation';
+import { nextStar, type Evaluation } from '../game/evaluation';
 import { UNLOCK_STARS } from '../game/levels/campaign';
 import type { LevelDef } from '../game/levels/levelDef';
 import { formatMoney, formatTime } from './format';
@@ -11,7 +11,7 @@ import { hide, show, starsHtml } from './dom';
 import { $ } from '../lib/page';
 import type { LevelResult } from './progress';
 import type { Outcome, Pay } from './outcome';
-import { readabilityText } from './messages';
+import { readabilityText, starNeedText } from './messages';
 import { tr } from './language';
 import type { PayItem } from '../game/pay';
 import { assertNever } from '../lib/assertNever';
@@ -68,15 +68,8 @@ function resultLines(level: LevelDef, ev: Evaluation, result: LevelResult, chall
       ? `<span class="bad">${tr({ fr: `Incident : ${spent} pts d'interruption pour un budget de ${ev.budget}.`, en: `Incident: ${spent} pts of downtime for a budget of ${ev.budget}.` })}</span>`
       : tr({ fr: `Interruption : ${spent} pts sur ${ev.budget}.`, en: `Downtime: ${spent} pts of ${ev.budget}.` }));
   }
-  if (ev.stars < 3) {
-    const windowed = level.downtime !== undefined;
-    lines.push(ev.stars === 1
-      ? tr({ fr: '★★ : rangez au moins 70 % des liaisons, façade dégagée à 85 %.', en: '★★: route at least 70% of the links, front 85% clear.' })
-      : tr({
-        fr: '★★★ : tout rangé, façade entièrement dégagée, aucun cordon tendu ni plié' + (ev.bundlesNeeded ? `, ${ev.bundlesNeeded} faisceaux` : '') + (windowed ? ', budget d\'interruption tenu' : '') + '.',
-        en: '★★★: everything routed, the front all clear, no cord taut or kinked' + (ev.bundlesNeeded ? `, ${ev.bundlesNeeded} bundles` : '') + (windowed ? ', the downtime budget kept' : '') + '.',
-      }));
-  }
+  const next = nextStar(ev);
+  if (next) lines.push(`${'★'.repeat(next.stars)} : ${next.needs.map(starNeedText).join(' · ')}.`);
   if (level.kind === 'puzzle') {
     const most = level.moves, done = result.moves;
     lines.push(result.challengeWon

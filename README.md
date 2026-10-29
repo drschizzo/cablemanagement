@@ -93,8 +93,9 @@ de jeu), de l'**enregistrer en vidéo**, et de télécharger l'**image avant / a
 ses étoiles et sa lisibilité.
 
 Il faut **★★** pour ouvrir le niveau suivant : brancher ne suffit pas, il faut
-ranger. La jauge **Propreté** résume les critères ; un câble qui devient propre
-s'allume en vert avec une note. Chaque niveau cache aussi un **défi chrono**
+ranger. Sous le plan, l'**étoile suivante** dit ce qui lui manque encore (« Rangez encore 2 câbles
+dans les supports ») ; le détail des critères, liaison par liaison, se déplie dessous. Un câble qui
+devient propre s'allume en vert avec une note. Chaque niveau cache aussi un **défi chrono**
 (★★★ en moins d'un temps donné) : l'écran de résultat le révèle à la première baie validée, et le
 menu des niveaux le rappelle ensuite.
 
@@ -111,7 +112,7 @@ une clé USB, un canard en plastique…) : sur le plancher de la baie sous les c
 le bac. Un clic la ramasse et raconte son histoire ; l'atelier les rassemble, et dit où chercher
 celles qui manquent (deux se cachent hors de la campagne).
 
-La note de **lisibilité**, sur 100, départage les baies à ★★★ : le mou juste
+La note de **lisibilité**, sur 100 (affichée dès ★★), départage les baies à ★★★ : le mou juste
 (ni tendu, ni plus de 50 cm de trop), chaque cordon cuivre de la couleur de son
 service, des faisceaux d'un seul service, la fibre et le cuivre dans des
 supports séparés, pas de câbles qui se croisent devant la baie. L'écran de fin
