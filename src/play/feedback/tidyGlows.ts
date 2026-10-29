@@ -25,6 +25,11 @@ export class TidyGlows {
     });
   }
 
+  /** the cabinet signed off: every cord glows in a wave, top to bottom (given in that order) */
+  wave(cables: number[], clock: number, seconds: number): void {
+    cables.forEach((c, i) => this.flash(c, clock + 0.6 + (seconds * i) / Math.max(1, cables.length)));
+  }
+
   clear(): void {
     this.until.clear();
   }

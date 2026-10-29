@@ -185,15 +185,22 @@ export class Hud {
     const ctl = this.ctl, level = this.level;
     if (!ctl || !level) return;
     const ev = ctl.world.evaluate();
-    if (ev.stars < 1) return;
-    ctl.pause();
+    if (ev.stars < 1 || document.body.classList.contains('touring')) return;
+    const challengeWonBefore = !!this.progress.challenges[level.id];
     const result = recordResult(this.progress, level, ev.stars, ctl.elapsed, ev.readability.note);
     save('progress', this.progress);
     sfx.win();
-    showResult(ctl, level, ev, result, !!this.progress.challenges[level.id], {
-      start: this.actions.start,
-      showMenu: () => this.showMenu(() => show('#result')),
-      home: this.actions.home,
+    // the panels step aside while the camera flies round the work
+    document.body.classList.add('touring');
+    void ctl.finish().then(() => {
+      document.body.classList.remove('touring');
+      // left meanwhile (the menu, another level): nothing more to show
+      if (this.ctl !== ctl) return;
+      showResult(ctl, level, ev, result, challengeWonBefore, {
+        start: this.actions.start,
+        showMenu: () => this.showMenu(() => show('#result')),
+        home: this.actions.home,
+      });
     });
   }
 

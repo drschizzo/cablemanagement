@@ -79,6 +79,9 @@ Un cordon branché comme prévu reçoit tout seul l'étiquette de son service.
 | ★★ | et au moins 70 % des câbles rangés, 85 % de la façade dégagée |
 | ★★★ | tout est rangé, dégagé, sans tension (et serré en faisceaux si demandé), dans le budget d'interruption |
 
+Une baie validée a droit à son tour d'honneur : la caméra fait le tour de la baie
+pendant que les cordons s'allument de haut en bas, puis l'écran de résultat s'ouvre.
+
 Il faut **★★** pour ouvrir le niveau suivant : brancher ne suffit pas, il faut
 ranger. La jauge **Propreté** résume les critères ; un câble qui devient propre
 s'allume en vert avec une note. Chaque niveau propose aussi un **défi chrono**

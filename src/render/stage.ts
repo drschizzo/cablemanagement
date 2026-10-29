@@ -15,6 +15,7 @@ import { ledGlows } from './ledGlow';
 import { gpuAdvice, gpuInfo, type GpuAdvice, type GpuInfo } from './gpu';
 import { addLights, createControls, createRenderer } from './stageSetup';
 import { AUTO_QUALITY, QUALITY, drawAlike, settingsOf, type QualityChoice, type QualitySettings } from './quality';
+import { CameraTour, type TourPose } from './cameraTour';
 
 /** px from each edge of the screen */
 export interface ScreenMargins {
@@ -58,6 +59,8 @@ export class Stage {
   /** slow sway of the camera around the cabinet (demo), stopped by the player */
   private swaying = false;
   private swayT = 0;
+  /** a flight round the cabinet under way (see tour()) */
+  private touring: CameraTour | null = null;
 
   /** when the last frame was drawn and the player last touched anything (ms), for the pacing (see due()) */
   private lastFrame = -Infinity;
@@ -101,7 +104,7 @@ export class Stage {
 
     this.camera = new THREE.PerspectiveCamera(32, 1, 0.05, 20);
     this.controls = createControls(this.camera, this.renderer.domElement);
-    this.controls.addEventListener('start', () => { this.swaying = false; });
+    this.controls.addEventListener('start', () => { this.swaying = false; this.touring?.end(); });
 
     this.key = addLights(this.scene);
 
@@ -137,7 +140,7 @@ export class Stage {
    * few seconds (the physics takes two steps a frame).
    */
   due(now: number): boolean {
-    const idle = !document.hasFocus() || (!this.swaying && now - this.lastInput > 4000);
+    const idle = !document.hasFocus() || (!this.swaying && !this.touring && now - this.lastInput > 4000);
     // a few ms of slack: the calls of a 60 Hz screen come a little early or late
     if (now - this.lastFrame < (idle ? 1000 / 30 : 1000 / 60) - 4) return false;
     // only the frames in play: not the 30 a second of an idle page, nor the pauses of a hidden page,
@@ -291,10 +294,36 @@ export class Stage {
     this.renderer.domElement.style.cursor = on ? 'grab' : 'default';
   }
 
+  /**
+   * A short flight round the cabinet, back to the front view; it resolves when
+   * it is over, or as soon as the player takes the camera.
+   */
+  tour(seconds: number): Promise<void> {
+    this.touring?.end();
+    this.resetView();
+    return new Promise((resolve) => {
+      const tour = new CameraTour(seconds, () => {
+        if (this.touring === tour) this.touring = null;
+        resolve();
+      });
+      this.touring = tour;
+    });
+  }
+
   sway(on: boolean): void {
     this.swaying = on;
     this.swayT = 0;
     if (!on) this.resetView();
+  }
+
+  /** the camera where the tour puts it, relative to its resting place; home once it is over */
+  private fly(pose: TourPose | null): void {
+    if (!pose) { this.resetView(); return; }
+    const rel = this.home.pos.clone().sub(this.home.target);
+    const side = new THREE.Vector3(0, 1, 0).cross(rel).normalize();
+    rel.applyAxisAngle(side, -pose.pitch).applyAxisAngle(new THREE.Vector3(0, 1, 0), pose.yaw).multiplyScalar(pose.zoom);
+    this.camera.position.copy(this.home.target).add(rel);
+    this.controls.target.copy(this.home.target);
   }
 
   private fitBloom(): void {
@@ -324,6 +353,7 @@ export class Stage {
       this.camera.position.copy(this.home.target).add(rel);
       this.controls.target.copy(this.home.target);
     }
+    if (this.touring) this.fly(this.touring.advance(dt));
     this.controls.update();
     // same array, refilled: the pass keeps a reference to it
     this.mirrors.length = 0;

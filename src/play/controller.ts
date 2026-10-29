@@ -48,6 +48,8 @@ export type Phase = 'playing' | 'paused' | 'preparing';
 const MAX_STEPS_PER_FRAME = 2;
 /** how often the cabinet is scored (s) */
 const EVAL_PERIOD = 0.4;
+/** the flight round a signed-off cabinet (s) */
+const FINISH_TOUR_S = 3.2;
 
 export class Controller implements PlayContext, InputCommands {
   world: World;
@@ -201,6 +203,20 @@ export class Controller implements PlayContext, InputCommands {
   startWork(): void {
     this.currentPhase = 'playing';
     this.lastFrameAt = performance.now();
+  }
+
+  /**
+   * The cabinet is signed off: the clock stops, every cord glows in a wave
+   * down the cabinet while the camera flies round it. Resolves back at the
+   * front, or as soon as the player takes the camera.
+   */
+  finish(): Promise<void> {
+    this.pause();
+    const w = this.world;
+    const height = (c: number) => Math.max(...w.cables[c].ends.map((e) => (e.port ? w.rack.port(e.port).y : -Infinity)));
+    const order = w.cables.map((_, c) => c).sort((a, b) => height(b) - height(a));
+    this.tidyGlows.wave(order, this.clock, FINISH_TOUR_S * 0.6);
+    return this.stage.tour(FINISH_TOUR_S);
   }
 
   /** an image of the cabinet from the front, without the overlays (the before/after of the result screen) */
