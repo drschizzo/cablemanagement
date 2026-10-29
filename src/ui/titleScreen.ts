@@ -1,9 +1,10 @@
-// The buttons of the title screen, and its progress bar while the aisle
-// falls.
+// The buttons of the title screen (the workshop's once it is open), and its
+// progress bar while the aisle falls.
 
 import { LEVELS, TUTORIAL } from '../game/levels/campaign';
 import type { LevelDef } from '../game/levels/levelDef';
 import { load } from './storage';
+import { isWorkshopOpen } from './shop';
 import { $ } from '../lib/page';
 import { levelTitle } from './levelTexts';
 import { dayKey } from '../game/levels/dailyLevel';
@@ -52,6 +53,7 @@ export class TitleScreen {
       : next && next !== LEVELS[0] ? tr({ fr: `Continuer · ${levelTitle(next)} →`, en: `Continue · ${levelTitle(next)} →` })
       : tr({ fr: 'Jouer →', en: 'Play →' });
     play.title = this.firstVisit() ? tr({ fr: 'Le tutoriel, puis le niveau 1', en: 'The tutorial, then level 1' }) : '';
+    byId('title-shop').style.display = isWorkshopOpen(load('progress'), load('career'), load('wallet')) ? '' : 'none';
     this.refreshDaily();
   }
 

@@ -1,9 +1,10 @@
 // The shop: looks to buy with what the jobs paid, one equipped per slot (the
-// velcros, the light round the cabinet). Its catalogue, and the rules of
-// buying and equipping: pure functions over the saved wallet (storage.ts).
+// velcros, the light round the cabinet). Its catalogue, when it opens, and
+// the rules of buying and equipping: pure functions over the saved wallet
+// (storage.ts).
 
 import { DEFAULT_LOOK, type Look } from '../render/look';
-import type { Wallet } from './storage';
+import type { Career, Progress, Wallet } from './storage';
 import type { Words } from './language';
 
 export type LookSlot = keyof Look;
@@ -31,6 +32,18 @@ export const SHOP: LookItem[] = [
   { id: 'accent-violet', slot: 'accent', name: { fr: 'Violette', en: 'Violet' }, price: 160, value: '#b48cff' },
   { id: 'accent-red', slot: 'accent', name: { fr: 'Alerte rouge', en: 'Red alert' }, price: 250, value: '#ff5a5a' },
 ];
+
+/** the campaign level whose sign-off opens the workshop (its pay shows from then on) */
+const WORKSHOP_OPENS_AT = 'l3';
+
+/**
+ * The workshop, and the pay that feeds it, show once the player knows the
+ * trade: past the first levels of the campaign, or a ticket of the career
+ * done. The jobs before pay all the same: the wallet is full when it opens.
+ */
+export function isWorkshopOpen(progress: Progress, career: Career, wallet: Wallet): boolean {
+  return (progress.stars[WORKSHOP_OPENS_AT] ?? 0) > 0 || career.done > 0 || wallet.owned.length > 0;
+}
 
 /** the slots, in the order of the shop */
 export const LOOK_SLOTS = Object.keys(DEFAULT_LOOK) as LookSlot[];

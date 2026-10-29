@@ -108,7 +108,8 @@ src/
     settingsPanel.ts les paramètres : qualité de l'image (auto, préréglages, détails) et son
     progress.ts     la progression du joueur : meilleur score, défi réussi (chrono de la campagne, gestes d'un puzzle),
                     niveau ouvert, niveau suivant, règles déjà rencontrées (fonctions pures)
-    shop.ts         l'atelier : son catalogue, acheter et porter un look (fonctions pures) ; shopPanel.ts, son panneau
+    shop.ts         l'atelier : son catalogue, quand il ouvre, acheter et porter un look (fonctions pures) ;
+                    shopPanel.ts, son panneau
     wallet.ts       le salaire encaissé (un niveau rejoué ne paie que ce qu'il ajoute à sa meilleure fiche de paie) et les
                     trouvailles gardées
     editorPanel.ts  l'éditeur de baie : la baie en élévation (une bande par unité, aux couleurs de son équipement), la

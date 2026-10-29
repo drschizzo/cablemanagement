@@ -14,6 +14,7 @@ import { levelAfter, recordResult, withRulesOf, type LevelResult } from './progr
 import { recordDaily, shareText, streak } from './daily';
 import { currentTicket, recordTicket } from './career';
 import { earn } from './wallet';
+import { isWorkshopOpen } from './shop';
 import { load, save, type Progress } from './storage';
 import { customLink } from './share';
 import { tr } from './language';
@@ -32,7 +33,7 @@ export interface Outcome {
   challengeWonBefore: boolean;
   /** the result as lines to share (the cabinet of the day), or null */
   share: string | null;
-  /** what the job paid, or null (the tutorial, the zen) */
+  /** what the job paid, or null (the tutorial, the zen, or a job before the workshop opens: paid, but not shown) */
   pay: Pay | null;
   /** the level after this one, and whether it is open yet (null: none) */
   next: { level: LevelDef; open: boolean } | null;
@@ -92,11 +93,11 @@ function unrecorded(ev: Evaluation, time: number, moves: number): Outcome {
   return { result: { stars: ev.stars, time, moves, note: ev.readability.note, previousStars: 0, previousNote: undefined, challengeWon: false }, challengeWonBefore: false, share: null, pay: null, next: null };
 }
 
-/** the job's payslip, paid into the wallet (a replay pays only what it adds) */
-function pay(level: LevelDef, ev: Evaluation, challengeWon: boolean): Pay {
+/** the job's payslip, paid into the wallet (a replay pays only what it adds); shown once the workshop is open */
+function pay(level: LevelDef, ev: Evaluation, challengeWon: boolean): Pay | null {
   const wallet = load('wallet');
   const slip = payslip(ev, challengeWon);
   const paid = earn(wallet, level.id, slip);
   save('wallet', wallet);
-  return { slip, paid, coins: wallet.coins };
+  return isWorkshopOpen(load('progress'), load('career'), wallet) ? { slip, paid, coins: wallet.coins } : null;
 }

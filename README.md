@@ -101,7 +101,9 @@ menu des niveaux le rappelle ensuite.
 
 Chaque chantier validé (sauf le tutoriel et le zen) est **payé** : un montant par liaison branchée,
 plus pour une baie rangée, une prime de lisibilité, une autre pour le budget d'interruption épargné,
-et le défi réussi. Rejouer un niveau ne paie que ce qu'on ajoute à sa meilleure fiche de paie.
+et le défi réussi. Rejouer un niveau ne paie que ce qu'on ajoute à sa meilleure fiche de paie. La
+fiche de paie et l'atelier n'apparaissent qu'après le niveau 3 (ou un ticket de la carrière) : les
+chantiers d'avant sont payés quand même, le salaire attend.
 
 L'**atelier** (écran titre) dépense ce salaire en touches personnelles : la couleur des velcros, la
 teinte de la lumière autour de la baie. Rien de ce qui porte un sens (cordons, étiquettes, voyants)
