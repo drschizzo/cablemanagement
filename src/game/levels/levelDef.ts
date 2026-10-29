@@ -1,5 +1,6 @@
 // What a level is made of: its rack, its cords and their starting mess, the
-// player's stock, and the rules it plays by.
+// player's stock, and the rules it plays by. Its words (title, brief, tips)
+// are the interface's (ui/levelTexts.ts).
 
 import type { Rack, UnitSpec } from '../rack';
 import type { ItemKind, Stock } from '../supplies';
@@ -9,8 +10,6 @@ import type { FibreType } from '../cordTypes';
 /** what every level has, whatever its kind */
 interface LevelBase {
   id: string;
-  title: string;
-  brief: string;
   units: UnitSpec[];
   cables: number;
   /** cable ends plugged into the wrong port at the start */
@@ -28,7 +27,6 @@ interface LevelBase {
   inventory: Partial<Stock>;
   preinstalled: { kind: ItemKind; unit: number; side: number }[];
   seed: number;
-  tips?: string[];
   /** bending stiffness of the cords (1 = default) */
   bend?: number;
   /** cord segment length and radius (m), when not the defaults */

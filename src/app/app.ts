@@ -9,6 +9,7 @@ import { Hud } from '../ui/hud';
 import { Tutorial } from '../ui/tutorial';
 import { cordTooltipHtml, hintHtml, statsText, toastText } from '../ui/messages';
 import { isDialogOpen } from '../ui/dom';
+import { unitLabel } from '../ui/names';
 import { nextLevelToPlay } from '../game/levels/campaign';
 import type { LevelDef } from '../game/levels/levelDef';
 import { SHOWCASE_DEFAULT } from '../game/levels/showcaseRack';
@@ -83,6 +84,7 @@ export class App {
         onStats: (stats) => hud.stats(statsText(stats)),
         onHint: (hint) => hud.hint(hint ? hintHtml(hint) : null),
         isDialogOpen,
+        unitLabel,
       }, this.threaded);
       this.ctl = ctl;
       hud.attach(ctl, level);
@@ -169,6 +171,7 @@ export class App {
     this.pendingSeed = undefined;
     return Showcase.create(this.stage, this.threaded, (f) => this.title.showProgress(f), {
       seed,
+      labelOf: unitLabel,
       bays: this.aisles.bays,
       pairs: seed === undefined ? this.aisles.anotherPairs() : this.aisles.firstPairs,
       baked: seed === SHOWCASE_DEFAULT.seed ? await this.baked : null,
@@ -179,7 +182,7 @@ export class App {
     if (this.nextAisle) return;
     const next: NextAisle = { aisle: null!, onProgress: () => {}, done: 0, ready: false };
     next.aisle = Showcase.create(this.stage, this.threaded, (f) => { next.done = f; next.onProgress(f); },
-      { bays: this.aisles.bays, pairs: this.aisles.anotherPairs(), background: true });
+      { bays: this.aisles.bays, pairs: this.aisles.anotherPairs(), background: true, labelOf: unitLabel });
     // its pieces are built between the frames, which come late meanwhile (see Stage.busy)
     this.stage.busy++;
     const done = () => { this.stage.busy--; };

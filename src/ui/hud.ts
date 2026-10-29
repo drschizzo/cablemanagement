@@ -26,6 +26,7 @@ import { PauseMenu } from './pauseMenu';
 import { SettingsPanel, type QualityControl } from './settingsPanel';
 import { confirmLeaving } from './confirmDialog';
 import { recordResult } from './progress';
+import { levelTitle } from './levelTexts';
 
 /** how long a toast stays (ms) */
 const TOAST_MS = 2200;
@@ -79,7 +80,7 @@ export class Hud {
     this.brief.reset();
     this.ctl = ctl;
     this.level = level;
-    $('#level-title').textContent = level.title;
+    $('#level-title').textContent = levelTitle(level);
     hide('#result');
     this.schedule.build(ctl, level);
     this.refreshInventory();

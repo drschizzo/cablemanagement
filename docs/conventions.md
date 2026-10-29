@@ -114,7 +114,9 @@ s'appelle `CordPick`.
 **Le code et ses commentaires sont en anglais ; ce que lit le joueur et la documentation, en français.** Les
 textes du jeu ne se mélangent pas au code : `game/` et `play/` n'écrivent ni phrase ni balise HTML. Ils envoient
 des données (`{ kind: 'routeRefused', error: { kind: 'tooShort', missing: 0.12 } }`), et `ui/messages.ts` les met
-en mots, avec ses propres tests. Le jeu se lit sans traverser le français ; le texte change sans toucher au jeu.
+en mots, avec ses propres tests. Il en va de même des noms et des niveaux : un niveau n'a pas de titre dans `game/`,
+un service pas de nom, une plaque d'équipement pas de mot ; `ui/names.ts` et `ui/levelTexts.ts` les donnent, et
+`render/` reçoit ce qu'il doit peindre par un rappel (`RackView` : `labelOf`). Le jeu se lit sans traverser le français ; le texte change sans toucher au jeu.
 
 **Un commentaire dit pourquoi, ou ce que le code ne peut pas dire** : une unité, une intention, un piège déjà
 rencontré. Ce que fait une ligne, la ligne le dit elle-même.
@@ -128,9 +130,9 @@ this.on(window, 'pointerup', (e: PointerEvent) => this.pointerUp(e));
 
 ## Modéliser
 
-**Une sorte de chose est décrite une fois, et les types en dérivent.** Ce qu'on sait d'une fourniture (sa
-catégorie, son nom au singulier et au pluriel) est dans `SUPPLIES` (`game/supplies.ts`) ; `ItemKind` et `Stock` en
-sont calculés. Une liste écrite à la main ailleurs (`['fingerManager', 'duct', 'ring']`) oublierait la prochaine
+**Une sorte de chose est décrite une fois, et les types en dérivent.** Ce que les règles savent d'une fourniture
+(sa catégorie) est dans `SUPPLIES` (`game/supplies.ts`) ; `ItemKind` et `Stock` en sont calculés, et ses noms
+(`ui/names.ts`) sont un `Record<Supply, …>` : une nouvelle sorte sans nom ne compile pas. Une liste écrite à la main ailleurs (`['fingerManager', 'duct', 'ring']`) oublierait la prochaine
 sorte sans que rien ne le signale.
 
 **Un switch sur une union traite tous les cas, et finit par `assertNever`.** Une chaîne de ternaires

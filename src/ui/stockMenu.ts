@@ -2,11 +2,12 @@
 // length. A cord taken drops coiled into the crate on the floor.
 
 import type { Controller } from '../play/controller';
-import { CATALOGUE, FIBRE_NAMES, type FibreType, FIBRE_COLORS } from '../game/cordTypes';
+import { CATALOGUE, type FibreType, FIBRE_COLORS } from '../game/cordTypes';
 import { SERVICES } from '../game/services';
 import type { LevelDef } from '../game/levels/levelDef';
 import { formatLength } from './format';
 import { $ } from '../lib/page';
+import { FIBRE_NAMES, serviceName } from './names';
 
 export class StockMenu {
   private menu = $('#stock-menu');
@@ -29,7 +30,7 @@ export class StockMenu {
       const bypasses = ctl.world.maintenance.bypassesLeft;
       this.menu.innerHTML = `<div class="h">Stock de cordons neufs<span>Ils arrivent enroulés dans le bac, au sol. Remplacer un cordon branché coupe sa liaison le temps de changer.</span></div>
         ${types.length > 1 ? `<div class="types">${types.map((t) => `<button data-t="${t}" class="${t === type ? 'cur' : ''}"><i style="background:${FIBRE_COLORS[t]}"></i>${FIBRE_NAMES[t]}</button>`).join('')}</div>` : ''}
-        ${type === 'CU' && level.colorByService ? `<div class="colors">${SERVICES.slice(0, Math.max(1, level.services)).map((sv) => `<button data-c="${sv.color}" class="${sv.color === color ? 'cur' : ''}" style="background:${sv.color}" title="${sv.name}"></button>`).join('')}</div>` : ''}
+        ${type === 'CU' && level.colorByService ? `<div class="colors">${SERVICES.slice(0, Math.max(1, level.services)).map((sv, i) => `<button data-c="${sv.color}" class="${sv.color === color ? 'cur' : ''}" style="background:${sv.color}" title="${serviceName(i)}"></button>`).join('')}</div>` : ''}
         <div class="grid">${CATALOGUE.map((L) => `<button data-l="${L}" ${(stock.get(L) ?? 0) > 0 ? '' : 'disabled'}>${formatLength(L)}<small>×${stock.get(L) ?? 0}</small></button>`).join('')}</div>
         ${level.bypass ? `<div class="h foot">Dérivations : <b>${bypasses}</b><span>Cliquez le ⚡ d'une liaison du plan.</span></div>` : ''}`;
       this.menu.querySelectorAll<HTMLButtonElement>('[data-t]').forEach((b) => { b.onclick = () => { type = b.dataset.t as FibreType; render(); }; });

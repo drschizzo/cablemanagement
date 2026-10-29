@@ -3,7 +3,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { COLUMN_X, FRONT_Z, Rack, SIDE_BACK, U, WALL_X, type Port } from '../game/rack';
+import { COLUMN_X, FRONT_Z, Rack, SIDE_BACK, U, WALL_X, type Port, type UnitSpec } from '../game/rack';
 import type { FibreType } from '../game/cordTypes';
 import { disposeTree, shared } from './dispose';
 import { mergeStatic } from './batch';
@@ -17,6 +17,16 @@ import { buildRoom } from './room';
 import { grilleMaterial, railMaterial, softShadow } from './rackTextures';
 
 const markerGeo = shared(new THREE.RingGeometry(0.0085, 0.0105, 24));
+
+/** what the face plate of a unit says it is (the interface knows the words) */
+export type UnitLabeller = (unit: UnitSpec) => string;
+
+export interface RackViewOptions {
+  /** the floor of the room under the cabinet (default: drawn) */
+  roomFloor?: boolean;
+  /** the words on the face plates (default: none) */
+  labelOf?: UnitLabeller;
+}
 
 export class RackView {
   group = new THREE.Group();
@@ -38,7 +48,7 @@ export class RackView {
   /** the light of its LEDs, for the cords in front of it */
   readonly glow: LedGlow;
 
-  constructor(private rack: Rack, panelTypes: Map<number, FibreType>, private opts: { roomFloor?: boolean } = {}) {
+  constructor(private rack: Rack, panelTypes: Map<number, FibreType>, private opts: RackViewOptions = {}) {
     this.group.add(this.itemsGroup);
     this.buildCabinet();
     rack.units.forEach((u, k) => this.buildUnit(k, panelTypes.get(k) ?? 'OS2'));
@@ -306,7 +316,7 @@ export class RackView {
         g.save();
         g.translate(0, row * rowH);
         g.scale(scale, scale);
-        drawLabel(g, this.rack, k, light);
+        drawLabel(g, this.rack, k, light, this.opts.labelOf?.(this.rack.units[k]) ?? '');
         g.restore();
         const p = new THREE.PlaneGeometry(w, U - 0.002).translate(0, this.rack.unitY(k), 0.0004);
         // its row of the texture (the canvas is flipped: its top row at v = 1)
@@ -415,7 +425,7 @@ function fractOf(x: number): number {
 const LABEL_W = 2048, LABEL_H = 200;
 
 /** the port numbers, name and label of unit k, light on a dark face or dark on a light one */
-function drawLabel(g: CanvasRenderingContext2D, rack: Rack, k: number, light: boolean): void {
+function drawLabel(g: CanvasRenderingContext2D, rack: Rack, k: number, light: boolean, label: string): void {
   const u = rack.units[k];
   const W = LABEL_W, H = LABEL_H;
   const w = COLUMN_X * 2 - 0.036;
@@ -432,5 +442,5 @@ function drawLabel(g: CanvasRenderingContext2D, rack: Rack, k: number, light: bo
   g.font = '30px system-ui, sans-serif';
   g.fillStyle = light ? '#59616b' : '#8d97a3';
   g.textAlign = 'right';
-  g.fillText(u.label ?? '', W - 16, H - 26);
+  g.fillText(label, W - 16, H - 26);
 }

@@ -5,11 +5,9 @@
 import type { CordInfo, Hint, HoverNote, PhysicsStats, Toast } from '../play/messages';
 import type { RouteError } from '../game/routeLaying';
 import type { ReadabilityPart, Strain } from '../game/evaluation';
-import { FIBRE_NAMES } from '../game/cordTypes';
-import { SERVICES } from '../game/services';
-import { SUPPLIES } from '../game/supplies';
 import { assertNever } from '../lib/assertNever';
 import { formatCost } from './format';
+import { FIBRE_NAMES, serviceName, supplyName } from './names';
 
 export const STRAIN_LABELS: Record<Strain, string> = { taut: 'tendu', kinked: 'plié' };
 
@@ -17,7 +15,7 @@ export function toastText(t: Toast): string {
   switch (t.kind) {
     case 'bypassBack': return `Liaison ${t.link + 1} rétablie : sa dérivation revient au stock.`;
     case 'linksCut': {
-      const names = t.links.map((l) => `${l.link + 1} (${SERVICES[l.service].name})`).join(', ');
+      const names = t.links.map((l) => `${l.link + 1} (${serviceName(l.service)})`).join(', ');
       return t.costPerSecond > 0
         ? `Liaison ${names} coupée : ${formatCost(t.costPerSecond)} par seconde sur le budget d'interruption. Rebranchez vite.`
         : `Liaison ${names} coupée, mais sa dérivation porte le trafic.`;
@@ -31,7 +29,7 @@ export function toastText(t: Toast): string {
     case 'portsTaken': return 'Ses deux ports sont occupés.';
     case 'noLooseEnd': return 'Aucun cordon de ce type n\'a de bout libre : débranchez celui qui est sur un mauvais port.';
     case 'itemLocked': return 'Cet élément est fixé à la baie.';
-    case 'noSupportLeft': return `Plus de ${SUPPLIES[t.item].singular} en stock.`;
+    case 'noSupportLeft': return `Plus de ${supplyName(t.item)} en stock.`;
     case 'cannotPlace': return t.item === 'fingerManager' ? 'Un guide-câbles se pose dans une unité vide.' : 'Emplacement occupé.';
     case 'routeRefused': return routeErrorText(t.error);
     case 'routeSlack': return `Ce cordon a ${Math.round(t.extra * 100)} cm de trop pour ce chemin : le mou est rangé dans les guides, ou pend (un cordon plus court se prend au Stock).`;

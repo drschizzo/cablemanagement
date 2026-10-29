@@ -4,7 +4,7 @@
 
 import * as THREE from 'three';
 import type { Stage } from '../render/stage';
-import { RackView } from '../render/rackView';
+import { RackView, type UnitLabeller } from '../render/rackView';
 import { CableView } from '../render/cableView';
 import { disposeTree } from '../render/dispose';
 import { World } from '../game/world';
@@ -65,10 +65,10 @@ export class Bay {
   private constructor(public world: World) {}
 
   /**
-   * Builds a bay (hidden), a piece at a time, with `pause` between them; `starts`:
-   * the tangle of the mess, already drawn.
+   * Builds a bay (hidden), a piece at a time, with `pause` between them; `labelOf`:
+   * the words on the face plates; `starts`: the tangle of the mess, already drawn.
    */
-  static async make(stage: Stage, state: 'mess' | 'tidy', seed: number, at: Place, pairs: number | undefined, pause: Pause, starts?: CableStart[]): Promise<Bay> {
+  static async make(stage: Stage, state: 'mess' | 'tidy', seed: number, at: Place, pairs: number | undefined, pause: Pause, labelOf: UnitLabeller | undefined, starts?: CableStart[]): Promise<Bay> {
     const level = showcaseRack(state, seed, pairs);
     // the tidy cabinet: its cords laid on their tidy routes, cut to length (no tangle to draw)
     const layout = state === 'tidy' ? tidyLayout(level) : null;
@@ -83,7 +83,7 @@ export class Bay {
       await pause();
       const types = new Map<number, FibreType>();
       w.circuits.forEach((c) => types.set(w.rack.port(c.a).unit, c.type));
-      b.rackView = new RackView(w.rack, types, { roomFloor: false });
+      b.rackView = new RackView(w.rack, types, { roomFloor: false, labelOf });
       b.group.add(b.rackView.group);
       await pause();
       b.rackView.syncItems(w.itemsVersion);

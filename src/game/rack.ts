@@ -33,7 +33,6 @@ export interface UnitSpec {
   ports?: number;
   /** port name prefix: 'A' gives A1, A2… */
   name?: string;
-  label?: string;
   /** look of the front: copper patch panel, firewall, router, server, UPS… */
   style?: 'fibre' | 'copper' | 'switch' | 'firewall' | 'router' | 'server' | 'ups';
   /** explicit port positions (x, m), e.g. the two NICs of a server */

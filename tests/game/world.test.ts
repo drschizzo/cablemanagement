@@ -318,7 +318,7 @@ describe('what the player sees while tidying', () => {
 describe('a cord laid along a drawn route', () => {
   const B = { kind: 'blank' as const };
   const bench: LevelDef = {
-    id: 'route', kind: 'bench', title: '', brief: '',
+    id: 'route', kind: 'bench',
     units: [B, { kind: 'panel', name: 'A', ports: 12, style: 'copper' }, B, B, B, B, B, B, { kind: 'switch', name: 'S', ports: 12, style: 'switch' }, B, B],
     cables: 2, wrong: 0, loose: 0, slack: [0.3, 0.4], mess: 1,
     labels: false, services: 1, types: ['CU'], colorByService: true, inventory: {},

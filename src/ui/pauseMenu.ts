@@ -6,6 +6,7 @@ import type { Controller } from '../play/controller';
 import type { LevelDef } from '../game/levels/levelDef';
 import { hide, show } from './dom';
 import { $ } from '../lib/page';
+import { levelTitle } from './levelTexts';
 
 /** what the menu leads to; `back` reopens the menu */
 export interface PauseActions {
@@ -37,7 +38,7 @@ export class PauseMenu {
   open(ctl: Controller, level: LevelDef): void {
     this.ctl = ctl;
     ctl.pause();
-    $('#pause-level').textContent = level.title;
+    $('#pause-level').textContent = levelTitle(level);
     show('#pause');
   }
 

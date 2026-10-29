@@ -44,8 +44,6 @@ export function showcaseRack(state: 'mess' | 'tidy', seed: number, pairs?: numbe
   return {
     id: `showcase-${state}`,
     kind: 'showcase',
-    title: 'Avant / Après',
-    brief: '',
     units: closet.units, cables: circuits.length, wrong: 0, loose: 0, slack: [0, 0], mess: 3,
     labels: true, services: 6, types: ['CU'],
     inventory: { velcro: 60 },

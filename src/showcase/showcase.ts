@@ -21,6 +21,7 @@ import { sfx } from '../audio/sfx';
 import { Closet } from './closet';
 import { aisleLayout } from './aisleLayout';
 import type { Pause } from './bay';
+import type { UnitLabeller } from '../render/rackView';
 
 /** where a closet is drawn out of sight once, before it shows (see Showcase.warm) */
 const warmTarget = new THREE.WebGLRenderTarget(1, 1);
@@ -68,10 +69,10 @@ export class Showcase {
    * fall (each in its worker; or puts it where `baked` says it fell), reporting
    * progress. Nothing shows until start(): the caller may throw it away first.
    * `background`: built while another is on screen, one closet at a time, the
-   * frames going on between them.
+   * frames going on between them. `labelOf`: the words on the face plates.
    */
   static async create(stage: Stage, threaded: boolean, progress: (f: number) => void,
-    o: { seed?: number; bays?: number; pairs?: number | number[]; baked?: BakedBay[] | null; background?: boolean } = {}): Promise<Showcase> {
+    o: { seed?: number; bays?: number; pairs?: number | number[]; baked?: BakedBay[] | null; background?: boolean; labelOf?: UnitLabeller } = {}): Promise<Showcase> {
     const sc = new Showcase(stage);
     const seed = o.seed ?? Math.floor(Math.random() * 1e9), bays = o.bays ?? 1;
     const places = aisleLayout(bays, seed);
@@ -94,7 +95,7 @@ export class Showcase {
     const falls = threaded && !o.baked ? places.map((_, k) => fallInWorker(seed + k, pairs(k), chunks, step)) : null;
     for (let k = 0; k < places.length; k++) {
       const fallen = falls ? await falls[k] : undefined;
-      sc.closets.push(await Closet.make(stage, seed + k, places[k], threaded, pairs(k), pause, fallen, o.baked?.[k]));
+      sc.closets.push(await Closet.make(stage, seed + k, places[k], threaded, pairs(k), pause, o.labelOf, fallen, o.baked?.[k]));
       // baked, nothing falls: the bar follows the closets as they are built
       if (o.baked) {
         progress((k + 1) / bays);

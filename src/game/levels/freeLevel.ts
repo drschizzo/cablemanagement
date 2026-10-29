@@ -15,8 +15,6 @@ export function freeLevel(cables: number, seed: number): LevelDef {
   return {
     id: `free-${cables}-${seed}`,
     kind: 'free',
-    title: `Partie libre — ${cables} câbles`,
-    brief: 'Une baie générée au hasard.',
     units, cables,
     wrong: Math.round(cables * 0.15), loose: Math.round(cables * 0.1),
     slack: [0.25, 0.6], mess: Math.min(5, 1 + Math.round(cables / 10)),

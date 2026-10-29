@@ -28,7 +28,7 @@ src/
     supplies.ts     les fournitures (supports et velcros), décrites une fois : ItemKind et Stock en dérivent
     schedule.ts     le plan de brassage : une ligne (Circuit), et le plan tiré au hasard d'un niveau (makeSchedule)
     cordTypes.ts    sortes de cordon (fibre, cuivre) et longueurs du catalogue
-    services.ts     les services du plan (données, voix…) : couleur, poids d'une coupure
+    services.ts     les services du plan (données, voix…) : couleur, poids d'une coupure (leurs noms : ui/names.ts)
     idealRoutes.ts  la route idéale de chaque cordon, la baie « finie » d'un niveau (tidyKit), les cordons couchés
                     sur leurs routes (tidyLayout, la baie rangée de la vitrine)
     routeLaying.ts  l'outil Chemin côté règles : le chemin planifié (planRoute), le câble posé (RouteRun)
@@ -84,6 +84,8 @@ src/
     settingsPanel.ts les paramètres : qualité de l'image (auto, préréglages, détails) et son
     progress.ts     la progression du joueur : meilleur score, niveau ouvert, niveau suivant (fonctions pures)
     messages.ts     tous les textes d'une partie : messages, aides, bulle d'un cordon, critères de lisibilité
+    names.ts        le nom des choses : services (et ce qu'ils portent), fournitures, sortes de cordon, plaques des équipements
+    levelTexts.ts   les mots de chaque niveau : titre, brief, conseils (ceux de la campagne par id ; les autres d'après ce qu'ils sont)
     tutorial.ts     le tutoriel guidé, par-dessus un niveau
     titleScreen.ts  les boutons de l'écran titre ; showcaseSwitch.ts, l'interrupteur
                     Avant / Après et sa légende
@@ -203,7 +205,7 @@ coupé. Les clés sont celles des versions précédentes.
 
 | Évolution | Où |
 |---|---|
-| un niveau | une entrée dans `LEVELS` (`game/levels/campaign.ts`), bâtie avec les équipements de `game/levels/equipment.ts` ; `tests/game/levels/levels.test.ts` vérifie son plan, qu'il ne se gagne pas sans rien faire et qu'il peut atteindre 3 étoiles avec son seul inventaire (`tidyKit`) |
+| un niveau | une entrée dans `LEVELS` (`game/levels/campaign.ts`), bâtie avec les équipements de `game/levels/equipment.ts`, et ses mots dans `ui/levelTexts.ts` (un test vérifie qu'aucun ne manque) ; `tests/game/levels/levels.test.ts` vérifie son plan, qu'il ne se gagne pas sans rien faire et qu'il peut atteindre 3 étoiles avec son seul inventaire (`tidyKit`) |
 | un équipement de baie | `UnitSpec` et le constructeur de `Rack` (`game/rack.ts`), son rendu dans `render/rackView.ts` |
 | un élément de rangement | `ItemKind`, `canPlace`, `statics` et `supports` dans `game/rack.ts`, `buildItem` dans `render/rackItems.ts`, un outil dans `TOOLS` (`ui/toolbar.ts`) |
 | un outil | un `ToolHandler` dans `play/tools/`, son nom dans `Tool` (`play/context.ts`) et dans `Controller.tools`, son bouton dans `TOOLS` (`ui/toolbar.ts`) |

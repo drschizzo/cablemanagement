@@ -2,9 +2,10 @@
 // supports and the velcro, what is left in stock; and the Stock button.
 
 import type { Tool } from '../play/controller';
-import { ITEM_KINDS, countOf, type Stock } from '../game/supplies';
+import { ITEM_KINDS, type Stock } from '../game/supplies';
 import type { LevelDef } from '../game/levels/levelDef';
 import { $ } from '../lib/page';
+import { countOf } from './names';
 import { iconFingerManager, iconHand, iconRoute, iconStock, iconVelcro } from './icons';
 
 interface ToolButton {

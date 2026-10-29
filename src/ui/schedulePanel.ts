@@ -3,7 +3,7 @@
 // readability note, the stars, and the Validate button.
 
 import type { Controller } from '../play/controller';
-import { FIBRE_NAMES, FIBRE_COLORS } from '../game/cordTypes';
+import { FIBRE_COLORS } from '../game/cordTypes';
 import { SERVICES } from '../game/services';
 import { cleanliness, type Evaluation } from '../game/evaluation';
 import { STRAIN_LABELS, readabilityText } from './messages';
@@ -12,6 +12,7 @@ import type { LevelDef } from '../game/levels/levelDef';
 import { formatCost } from './format';
 import { starsHtml } from './dom';
 import { $ } from '../lib/page';
+import { FIBRE_NAMES, serviceName, serviceWhat } from './names';
 
 /** how long the overall gauge flashes when it goes up (ms) */
 const GAUGE_FLASH_MS = 700;
@@ -39,7 +40,7 @@ export class SchedulePanel {
         : `<span class="prod" title="${prodTip}">⚡</span>`;
       tr.innerHTML = `<td class="n">${i + 1}${prod}</td><td class="ports">${c.a} <span class="arrow">↔</span> ${c.b}</td>
         <td><span class="chip" style="background:${FIBRE_COLORS[c.type]}" title="${FIBRE_NAMES[c.type]}">${c.type}</span></td>
-        <td class="svc" title="${service.name} : ${service.what}${windowed ? ` — coupée, ${formatCost(service.weight)} par seconde` : ''}"><span class="dot" style="background:${service.color}"></span>${service.name}</td>
+        <td class="svc" title="${serviceName(c.service)} : ${serviceWhat(c.service)}${windowed ? ` — coupée, ${formatCost(service.weight)} par seconde` : ''}"><span class="dot" style="background:${service.color}"></span>${serviceName(c.service)}</td>
         <td class="st"><i class="s-conn" title="Branchée"></i><i class="s-route" title="Rangée"></i><i class="s-clear" title="Façade dégagée"></i><i class="s-relax" title="Ni tendu ni plié"></i></td>`;
       tr.onmouseenter = () => ctl.focus(i);
       tr.onmouseleave = () => ctl.focus(-1);

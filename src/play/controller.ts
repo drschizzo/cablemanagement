@@ -109,7 +109,7 @@ export class Controller implements PlayContext, InputCommands {
     if (threaded) this.world.sim.startWorker();
     const types = new Map<number, FibreType>();
     this.world.circuits.forEach((c) => types.set(this.world.rack.port(c.a).unit, c.type));
-    this.rackView = new RackView(this.world.rack, types);
+    this.rackView = new RackView(this.world.rack, types, { labelOf: (u) => events.unitLabel(u) });
     this.pointer = new Pointer(stage);
     this.picker = new CordPicker(stage, this.world, this.pointer);
     this.history = new UndoHistory(this.world);

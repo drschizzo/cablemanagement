@@ -10,6 +10,7 @@ import { formatTime } from './format';
 import { hide, show, starsHtml } from './dom';
 import { $ } from '../lib/page';
 import { isUnlocked } from './progress';
+import { levelTitle } from './levelTexts';
 
 export class LevelMenu {
   private start: (level: LevelDef) => void = () => {};
@@ -54,7 +55,7 @@ export class LevelMenu {
     const best = progress.times[level.id];
     const card = document.createElement('button');
     card.className = 'level-card' + (unlocked ? '' : ' locked');
-    card.innerHTML = `<div class="num">${index + 1}</div><div class="t">${level.title}</div>
+    card.innerHTML = `<div class="num">${index + 1}</div><div class="t">${levelTitle(level)}</div>
       <div class="meta">${level.cables} câbles${level.labels ? ' · étiquettes' : ''}</div>
       <div class="stars">${starsHtml(stars)}${progress.challenges[level.id] ? '<span class="par" title="Défi chrono réussi">⏱</span>' : ''}</div>${best ? `<div class="best">${formatTime(best)}</div>` : ''}
       ${unlocked ? '' : `<div class="lock">${'★'.repeat(UNLOCK_STARS)} au niveau ${index} pour l'ouvrir</div>`}`;

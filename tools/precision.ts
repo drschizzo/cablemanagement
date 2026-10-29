@@ -11,7 +11,7 @@ import { env, envNumber, envParams } from './env';
 const params = envParams();
 const B = { kind: 'blank' as const };
 const bench: LevelDef = {
-  id: 'bench', kind: 'bench', title: '', brief: '',
+  id: 'bench', kind: 'bench',
   units: [B, { kind: 'panel', name: 'A', ports: 12, style: 'copper' }, B, B, B, B, B, B, { kind: 'switch', name: 'S', ports: 12, style: 'switch' }, B, B],
   cables: 4, wrong: 0, loose: 0, slack: [0.5, 0.7], mess: 1,
   labels: false, services: 1, types: ['CU'], colorByService: true,

@@ -5,6 +5,7 @@ import { LEVELS, TUTORIAL } from '../game/levels/campaign';
 import type { LevelDef } from '../game/levels/levelDef';
 import { load } from './storage';
 import { $ } from '../lib/page';
+import { levelTitle } from './levelTexts';
 
 export interface TitleActions {
   start(level: LevelDef): void;
@@ -38,7 +39,7 @@ export class TitleScreen {
   refresh(): void {
     const next = this.actions.nextLevel();
     const play = byId('title-play');
-    play.textContent = this.firstVisit() ? 'Commencer →' : next && next !== LEVELS[0] ? `Continuer · ${next.title} →` : 'Jouer →';
+    play.textContent = this.firstVisit() ? 'Commencer →' : next && next !== LEVELS[0] ? `Continuer · ${levelTitle(next)} →` : 'Jouer →';
     play.title = this.firstVisit() ? 'Le tutoriel, puis le niveau 1' : '';
   }
 

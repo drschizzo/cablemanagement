@@ -6,7 +6,7 @@ import type { RackView } from '../render/rackView';
 import type { CableView } from '../render/cableView';
 import type { World } from '../game/world';
 import type { Evaluation } from '../game/evaluation';
-import type { Port } from '../game/rack';
+import type { Port, UnitSpec } from '../game/rack';
 import type { Pointer } from './pointer';
 import type { CordPick, CordPicker } from './picking';
 import type { CordInfo, Hint, HoverNote, PhysicsStats, Toast } from './messages';
@@ -31,6 +31,8 @@ export interface ControllerEvents {
   onHint(hint: Hint | null): void;
   /** a dialog of the interface is open: the keys are its own, not the level's */
   isDialogOpen(): boolean;
+  /** what the face plate of a unit says (the interface knows the words) */
+  unitLabel(unit: UnitSpec): string;
 }
 
 /** what the player did, for the tutorial */

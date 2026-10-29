@@ -10,6 +10,7 @@ import type { CableStart } from '../game/cables';
 import { sfx } from '../audio/sfx';
 import { Bay, type Pause } from './bay';
 import type { Place } from './aisleLayout';
+import type { UnitLabeller } from '../render/rackView';
 import { tidyTargets } from '../game/idealRoutes';
 
 /** one closet of the aisle: its mess and its tidy self, drawn on the same rack */
@@ -26,13 +27,13 @@ export class Closet {
    * Builds a closet (hidden), a piece at a time, with `pause` between them. Its
    * mess, if not `fallen` already (its tangle and where it came to rest), or
    * `baked` (where it came to rest, if it still is the same mess), falls in
-   * settle(): in its worker when `threaded`.
+   * settle(): in its worker when `threaded`. `labelOf`: the words on the face plates.
    */
   static async make(stage: Stage, seed: number, at: Place, threaded: boolean, pairs: number | undefined, pause: Pause,
-    fallen?: { starts: CableStart[]; x: Float64Array }, baked?: BakedBay): Promise<Closet> {
-    const mess = await Bay.make(stage, 'mess', seed, at, pairs, pause, fallen?.starts);
+    labelOf: UnitLabeller | undefined, fallen?: { starts: CableStart[]; x: Float64Array }, baked?: BakedBay): Promise<Closet> {
+    const mess = await Bay.make(stage, 'mess', seed, at, pairs, pause, labelOf, fallen?.starts);
     await pause();
-    const c = new Closet(mess, await Bay.make(stage, 'tidy', seed, at, pairs, pause));
+    const c = new Closet(mess, await Bay.make(stage, 'tidy', seed, at, pairs, pause, labelOf));
     const sim = mess.world.sim;
     c.fallen = fallen?.x ?? (baked && baked.x.length === sim.x.length && baked.print === printOf(sim.x) ? baked.x : null);
     // the mess only falls once: a cheap solver will do

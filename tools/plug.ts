@@ -17,7 +17,7 @@ const seeds = envSeeds('1,2,3,4,5,6,7,8');
 const SLACK = envNumber('SLACK', 0.3);
 const B = { kind: 'blank' as const };
 const bench = (seed: number): LevelDef => ({
-  id: 'plug', kind: 'bench', title: '', brief: '',
+  id: 'plug', kind: 'bench',
   units: [B, { kind: 'panel', name: 'A', ports: 12, style: 'copper' }, B, B, B, B, B, B, { kind: 'switch', name: 'S', ports: 12, style: 'switch' }, B, B],
   cables: 4, wrong: 0, loose: 0, slack: [SLACK, SLACK + 0.1], mess: 1,
   labels: false, services: 1, types: ['CU'], colorByService: true,

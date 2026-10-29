@@ -60,7 +60,7 @@ function finishedWorld(lv: CampaignLevel) {
 
 describe('no level is won before the player does anything', () => {
   for (const lv of LEVELS) {
-    it(`${lv.id} ${lv.title}`, () => {
+    it(lv.id, () => {
       const w = new World(lv);
       w.preroll(60);
       expect(w.evaluate().stars).toBe(0);
@@ -70,7 +70,7 @@ describe('no level is won before the player does anything', () => {
 
 describe('three stars are possible, with the level\'s own stock', () => {
   for (const lv of LEVELS) {
-    it(`${lv.id} ${lv.title}`, () => {
+    it(lv.id, () => {
       const kit = tidyKit(lv);
       const added = kit.preinstalled.slice(lv.preinstalled.length);
       for (const k of ITEM_KINDS) expect(added.filter((p) => p.kind === k).length).toBeLessThanOrEqual(lv.inventory[k] ?? 0);
