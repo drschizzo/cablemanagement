@@ -90,7 +90,9 @@ export class LevelMenu {
     card.innerHTML = `<div class="num">${index + 1}</div><div class="t">${levelTitle(level)}</div>
       <div class="meta">${tr({ fr: `${level.cables} câbles${level.labels ? ' · étiquettes' : ''}`, en: `${level.cables} cords${level.labels ? ' · labels' : ''}` })}</div>
       <div class="stars">${starsHtml(stars)}${progress.challenges[level.id] ? `<span class="par" title="${tr({ fr: 'Défi chrono réussi', en: 'Time challenge won' })}">⏱</span>` : ''}</div>${best ? `<div class="best">${best}</div>` : ''}
-      ${unlocked ? '' : `<div class="lock">${tr({ fr: `${'★'.repeat(UNLOCK_STARS)} au niveau ${index} pour l'ouvrir`, en: `${'★'.repeat(UNLOCK_STARS)} on level ${index} to open it` })}</div>`}`;
+      ${unlocked ? '' : `<div class="lock">${levels === BIG_BAYS
+    ? tr({ fr: `${'★'.repeat(UNLOCK_STARS)} à la baie ${index} pour l'ouvrir`, en: `${'★'.repeat(UNLOCK_STARS)} on cabinet ${index} to open it` })
+    : tr({ fr: `${'★'.repeat(UNLOCK_STARS)} au niveau ${index} pour l'ouvrir`, en: `${'★'.repeat(UNLOCK_STARS)} on level ${index} to open it` })}</div>`}`;
     if (unlocked) card.onclick = () => this.choose(level);
     return card;
   }
