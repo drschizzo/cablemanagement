@@ -140,7 +140,10 @@ export class LedGlow {
     this.map.dispose();
     this.scene.traverse((o) => {
       const m = o as THREE.InstancedMesh;
-      if (m.isInstancedMesh) (m.material as THREE.Material).dispose();
+      if (!m.isInstancedMesh) return;
+      // its quad (its tint and blink are the cabinet's lights', freed with them)
+      m.geometry.dispose();
+      (m.material as THREE.Material).dispose();
     });
     for (const m of this.copies.values()) {
       // their textures were the cabinet's own (the rails', the labels'), unless made once for all
@@ -151,7 +154,7 @@ export class LedGlow {
   }
 }
 
-/** every cabinet's glow: the stage draws them before each frame, and drops those taken off the scene */
+/** every cabinet's glow: the stage draws those in its scene before each frame; RackView.dispose takes its own out */
 export const ledGlows = new Set<LedGlow>();
 
 /** how much of the light a cord takes (shared by every cord): a little, as LEDs light little */

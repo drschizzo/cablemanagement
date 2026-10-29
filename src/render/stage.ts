@@ -63,6 +63,8 @@ export class Stage {
   private swayT = 0;
   /** a flight round the cabinet under way (see tour()) */
   private touring: CameraTour | null = null;
+  /** a scripted motion on screen (the aisle going from one state to the other): its frames keep their full rate */
+  moving = false;
 
   /** when the last frame was drawn and the player last touched anything (ms), for the pacing (see due()) */
   private lastFrame = -Infinity;
@@ -100,8 +102,12 @@ export class Stage {
     // an abstract dark, neutral backdrop (the tone of the panels): the rack is the only subject
     this.scene.background = backdropTexture();
     this.scene.fog = new THREE.Fog(HORIZON, 3, 7);
+    // made once: the generator (its working target, its blur) and the room it was made from go
     const pmrem = new THREE.PMREMGenerator(this.renderer);
-    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    const room = new RoomEnvironment();
+    this.scene.environment = pmrem.fromScene(room, 0.04).texture;
+    pmrem.dispose();
+    room.dispose();
     this.scene.environmentIntensity = 0.5;
 
     this.camera = new THREE.PerspectiveCamera(32, 1, 0.05, 20);
@@ -138,11 +144,13 @@ export class Stage {
    * loops at the screen's rate, 120 Hz on a ProMotion display, while the
    * physics steps at 60 Hz: every other image was the same cords, for twice
    * the work of the GPU. 60 frames a second, then; 30 when nobody is looking
-   * (the page out of focus) or, in a level, nothing has been touched for a
-   * few seconds (the physics takes two steps a frame).
+   * (the page out of focus) or nothing has been touched for a few seconds:
+   * in a level the physics takes two steps a frame, on the title screen the
+   * camera sways as slowly. Not during a flight round the cabinet, nor while
+   * the aisle moves.
    */
   due(now: number): boolean {
-    const idle = !document.hasFocus() || (!this.swaying && !this.touring && now - this.lastInput > 4000);
+    const idle = !document.hasFocus() || (!this.touring && !this.moving && now - this.lastInput > 4000);
     // a few ms of slack: the calls of a 60 Hz screen come a little early or late
     if (now - this.lastFrame < (idle ? 1000 / 30 : 1000 / 60) - 4) return false;
     // only the frames in play: not the 30 a second of an idle page, nor the pauses of a hidden page,
@@ -370,12 +378,11 @@ export class Stage {
     this.cinema.frame(dt, window.innerWidth, window.innerHeight, this.panelMargins);
     // (wrapped, so that the GPU's hash of it keeps its precision)
     ledClock.value = (ledClock.value + dt) % 600;
-    // the light of the LEDs on the cords; a cabinet taken off the scene lets go of its map
+    // the light of the LEDs on the cords; not for a cabinet taken off the scene (an aisle set aside)
     for (const g of ledGlows) {
       let top: THREE.Object3D = g.root;
       while (top.parent) top = top.parent;
-      if (top !== this.scene) { g.dispose(); ledGlows.delete(g); continue; }
-      g.render(this.renderer);
+      if (top === this.scene) g.render(this.renderer);
     }
     this.lastRender = now;
     this.composer.render();

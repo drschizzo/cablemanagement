@@ -178,7 +178,9 @@ export class Controller implements PlayContext, InputCommands {
     this.input.dispose();
     this.spotlightFrame.set(null);
     for (const t of Object.values(this.tools)) t.dispose();
-    for (const g of [this.rackView.group, this.cableView.group, this.otherHand.group, this.connectorGlows.group, ...(this.findView ? [this.findView] : [])]) {
+    this.stage.scene.remove(this.rackView.group);
+    this.rackView.dispose();
+    for (const g of [this.cableView.group, this.otherHand.group, this.connectorGlows.group, ...(this.findView ? [this.findView] : [])]) {
       this.stage.scene.remove(g);
       disposeTree(g);
     }

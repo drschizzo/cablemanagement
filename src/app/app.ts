@@ -35,6 +35,8 @@ interface NextAisle {
   onProgress: (fraction: number) => void;
   done: number;
   ready: boolean;
+  /** gives it up while it is built */
+  stop: AbortController;
 }
 
 export class App {
@@ -194,21 +196,24 @@ export class App {
 
   private prepareNextAisle(): void {
     if (this.nextAisle) return;
-    const next: NextAisle = { aisle: null!, onProgress: () => {}, done: 0, ready: false };
+    const next: NextAisle = { aisle: null!, onProgress: () => {}, done: 0, ready: false, stop: new AbortController() };
     next.aisle = Showcase.create(this.stage, this.threaded, (f) => { next.done = f; next.onProgress(f); },
-      { bays: this.aisles.bays, pairs: this.aisles.anotherPairs(), background: true, labelOf: unitLabel });
+      { bays: this.aisles.bays, pairs: this.aisles.anotherPairs(), background: true, labelOf: unitLabel, signal: next.stop.signal });
     // its pieces are built between the frames, which come late meanwhile (see Stage.busy)
     this.stage.busy++;
     const done = () => { this.stage.busy--; };
     next.aisle.then(done, done);
-    void next.aisle.then(() => { next.ready = true; });
+    // (given up: nothing to be ready)
+    next.aisle.then(() => { next.ready = true; }, () => {});
     this.nextAisle = next;
   }
 
-  /** a level leaves the title screen: the aisle made ready for it goes */
+  /** a level leaves the title screen: the aisle made ready for it goes, given up if it is still built */
   private dropNextAisle(): void {
     if (!this.nextAisle) return;
-    void this.nextAisle.aisle.then((sc) => sc.dispose());
+    this.nextAisle.stop.abort();
+    // built already, it is thrown away; given up, it threw itself away
+    this.nextAisle.aisle.then((sc) => sc.dispose(), () => {});
     this.nextAisle = null;
   }
 }

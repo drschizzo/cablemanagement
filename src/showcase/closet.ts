@@ -80,8 +80,9 @@ export class Closet {
         step();
       }
     }
-    // frozen as it fell
+    // frozen as it fell, for good: its worker (if it fell in one) has nothing left to do
     this.mess.world.sim.hold = true;
+    this.mess.world.sim.dispose();
     this.messPos = Float64Array.from(this.mess.world.sim.x);
     this.tidyShapes = this.mess.tidyShapes(this.tidy);
     this.mess.cableView.update(true);

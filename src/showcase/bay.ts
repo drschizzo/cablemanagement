@@ -101,6 +101,10 @@ export class Bay {
   dispose(stage: Stage): void {
     this.world.dispose();
     stage.scene.remove(this.group);
+    if (this.rackView) {
+      this.group.remove(this.rackView.group);
+      this.rackView.dispose();
+    }
     disposeTree(this.group);
   }
 

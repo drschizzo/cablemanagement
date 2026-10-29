@@ -420,6 +420,16 @@ export class RackView {
     mergeStatic(this.itemsGroup);
     this.glow.light(this.itemsGroup);
   }
+
+  /**
+   * Frees the cabinet on the GPU, its glow too: taken off the scene, the glow
+   * is only left undrawn (an aisle set aside for a level shows again as it was).
+   */
+  dispose(): void {
+    ledGlows.delete(this.glow);
+    this.glow.dispose();
+    disposeTree(this.group);
+  }
 }
 
 /** the material of the face of a unit, by its look */

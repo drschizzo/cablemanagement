@@ -31,6 +31,17 @@ const WAVE = 700;
 
 export type ShowcaseState = 'before' | 'after' | 'moving';
 
+/** what an aisle is made of, and how (see Showcase.create) */
+interface AisleOptions {
+  seed?: number;
+  bays?: number;
+  pairs?: number | number[];
+  baked?: BakedBay[] | null;
+  background?: boolean;
+  labelOf?: UnitLabeller;
+  signal?: AbortSignal;
+}
+
 export class Showcase {
   private closets: Closet[] = [];
   private currentState: ShowcaseState = 'before';
@@ -42,7 +53,7 @@ export class Showcase {
   private loop = 0;
   private last = performance.now();
   private floor: THREE.Group;
-  /** before it is tidied, cords keep falling from above and pile up in the middle of the room */
+  /** before it is tidied, cords keep falling from above and pile up in the middle of the room (made once the closets are) */
   private rain!: CableRain;
   /** the top of the tallest rack (m): the racks of an aisle may be of any height */
   private get topY(): number {
@@ -70,10 +81,24 @@ export class Showcase {
    * progress. Nothing shows until start(): the caller may throw it away first.
    * `background`: built while another is on screen, one closet at a time, the
    * frames going on between them. `labelOf`: the words on the face plates.
+   * `signal`: given up (a level begins meanwhile), what is built goes, the falls
+   * stop in their workers, and the promise fails with the signal's reason.
    */
   static async create(stage: Stage, threaded: boolean, progress: (f: number) => void,
-    o: { seed?: number; bays?: number; pairs?: number | number[]; baked?: BakedBay[] | null; background?: boolean; labelOf?: UnitLabeller } = {}): Promise<Showcase> {
+    o: AisleOptions = {}): Promise<Showcase> {
     const sc = new Showcase(stage);
+    try {
+      return await sc.build(threaded, progress, o);
+    } catch (e) {
+      sc.dispose();
+      throw e;
+    }
+  }
+
+  /** what create() does, the aisle given up or not */
+  private async build(threaded: boolean, progress: (f: number) => void, o: AisleOptions): Promise<Showcase> {
+    const stage = this.stage;
+    const given = () => o.signal?.throwIfAborted();
     const seed = o.seed ?? Math.floor(Math.random() * 1e9), bays = o.bays ?? 1;
     const places = aisleLayout(bays, seed);
     // one height for all, or one each
@@ -92,42 +117,47 @@ export class Showcase {
     const pause: Pause = o.background ? frame : () => Promise.resolve();
     // nothing baked: every mess is drawn and falls in a worker of its own, all at once, and the
     // page builds each closet around it as soon as it is down
-    const falls = threaded && !o.baked ? places.map((_, k) => fallInWorker(seed + k, pairs(k), chunks, step)) : null;
+    const falls = threaded && !o.baked ? places.map((_, k) => fallInWorker(seed + k, pairs(k), chunks, step, o.signal)) : null;
+    // given up: those not awaited yet fail quietly
+    for (const f of falls ?? []) f.catch(() => {});
     for (let k = 0; k < places.length; k++) {
       const fallen = falls ? await falls[k] : undefined;
-      sc.closets.push(await Closet.make(stage, seed + k, places[k], threaded, pairs(k), pause, o.labelOf, fallen, o.baked?.[k]));
+      given();
+      this.closets.push(await Closet.make(stage, seed + k, places[k], threaded, pairs(k), pause, o.labelOf, fallen, o.baked?.[k]));
       // baked, nothing falls: the bar follows the closets as they are built
       if (o.baked) {
         progress((k + 1) / bays);
         if (!o.background) await frame();
       }
     }
-    const rack = sc.closets[0].mess.world.rack;
+    const rack = this.closets[0].mess.world.rack;
     // the heap in the middle of the half circle, a little ahead of the racks
-    sc.rain = new CableRain({
-      floorY: rack.floorY, topY: sc.topY, racks: places, seed,
+    this.rain = new CableRain({
+      floorY: rack.floorY, topY: this.topY, racks: places, seed,
       centre: { x: 0, z: bays > 1 ? 0.75 : 0.45 }, spread: bays > 1 ? 0.2 : 0.12,
     });
-    sc.rain.group.visible = false;
-    stage.scene.add(sc.rain.group);
-    await Promise.all(sc.closets.map((c) => c.settle(chunks, step, pause)));
+    this.rain.group.visible = false;
+    stage.scene.add(this.rain.group);
+    given();
+    await Promise.all(this.closets.map((c) => c.settle(chunks, step, pause)));
     // drawn once out of sight, so that its first image on screen does not stall on them
-    for (const c of sc.closets) {
+    for (const c of this.closets) {
       await pause();
-      sc.warm(c);
+      given();
+      this.warm(c);
     }
     // the cords fall on the mess spilt on the floor
     const p = new THREE.Vector3();
-    for (const c of sc.closets) {
+    for (const c of this.closets) {
       const x = Float64Array.from(c.messPos);
       c.mess.group.updateMatrixWorld();
       for (let i = 0; i < x.length; i += 3) {
         p.set(x[i], x[i + 1], x[i + 2]).applyMatrix4(c.mess.group.matrixWorld);
         x[i] = p.x; x[i + 1] = p.y; x[i + 2] = p.z;
       }
-      sc.rain.support(x, c.mess.world.radius);
+      this.rain.support(x, c.mess.world.radius);
     }
-    return sc;
+    return this;
   }
 
   private constructor(private stage: Stage) {
@@ -221,14 +251,18 @@ export class Showcase {
     for (const c of this.closets) c.dispose(this.stage);
     this.stage.scene.remove(this.floor);
     disposeTree(this.floor);
-    this.stage.scene.remove(this.rain.group);
-    this.rain.dispose();
+    // (none yet: given up while its closets were built)
+    if (this.rain) {
+      this.stage.scene.remove(this.rain.group);
+      this.rain.dispose();
+    }
     // one made ready in the background and never shown (or set aside) leaves the screen as it is
     if (this.onScreen) this.leaveStage();
   }
 
   /** the camera as the aisle found it */
   private leaveStage(): void {
+    this.stage.moving = false;
     this.stage.sway(false);
     this.stage.dragPans(false);
     this.stage.view = null;
@@ -255,6 +289,7 @@ export class Showcase {
     if (this.currentState === 'moving') return;
     const tidy = this.currentState === 'before';
     this.currentState = 'moving';
+    this.stage.moving = true;
     this.onStateChange('moving', tidy ? 'after' : 'before');
     if (tidy) this.rain.stop();
     else this.rain.start();
@@ -264,6 +299,7 @@ export class Showcase {
     const done = () => {
       if (--left) return;
       this.currentState = tidy ? 'after' : 'before';
+      this.stage.moving = false;
       this.onStateChange(this.currentState);
       if (tidy) sfx.win();
     };
