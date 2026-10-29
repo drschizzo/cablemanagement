@@ -38,7 +38,7 @@ b { font-weight: 600; }
 ::selection { background: var(--accent); color: var(--accent-ink); }
 
 /* small caps label used for section titles and table heads */
-#side h2, #plan th, .legend, .score > span:first-child, .level-card .num, #tuto .head, .popmenu .h, .free > span:first-child {
+#side h2, #plan th, .legend, .score > span:first-child, .level-card .num, #tuto .head, .popmenu .h, .free > span:first-child, #settings h2 {
   font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.09em;
 }
 
@@ -241,6 +241,32 @@ button:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
 .panel ul li::before { content: '–'; position: absolute; left: 0; color: var(--faint); font-family: var(--mono); }
 .panel .row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
 #brief-go { margin-top: 10px; }
+
+/* ---- pause menu: one column of ways on */
+#pause .panel { width: min(340px, calc(100% - 40px)); }
+#pause .stack { display: flex; flex-direction: column; gap: 6px; margin-top: 18px; }
+#pause .stack button { padding: 8px 14px; font-size: 13.5px; }
+
+/* ---- settings */
+#settings .panel { width: min(520px, calc(100% - 40px)); }
+#settings h2 { display: flex; align-items: center; gap: 8px; margin: 20px 0 10px; font-size: 11px; font-weight: 500; color: var(--dim); }
+#settings h2::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.choices { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.choices button { background: transparent; border: 1px solid var(--line); border-radius: 2px; padding: 7px 4px; font-size: 12.5px; }
+.choices button:hover { border-color: var(--accent); color: var(--accent); }
+.choices button.cur { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+#q-status { margin: 10px 0 4px; font-size: 12.5px; }
+#q-details { margin-top: 8px; font-size: 13px; }
+#q-details summary { cursor: pointer; color: var(--dim); font: 10.5px var(--mono); }
+#q-details summary:hover { color: var(--text); }
+#q-details .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; margin-top: 10px; }
+#settings label { display: flex; align-items: center; gap: 8px; color: #c9cec9; font-size: 13px; }
+#settings input[type='checkbox'] { accent-color: var(--accent); margin: 0; }
+#settings select {
+  margin-left: auto; font: 12px var(--mono); color: var(--text); background: var(--panel-solid);
+  border: 1px solid var(--line-hi); border-radius: 2px; padding: 3px 6px;
+}
+@media (max-width: 520px) { .choices { grid-template-columns: repeat(3, 1fr); } #q-details .grid { grid-template-columns: 1fr; } }
 #result .panel { text-align: center; }
 #result ul { text-align: left; display: inline-block; }
 #result-time { font-family: var(--mono); color: var(--dim); }
@@ -250,17 +276,10 @@ button:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
 #loading p::after { content: '▍'; margin-left: 4px; color: var(--accent); animation: blink 1s steps(1) infinite; }
 @keyframes blink { 50% { opacity: 0; } }
 
-/* ---- main menu */
-#menu h1::before { content: '>'; font-family: var(--mono); font-weight: 400; color: var(--accent); margin-right: 10px; }
-.menu-intro { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 18px; }
-.intro-card {
-  text-align: left; display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: var(--r);
-  border: 1px solid var(--accent-line); background: var(--accent-soft); transition: border-color 0.15s, background 0.15s;
-}
-.intro-card:hover { border-color: var(--accent); background: rgba(139, 227, 180, 0.15); }
-.intro-card b { font-weight: 600; }
-.intro-card b::after { content: ' →'; color: var(--accent); font-weight: 400; }
-.intro-card span { color: var(--dim); font-size: 13px; }
+/* ---- levels menu */
+#menu h1::before, #pause h1::before, #settings h1::before { content: '>'; font-family: var(--mono); font-weight: 400; color: var(--accent); margin-right: 10px; }
+/* the way back, in the corner of a panel opened from another */
+.panel > .back { position: absolute; top: 14px; right: 16px; font-size: 11px; }
 #menu-levels { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; margin: 18px 0; background: var(--line); border: 1px solid var(--line); }
 .level-card {
   position: relative; text-align: left; background: var(--panel-solid); border: 0; border-radius: 0; padding: 14px; min-height: 116px;
@@ -268,6 +287,7 @@ button:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
 }
 .level-card:hover { background: #151716; }
 .level-card:hover .num { color: var(--accent); }
+.level-card.tutorial { grid-column: 1 / -1; min-height: 0; }
 .level-card.locked { cursor: not-allowed; }
 .level-card.locked > * { opacity: 0.32; }
 .level-card.locked:hover { background: var(--panel-solid); }
@@ -298,7 +318,7 @@ button:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
 
 /* ---- title screen: the before / after aisle, the name and the menu over it */
 :root { --title-top: 26px; }
-body.demo #toolbar, body.demo #side, body.demo #hint, body.demo #timer, body.demo #btn-restart, body.demo #btn-help, body.demo #cuts,
+body.demo #toolbar, body.demo #side, body.demo #hint, body.demo #timer, body.demo #btn-help, body.demo #cuts,
 body.demo #btn-menu, body.demo #level-title, body.demo #btn-view { display: none !important; }
 /* only the sound toggle stays, in the corner */
 body.demo #topbar { background: transparent; border-bottom: 0; backdrop-filter: none; pointer-events: none; }
@@ -392,8 +412,6 @@ body[data-sc='after'] #title-play.primary { background: var(--accent); color: va
 #sc-new:hover { color: var(--text); }
 #sc-caption { margin: 0; font-size: 13px; color: #c6cbc7; font-style: italic; text-shadow: 0 1px 10px rgba(0, 0, 0, 0.95); }
 /* three gauges that fill up as the aisle is tidied */
-
-#menu-close { position: absolute; top: 14px; right: 16px; font-size: 11px; }
 
 @media (max-width: 760px), (max-height: 620px) {
   :root { --title-top: 14px; }

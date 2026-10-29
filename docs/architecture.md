@@ -14,7 +14,7 @@ src/
   app/          QUELLE SCÈNE est à l'écran, et comment passer de l'une à l'autre
     app.ts          App : un niveau (Controller, avec ou sans tutoriel) ou l'écran titre (Showcase)
     sceneLoader.ts  une scène à la fois : voile de chargement, chargement dépassé par un autre
-    urlOptions.ts   ?sync, ?bays, ?pairs, ?seed : lus depuis une chaîne, donc testables
+    urlOptions.ts   ?sync, ?bays, ?pairs, ?seed, ?quality : lus depuis une chaîne, donc testables
   game/         LES RÈGLES et la physique de la baie                       sans three.js ni DOM : tourne sous Node
     world.ts        World, l'état d'une partie : cordons et leurs bouts, branchement, velcros, bac, stock ; montré
                     en lecture seule, changé par ses méthodes
@@ -57,7 +57,9 @@ src/
     aisleLayout.ts  où se tiennent les baies : un demi-cercle autour du spectateur
     cableRain.ts    le décor : des câbles qui tombent et s'entassent au milieu de la salle
   render/       LE DESSIN (three.js) de ce que game décrit
-    stage.ts        Stage : la scène, la caméra, le cadrage, le rendu et sa qualité adaptée au GPU
+    stage.ts        Stage : la scène, la caméra, le cadrage, le rendu et sa qualité, choisie ou adaptée au GPU
+    quality.ts      les niveaux de qualité de l'image (QUALITY), et ce que le joueur a choisi : auto à partir d'un
+                    niveau, ou des réglages fixes (QualityChoice)
     stageSetup.ts   la construction du renderer, des contrôles et des lumières
     threeCompat/    TOUT CE QUI DÉPEND DES INTERNES DE THREE.JS, et nulle part ailleurs (règle ESLint) : les retouches
                     de shaders (materialPatch, shaderPatch), les passes de post-traitement retouchées (passes :
@@ -76,11 +78,14 @@ src/
     toolbar.ts      la barre d'outils et ce qui reste en stock ; stockMenu.ts, le stock de cordons neufs
     schedulePanel.ts le plan de brassage, ses jauges, le budget d'interruption, le bouton Valider
     levelBrief.ts   le brief d'un niveau, puis la préparation
-    resultScreen.ts l'écran de résultat ; levelMenu.ts, le menu des niveaux
+    resultScreen.ts l'écran de résultat ; levelMenu.ts, le menu des niveaux (tutoriel, campagne, partie libre)
+    pauseMenu.ts    le menu d'un niveau (☰ Menu, Échap) : le chrono attend ; consignes, recommencer, niveaux,
+                    paramètres, accueil ; confirmDialog.ts, la question avant de quitter une baie entamée
+    settingsPanel.ts les paramètres : qualité de l'image (auto, préréglages, détails) et son
     progress.ts     la progression du joueur : meilleur score, niveau ouvert, niveau suivant (fonctions pures)
     messages.ts     tous les textes d'une partie : messages, aides, bulle d'un cordon, critères de lisibilité
     tutorial.ts     le tutoriel guidé, par-dessus un niveau
-    titleScreen.ts  les boutons de l'écran titre et du menu des niveaux ; showcaseSwitch.ts, l'interrupteur
+    titleScreen.ts  les boutons de l'écran titre ; showcaseSwitch.ts, l'interrupteur
                     Avant / Après et sa légende
     panelMargins.ts la place que les panneaux couvrent à chaque bord de l'écran : la baie est cadrée dans le reste
     notice.ts       le bandeau qui conseille le joueur quand la carte graphique est trop lente
@@ -153,14 +158,16 @@ leur prête (le monde, la vue, le pointeur, l'historique…) : on peut lire, tes
 Trois sortes de scènes : un niveau (un `Controller`), le tutoriel (un `Tutorial` par-dessus un niveau) et la
 vitrine avant / après (un `Showcase`, sans contrôleur), qui sert d'écran titre : le jeu s'ouvre toujours dessus,
 avec son nom et son menu (`#title`) par-dessus, et en bas l'interrupteur Avant / Après (`#sc-switch`) et sa
-légende. La page s'ouvre en chargement (`body.booting`, dès le HTML) : un fond noir, le nom au milieu et sa barre,
+légende. L'écran titre est le point de départ de tout : jouer, le tutoriel, les niveaux, les paramètres. Un niveau
+se quitte par son menu de pause (`ui/pauseMenu.ts`), qui demande confirmation quand la baie est entamée ; les
+panneaux ouverts depuis un autre (niveaux, paramètres) y reviennent par leur bouton Retour. La page s'ouvre en chargement (`body.booting`, dès le HTML) : un fond noir, le nom au milieu et sa barre,
 rien d'autre ; le reste apparaît avec la salle. La première salle est toujours la même
 (`SHOWCASE_DEFAULT`, `game/levels/showcaseRack.ts`) : son désordre tombé est précalculé (`npm run bake`,
 `game/mess/showcase.bin`, ~210 Ko, lu par `game/mess/baked.ts`), elle s'affiche donc sans attendre la physique ;
 une baie dont le désordre n'est plus celui du fichier (le code a changé depuis) retombe comme avant, et un test le
 signale. Pendant qu'une salle est à l'écran, la suivante, tirée au hasard, se construit et tombe en fond
 (`App.prepareNextAisle`) : « une autre salle » l'affiche aussitôt. Les options de la page (`?seed`, `?bays`,
-`?pairs`, `?sync`) sont décrites en tête de `app/urlOptions.ts` ; voir aussi « L'écran d'accueil » dans
+`?pairs`, `?sync`, `?quality`) sont décrites en tête de `app/urlOptions.ts` ; voir aussi « L'écran d'accueil » dans
 `anatomie-d-une-frame.md`. Chaque chargement passe par `SceneLoader.load()` :
 
 - le voile de chargement s'affiche et peint avant le calcul (bloquant) de l'emmêlage ; pour l'écran titre, pas
@@ -187,7 +194,8 @@ sur le fil principal.
 ## Données dans le navigateur
 
 `ui/storage.ts` déclare chaque entrée (clé, valeur par défaut, validation) : progression (étoiles et meilleurs temps
-par niveau) et tutoriel terminé. Les clés sont celles des versions précédentes.
+par niveau), tutoriel terminé, qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu) et son
+coupé. Les clés sont celles des versions précédentes.
 
 ## Ajouter…
 

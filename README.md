@@ -40,7 +40,19 @@ fois rangée.
 
 Au premier lancement, **Commencer** ouvre le **tutoriel**, qui présente chaque
 outil pas à pas, puis le premier niveau. Par la suite, le même bouton reprend
-au premier niveau pas encore réussi.
+au premier niveau pas encore réussi. L'écran titre mène aussi au tutoriel, aux
+**Niveaux** (le tutoriel, la campagne et la partie libre) et aux **Paramètres**.
+
+Dans un niveau, **☰ Menu** (ou **Échap**) met le jeu en pause : consignes,
+recommencer, choisir un autre niveau, paramètres, retour à l'accueil. Quitter
+une baie déjà entamée demande confirmation.
+
+Les **Paramètres** règlent la qualité de l'image et le son. En **Auto**, la
+qualité s'abaisse d'elle-même quand la carte graphique ne suit plus (le jeu le
+signale) ; on peut aussi la fixer (Maximale, Élevée, Moyenne, Basse) ou régler
+chaque effet : définition, ombres, occlusion ambiante, reflets au sol. Le choix
+est gardé dans le navigateur ; `?quality=N` dans l'URL (0 à 6) fixe un niveau
+le temps d'une visite.
 
 ## Le jeu
 
@@ -150,6 +162,8 @@ La **partie libre** génère une baie au hasard, de 4 à 48 câbles.
 | Tourner la vue | clic droit + glisser, sans tenir de câble |
 | Déplacer la vue | glisser dans le vide, ou flèches du clavier |
 | Zoomer / revenir de face | molette / **R** |
+| Poser l'outil, puis ouvrir le menu (pause) | **Échap** |
+| Couper / remettre le son | **M** |
 | Statistiques de la physique | **F3** |
 
 ### Les outils

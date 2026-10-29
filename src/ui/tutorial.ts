@@ -219,14 +219,14 @@ export class Tutorial {
   private advance = 0;
   private doneAt = -1;
 
-  constructor(private ctl: Controller, private hud: { selectTool(t: Tool): void }, private actions: { showcase(): void; play(): void }) {
+  constructor(private ctl: Controller, private hud: { selectTool(t: Tool): void }, private actions: { home(): void; play(): void }) {
     this.el = $('#tuto');
     this.el.classList.add('on');
     document.body.classList.add('tutorial');
     (this.el.querySelector('#tuto-prev') as HTMLElement).onclick = () => this.go(this.i - 1);
     (this.el.querySelector('#tuto-next') as HTMLElement).onclick = () => this.next();
     (this.el.querySelector('#tuto-skip') as HTMLElement).onclick = () => { this.markDone(); this.actions.play(); };
-    (this.el.querySelector('#tuto-show') as HTMLElement).onclick = () => this.actions.showcase();
+    (this.el.querySelector('#tuto-home') as HTMLElement).onclick = () => this.actions.home();
     (this.el.querySelector('#tuto-play') as HTMLElement).onclick = () => this.actions.play();
     this.poll = window.setInterval(() => this.check(), 200);
     this.go(0);

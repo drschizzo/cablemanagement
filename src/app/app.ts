@@ -47,13 +47,14 @@ export class App {
 
   /** `baked`: the fallen mess of the default aisle, fetched while the rest starts */
   constructor(private stage: Stage, private aisles: AisleSettings, private threaded: boolean, private baked: Promise<BakedBay[] | null>) {
-    this.hud = new Hud((level) => this.startLevel(level));
+    this.hud = new Hud({ start: (level) => this.startLevel(level), home: () => this.startShowcase() }, stage);
+    stage.onQualityLowered = (choice) => this.hud.qualityLowered(choice);
     this.loader = new SceneLoader(stage, $('#loading'));
     this.title = new TitleScreen({
       start: (level) => this.startLevel(level),
       playNext: () => this.playNext(),
       showMenu: () => this.hud.showMenu(),
-      showShowcase: () => this.startShowcase(),
+      showSettings: () => this.hud.showSettings(),
       nextLevel: () => nextLevelToPlay(this.hud.progress.stars),
       hasProgress: () => Object.keys(this.hud.progress.stars).length > 0,
     });
@@ -83,7 +84,7 @@ export class App {
       }, this.threaded);
       this.ctl = ctl;
       hud.attach(ctl, level);
-      if (level.kind === 'tutorial') this.mode = new Tutorial(ctl, hud, { showcase: () => this.startShowcase(), play: () => this.playNext() });
+      if (level.kind === 'tutorial') this.mode = new Tutorial(ctl, hud, { home: () => this.startShowcase(), play: () => this.playNext() });
       else if (brief) hud.showBrief(level);
       this.reframe();
     });
@@ -93,7 +94,6 @@ export class App {
   startShowcase(): void {
     this.loader.load(async (token) => {
       this.leaveScene();
-      $('#menu').classList.remove('on');
       // the game's panels stay hidden, the title shows its own progress while the aisle falls
       // (not for an aisle already made ready behind the last one: it shows at once)
       document.body.classList.add('demo');

@@ -1,6 +1,6 @@
 // The result screen, once the cabinet is validated: the stars and the time,
 // the cabinet before and after, the checks one by one, the readability note
-// and its record, and the way on (next level, back to work, menu).
+// and its record, and the way on (next level, back to work, menu, home).
 
 import type { Controller } from '../play/controller';
 import type { Evaluation } from '../game/evaluation';
@@ -15,6 +15,8 @@ import { readabilityText } from './messages';
 export interface ResultActions {
   start(level: LevelDef): void;
   showMenu(): void;
+  /** the title screen */
+  home(): void;
 }
 
 export function showResult(ctl: Controller, level: LevelDef, ev: Evaluation, result: LevelResult, challengeWonBefore: boolean, actions: ResultActions): void {
@@ -35,6 +37,7 @@ export function showResult(ctl: Controller, level: LevelDef, ev: Evaluation, res
   if (next && open) nextButton.onclick = () => { hide('#result'); actions.start(next); };
   $('#result-again').onclick = () => { hide('#result'); ctl.resume(); };
   $('#result-menu').onclick = () => { hide('#result'); actions.showMenu(); };
+  $('#result-home').onclick = () => { hide('#result'); actions.home(); };
   show('#result');
 }
 
