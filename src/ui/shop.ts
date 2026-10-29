@@ -33,7 +33,7 @@ export const SHOP: LookItem[] = [
 ];
 
 /** the slots, in the order of the shop */
-export const LOOK_SLOTS: LookSlot[] = ['velcro', 'accent'];
+export const LOOK_SLOTS = Object.keys(DEFAULT_LOOK) as LookSlot[];
 
 export function isOwned(wallet: Wallet, item: LookItem): boolean {
   return item.price === 0 || wallet.owned.includes(item.id);
@@ -62,5 +62,7 @@ export function equip(wallet: Wallet, item: LookItem): boolean {
 
 /** the look the wallet's items give */
 export function lookOf(wallet: Wallet): Look {
-  return { velcro: equippedIn(wallet, 'velcro').value, accent: equippedIn(wallet, 'accent').value };
+  const look = { ...DEFAULT_LOOK };
+  for (const slot of LOOK_SLOTS) look[slot] = equippedIn(wallet, slot).value;
+  return look;
 }

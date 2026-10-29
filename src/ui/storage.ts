@@ -7,6 +7,8 @@
 import { AUTO_QUALITY, QUALITY, type QualityChoice } from '../render/quality';
 import { LANGUAGES, preferredLanguage, type Language } from './language';
 import type { CabinetState } from '../game/cabinetState';
+import type { FindId } from '../game/finds';
+import type { Look } from '../render/look';
 
 /** the best result of one cabinet of the day */
 export interface DailyResult {
@@ -37,9 +39,9 @@ export interface Wallet {
   /** ids of the looks bought (ui/shop.ts) */
   owned: string[];
   /** the look equipped in each slot, by slot */
-  equipped: Record<string, string>;
+  equipped: Partial<Record<keyof Look, string>>;
   /** ids of the finds picked up (game/finds.ts) */
-  finds: string[];
+  finds: FindId[];
 }
 
 /** best result per level id: stars (1..3), time (s), readability note (0..100), and the time challenges won */
