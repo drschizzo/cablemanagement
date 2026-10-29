@@ -10,6 +10,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { BloomPass, ReflectionPass, createAmbientOcclusionPass, type AmbientOcclusionPass } from './threeCompat/passes';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { CinemaPass } from './cinema';
+import { DepthOfFieldPass } from './depthOfField';
 import { LED_CLOCK_WRAP, ledClock, ledViewHeight } from './leds';
 import { ledGlows } from './ledGlow';
 import { gpuAdvice, gpuInfo, type GpuAdvice, type GpuInfo } from './gpu';
@@ -25,6 +26,13 @@ export interface ScreenMargins {
   bottom: number;
 }
 
+/** how far the camera may back away, × the distance it frames the subject from */
+const MAX_ZOOM_OUT = 1.6;
+/** how far round the subject everything stays sharp (see focusOnSubject), × the subject's size */
+const SHARP_REACH = 0.8;
+/** how far what the camera looks at may be panned from the middle of the subject, × the subject's size */
+const PAN_REACH = 0.6;
+
 /** colour of the backdrop where the floor fades out (also the fog) */
 const HORIZON = '#1a1e21';
 
@@ -39,6 +47,8 @@ export class Stage {
   private ao: AmbientOcclusionPass;
   /** glow of what is brighter than white (LEDs, light strips, screens), before tone mapping */
   private bloom: BloomPass;
+  /** what stands well behind the subject, blurred (see focusOnSubject) */
+  private dof: DepthOfFieldPass;
   /** vignette, grain, toning, after tone mapping */
   private cinema: CinemaPass;
   private lastRender = performance.now();
@@ -124,6 +134,8 @@ export class Stage {
     this.composer.addPass(this.ssr);
     this.ao = createAmbientOcclusionPass(this.scene, this.camera);
     this.composer.addPass(this.ao);
+    this.dof = new DepthOfFieldPass(this.ssr.sceneDepth);
+    this.composer.addPass(this.dof);
     this.bloom = new BloomPass(BLOOM.near.strength, BLOOM.near.radius);
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
@@ -244,8 +256,8 @@ export class Stage {
     this.home.target.set(cx, cy, 0.02);
     // slightly from above, so that the floor of the cabinet is in view
     const dist = Math.max(1.0, d);
-    // a wide subject (the aisle of the demo) is framed from further than the player may zoom out
-    this.controls.maxDistance = Math.max(9, dist * 1.2);
+    // a little further than it is framed, no more: past that, the room round the cabinet shows where it ends
+    this.controls.maxDistance = dist * MAX_ZOOM_OUT;
     this.camera.far = Math.max(20, dist * 3);
     this.camera.updateProjectionMatrix();
     // the fog starts behind the subject, wherever the camera stands
@@ -303,6 +315,15 @@ export class Stage {
     this.fill.color.set(color);
   }
 
+  /**
+   * The lens focused on the subject framed, the room round it blurred the
+   * more the further it stands (a level: the cabinet is the subject); or
+   * everything sharp (the aisle of the title screen).
+   */
+  focusOnSubject(on: boolean): void {
+    this.dof.enabled = on;
+  }
+
   /** a left drag in the scene pans the view (the demo, where it grabs nothing) */
   dragPans(on: boolean): void {
     this.controls.mouseButtons.LEFT = on ? THREE.MOUSE.PAN : (null as unknown as THREE.MOUSE);
@@ -346,6 +367,20 @@ export class Stage {
     this.controls.target.copy(this.home.target);
   }
 
+  /**
+   * Brings what the camera looks at back within reach of the subject, the
+   * camera with it: the zoom is held to a distance from that point, but a pan
+   * moves the point itself, and took the view off into the room.
+   */
+  private keepNearSubject(): void {
+    const f = this.framed, reach = Math.max(f.height, 2 * f.halfWidth) * PAN_REACH;
+    const off = this.controls.target.clone().sub(this.home.target);
+    if (off.length() <= reach) return;
+    const back = off.clone().setLength(reach).sub(off);
+    this.controls.target.add(back);
+    this.camera.position.add(back);
+  }
+
   private fitBloom(): void {
     const d = this.camera.position.distanceTo(this.controls.target);
     const { near, far } = BLOOM;
@@ -375,11 +410,18 @@ export class Stage {
     }
     if (this.touring) this.fly(this.touring.advance(dt));
     this.controls.update();
+    this.keepNearSubject();
     // same array, refilled: the pass keeps a reference to it
     this.mirrors.length = 0;
     this.scene.traverseVisible((o) => { if (o.userData.reflective) this.mirrors.push(o as THREE.Mesh); });
     this.ssr.followProjection(this.camera);
     this.fitBloom();
+    if (this.dof.enabled) {
+      const ratio = this.renderer.getPixelRatio();
+      const f = this.framed;
+      // on the subject itself, wherever the view was panned
+      this.dof.frame(this.camera, this.home.target, Math.max(f.height, 2 * f.halfWidth) * SHARP_REACH, window.innerWidth * ratio, window.innerHeight * ratio, ratio);
+    }
     this.cinema.frame(dt, window.innerWidth, window.innerHeight, this.panelMargins);
     // (wrapped, so that the GPU's hash of it keeps its precision)
     ledClock.value = (ledClock.value + dt) % LED_CLOCK_WRAP;

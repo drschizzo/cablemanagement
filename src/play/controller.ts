@@ -165,6 +165,7 @@ export class Controller implements PlayContext, InputCommands {
     this.cableView.lightBy(this.rackView.glow);
     stage.scene.add(this.rackView.group, this.cableView.group);
     stage.setAccent(look.accent);
+    stage.focusOnSubject(true);
     if (this.world.find) {
       this.findView = buildFind(this.world.find);
       stage.scene.add(this.findView);
@@ -189,6 +190,7 @@ export class Controller implements PlayContext, InputCommands {
     this.disposed = true;
     this.stopReplay();
     this.stage.setAccent(DEFAULT_LOOK.accent);
+    this.stage.focusOnSubject(false);
     this.world.dispose();
     this.input.dispose();
     this.spotlightFrame.set(null);

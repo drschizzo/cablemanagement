@@ -75,6 +75,11 @@ export class ReflectionPass extends SSRPass {
     copy.fragmentShader = maskedCopy(copy.fragmentShader);
   }
 
+  /** the depth of the scene as the pass drew it, every frame (the reflections cut or not) */
+  get sceneDepth(): THREE.DepthTexture {
+    return this.beautyRenderTarget.depthTexture!;
+  }
+
   /** the normals and the depth the reflections read: without what stands out of the depth */
   _renderOverride(...args: Parameters<SceneOverride>): void {
     const own = (SSRPass.prototype as unknown as { _renderOverride: SceneOverride })._renderOverride;

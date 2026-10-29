@@ -104,6 +104,9 @@ src/
     cableView.ts    les câbles (tubes de three-cable-tubes), leurs connecteurs et étiquettes
     jacket.ts, straps.ts, leds.ts, ledGlow.ts   gaine vue de près, velcros, voyants et leur lumière
     bevel.ts, batch.ts, dispose.ts, cinema.ts   pièces légères, moins d'appels de dessin, mémoire GPU, dernière passe
+    depthOfField.ts la profondeur de champ d'un niveau : la baie nette, la salle autour floutée selon sa distance à la
+                    baie (derrière comme sur les côtés), ses voyants ouverts en disques
+                    (Stage.focusOnSubject, que le contrôleur allume ; l'écran titre reste net partout)
   ui/           L'INTERFACE HTML autour de la baie
     hud.ts          Hud : assemble les panneaux, et les petites choses (aide, bulle, message, chronomètre)
     toolbar.ts      la barre d'outils et ce qui reste en stock ; stockMenu.ts, le stock de cordons neufs
