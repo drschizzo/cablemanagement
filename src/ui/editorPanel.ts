@@ -6,7 +6,7 @@
 
 import {
   MAX_UNITS, PALETTE, checkSpec, customLevel, decodeSpec, encodeSpec, mostCords,
-  type CustomError, type CustomSpec, type Difficulty, type PaletteItem,
+  type CustomSpec, type Difficulty, type PaletteItem,
 } from '../game/levels/customLevel';
 import type { LevelDef } from '../game/levels/levelDef';
 import { assertNever } from '../lib/assertNever';
@@ -17,6 +17,7 @@ import { customLink } from './share';
 import { tr } from './language';
 import { SERVICES } from '../game/services';
 import { serviceName } from './names';
+import { customErrorText } from './messages';
 
 /** the cabinet the editor opens on, the first time */
 const FIRST_SPEC: CustomSpec = {
@@ -165,18 +166,5 @@ function difficultyName(d: Difficulty): string {
     case 'normal': return tr({ fr: 'Normal', en: 'Normal' });
     case 'hard': return tr({ fr: 'Spaghettis', en: 'Spaghetti' });
     default: return assertNever(d);
-  }
-}
-
-/** why a cabinet of the editor cannot be played, or a code read */
-export function customErrorText(e: CustomError): string {
-  switch (e.kind) {
-    case 'noPanel': return tr({ fr: 'Il faut au moins un panneau de brassage.', en: 'It takes a patch panel at least.' });
-    case 'noSwitch': return tr({ fr: 'Il faut au moins un switch.', en: 'It takes a switch at least.' });
-    case 'tooManyUnits': return tr({ fr: `${e.most} unités au plus.`, en: `${e.most} units at most.` });
-    case 'tooManyCords': return tr({ fr: `Entre 1 et ${e.most} câbles : autant que de ports de panneaux et de switchs.`, en: `Between 1 and ${e.most} cords: as many as the panel and switch ports.` });
-    case 'twice': return tr({ fr: 'Un seul exemplaire de chacun : pare-feu, routeur, bandeau électrique.', en: 'One of each only: firewall, router, power strip.' });
-    case 'badCode': return tr({ fr: 'Ce code ne décrit pas une baie.', en: 'This code describes no cabinet.' });
-    default: return assertNever(e);
   }
 }

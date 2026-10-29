@@ -1,11 +1,13 @@
 // Every sentence a level says to the player: the toasts, the hints under the
-// cabinet, the tooltip of a cord, the readability criteria. The game sends
-// data (play/messages.ts, game/evaluation.ts); the words live here.
+// cabinet, the tooltip of a cord, the readability criteria, and why a cabinet
+// of the editor cannot be played. The game sends data (play/messages.ts,
+// game/evaluation.ts, game/levels/customLevel.ts); the words live here.
 
 import type { CordInfo, Hint, HoverNote, PhysicsStats, Toast } from '../play/messages';
 import type { RouteError } from '../game/routeLaying';
 import type { ReadabilityPart, Strain } from '../game/evaluation';
 import type { IncidentEvent } from '../game/incidents';
+import type { CustomError } from '../game/levels/customLevel';
 import { assertNever } from '../lib/assertNever';
 import { formatCost, formatDecimal } from './format';
 import { fibreName, serviceName, supplyName } from './names';
@@ -156,5 +158,18 @@ export function readabilityText(part: ReadabilityPart): { name: string; tip: str
       en: { name: 'Crossings', tip: `${part.crossings} crossing${part.crossings > 1 ? 's' : ''} outside the supports` },
     });
     default: return assertNever(part);
+  }
+}
+
+/** why a cabinet of the editor cannot be played, or a code read */
+export function customErrorText(e: CustomError): string {
+  switch (e.kind) {
+    case 'noPanel': return tr({ fr: 'Il faut au moins un panneau de brassage.', en: 'It takes a patch panel at least.' });
+    case 'noSwitch': return tr({ fr: 'Il faut au moins un switch.', en: 'It takes a switch at least.' });
+    case 'tooManyUnits': return tr({ fr: `${e.most} unités au plus.`, en: `${e.most} units at most.` });
+    case 'tooManyCords': return tr({ fr: `Entre 1 et ${e.most} câbles : autant que de ports de panneaux et de switchs.`, en: `Between 1 and ${e.most} cords: as many as the panel and switch ports.` });
+    case 'twice': return tr({ fr: 'Un seul exemplaire de chacun : pare-feu, routeur, bandeau électrique.', en: 'One of each only: firewall, router, power strip.' });
+    case 'badCode': return tr({ fr: 'Ce code ne décrit pas une baie.', en: 'This code describes no cabinet.' });
+    default: return assertNever(e);
   }
 }
