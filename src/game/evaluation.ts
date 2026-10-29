@@ -4,6 +4,7 @@
 // stars. Reads a World, changes nothing.
 
 import { SERVICES } from './services';
+import { CORD_KINDS } from './cordTypes';
 import { insideBox, type SupportBox } from './rack';
 import type { World } from './world';
 import type { CableIndex } from './cables';
@@ -196,7 +197,7 @@ export function cordStrain(w: World, c: CableIndex): Strain | null {
   if (!cb.ends[0].port || !cb.ends[1].port) return null;
   if (w.cableLength(c) < TAUT_SHORT * w.routeLength(c)!) return 'taut';
   const x = w.sim.x;
-  if (cb.type === 'CU') return null;
+  if (!CORD_KINDS[cb.type].kinks) return null;
   // away from the boots (where the cord turns sharply on purpose), over two segments either side
   const near = Math.ceil(0.15 / w.seg);
   for (let k = near; k < cb.count - near; k++) {
@@ -239,7 +240,7 @@ function readability(w: World, circuits: CircuitStatus[], strain: (Strain | null
   }
   // copper cords of the colour of their service
   if (w.level.colorByService) {
-    const cu = made.filter(({ s }) => w.cables[s.cable].type === 'CU');
+    const cu = made.filter(({ s }) => CORD_KINDS[w.cables[s.cable].type].takesServiceColor);
     if (cu.length) {
       const ok = cu.filter(({ s, i }) => w.cables[s.cable].color === SERVICES[w.circuits[i].service].color).length;
       parts.push({ criterion: 'colours', value: ok / cu.length });
@@ -255,14 +256,14 @@ function readability(w: World, circuits: CircuitStatus[], strain: (Strain | null
   }
   // fibre and copper in separate ducts and managers
   const x = w.sim.x;
-  if (new Set(w.cables.map((cb) => cb.type === 'CU')).size > 1) {
+  if (new Set(w.cables.map((cb) => CORD_KINDS[cb.type].family)).size > 1) {
     let used = 0, mixed = 0;
     for (const sp of supports) {
-      const kinds = new Set<boolean>();
+      const kinds = new Set<string>();
       w.cables.forEach((cb) => {
         for (let k = 4; k < cb.count - 4; k += 2) {
           const i = cb.start + k;
-          if (insideBox(sp, x[3 * i], x[3 * i + 1], x[3 * i + 2])) { kinds.add(cb.type === 'CU'); break; }
+          if (insideBox(sp, x[3 * i], x[3 * i + 1], x[3 * i + 2])) { kinds.add(CORD_KINDS[cb.type].family); break; }
         }
       });
       if (kinds.size) used++;

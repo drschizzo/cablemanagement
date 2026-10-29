@@ -3,7 +3,7 @@
 // by hand for some (LevelDef.schedule).
 
 import type { Rack, Port } from './rack';
-import type { FibreType } from './cordTypes';
+import { CORD_KINDS, type FibreType } from './cordTypes';
 import type { LevelDef } from './levels/levelDef';
 import { shuffle } from '../lib/random';
 
@@ -45,7 +45,7 @@ export function makeSchedule(level: LevelDef, rack: Rack, r: () => number): Circ
     }
     taken.add(b.id);
     // copper panels take copper cords; fibre: one type per panel, or alternating
-    const fibres = level.types.filter((t) => t !== 'CU');
+    const fibres = level.types.filter((t) => CORD_KINDS[t].family === 'fibre');
     const ti = panelUnits.length > 1 ? pi : c;
     const type: FibreType = rack.units[a.unit].style === 'copper' ? 'CU' : fibres[ti % Math.max(1, fibres.length)] ?? 'OS2';
     out.push({ a: a.id, b: b.id, type, service: Math.floor(r() * level.services) });

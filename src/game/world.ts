@@ -12,7 +12,7 @@ import { SERVICES } from './services';
 import { MaintenanceWindow } from './maintenanceWindow';
 import { Incidents, type IncidentEvent } from './incidents';
 import { placeFind, type Find, type FindId } from './finds';
-import type { FibreType } from './cordTypes';
+import { CORD_KINDS, type FibreType } from './cordTypes';
 import type { Cable, CableEnd, CableIndex, CircuitIndex, EndIndex, NodeIndex, ReadonlyCable, Strap, CableStart } from './cables';
 import { coilInCrate, minLengthThrough, shapeForLength } from './cordShapes';
 import type { LevelDef } from './levels/levelDef';
@@ -83,14 +83,13 @@ export class World {
   /** bending stiffness override (0: by cord type) */
   readonly bend: number;
 
-  /** patch cords are springy: copper about twice as stiff as a fibre jumper */
   /** a patch cord of this type through these nodes, for the solver */
   private cord(type: FibreType, points: number[]): CableInit {
     return { ...CABLES.patchCord.cable, points, radius: this.radius, bend: this.stiffness(type) };
   }
 
   stiffness(type: FibreType): number {
-    return this.bend || (type === 'CU' ? 12 : 6);
+    return this.bend || CORD_KINDS[type].stiffness;
   }
 
   /** where every cord was laid at the start (its tangle, or its tidy route) */
@@ -123,7 +122,7 @@ export class World {
         count: s.points.length / 3,
         ends: [{ port: null, label: null }, { port: null, label: null }],
         // drawn cords are made for the line of the same index; carried ones say their colour
-        color: s.color ?? (level.colorByService && s.type === 'CU' && this.circuits[c] ? SERVICES[this.circuits[c].service].color : undefined),
+        color: s.color ?? (level.colorByService && CORD_KINDS[s.type].takesServiceColor && this.circuits[c] ? SERVICES[this.circuits[c].service].color : undefined),
       });
       for (const e of [0, 1] as const) {
         if (s.ends[e]) this.plug(c, e, s.ends[e]!);

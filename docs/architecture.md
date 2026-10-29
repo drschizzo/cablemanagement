@@ -34,7 +34,8 @@ src/
     rack.ts         baie 19", ports, éléments de rangement, formes de collision, zones de rangement
     supplies.ts     les fournitures (supports et velcros), décrites une fois : ItemKind et Stock en dérivent
     schedule.ts     le plan de brassage : une ligne (Circuit), et le plan tiré au hasard d'un niveau (makeSchedule)
-    cordTypes.ts    sortes de cordon (fibre, cuivre) et longueurs du catalogue
+    cordTypes.ts    sortes de cordon, décrites une fois (famille, raideur, pliure, connecteur, couleur) et longueurs
+                    du catalogue
     services.ts     les services du plan (données, voix…) : couleur, poids d'une coupure (leurs noms : ui/names.ts)
     idealRoutes.ts  la route idéale de chaque cordon, la baie « finie » d'un niveau (tidyKit), les cordons couchés
                     sur leurs routes (tidyLayout, la baie rangée de la vitrine)

@@ -138,7 +138,9 @@ this.on(window, 'pointerup', (e: PointerEvent) => this.pointerUp(e));
 **Une sorte de chose est décrite une fois, et les types en dérivent.** Ce que les règles savent d'une fourniture
 (sa catégorie) est dans `SUPPLIES` (`game/supplies.ts`) ; `ItemKind` et `Stock` en sont calculés, et ses noms
 (`ui/names.ts`) sont un `Record<Supply, …>` : une nouvelle sorte sans nom ne compile pas. Une liste écrite à la main ailleurs (`['fingerManager', 'duct', 'ring']`) oublierait la prochaine
-sorte sans que rien ne le signale.
+sorte sans que rien ne le signale. De même, ce qu'on demande à un cordon (se plie-t-il ? prend-il la couleur de son
+service ? quel connecteur ?) se demande à sa sorte (`CORD_KINDS`, `game/cordTypes.ts`), jamais à son nom
+(`type === 'CU'`) : une nouvelle sorte n'est pas traitée en silence comme une autre.
 
 **Un switch sur une union traite tous les cas, et finit par `assertNever`.** Une chaîne de ternaires
 `a ? … : b ? … : c` traite en silence un nouveau cas comme le dernier : un nouveau support aurait été posé comme une

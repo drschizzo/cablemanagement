@@ -1,10 +1,36 @@
-// The kinds of patch cord, and the lengths they come in.
+// The kinds of patch cord, described once: what they carry, how stiff they
+// are, whether they kink, their connector, their colour; and the lengths
+// they come in. What is asked of a cord's kind is asked here, not of its name.
 
 /** OS2 / OM4: optical fibre; CU: copper (RJ45) */
 export type FibreType = 'OS2' | 'OM4' | 'CU';
 
-/** the colour of each cord type's jacket: yellow single-mode, aqua multimode, blue copper (the usual codes) */
-export const FIBRE_COLORS: Record<FibreType, string> = { OS2: '#f2c12e', OM4: '#3cc9cf', CU: '#3d7fe0' };
+interface CordKind {
+  /** fibre and copper are not run in the same supports (readability) */
+  family: 'fibre' | 'copper';
+  /** bending stiffness of the cord for the solver */
+  stiffness: number;
+  /** a sharp bend breaks it (a fibre): a kinked cord is no tidy cord */
+  kinks: boolean;
+  /** the connector at its ends: an LC plug, an RJ45 */
+  plug: 'lc' | 'rj45';
+  /** its jacket: yellow single-mode, aqua multimode, blue copper (the usual codes) */
+  color: string;
+  /** cords of this kind may take their service's colour (copper patch cords) */
+  takesServiceColor: boolean;
+}
+
+/** patch cords are springy: copper about twice as stiff as a fibre jumper */
+export const CORD_KINDS: Record<FibreType, CordKind> = {
+  OS2: { family: 'fibre', stiffness: 6, kinks: true, plug: 'lc', color: '#f2c12e', takesServiceColor: false },
+  OM4: { family: 'fibre', stiffness: 6, kinks: true, plug: 'lc', color: '#3cc9cf', takesServiceColor: false },
+  CU: { family: 'copper', stiffness: 12, kinks: false, plug: 'rj45', color: '#3d7fe0', takesServiceColor: true },
+};
+
+/** the colour of each cord type's jacket */
+export const FIBRE_COLORS: Record<FibreType, string> = {
+  OS2: CORD_KINDS.OS2.color, OM4: CORD_KINDS.OM4.color, CU: CORD_KINDS.CU.color,
+};
 
 /** standard patch cord lengths (m) */
 export const CATALOGUE = [0.15, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 5];

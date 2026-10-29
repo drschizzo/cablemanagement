@@ -15,7 +15,7 @@ import { JACKET_KIND, jacketMaterial, jacketed } from './jacket';
 import { Straps } from './straps';
 import { DEFAULT_LOOK } from './look';
 import type { CableIndex } from '../game/cables';
-import { FIBRE_COLORS } from '../game/cordTypes';
+import { CORD_KINDS, FIBRE_COLORS, type FibreType } from '../game/cordTypes';
 
 
 interface CableMesh {
@@ -53,7 +53,8 @@ const pinchGeo = shared(new THREE.TorusGeometry(1, 0.22, 6, 14));
 const PINCH_SOFT = new THREE.Color('#2f5866'), PINCH_FIRM = new THREE.Color('#6fe3ff'), PINCH_HOVER = new THREE.Color('#ff8a4c');
 const Z = new THREE.Vector3(0, 0, 1);
 const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
-const HOUSING = { OS2: new THREE.Color('#2d6fd8'), OM4: new THREE.Color('#d9cfa3') };
+/** the housing of a plug, when it is not the clear one of its connector */
+const HOUSING: Partial<Record<FibreType, THREE.Color>> = { OS2: new THREE.Color('#2d6fd8'), OM4: new THREE.Color('#d9cfa3') };
 /** how clear an RJ45 plug is (its transmission) */
 const CLEAR = 0.6;
 
@@ -145,7 +146,8 @@ export class CableView {
       const p = this.plugOf(c);
       for (const e of [0, 1]) {
         p.boot.setColorAt(2 * c + e, this.cables[c].color);
-        if (cb.type !== 'CU') { p.housing.setColorAt(2 * c + e, HOUSING[cb.type]); p.latch.setColorAt(2 * c + e, HOUSING[cb.type]); }
+        const housing = HOUSING[cb.type];
+        if (housing) { p.housing.setColorAt(2 * c + e, housing); p.latch.setColorAt(2 * c + e, housing); }
       }
     });
   }
@@ -161,7 +163,7 @@ export class CableView {
   private litBy: LedGlow | null = null;
 
   private plugOf(c: number): Plugs {
-    return this.world.cables[c].type === 'CU' ? this.plugs.copper : this.plugs.fibre;
+    return CORD_KINDS[this.world.cables[c].type].plug === 'rj45' ? this.plugs.copper : this.plugs.fibre;
   }
 
   /** `force`: rebuild every cord, or only those it picks (scripted motion) */
