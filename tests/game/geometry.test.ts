@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { pathToNodes, polyLength, resample, type V3 } from '../../src/game/idealRoutes';
+import { pathToNodes, resample } from '../../src/game/idealRoutes';
+import { polyLength, type V3 } from '../../src/game/vec3';
 import { rng } from '../../src/game/mess/tangle';
 import { Rack, DUCT_SPAN, insideBox, type UnitSpec } from '../../src/game/rack';
 

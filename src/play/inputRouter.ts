@@ -11,9 +11,10 @@ import type { Pointer } from './pointer';
 import type { HandTool } from './tools/handTool';
 import type { RouteTool } from './tools/routeTool';
 import type { SupportsTool } from './tools/supportsTool';
+import type { CableIndex } from '../game/cables';
 
 /** the tools that work on a cord (the others work on the rack) */
-export const CORD_TOOLS = new Set<Tool>(['hand', 'route']);
+const CORD_TOOLS = new Set<Tool>(['hand', 'route']);
 
 export interface ToolSet {
   byName: Record<Tool, ToolHandler>;
@@ -35,8 +36,8 @@ export interface InputCommands {
   /** the pointer moved with no gesture under way, over the cords */
   hoverCords(e: PointerEvent): void;
   clearHover(): void;
-  trace(cable: number): void;
-  deposit(cable: number): void;
+  trace(cable: CableIndex): void;
+  deposit(cable: CableIndex): void;
   undo(): void;
   cyclePick(): void;
 }
@@ -56,9 +57,11 @@ export class InputRouter {
     for (const off of this.unbind) off();
   }
 
-  private on(target: EventTarget, name: string, listener: (e: any) => void, options?: AddEventListenerOptions): void {
-    target.addEventListener(name, listener, options);
-    this.unbind.push(() => target.removeEventListener(name, listener));
+  /** listens, and remembers how to stop (dispose) */
+  private on<E extends Event>(target: EventTarget, name: string, listener: (e: E) => void, options?: AddEventListenerOptions): void {
+    const handler = listener as EventListener;
+    target.addEventListener(name, handler, options);
+    this.unbind.push(() => target.removeEventListener(name, handler));
   }
 
   // ------------------------------------------------------------ pointer

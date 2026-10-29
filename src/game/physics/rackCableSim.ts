@@ -12,6 +12,7 @@
 // never draws a cord in: laying a cord in the guides is the route's job.
 
 import { CableSim, defaultSimParams, type CableInit, type NodeSystem, type Pinch, type SimParams, type SimSnapshot, type StaticShape } from '@drschizzo/avbd-cables';
+import type { NodeIndex } from '../cables';
 
 /**
  * A channel that keeps what is left in it (the trough of a finger manager):
@@ -68,7 +69,7 @@ export interface RackParams extends SimParams {
   keepPeel: number;
 }
 
-export function defaultRackParams(p: Partial<RackParams> = {}): RackParams {
+function defaultRackParams(p: Partial<RackParams> = {}): RackParams {
   return {
     ...defaultSimParams(),
     // stretch warm start as before cable-kit 48f59ca (0.4 there): at 0.4 a cord
@@ -176,7 +177,7 @@ export class RackCableSim extends CableSim {
     super.teleport(pos);
   }
 
-  unpin(i: number): void {
+  unpin(i: NodeIndex): void {
     this.plugs = this.plugs.filter((q) => {
       if (q.i0 !== i && q.i1 !== i) return true;
       this.plugging[q.i0] = 0; this.plugging[q.i1] = 0;
@@ -244,7 +245,7 @@ export class RackCableSim extends CableSim {
     });
   }
 
-  grab(i: number): void {
+  grab(i: NodeIndex): void {
     this.grabNode = i;
     this.handled[this.cableOf[i]] = 1;
     this.lastHand[this.cableOf[i]] = i;
@@ -261,7 +262,7 @@ export class RackCableSim extends CableSim {
   }
 
   /** the other hand takes node i and holds it at (x, y, z) */
-  holdStill(i: number, x: number, y: number, z: number): void {
+  holdStill(i: NodeIndex, x: number, y: number, z: number): void {
     if (this.holdNode >= 0) this.wakeCable(this.cableOf[this.holdNode]);
     this.holdNode = i;
     this.holdTarget[0] = x; this.holdTarget[1] = y; this.holdTarget[2] = z;

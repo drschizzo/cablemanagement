@@ -15,7 +15,7 @@ export const SIDE_IN = 0.258; // inner edge of the side channels
 export const SIDE_OUT = 0.378; // outer edge (duct wall)
 export const WALL_X = 0.392; // cabinet side walls
 export const SIDE_BACK = -0.06; // back of the side channels
-export const RING_DEPTH = 0.072; // how far the rings stand out of the managers
+const RING_DEPTH = 0.072; // how far the rings stand out of the managers
 export const CONNECTOR = 0.034; // LC connector + start of the boot, out of the port face
 export const SEG = 0.025; // cable segment length
 export const FRONT_Z = 0.25; // front edge of the cabinet
@@ -85,7 +85,7 @@ export const RING_GAP = 0.024;
 export const DUCT_FRONT = 0.07;
 export const DUCT_PITCH = 0.022;
 export const DUCT_SLIT_X = (SIDE_IN + SIDE_OUT) / 2;
-export const DUCT_SLIT = 0.011;
+const DUCT_SLIT = 0.011;
 
 type Box3 = { min: [number, number, number]; max: [number, number, number] };
 
@@ -125,13 +125,14 @@ export class Rack {
     });
   }
 
-  /** centre height of unit k (0 = top) */
-  unitY(k: number): number {
-    return this.topY - (k + 0.5) * U;
+  /** centre height of a unit (0 = top) */
+  unitY(unit: number): number {
+    return this.topY - (unit + 0.5) * U;
   }
 
-  unitBottom(k: number): number {
-    return this.topY - (k + 1) * U;
+  /** bottom height of a unit (0 = top) */
+  unitBottom(unit: number): number {
+    return this.topY - (unit + 1) * U;
   }
 
   port(id: string): Port {

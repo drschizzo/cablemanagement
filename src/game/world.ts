@@ -14,7 +14,8 @@ import type { Cable, CableEnd, CableIndex, CircuitIndex, EndIndex, NodeIndex, St
 import { coilInCrate, minLengthThrough, shapeForLength } from './cordShapes';
 import type { LevelDef } from './levels/levelDef';
 import { makeCables, makeSchedule, rng, type CableStart, type Circuit } from './mess/tangle';
-import { pathToNodes, polyLength, resample, tidyRoutes, type V3 } from './idealRoutes';
+import { pathToNodes, resample, tidyRoutes } from './idealRoutes';
+import { polyLength, type V3 } from './vec3';
 
 export interface Snapshot {
   version: number;

@@ -15,8 +15,8 @@ import {
   hmgrFingers, type Guide, type Port,
 } from './rack';
 import type { World } from './world';
-
-type V3 = [number, number, number];
+import { dist, lerp, polyLength, type V3 } from './vec3';
+import type { CableIndex, EndIndex } from './cables';
 
 /** the plane in front of every guide where a cord is carried across (z) */
 export const FRONT = 0.12;
@@ -28,9 +28,9 @@ const PLAY = 0.06;
 const NEAR_PORT = 0.8;
 
 export interface RoutePlan {
-  cable: number;
+  cable: CableIndex;
   /** the end the route starts from (it stays where it is) */
-  a: number;
+  a: EndIndex;
   /** the port the other end plugs into once there, or null */
   portB: string | null;
   /** each node's way (null: not led) */
@@ -49,16 +49,9 @@ export interface NodeWay { out: V3[]; inn: V3[] }
 
 export type RouteResult = { plan: RoutePlan } | { error: string };
 
-const dist = (a: V3, b: V3) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
-const lerp = (a: V3, b: V3, t: number): V3 => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 const centre = (g: Guide): V3 => [0, 1, 2].map((d) => (g.room.min[d] + g.room.max[d]) / 2) as V3;
 const inBox = (b: Guide['reach'], p: V3) => p.every((v, d) => v >= b.min[d] && v <= b.max[d]);
-function polyLength(pts: V3[]): number {
-  let L = 0;
-  for (let i = 1; i < pts.length; i++) L += dist(pts[i - 1], pts[i]);
-  return L;
-}
 
 /** the middle of the slot between two fingers of a manager row nearest x */
 function slotX(x: number): number {
@@ -79,23 +72,16 @@ function slotX(x: number): number {
  * outside the guides, one leg before each guide and one after the last: the
  * cord passes there, and goes into each guide from the side the line came
  * from (by an end of a manager rather than between its fingers, say).
+ *
+ * In five steps: which end stays; the route as points; the route fitted to
+ * the cord's length; where each node of the cord goes on it; and the way each
+ * node takes to get there.
  */
-export function planRoute(w: World, c: number, guides: Guide[], portB: Port | null, legs: V3[][] = []): RouteResult {
+export function planRoute(w: World, c: CableIndex, guides: Guide[], portB: Port | null, legs: V3[][] = []): RouteResult {
   if (!guides.length && !portB) return { error: 'Tracez le chemin par-dessus les guides (ou jusqu\'à un port).' };
-  const rack = w.rack, cb = w.cables[c], sim = w.sim, r = w.radius;
-  const ports = cb.ends.map((e) => (e.port ? rack.port(e.port) : null));
-  const first: V3 = guides.length ? centre(guides[0]) : [portB!.x, portB!.y, 0];
-  const at = (p: Port): V3 => [p.x, p.y, 0];
-  // the end that stays: the plugged one (the nearer the first guide if both are)
-  let a: number;
-  // both plugged, and a port to go to: the end plugged nearest it moves there
-  if (ports[0] && ports[1] && portB) a = dist(at(ports[0]), at(portB)) <= dist(at(ports[1]), at(portB)) ? 1 : 0;
-  else if (ports[0] && ports[1]) a = dist(at(ports[0]), first) <= dist(at(ports[1]), first) ? 0 : 1;
-  else if (ports[0] || ports[1]) a = ports[0] ? 0 : 1;
-  else {
-    const tip = (e: number): V3 => { const [n0] = w.endNodes(c, e); return [sim.x[3 * n0], sim.x[3 * n0 + 1], sim.x[3 * n0 + 2]]; };
-    a = dist(tip(0), first) <= dist(tip(1), first) ? 0 : 1;
-  }
+  const cb = w.cables[c];
+  const ports = cb.ends.map((e) => (e.port ? w.rack.port(e.port) : null));
+  const a = stayingEnd(w, c, ports, guides, portB);
   const b = 1 - a;
   const pa = ports[a];
   // where the other end goes: the port the stroke ends on, else its own
@@ -103,115 +89,175 @@ export function planRoute(w: World, c: number, guides: Guide[], portB: Port | nu
   if (portB && portB.plug >= 0 && portB.plug !== c * 2 + b) return { error: `Le port ${portB.id} est déjà occupé.` };
   if (pb && pb === pa) pb = null;
 
-  // --- the route, as points
-  const pts: V3[] = [];
-  const exit = (p: Port, dir: number): V3[] => [
-    [p.x, p.y, CONNECTOR],
-    [p.x, p.y, CONNECTOR + w.seg],
-    [p.x, p.y + dir * 0.006, CONNECTOR + w.seg + 0.012],
-  ];
-  // the stretches along a guide, where the extra length can be laid
-  const runs: Run[] = [];
-  // the line drawn between the guides, cleaned up: none by a port (the cord
-  // comes out of it and goes into it straight), none along the guide it
-  // comes out of or goes into (the line ran beside it: it was in it)
-  const floor = rack.floorY + r + 0.004, wall = WALL_X - r - 0.004;
-  const drawn = [...guides.map((_, k) => legs[k] ?? []), legs[guides.length] ?? []].map((leg, k) => {
+  const drawn = drawnLegs(w, guides, legs, pa, pb);
+  const { route: drawnRoute, runs } = routeThrough(w, c, guides, drawn, pa, pb);
+  const arcs = nodeArcs(w, c, a);
+  const length = arcs[cb.count - 1];
+  let path = drawnRoute, slack = 0;
+  if (pb) {
+    const route = cutCorners(drawnRoute, new Set(drawn.flat()), length);
+    const needed = polyLength(route);
+    if (needed > length + 0.01) return { error: `Ce cordon est trop court pour ce chemin : il manque ${Math.ceil((needed - length) * 100)} cm (un cordon plus long se prend au Stock).` };
+    slack = length - needed;
+    path = layExtraLength(route, runs, guides, slack);
+  }
+  const place = nodePlaces(arcs, path, pb !== null);
+  const ways = nodeWays(w, c, a, arcs, place, pa !== null, pb !== null);
+  return { plan: { cable: c, a, portB: pb && pb !== ports[b] ? pb.id : null, ways, slack } };
+}
+
+/** the end that stays where it is: the plugged one (the nearer the first guide if both are) */
+function stayingEnd(w: World, c: CableIndex, ports: (Port | null)[], guides: Guide[], portB: Port | null): EndIndex {
+  const first: V3 = guides.length ? centre(guides[0]) : [portB!.x, portB!.y, 0];
+  // both plugged, and a port to go to: the end plugged nearest it moves there
+  if (ports[0] && ports[1] && portB) return dist(portAt(ports[0]), portAt(portB)) <= dist(portAt(ports[1]), portAt(portB)) ? 1 : 0;
+  if (ports[0] && ports[1]) return dist(portAt(ports[0]), first) <= dist(portAt(ports[1]), first) ? 0 : 1;
+  if (ports[0] || ports[1]) return ports[0] ? 0 : 1;
+  const x = w.sim.x;
+  const tip = (e: EndIndex): V3 => { const [n0] = w.endNodes(c, e); return [x[3 * n0], x[3 * n0 + 1], x[3 * n0 + 2]]; };
+  return dist(tip(0), first) <= dist(tip(1), first) ? 0 : 1;
+}
+
+const portAt = (p: Port): V3 => [p.x, p.y, 0];
+
+/**
+ * The line drawn between the guides, cleaned up: none by a port (the cord
+ * comes out of it and goes into it straight), none along the guide it comes
+ * out of or goes into (the line ran beside it: it was in it). One leg before
+ * each guide, one after the last.
+ */
+function drawnLegs(w: World, guides: Guide[], legs: V3[][], pa: Port | null, pb: Port | null): V3[][] {
+  const floor = w.rack.floorY + w.radius + 0.004, wall = WALL_X - w.radius - 0.004;
+  return [...guides.map((_, k) => legs[k] ?? []), legs[guides.length] ?? []].map((leg, k) => {
     const pts = leg.filter((p) => ![pa, pb].some((q) => q && Math.hypot(p[0] - q.x, p[1] - q.y) < 0.04));
     let i = 0, j = pts.length;
     if (k > 0) while (i < j && nearGuide(guides[k - 1], pts[i])) i++;
     if (k < guides.length) while (j > i && nearGuide(guides[k], pts[j - 1])) j--;
     return wayPoints(pts.slice(i, j), floor, wall);
   });
-  const ref = (k: number): V3 | null => {
-    // what is next after guide k − 1: the line drawn, else the guide or the port
+}
+
+/** the route as points: out of port a, along the line drawn and through each guide, into port b */
+function routeThrough(w: World, c: CableIndex, guides: Guide[], drawn: V3[][], pa: Port | null, pb: Port | null): { route: V3[]; runs: Run[] } {
+  const pts: V3[] = [];
+  // the stretches along a guide, where the extra length can be laid
+  const runs: Run[] = [];
+  const exit = (p: Port, dir: number): V3[] => [
+    [p.x, p.y, CONNECTOR],
+    [p.x, p.y, CONNECTOR + w.seg],
+    [p.x, p.y + dir * 0.006, CONNECTOR + w.seg + 0.012],
+  ];
+  // what is next after guide k − 1: the line drawn, else the guide or the port
+  const next = (k: number): V3 | null => {
     if (k >= 0 && drawn[k].length) return drawn[k][0];
-    return k < 0 ? (pa ? at(pa) : null) : k < guides.length ? centre(guides[k]) : pb ? at(pb) : null;
+    return k < 0 ? (pa ? portAt(pa) : null) : k < guides.length ? centre(guides[k]) : pb ? portAt(pb) : null;
   };
-  // lanes: one per cord already lying in a guide
-  const lane = (g: Guide) => {
-    let n = 0;
-    w.cables.forEach((o, oc) => {
-      if (oc === c) return;
-      let k = 0;
-      for (let i = o.start; i < o.start + o.count && k < 2; i++) if (inBox(g.room, [sim.x[3 * i], sim.x[3 * i + 1], sim.x[3 * i + 2]])) k++;
-      if (k >= 2) n++;
-    });
-    return n;
-  };
-  if (pa) {
-    const nx = ref(0)!;
-    pts.push(...exit(pa, nx[1] < pa.y ? -1 : 1));
-  }
+  if (pa) pts.push(...exit(pa, next(0)![1] < pa.y ? -1 : 1));
   guides.forEach((g, k) => {
     pts.push(...drawn[k]);
     const prev = pts.length ? pts[pts.length - 1] : null;
-    const next = ref(k + 1);
-    const i = lane(g);
-    if (g.kind === 'hmgr') {
-      const y = g.room.min[1] + r + 0.001 + Math.floor(i / 6) * (2 * r + 0.0008);
-      const z = clamp(0.058 - (i % 6) * 0.009, g.room.min[2] + r, g.room.max[2] - r);
-      const rowAbove = g.room.max[1] + FINGER_R, rowBelow = g.room.min[1] - FINGER_R;
-      // in: down (or up) between two fingers from a port, or in at an end from a side channel
-      const into = (q: V3 | null): V3[] => {
-        if (!q) return [];
-        if (Math.abs(q[0]) > COLUMN_X) return [[Math.sign(q[0]) * 0.235, y, z]];
-        const sx = slotX(q[0]);
-        const row = q[1] > y ? rowAbove + 0.008 : rowBelow - 0.008;
-        return [[sx, row, z], [sx, y, z]];
-      };
-      const pin = into(prev), pout = into(next).reverse();
-      if (!pin.length && !pout.length) pin.push([-0.1, y, z]);
-      if (!pin.length) pin.push([clamp(pout[0][0] - Math.sign(pout[0][0] || 1) * 0.1, -0.2, 0.2), y, z]);
-      if (!pout.length) pout.push([clamp(pin[pin.length - 1][0] - Math.sign(pin[pin.length - 1][0] || 1) * 0.1, -0.2, 0.2), y, z]);
-      pts.push(...pin, ...pout);
-      // its lanes towards the deeper side of the trough, if there is more room there
-      runs.push({ g, p: pin[pin.length - 1], q: pout[0], lane: [0, 0, z - g.room.min[2] > g.room.max[2] - z ? -LANE : LANE] });
-    } else if (g.kind === 'vring') {
-      const s = Math.sign(g.room.min[0] + g.room.max[0]);
-      const xIn = s > 0 ? g.room.min[0] : g.room.max[0];
-      const x = xIn + s * (r + 0.004 + (i % 4) * 0.02);
-      const z = clamp(0.045 - Math.floor(i / 4) * 0.02, g.room.min[2] + r, g.room.max[2] - r);
-      pts.push([x, (g.room.min[1] + g.room.max[1]) / 2, z]);
-    } else {
-      const s = Math.sign(g.room.min[0] + g.room.max[0]);
-      const cols = 6;
-      const dx = s * (SIDE_OUT - 0.012 - (i % cols) * ((SIDE_OUT - SIDE_IN - 0.024) / (cols - 1)));
-      const dz = clamp(0.055 - Math.floor(i / cols) * 0.016, g.room.min[2] + r, g.room.max[2] - r);
-      const yb = g.room.min[1] + 0.006, yt = g.room.max[1] - 0.006;
-      // in and out: through a slot of the inner wall from the column, else by an end
-      const slotY = (y: number) => { const k = Math.round((y - g.room.min[1]) / DUCT_PITCH - 0.5); return clamp(g.room.min[1] + (k + 0.5) * DUCT_PITCH, yb, yt); };
-      const side = (q: V3 | null, out: boolean): V3[] => {
-        if (!q) return [];
-        if (Math.abs(q[0]) < SIDE_IN && q[1] > g.room.min[1] && q[1] < g.room.max[1]) {
-          const y = slotY(q[1]);
-          const p: V3[] = [[s * (SIDE_IN - 0.012), y, dz], [s * (SIDE_IN + 0.012), y, dz], [dx, y, dz]];
-          return out ? p.reverse() : p;
-        }
-        return [[dx, clamp(q[1], yb, yt), dz]];
-      };
-      const ins = side(prev, false), outs = side(next, true);
-      pts.push(...ins, ...outs);
-      if (ins.length && outs.length) runs.push({ g, p: ins[ins.length - 1], q: outs[0], lane: [0, 0, -LANE] });
-    }
+    const lane = cordsLyingIn(w, c, g);
+    const pass = g.kind === 'hmgr' ? throughManager(g, lane, prev, next(k + 1), w.radius)
+      : g.kind === 'vring' ? throughRing(g, lane, w.radius)
+      : throughDuct(g, lane, prev, next(k + 1), w.radius);
+    pts.push(...pass.points);
+    if (pass.run) runs.push(pass.run);
   });
   pts.push(...drawn[guides.length]);
   if (pb) pts.push(...exit(pb, pts.length && pts[pts.length - 1][1] < pb.y ? -1 : 1).reverse());
   // no repeated points
-  let route = pts.filter((p, k) => k === 0 || dist(p, pts[k - 1]) > 1e-4);
+  return { route: pts.filter((p, k) => k === 0 || dist(p, pts[k - 1]) > 1e-4), runs };
+}
 
-  // --- the cord along it, from end a
+/** the cords other than c already lying in a guide: each takes a lane of its own */
+function cordsLyingIn(w: World, c: CableIndex, g: Guide): number {
+  const x = w.sim.x;
+  let n = 0;
+  w.cables.forEach((other, oc) => {
+    if (oc === c) return;
+    let k = 0;
+    for (let i = other.start; i < other.start + other.count && k < 2; i++) if (inBox(g.room, [x[3 * i], x[3 * i + 1], x[3 * i + 2]])) k++;
+    if (k >= 2) n++;
+  });
+  return n;
+}
+
+interface GuidePass {
+  points: V3[];
+  /** the stretch along the guide where extra length may be laid */
+  run?: Run;
+}
+
+/** through a finger manager: in down (or up) between two fingers from a port, or in at an end from a side channel */
+function throughManager(g: Guide, lane: number, prev: V3 | null, next: V3 | null, r: number): GuidePass {
+  const y = g.room.min[1] + r + 0.001 + Math.floor(lane / 6) * (2 * r + 0.0008);
+  const z = clamp(0.058 - (lane % 6) * 0.009, g.room.min[2] + r, g.room.max[2] - r);
+  const rowAbove = g.room.max[1] + FINGER_R, rowBelow = g.room.min[1] - FINGER_R;
+  const into = (q: V3 | null): V3[] => {
+    if (!q) return [];
+    if (Math.abs(q[0]) > COLUMN_X) return [[Math.sign(q[0]) * 0.235, y, z]];
+    const sx = slotX(q[0]);
+    const row = q[1] > y ? rowAbove + 0.008 : rowBelow - 0.008;
+    return [[sx, row, z], [sx, y, z]];
+  };
+  const pin = into(prev), pout = into(next).reverse();
+  if (!pin.length && !pout.length) pin.push([-0.1, y, z]);
+  if (!pin.length) pin.push([clamp(pout[0][0] - Math.sign(pout[0][0] || 1) * 0.1, -0.2, 0.2), y, z]);
+  if (!pout.length) pout.push([clamp(pin[pin.length - 1][0] - Math.sign(pin[pin.length - 1][0] || 1) * 0.1, -0.2, 0.2), y, z]);
+  // its lanes towards the deeper side of the trough, if there is more room there
+  const run = { g, p: pin[pin.length - 1], q: pout[0], lane: [0, 0, z - g.room.min[2] > g.room.max[2] - z ? -LANE : LANE] as V3 };
+  return { points: [...pin, ...pout], run };
+}
+
+/** through a ring: one point inside it, the lanes side by side then in rows */
+function throughRing(g: Guide, lane: number, r: number): GuidePass {
+  const s = Math.sign(g.room.min[0] + g.room.max[0]);
+  const xIn = s > 0 ? g.room.min[0] : g.room.max[0];
+  const x = xIn + s * (r + 0.004 + (lane % 4) * 0.02);
+  const z = clamp(0.045 - Math.floor(lane / 4) * 0.02, g.room.min[2] + r, g.room.max[2] - r);
+  return { points: [[x, (g.room.min[1] + g.room.max[1]) / 2, z]] };
+}
+
+/** through a duct: in and out through a slot of the inner wall from the column, else by an end */
+function throughDuct(g: Guide, lane: number, prev: V3 | null, next: V3 | null, r: number): GuidePass {
+  const s = Math.sign(g.room.min[0] + g.room.max[0]);
+  const cols = 6;
+  const dx = s * (SIDE_OUT - 0.012 - (lane % cols) * ((SIDE_OUT - SIDE_IN - 0.024) / (cols - 1)));
+  const dz = clamp(0.055 - Math.floor(lane / cols) * 0.016, g.room.min[2] + r, g.room.max[2] - r);
+  const yb = g.room.min[1] + 0.006, yt = g.room.max[1] - 0.006;
+  const slotY = (y: number) => { const k = Math.round((y - g.room.min[1]) / DUCT_PITCH - 0.5); return clamp(g.room.min[1] + (k + 0.5) * DUCT_PITCH, yb, yt); };
+  const side = (q: V3 | null, out: boolean): V3[] => {
+    if (!q) return [];
+    if (Math.abs(q[0]) < SIDE_IN && q[1] > g.room.min[1] && q[1] < g.room.max[1]) {
+      const y = slotY(q[1]);
+      const p: V3[] = [[s * (SIDE_IN - 0.012), y, dz], [s * (SIDE_IN + 0.012), y, dz], [dx, y, dz]];
+      return out ? p.reverse() : p;
+    }
+    return [[dx, clamp(q[1], yb, yt), dz]];
+  };
+  const ins = side(prev, false), outs = side(next, true);
+  const run = ins.length && outs.length ? { g, p: ins[ins.length - 1], q: outs[0], lane: [0, 0, -LANE] as V3 } : undefined;
+  return { points: [...ins, ...outs], run };
+}
+
+/** the arc length of each node of cord c, counted from end a */
+function nodeArcs(w: World, c: CableIndex, a: EndIndex): number[] {
+  const cb = w.cables[c];
+  const node = (k: number) => (a === 0 ? cb.start + k : cb.start + cb.count - 1 - k);
   const arcs: number[] = [0];
-  const idx = (k: number) => (a === 0 ? cb.start + k : cb.start + cb.count - 1 - k);
-  for (let k = 1; k < cb.count; k++) arcs.push(arcs[k - 1] + sim.rest[Math.min(idx(k), idx(k - 1))]);
-  const L = arcs[cb.count - 1];
-  // the line drawn outside the guides is where the cord is laid, not where
-  // it must pass: nothing holds it there. A cord too short for all of it
-  // cuts the corners the line made, the one that saves the most first, as a
-  // cord pulled taut does; only the guides and the side each one is entered
-  // by make a cord too short
-  const free = new Set(drawn.flat());
-  while (pb && polyLength(route) > L) {
+  for (let k = 1; k < cb.count; k++) arcs.push(arcs[k - 1] + w.sim.rest[Math.min(node(k), node(k - 1))]);
+  return arcs;
+}
+
+/**
+ * The line drawn outside the guides is where the cord is laid, not where it
+ * must pass: nothing holds it there. A cord too short for all of it cuts the
+ * corners the line made (`free` points), the one that saves the most first,
+ * as a cord pulled taut does; only the guides and the side each one is
+ * entered by make a cord too short.
+ */
+function cutCorners(route: V3[], free: Set<V3>, length: number): V3[] {
+  while (polyLength(route) > length) {
     let best = -1, saves = 0;
     for (let k = 1; k < route.length - 1; k++) {
       if (!free.has(route[k])) continue;
@@ -221,33 +267,43 @@ export function planRoute(w: World, c: number, guides: Guide[], portB: Port | nu
     if (best < 0) break;
     route = route.filter((_, k) => k !== best);
   }
-  let Lp = polyLength(route);
-  let slack = 0;
-  let path = route;
-  if (pb) {
-    if (Lp > L + 0.01) return { error: `Ce cordon est trop court pour ce chemin : il manque ${Math.ceil((Lp - L) * 100)} cm (outil Longueur).` };
-    slack = L - Lp;
-    // the extra length laid in the guides (hanging in a duct first), what is
-    // left past a little play as a belly; the play stays free, by the far end
-    const lay = slack - PLAY;
-    if (lay > 0.01) {
-      const r2 = withFolds(route, runs, lay);
-      path = r2.extra > 0.05 ? withBelly(r2.route, r2.extra, guides) : r2.route;
-    }
-    Lp = polyLength(path);
-  }
-  // the place of each node along the path: from end a, and the last few from
-  // the far end (its connector to its port), the play between them free
-  const tail = pb ? polyLength(path.slice(-4)) : 0;
-  const place: (V3 | null)[] = arcs.map((s) => {
-    if (s <= Lp - tail + 1e-6) return along(path, s);
-    if (pb && L - s <= tail + 1e-6) return along(path, Lp - (L - s));
+  return route;
+}
+
+/**
+ * The extra length laid in the guides (hanging in a duct first), what is
+ * left past a little play as a belly; the play stays free, by the far end.
+ */
+function layExtraLength(route: V3[], runs: Run[], guides: Guide[], slack: number): V3[] {
+  const lay = slack - PLAY;
+  if (lay <= 0.01) return route;
+  const folded = withFolds(route, runs, lay);
+  return folded.extra > 0.05 ? withBelly(folded.route, folded.extra, guides) : folded.route;
+}
+
+/**
+ * The place of each node along the path: from end a, and the last few from
+ * the far end (its connector to its port, when it goes to one), the play
+ * between them free (null).
+ */
+function nodePlaces(arcs: number[], path: V3[], toPort: boolean): (V3 | null)[] {
+  const length = arcs[arcs.length - 1];
+  const pathLength = polyLength(path);
+  const tail = toPort ? polyLength(path.slice(-4)) : 0;
+  return arcs.map((s) => {
+    if (s <= pathLength - tail + 1e-6) return along(path, s);
+    if (toPort && length - s <= tail + 1e-6) return along(path, pathLength - (length - s));
     return null;
   });
+}
 
-  // --- the way of each node
-  const all = rack.guides();
-  const fromEnd = (k: number) => Math.min(pa ? arcs[k] : Infinity, pb ? L - arcs[k] : Infinity);
+/** the way of each node: out to the front of the cabinet, across, and in through its guide's opening */
+function nodeWays(w: World, c: CableIndex, a: EndIndex, arcs: number[], place: (V3 | null)[], fromPort: boolean, toPort: boolean): (NodeWay | null)[] {
+  const cb = w.cables[c], x = w.sim.x;
+  const length = arcs[cb.count - 1];
+  const all = w.rack.guides();
+  const node = (k: number) => (a === 0 ? cb.start + k : cb.start + cb.count - 1 - k);
+  const fromEnd = (k: number) => Math.min(fromPort ? arcs[k] : Infinity, toPort ? length - arcs[k] : Infinity);
   // how far out a node may go: not far from a plugged end
   const front = (z: number, k: number) => Math.min(FRONT, z + fromEnd(k) * NEAR_PORT);
   // the way in through each guide's opening, as an offset from the place
@@ -265,10 +321,10 @@ export function planRoute(w: World, c: number, guides: Guide[], portB: Port | nu
   });
   const ways: (NodeWay | null)[] = [];
   for (let k = 0; k < cb.count; k++) {
-    const i = idx(k);
+    const i = node(k);
     const T = place[k];
-    if (!T || (pa && k <= 1)) { ways.push(null); continue; }
-    const C: V3 = [sim.x[3 * i], sim.x[3 * i + 1], sim.x[3 * i + 2]];
+    if (!T || (fromPort && k <= 1)) { ways.push(null); continue; }
+    const C: V3 = [x[3 * i], x[3 * i + 1], x[3 * i + 2]];
     const e = entry(all, C);
     const out: V3[] = [C];
     if (e) out.push([C[0] + e.dx, C[1] + e.dy, e.z]);
@@ -283,7 +339,7 @@ export function planRoute(w: World, c: number, guides: Guide[], portB: Port | nu
     inn.push(T);
     ways.push({ out, inn });
   }
-  return { plan: { cable: c, a, portB: pb && pb !== ports[b] ? pb.id : null, ways, slack } };
+  return ways;
 }
 
 /** how near a guide (seen from the front) a line drawn may pass and still be taken as passing in it (m) */

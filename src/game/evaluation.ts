@@ -6,6 +6,7 @@
 import { SERVICES } from './services';
 import { insideBox, type SupportBox } from './rack';
 import type { World } from './world';
+import type { CableIndex } from './cables';
 
 export interface CircuitStatus {
   cable: number; // cable serving it (−1 none)
@@ -158,7 +159,7 @@ function floorLimit(w: World): number {
  * holds, HANGING on a longer one, LOW under the equipment (on the floor).
  * The cord is routed when it has neither of the last two.
  */
-export function holdMap(w: World, c: number, supports = w.rack.supports(), floor = floorLimit(w)): Uint8Array {
+export function holdMap(w: World, c: CableIndex, supports = w.rack.supports(), floor = floorLimit(w)): Uint8Array {
   const cb = w.cables[c];
   const x = w.sim.x;
   const out = new Uint8Array(cb.count);
@@ -189,7 +190,7 @@ export function holdMap(w: World, c: number, supports = w.rack.supports(), floor
  * A cord plugged at both ends pulled taut (much shorter than its tidy
  * route), or a fibre kinked away from its connectors; null when neither.
  */
-export function cordStrain(w: World, c: number): Strain | null {
+export function cordStrain(w: World, c: CableIndex): Strain | null {
   const cb = w.cables[c];
   if (!cb.ends[0].port || !cb.ends[1].port) return null;
   if (w.cableLength(c) < TAUT_SHORT * w.routeLength(c)!) return 'taut';

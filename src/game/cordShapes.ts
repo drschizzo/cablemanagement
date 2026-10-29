@@ -2,7 +2,7 @@
 // in place, or coiled and thrown into the crate. Pure geometry on lists of
 // points, so that it can be tested on its own.
 
-import { polyLength, type V3 } from './idealRoutes';
+import { dist, polyLength, type V3 } from './vec3';
 
 /** how much longer than the straight path between its boots the shortest cord is (m) */
 const MIN_LENGTH_PLAY = 0.02;
@@ -79,8 +79,4 @@ export function coilInCrate(crate: CrateBox, rests: number[], cordRadius: number
     if (k < rests.length) s += rests[k];
   }
   return out;
-}
-
-function dist(a: V3, b: V3): number {
-  return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 }

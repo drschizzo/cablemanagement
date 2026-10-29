@@ -12,8 +12,8 @@ function ac(): AudioContext | null {
   return ctx;
 }
 
-export function setMuted(m: boolean): void {
-  muted = m;
+export function setMuted(on: boolean): void {
+  muted = on;
 }
 
 export function isMuted(): boolean {

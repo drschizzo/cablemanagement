@@ -339,8 +339,8 @@ export class Stage {
   }
 
   /** panels changed size: refit */
-  setInsets(i: { left: number; right: number; top: number; bottom: number }): void {
-    this.insets = i;
+  setInsets(insets: { left: number; right: number; top: number; bottom: number }): void {
+    this.insets = insets;
     this.resize();
     const f = this.framed;
     this.frame(f.cy, f.height, f.halfWidth, f.cx, f.shadowWidth, f.near);

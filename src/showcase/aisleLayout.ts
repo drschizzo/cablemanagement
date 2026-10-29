@@ -18,20 +18,20 @@ const SWEEP = Math.PI * 0.85;
  * back or forward, turned, never quite square to its neighbours). Their messes
  * spill towards the middle and pile up on the floor there.
  */
-export function aisleLayout(n: number, seed: number): Place[] {
-  if (n === 1) return [{ x: 0, z: 0, yaw: 0 }];
-  const r = rng(seed ^ 0x5bd1e995);
-  const jitter = (a: number) => (r() * 2 - 1) * a;
+export function aisleLayout(bayCount: number, seed: number): Place[] {
+  if (bayCount === 1) return [{ x: 0, z: 0, yaw: 0 }];
+  const random = rng(seed ^ 0x5bd1e995);
+  const jitter = (amount: number) => (random() * 2 - 1) * amount;
   // a few racks close the half circle, many open it wider
-  const step = SWEEP / Math.max(4, n - 1);
+  const step = SWEEP / Math.max(4, bayCount - 1);
   // turned towards the middle, they come closer at the front: that is where they must not overlap
   const radius = PITCH / (2 * Math.sin(step / 2)) + FRONT;
   const out: Place[] = [];
-  for (let k = 0; k < n; k++) {
-    const a = (k - (n - 1) / 2) * step;
+  for (let k = 0; k < bayCount; k++) {
+    const angle = (k - (bayCount - 1) / 2) * step;
     // pushed back only: one pulled forward would run its ducts into its neighbours'
-    const rr = radius + 0.015 + jitter(0.015);
-    out.push({ x: Math.sin(a) * rr, z: radius - Math.cos(a) * rr, yaw: -a + jitter(0.025) });
+    const distance = radius + 0.015 + jitter(0.015);
+    out.push({ x: Math.sin(angle) * distance, z: radius - Math.cos(angle) * distance, yaw: -angle + jitter(0.025) });
   }
   return out;
 }

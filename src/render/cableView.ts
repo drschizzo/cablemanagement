@@ -13,6 +13,7 @@ import { bevelBox } from './bevel';
 import { ledLit, type LedGlow } from './ledGlow';
 import { JACKET_KIND, jacketMaterial, jacketed } from './jacket';
 import { Straps } from './straps';
+import type { CableIndex } from '../game/cables';
 
 export const FIBRE_COLORS = { OS2: '#f2c12e', OM4: '#3cc9cf', CU: '#3d7fe0' } as const;
 
@@ -161,7 +162,7 @@ export class CableView {
   }
 
   /** `force`: rebuild every cord, or only those it picks (scripted motion) */
-  update(force: boolean | ((c: number) => boolean) = false): void {
+  update(force: boolean | ((c: CableIndex) => boolean) = false): void {
     const sim = this.world.sim;
     this.world.cables.forEach((_, c) => {
       if (!this.cables[c].visible) return;
@@ -231,7 +232,7 @@ export class CableView {
   }
 
   /** shows or hides one cord with its connectors */
-  setVisible(c: number, on: boolean): void {
+  setVisible(c: CableIndex, on: boolean): void {
     const cm = this.cables[c];
     if (cm.visible !== on) this.shown += on ? 1 : -1;
     cm.visible = on;
@@ -248,7 +249,7 @@ export class CableView {
     this.flush();
   }
 
-  setHighlight(c: number, on: boolean, color = '#3a3a3a'): void {
+  setHighlight(c: CableIndex, on: boolean, color = '#3a3a3a'): void {
     const cm = this.cables[c];
     if (!cm) return;
     this.col.set(on ? color : '#000000');
@@ -260,7 +261,7 @@ export class CableView {
   }
 
   /** a glow per node of one cord (null: none), e.g. how each stretch is held */
-  setNodeTints(c: number, colors: (THREE.Color | null)[]): void {
+  setNodeTints(c: CableIndex, colors: (THREE.Color | null)[]): void {
     const cm = this.cables[c];
     if (!cm) return;
     const black = new THREE.Color(0, 0, 0);

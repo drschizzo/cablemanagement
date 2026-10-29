@@ -5,6 +5,7 @@
 import { CONNECTOR, Rack, SEG as DEFAULT_SEG, type Port } from '../rack';
 import type { FibreType } from '../cordTypes';
 import type { LevelDef } from '../levels/levelDef';
+import { dist } from '../vec3';
 
 export interface Circuit {
   a: string;
@@ -229,10 +230,6 @@ function evenOut(pts: number[], first: number, last: number, L: number): void {
     }
     if (worst < 0.02) break;
   }
-}
-
-function dist(a: V3, b: V3): number {
-  return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 }
 
 function splineLength(ctrl: V3[]): number {

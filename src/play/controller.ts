@@ -33,6 +33,7 @@ import { RouteTool } from './tools/routeTool';
 import { VelcroTool } from './tools/velcroTool';
 import { SupportsTool } from './tools/supportsTool';
 import { InputRouter, type InputCommands } from './inputRouter';
+import type { CableIndex, CircuitIndex } from '../game/cables';
 
 export type { ControllerEvents, Tool } from './context';
 
@@ -161,7 +162,7 @@ export class Controller implements PlayContext, InputCommands {
   }
 
   /** highlights the cords and ports of one line of the schedule (−1: none) */
-  focus(circuit: number): void {
+  focus(circuit: CircuitIndex): void {
     this.highlights.focus(circuit);
     this.refreshHighlights();
   }
@@ -338,7 +339,7 @@ export class Controller implements PlayContext, InputCommands {
   }
 
   /** unplugs a cord, coils it and throws it in the crate (Delete over it) */
-  deposit(c: number): void {
+  deposit(c: CableIndex): void {
     this.route.stopLaying();
     const cut = this.world.liveLinksCarriedBy(c);
     this.history.remember();
@@ -365,7 +366,7 @@ export class Controller implements PlayContext, InputCommands {
   }
 
   /** puts a bypass on a production link, or takes it off */
-  toggleBypass(i: number): void {
+  toggleBypass(i: CircuitIndex): void {
     if (!this.world.maintenance.toggleBypass(i)) {
       this.events.onToast(this.world.maintenance.live.has(i) ? 'Plus de dérivation en stock.' : 'Seules les liaisons en production (⚡) se dérivent.');
       sfx.error();
@@ -380,7 +381,7 @@ export class Controller implements PlayContext, InputCommands {
    * A line of the schedule clicked: the loose end of its cord is brought out
    * of the heap and hooked just under the port it belongs in.
    */
-  fetchEnd(circuit: number): void {
+  fetchEnd(circuit: CircuitIndex): void {
     const w = this.world, ci = w.circuits[circuit];
     const free = [ci.a, ci.b].map((id) => w.rack.port(id)).filter((p) => p.plug < 0);
     if (!free.length) { this.events.onToast('Ses deux ports sont occupés.'); return; }
@@ -403,7 +404,7 @@ export class Controller implements PlayContext, InputCommands {
   }
 
   /** the tracer (T over a cord): it blinks, its two ports circled */
-  trace(c: number): void {
+  trace(c: CableIndex): void {
     this.highlights.trace(c, this.clock);
     sfx.label();
   }

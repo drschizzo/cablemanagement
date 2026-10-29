@@ -13,8 +13,7 @@ import { makeSchedule, rng, type Circuit } from './mess/tangle';
 import type { World } from './world';
 import { bundleCount } from './evaluation';
 import type { LevelDef } from './levels/levelDef';
-
-export type V3 = [number, number, number];
+import { lerp, polyLength, type V3 } from './vec3';
 
 const FINGER_R = 0.003;
 const LANES_Z = 6;
@@ -195,16 +194,6 @@ function smooth(pts: V3[], keepA: number, keepB: number): V3[] {
   return [...pts.slice(0, keepA - 1), ...mid, ...pts.slice(pts.length - keepB + 1)];
 }
 
-function lerp(a: V3, b: V3, t: number): V3 {
-  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
-}
-
-export function polyLength(p: V3[]): number {
-  let L = 0;
-  for (let i = 1; i < p.length; i++) L += Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1], p[i][2] - p[i - 1][2]);
-  return L;
-}
-
 /** positions along a polyline at the given arc lengths (scaled to its length) */
 export function resample(p: V3[], arcs: number[], out: Float64Array, at: number): void {
   const total = arcs[arcs.length - 1];
@@ -246,12 +235,12 @@ export function pathToNodes(path: V3[], seg: number): number[] {
  * three cords or more run side by side in a manager or a duct (the checks of
  * three stars, tools/solvable.ts and tests/game/levels/levels.test.ts).
  */
-export function strapBundles(w: World, n: number): void {
+export function strapBundles(w: World, bundles: number): void {
   const supports = w.rack.supports();
   const x = w.sim.x;
-  for (let c = 0; c < w.cables.length && bundleCount(w, supports) < n; c++) {
+  for (let c = 0; c < w.cables.length && bundleCount(w, supports) < bundles; c++) {
     const cb = w.cables[c];
-    for (let i = cb.start + 4; i < cb.start + cb.count - 4 && bundleCount(w, supports) < n; i += 3) {
+    for (let i = cb.start + 4; i < cb.start + cb.count - 4 && bundleCount(w, supports) < bundles; i += 3) {
       if (w.sim.bundleOf[i] >= 0 || !supports.some((s) => insideBox(s, x[3 * i], x[3 * i + 1], x[3 * i + 2]))) continue;
       const before = bundleCount(w, supports);
       const st = w.addStrap(x[3 * i], x[3 * i + 1], x[3 * i + 2]);

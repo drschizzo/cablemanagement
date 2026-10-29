@@ -3,7 +3,7 @@
 // several cords. The indices are plain numbers; their names say which is which.
 
 import type { FibreType } from './cordTypes';
-import type { V3 } from './idealRoutes';
+import type { V3 } from './vec3';
 
 /** a cord: its place in World.cables */
 export type CableIndex = number;

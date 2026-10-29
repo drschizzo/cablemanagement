@@ -11,7 +11,7 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
  * hint of chromatic aberration towards the corners. One full-screen pass,
  * three texture reads.
  */
-export const CinemaShader = {
+const CinemaShader = {
   name: 'CinemaShader',
   uniforms: {
     tDiffuse: { value: null as THREE.Texture | null },

@@ -12,6 +12,7 @@ import { PlumbLine } from '../feedback/plumbLine';
 import { SETTLE_SHOW } from '../feedback/holdView';
 import type { PlayContext, ToolHandler } from '../context';
 import type { CordPick } from '../picking';
+import type { NodeIndex } from '../../game/cables';
 
 /** m per physics step the hand may move */
 const MAX_HAND_STEP = 0.035;
@@ -317,7 +318,7 @@ export class HandTool implements ToolHandler {
   }
 
   /** the pinch holding node i or one next to it, or −1 */
-  pinchNear(i: number): number {
+  pinchNear(i: NodeIndex): number {
     const sim = this.ctx.world.sim;
     for (const j of [i, i - 1, i + 1]) if (j >= 0 && j < sim.n && sim.cableOf[j] === sim.cableOf[i] && sim.pinchOf[j] >= 0) return sim.pinchOf[j];
     return -1;
@@ -361,7 +362,7 @@ export class HandTool implements ToolHandler {
   }
 
   /** does the other hand hold node i, or one next to it? */
-  otherHandAt(i: number): boolean {
+  otherHandAt(i: NodeIndex): boolean {
     const sim = this.ctx.world.sim, h = sim.holdNode;
     return h >= 0 && Math.abs(h - i) <= 1 && sim.cableOf[h] === sim.cableOf[i];
   }
