@@ -12,6 +12,8 @@ export const PAGE_TEXTS: Record<string, Words> = {
   'common.settings': { fr: 'Paramètres', en: 'Settings' },
   'common.tutorial': { fr: 'Tutoriel', en: 'Tutorial' },
   'common.cancel': { fr: 'Annuler', en: 'Cancel' },
+  'common.shop': { fr: 'Atelier', en: 'Workshop' },
+  'shop.balance': { fr: 'Ce que vos chantiers ont rapporté :', en: 'What your jobs have earned:' },
   'common.before': { fr: 'Avant', en: 'Before' },
   'common.after': { fr: 'Après', en: 'After' },
   'top.menu': { fr: '☰ Menu', en: '☰ Menu' },

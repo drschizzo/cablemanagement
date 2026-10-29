@@ -28,6 +28,7 @@ import { fileName, showResult, type Outcome, type Pay } from './resultScreen';
 import { payslip } from '../game/pay';
 import { earn } from './wallet';
 import { TimelapsePlayer } from './timelapsePlayer';
+import { ShopPanel } from './shopPanel';
 import { recordDaily, shareText, streak } from './daily';
 import { LevelMenu } from './levelMenu';
 import { PauseMenu } from './pauseMenu';
@@ -61,6 +62,7 @@ export class Hud {
   private levelMenu = new LevelMenu();
   private settings: SettingsPanel;
   private timelapse = new TimelapsePlayer();
+  private shop = new ShopPanel();
   private toastTimer = 0;
   /** the hint of the gesture under way, and the notes of the cord under the pointer (null: none) */
   private liveHint: Hint | null = null;
@@ -143,6 +145,11 @@ export class Hud {
   private showMenuOverLevel(back: () => void): void {
     const choose = (level: LevelDef) => this.leaveLevel(tr({ fr: 'Changer de niveau ?', en: 'Change level?' }), tr({ fr: 'Changer', en: 'Change' }), () => this.actions.start(level), () => this.showMenuOverLevel(back));
     this.levelMenu.show(this.progress, choose, back);
+  }
+
+  /** the workshop, from the title screen */
+  showShop(): void {
+    this.shop.show(() => {});
   }
 
   /** the settings, from the title screen */

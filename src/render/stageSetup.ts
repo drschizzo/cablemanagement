@@ -3,6 +3,7 @@
 // are built in threeCompat/passes.ts. Stage (stage.ts) calls these once.
 
 import * as THREE from 'three';
+import { DEFAULT_LOOK } from './look';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 /** the WebGL renderer: shadows, filmic tone mapping, no multisampling on the canvas itself */
@@ -39,7 +40,8 @@ export function createControls(camera: THREE.PerspectiveCamera, canvas: HTMLCanv
 }
 
 /** a neutral key light casting the shadows, a cool fill, and the sky; returns the key light */
-export function addLights(scene: THREE.Scene): THREE.DirectionalLight {
+/** the lights of the stage: the key (it casts the shadows) and the fill, whose tint the look may change */
+export function addLights(scene: THREE.Scene): { key: THREE.DirectionalLight; fill: THREE.DirectionalLight } {
   // neutral key, cool fill: the cords carry the only strong colours
   scene.add(new THREE.HemisphereLight('#dde4ea', '#16191b', 0.75));
   const key = new THREE.DirectionalLight('#f3f4f5', 2.6);
@@ -50,8 +52,8 @@ export function addLights(scene: THREE.Scene): THREE.DirectionalLight {
   key.shadow.normalBias = 0.01;
   key.shadow.radius = 3;
   scene.add(key, key.target);
-  const fill = new THREE.DirectionalLight('#a9c4e8', 0.4);
+  const fill = new THREE.DirectionalLight(DEFAULT_LOOK.accent, 0.4);
   fill.position.set(-1.5, 0.5, 1.5);
   scene.add(fill);
-  return key;
+  return { key, fill };
 }

@@ -95,6 +95,10 @@ Chaque chantier validé (sauf le tutoriel et le zen) est **payé** : un montant 
 plus pour une baie rangée, une prime de lisibilité, une autre pour le budget d'interruption épargné,
 et le défi réussi. Rejouer un niveau ne paie que ce qu'on ajoute à sa meilleure fiche de paie.
 
+L'**atelier** (écran titre) dépense ce salaire en touches personnelles : la couleur des velcros, la
+teinte de la lumière autour de la baie. Rien de ce qui porte un sens (cordons, étiquettes, voyants)
+ne change.
+
 La note de **lisibilité**, sur 100, départage les baies à ★★★ : le mou juste
 (ni tendu, ni plus de 50 cm de trop), chaque cordon cuivre de la couleur de son
 service, des faisceaux d'un seul service, la fibre et le cuivre dans des

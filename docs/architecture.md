@@ -75,6 +75,7 @@ src/
     gpu.ts          la carte graphique utilisée, et le conseil à donner quand elle dessine trop lentement
     frontImage.ts   l'image de face de la baie (avant / après de l'écran de résultat)
     frameGrab.ts    une petite copie de l'image qui vient d'être dessinée (une image du timelapse, presque gratuite)
+    look.ts         ce que le joueur a choisi pour l'image (couleur des velcros, teinte de la lumière) : rien des règles
     cameraTour.ts   le vol de la caméra autour d'une baie validée, puis retour de face (Stage.tour)
     rackView.ts     la baie, ses équipements, ports, plaques et voyants
     rackItems.ts    les éléments de rangement, construits à partir de leurs formes de collision (buildItem)
@@ -95,6 +96,7 @@ src/
     settingsPanel.ts les paramètres : qualité de l'image (auto, préréglages, détails) et son
     progress.ts     la progression du joueur : meilleur score, défi réussi (chrono de la campagne, gestes d'un puzzle),
                     niveau ouvert, niveau suivant (fonctions pures)
+    shop.ts         l'atelier : son catalogue, acheter et porter un look (fonctions pures) ; shopPanel.ts, son panneau
     wallet.ts       le salaire encaissé : un niveau rejoué ne paie que ce qu'il ajoute à sa meilleure fiche de paie
     daily.ts        les baies du jour réussies : le meilleur de chaque jour, les jours de suite, le résultat à partager
     messages.ts     tous les textes d'une partie : messages, aides, bulle d'un cordon, critères de lisibilité

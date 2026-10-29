@@ -527,3 +527,13 @@ body[data-level="zen"] #timer { display: none; }
 /* ---- the cabinet signed off: the panels step aside while the camera flies round it (sizes kept: the framing holds) */
 #toolbar, #side, #hint, #topbar { transition: opacity 0.4s; }
 body.touring #toolbar, body.touring #side, body.touring #hint, body.touring #topbar, body.touring #tooltip { opacity: 0; pointer-events: none; }
+
+/* ---- the workshop: a swatch per look */
+#shop-items h2 { margin-top: 14px; }
+#shop .swatches { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+#shop .swatch { display: grid; grid-template-columns: 22px 1fr; grid-template-rows: auto auto; align-items: center; gap: 0 8px; text-align: left; padding: 6px 8px; }
+#shop .swatch i { grid-row: span 2; width: 22px; height: 22px; border-radius: 3px; border: 1px solid var(--line-hi); }
+#shop .swatch small { color: var(--dim); font-family: var(--mono); font-size: 10.5px; }
+#shop .swatch.cur { border-color: var(--accent); }
+#shop .swatch.cur small { color: var(--accent); }
+#shop .swatch.locked span { color: var(--dim); }

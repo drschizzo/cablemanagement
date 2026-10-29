@@ -13,6 +13,7 @@ import { bevelBox } from './bevel';
 import { ledLit, type LedGlow } from './ledGlow';
 import { JACKET_KIND, jacketMaterial, jacketed } from './jacket';
 import { Straps } from './straps';
+import { DEFAULT_LOOK } from './look';
 import type { CableIndex } from '../game/cables';
 import { FIBRE_COLORS } from '../game/cordTypes';
 
@@ -67,7 +68,7 @@ export class CableView {
   private nodes: TubeNodes;
   private sync: TubeSync;
   private plugs: { fibre: Plugs; copper: Plugs };
-  private straps = new Straps(new THREE.MeshStandardMaterial({ color: '#1b2a4a', roughness: 0.9 }));
+  private straps: Straps;
   /** a ring round every pinched node */
   private pinchMarks: THREE.InstancedMesh | null = null;
   private pinchMat = new THREE.MeshBasicMaterial({ color: '#ffffff' });
@@ -87,7 +88,9 @@ export class CableView {
   private moved = new Set<THREE.InstancedMesh>();
   private recoloured = new Set<THREE.InstancedMesh>();
 
-  constructor(private world: World) {
+  /** `velcro`: the colour of the straps (the look's) */
+  constructor(private world: World, velcro = DEFAULT_LOOK.velcro) {
+    this.straps = new Straps(new THREE.MeshStandardMaterial({ color: velcro, roughness: 0.9 }));
     let segments = 0, nodes = 0;
     world.cables.forEach((cb) => {
       this.cables.push({ visible: true, color: new THREE.Color(cb.color ?? FIBRE_COLORS[cb.type]) });

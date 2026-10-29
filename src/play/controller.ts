@@ -6,6 +6,7 @@
 import { Stage } from '../render/stage';
 import { RackView } from '../render/rackView';
 import { CableView } from '../render/cableView';
+import { DEFAULT_LOOK, type Look } from '../render/look';
 import { disposeTree } from '../render/dispose';
 import { World } from '../game/world';
 import type { Evaluation } from '../game/evaluation';
@@ -115,7 +116,8 @@ export class Controller implements PlayContext, InputCommands {
   private cablesVersionShown = 0;
   private disposed = false;
 
-  constructor(public stage: Stage, level: LevelDef, readonly events: ControllerEvents, threaded = true) {
+  /** `look`: the player's own touches to the picture (velcros, light) */
+  constructor(public stage: Stage, level: LevelDef, readonly events: ControllerEvents, threaded = true, private look: Look = DEFAULT_LOOK) {
     this.world = new World(level);
     this.world.preroll(30);
     if (threaded) this.world.sim.startWorker();
@@ -136,9 +138,10 @@ export class Controller implements PlayContext, InputCommands {
     this.supports = new SupportsTool(this);
     this.tools = { hand: this.hand, route: this.route, velcro: this.velcro, supports: this.supports, tester: new TesterTool(this) };
     stage.scene.add(this.connectorGlows.group);
-    this.cableView = new CableView(this.world);
+    this.cableView = new CableView(this.world, look.velcro);
     this.cableView.lightBy(this.rackView.glow);
     stage.scene.add(this.rackView.group, this.cableView.group);
+    stage.setAccent(look.accent);
     const rack = this.world.rack;
     // the cabinet and, at its right, the crate on the floor
     stage.frame((rack.topY + rack.floorY) / 2 + 0.01, rack.topY - rack.floorY + 0.16, 0.6, 0.16);
@@ -157,6 +160,7 @@ export class Controller implements PlayContext, InputCommands {
 
   dispose(): void {
     this.disposed = true;
+    this.stage.setAccent(DEFAULT_LOOK.accent);
     this.world.dispose();
     this.input.dispose();
     this.spotlightFrame.set(null);
@@ -540,7 +544,7 @@ export class Controller implements PlayContext, InputCommands {
     this.cablesVersionShown = this.world.cablesVersion;
     this.stage.scene.remove(this.cableView.group);
     disposeTree(this.cableView.group);
-    this.cableView = new CableView(this.world);
+    this.cableView = new CableView(this.world, this.look.velcro);
     this.cableView.lightBy(this.rackView.glow);
     this.stage.scene.add(this.cableView.group);
     this.highlights.forget();

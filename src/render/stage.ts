@@ -46,6 +46,8 @@ export class Stage {
   camera: THREE.PerspectiveCamera;
   controls: OrbitControls;
   key: THREE.DirectionalLight;
+  /** the fill light: its tint is the look's accent */
+  private fill: THREE.DirectionalLight;
   private home = { pos: new THREE.Vector3(), target: new THREE.Vector3() };
   private framed = { cy: 0, height: 1, halfWidth: 0.41, cx: 0.03, shadowWidth: 0.41, near: 0 };
   /** the screen covered by the panels of the interface (px from each edge): the cabinet is framed in the rest */
@@ -106,7 +108,7 @@ export class Stage {
     this.controls = createControls(this.camera, this.renderer.domElement);
     this.controls.addEventListener('start', () => { this.swaying = false; this.touring?.end(); });
 
-    this.key = addLights(this.scene);
+    ({ key: this.key, fill: this.fill } = addLights(this.scene));
 
     // half float, for the bloom; not multisampled: every pass after the first draws a full-screen
     // quad, and resolving 4 samples a pixel after each of them took a third of the frame for nothing
@@ -286,6 +288,11 @@ export class Stage {
     this.resize();
     const f = this.framed;
     this.frame(f.cy, f.height, f.halfWidth, f.cx, f.shadowWidth, f.near);
+  }
+
+  /** the tint of the light round the cabinet (the look's accent) */
+  setAccent(color: string): void {
+    this.fill.color.set(color);
   }
 
   /** a left drag in the scene pans the view (the demo, where it grabs nothing) */

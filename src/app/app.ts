@@ -10,6 +10,8 @@ import { Tutorial } from '../ui/tutorial';
 import { statsText, toastText } from '../ui/messages';
 import { isDialogOpen } from '../ui/dom';
 import { unitLabel } from '../ui/names';
+import { lookOf } from '../ui/shop';
+import { load } from '../ui/storage';
 import { nextLevelToPlay } from '../game/levels/campaign';
 import type { LevelDef } from '../game/levels/levelDef';
 import { SHOWCASE_DEFAULT } from '../game/levels/showcaseRack';
@@ -59,6 +61,7 @@ export class App {
       playNext: () => this.playNext(),
       showMenu: () => this.hud.showMenu(),
       showSettings: () => this.hud.showSettings(),
+      showShop: () => this.hud.showShop(),
       nextLevel: () => nextLevelToPlay(this.hud.progress.stars),
       hasProgress: () => Object.keys(this.hud.progress.stars).length > 0,
       playDaily: () => this.startLevel(dailyLevel(dayKey(new Date()))),
@@ -87,7 +90,7 @@ export class App {
         onHint: (hint) => hud.hint(hint),
         isDialogOpen,
         unitLabel,
-      }, this.threaded);
+      }, this.threaded, lookOf(load('wallet')));
       this.ctl = ctl;
       hud.attach(ctl, level);
       if (level.kind === 'tutorial') this.mode = new Tutorial(ctl, hud, { home: () => this.startShowcase(), play: () => this.playNext() });
