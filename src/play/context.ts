@@ -4,7 +4,8 @@
 import type { Stage } from '../render/stage';
 import type { RackView } from '../render/rackView';
 import type { CableView } from '../render/cableView';
-import type { Evaluation, World } from '../game/world';
+import type { World } from '../game/world';
+import type { Evaluation } from '../game/evaluation';
 import type { Port } from '../game/rack';
 import type { Pointer } from './pointer';
 import type { CordPicker } from './picking';

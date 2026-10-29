@@ -11,6 +11,7 @@
 import { CONNECTOR, DUCT_SPAN, Rack, SEG, SIDE_BACK, SIDE_IN, SIDE_OUT, insideBox, type ItemKind, type Port } from './rack';
 import { makeSchedule, rng, type Circuit } from './tangle';
 import type { World } from './world';
+import { bundleCount } from './evaluation';
 import type { LevelDef } from './levels';
 
 export type V3 = [number, number, number];
@@ -248,13 +249,13 @@ export function pathToNodes(path: V3[], seg: number): number[] {
 export function strapBundles(w: World, n: number): void {
   const supports = w.rack.supports();
   const x = w.sim.x;
-  for (let c = 0; c < w.cables.length && w.bundleCount(supports) < n; c++) {
+  for (let c = 0; c < w.cables.length && bundleCount(w, supports) < n; c++) {
     const cb = w.cables[c];
-    for (let i = cb.start + 4; i < cb.start + cb.count - 4 && w.bundleCount(supports) < n; i += 3) {
+    for (let i = cb.start + 4; i < cb.start + cb.count - 4 && bundleCount(w, supports) < n; i += 3) {
       if (w.sim.bundleOf[i] >= 0 || !supports.some((s) => insideBox(s, x[3 * i], x[3 * i + 1], x[3 * i + 2]))) continue;
-      const before = w.bundleCount(supports);
+      const before = bundleCount(w, supports);
       const st = w.addStrap(x[3 * i], x[3 * i + 1], x[3 * i + 2]);
-      if (st && w.bundleCount(supports) === before) w.removeStrap(st);
+      if (st && bundleCount(w, supports) === before) w.removeStrap(st);
     }
   }
 }

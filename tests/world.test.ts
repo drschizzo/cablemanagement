@@ -1,6 +1,7 @@
 // The rules of a cabinet: plugging, the maintenance window, the score.
 import { describe, it, expect, beforeEach } from 'vitest';
-import { HOLD, World } from '../src/game/world';
+import { World } from '../src/game/world';
+import { HOLD } from '../src/game/evaluation';
 import { LEVELS, SERVICES, type LevelDef } from '../src/game/levels';
 import { planRoute, RouteRun } from '../src/game/route';
 

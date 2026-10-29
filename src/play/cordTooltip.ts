@@ -2,7 +2,8 @@
 // line it makes, whether it is strained, and what the hand can do with it.
 
 import { FIBRE_NAMES } from '../game/levels';
-import type { Evaluation, World } from '../game/world';
+import type { World } from '../game/world';
+import type { Evaluation } from '../game/evaluation';
 import type { Tool } from './context';
 import type { Pick } from './picking';
 

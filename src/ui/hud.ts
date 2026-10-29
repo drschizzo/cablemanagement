@@ -1,7 +1,7 @@
 import type { Controller, Tool } from '../play/controller';
 import { CATALOGUE, FIBRE_NAMES, LEVELS, SERVICES, UNLOCK_STARS, type LevelDef } from '../game/levels';
 import { formatCost } from '../format';
-import type { Evaluation } from '../game/world';
+import { cleanliness, type Evaluation } from '../game/evaluation';
 import { FIBRE_COLORS } from '../render/cableView';
 import { isMuted, setMuted, sfx } from '../audio/sfx';
 import { load, save } from '../storage';
@@ -399,14 +399,6 @@ export class Hud {
 
   private show(sel: string): void { $(sel).classList.add('on'); }
   private hide(sel: string): void { $(sel).classList.remove('on'); }
-}
-
-/** how tidy the cabinet is overall (0..1): the four criteria, plugging counting double */
-export function cleanliness(ev: Evaluation): number {
-  const n = Math.max(1, ev.total);
-  const bundles = ev.bundlesNeeded ? [n * Math.min(1, ev.bundles / ev.bundlesNeeded)] : [];
-  const parts = [ev.connected * 2, ev.routed, ev.clear, ev.relaxed, ...bundles];
-  return parts.reduce((a, b) => a + b, 0) / (n * (parts.length + 1));
 }
 
 function setBar(sel: string, v: number, n: number): void {

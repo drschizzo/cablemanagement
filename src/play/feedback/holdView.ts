@@ -3,7 +3,7 @@
 // after it is let go or laid.
 
 import * as THREE from 'three';
-import { HOLD } from '../../game/world';
+import { HOLD } from '../../game/evaluation';
 import type { PlayContext } from '../context';
 
 /** glow of a stretch: held by the management, hanging too long, on the floor */

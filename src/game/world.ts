@@ -1,10 +1,11 @@
 // The game state of one cabinet: the physics, the rack and its items, the
-// cords with their ends and labels, the velcro straps, the inventory, and the
-// evaluation of how tidy it all is.
+// cords with their ends and labels, the velcro straps, the inventory, the
+// maintenance window. How tidy it all is: evaluation.ts.
 
 import { CABLES, type CableInit, type Pinch } from '@drschizzo/avbd-cables';
+import { bundleCount, cordStrain, evaluate, holdMap, okPorts, type Evaluation, type Strain } from './evaluation';
 import { ThreadedSim } from './threadedSim';
-import { CABLE_R, CONNECTOR, Rack, SEG, insideBox, type Item, type ItemKind } from './rack';
+import { CABLE_R, CONNECTOR, Rack, SEG, type Item, type ItemKind } from './rack';
 import { SERVICES, type FibreType, type LevelDef } from './levels';
 import { makeCables, makeSchedule, rng, type CableStart, type Circuit } from './tangle';
 import { pathToNodes, polyLength, resample, tidyRoutes, type V3 } from './tidy';
@@ -29,61 +30,6 @@ export interface Strap {
   bundle: number;
   nodes: number[];
 }
-
-export interface CircuitStatus {
-  cable: number; // cable serving it (−1 none)
-  connected: boolean;
-  routed: boolean;
-  clear: boolean;
-  labelled: boolean;
-  /** neither pulled taut nor kinked */
-  relaxed: boolean;
-}
-
-/** how readable the cabinet is, beyond the stars: each part 0..1, the note 0..100 */
-export interface Readability {
-  note: number;
-  parts: { name: string; value: number; tip: string }[];
-}
-
-export interface Evaluation {
-  circuits: CircuitStatus[];
-  connected: number;
-  routed: number;
-  clear: number;
-  labelled: number;
-  total: number;
-  stars: number;
-  /** per cable: tidy route, obstructs a port */
-  cableRouted: boolean[];
-  cableObstructs: boolean[];
-  /** production links cut now; downtime spent so far and the budget (Infinity: none) */
-  liveDown: number;
-  downtime: number;
-  budget: number;
-  /** cords pulled taut ('tendu') or kinked ('plié'), per cable (null: neither) */
-  cableStrain: (Strain | null)[];
-  relaxed: number;
-  readability: Readability;
-  /** velcro bundles (three cords or more, in the management), and how many three stars need */
-  bundles: number;
-  bundlesNeeded: number;
-}
-
-export type Strain = 'tendu' | 'plié';
-
-/**
- * A cord this much shorter than the tidy route between its ports is pulled
- * taut: it cuts the corners the managers and ducts make it turn. (The route
- * is the outermost lane's; the inner lanes are up to a fifth shorter. A cord
- * straight from one port to the one right under it is no taut cord.)
- */
-const TAUT_SHORT = 0.7;
-/** a fibre turning this much (rad) over two segments is kinked */
-const KINK = 1.9;
-
-/** how a node of a cord is held (World.holdMap) */
-export const HOLD = { FREE: 0, HELD: 1, HANGING: 2, LOW: 3 } as const;
 
 export interface Snapshot {
   version: number;
@@ -325,29 +271,6 @@ export class World {
     // the route starts from the upper port
     const [a, b] = this.rack.port(pa).unit <= this.rack.port(pb).unit ? [pa, pb] : [pb, pa];
     return polyLength(tidyRoutes(this.rack, [{ a, b, type: this.cables[c].type, service: 0 }], this.radius, this.seg)[0]);
-  }
-
-  /**
-   * A cord plugged at both ends pulled taut (much shorter than its tidy
-   * route), or a fibre kinked away from
-   * its connectors; null when neither.
-   */
-  strain(c: number): Strain | null {
-    const cb = this.cables[c];
-    if (!cb.ends[0].port || !cb.ends[1].port) return null;
-    if (this.cableLength(c) < TAUT_SHORT * this.routeLength(c)!) return 'tendu';
-    const x = this.sim.x;
-    if (cb.type === 'CU') return null;
-    // away from the boots (where the cord turns sharply on purpose), over two segments either side
-    const near = Math.ceil(0.15 / this.seg);
-    for (let k = near; k < cb.count - near; k++) {
-      const i = cb.start + k;
-      const ux = x[3 * i] - x[3 * i - 6], uy = x[3 * i + 1] - x[3 * i - 5], uz = x[3 * i + 2] - x[3 * i - 4];
-      const vx = x[3 * i + 6] - x[3 * i], vy = x[3 * i + 7] - x[3 * i + 1], vz = x[3 * i + 8] - x[3 * i + 2];
-      const cos = (ux * vx + uy * vy + uz * vz) / (Math.hypot(ux, uy, uz) * Math.hypot(vx, vy, vz) || 1);
-      if (Math.acos(Math.max(-1, Math.min(1, cos))) > KINK) return 'plié';
-    }
-    return null;
   }
 
   // ------------------------------------------------------- undo
@@ -688,231 +611,31 @@ export class World {
   }
 
   // ---------------------------------------------------------- evaluation
-
-  /** ports of the lines connected as planned (their LEDs are green); without an evaluation, from the plugs alone */
-  okPorts(ev?: Evaluation): Set<string> {
-    const ok = new Set<string>();
-    this.circuits.forEach((ci, i) => { if (ev ? ev.circuits[i].connected : this.circuitUp(i)) ok.add(ci.a).add(ci.b); });
-    return ok;
-  }
-
-  /** height below which a cord lies on the floor of the cabinet rather than in it */
-  private floorLimit(): number {
-    const lowest = this.rack.units.reduce((m, u, k) => (u.kind === 'switch' || u.kind === 'panel' ? Math.max(m, k) : m), 0);
-    return this.rack.unitBottom(lowest) - 0.12;
-  }
-
-  /**
-   * How each node of a cord is held: HELD by the management or next to a
-   * plugged connector, FREE on a short stretch (20 cm at most) between two
-   * holds, HANGING on a longer one, LOW under the equipment (on the floor).
-   * The cord is routed when it has neither of the last two.
-   */
-  holdMap(c: number, supports = this.rack.supports(), floorLimit = this.floorLimit()): Uint8Array {
-    const cb = this.cables[c];
-    const x = this.sim.x;
-    const out = new Uint8Array(cb.count);
-    const reach = 6;
-    let run = 0;
-    const close = (k: number) => {
-      // the stretch that ends before node k
-      if (run > 0.2) for (let j = k - Math.round(run / this.seg); j < k; j++) if (out[j] === HOLD.FREE) out[j] = HOLD.HANGING;
-      run = 0;
-    };
-    for (let k = 0; k < cb.count; k++) {
-      const i = cb.start + k;
-      const px = x[3 * i], py = x[3 * i + 1], pz = x[3 * i + 2];
-      const nearEnd = (k < reach && cb.ends[0].port) || (k >= cb.count - reach && cb.ends[1].port);
-      let held = !!nearEnd;
-      if (!held) {
-        for (const s of supports) {
-          if (insideBox(s, px, py, pz)) { held = true; break; }
-        }
-      }
-      if (held) { close(k); out[k] = HOLD.HELD; } else { run += this.seg; out[k] = HOLD.FREE; }
-      if (py < floorLimit) out[k] = HOLD.LOW;
-    }
-    close(cb.count);
-    return out;
-  }
+  // (the scoring itself lives in evaluation.ts)
 
   evaluate(): Evaluation {
-    const supports = this.rack.supports();
-    const x = this.sim.x;
-    const cableRouted: boolean[] = [];
-    const cableObstructs: boolean[] = [];
-    const floorLimit = this.floorLimit();
-    for (let c = 0; c < this.cables.length; c++) {
-      const cb = this.cables[c];
-      const hold = this.holdMap(c, supports, floorLimit);
-      cableRouted.push(!hold.some((h) => h === HOLD.HANGING || h === HOLD.LOW) && !!cb.ends[0].port && !!cb.ends[1].port);
-      // a cord hanging in front of somebody else's port
-      let obstructs = false;
-      for (const p of this.rack.ports) {
-        if (obstructs) break;
-        const own = cb.ends[0].port === p.id || cb.ends[1].port === p.id;
-        if (own) continue;
-        const pitch = this.rack.portPitch(p);
-        const hx = Math.max(0.006, pitch * 0.45);
-        const near = Math.ceil(0.15 / this.seg);
-        for (let k = near; k < cb.count - near; k++) {
-          const i = cb.start + k;
-          if (Math.abs(x[3 * i] - p.x) < hx && Math.abs(x[3 * i + 1] - (p.y - 0.002)) < 0.011 && x[3 * i + 2] < 0.11) { obstructs = true; break; }
-        }
-      }
-      cableObstructs.push(obstructs);
-    }
-
-    const cableStrain = this.cables.map((_, c) => this.strain(c));
-    const circuits: CircuitStatus[] = this.circuits.map((ci) => {
-      let cable = -1;
-      const pa = this.rack.port(ci.a).plug, pb = this.rack.port(ci.b).plug;
-      if (pa >= 0 && pb >= 0 && pa >> 1 === pb >> 1) cable = pa >> 1;
-      const connected = cable >= 0 && this.cables[cable].type === ci.type;
-      const routed = connected && cableRouted[cable];
-      const clear = connected && !cableObstructs[cable];
-      const labelled = connected && this.cables[cable].ends.every((e) => e.label === ci.service);
-      const relaxed = connected && !cableStrain[cable];
-      return { cable, connected, routed, clear, labelled, relaxed };
-    });
-    const n = circuits.length;
-    const count = (f: (s: CircuitStatus) => boolean) => circuits.filter(f).length;
-    const connected = count((s) => s.connected);
-    const routed = count((s) => s.routed);
-    const clear = count((s) => s.clear);
-    const labelled = this.level.labels ? count((s) => s.labelled) : n;
-    const relaxed = count((s) => s.relaxed);
-    const bundles = this.bundleCount(supports);
-    const bundlesNeeded = this.level.bundles ?? 0;
-    let stars = 0;
-    if (connected === n) {
-      stars = 1;
-      if (routed >= 0.7 * n && clear >= 0.85 * n) stars = 2;
-      // past the downtime budget, an incident: three stars are out of reach
-      if (routed === n && clear === n && labelled === n && relaxed === n && bundles >= bundlesNeeded && this.downtime <= this.budget) stars = 3;
-    }
-    return {
-      circuits, connected, routed, clear, labelled, relaxed, total: n, stars, cableRouted, cableObstructs, cableStrain,
-      liveDown: this.liveDown(), downtime: this.downtime, budget: this.budget, bundles, bundlesNeeded,
-      readability: this.readability(circuits, cableStrain, supports),
-    };
+    return evaluate(this);
   }
 
-  /**
-   * What a technician coming after you would think of the cabinet, beyond
-   * the stars: cords with just the slack they need, of their service's
-   * colour, bundles of one service, fibre and copper apart, no cords crossing
-   * in front of the cabinet.
-   */
-  private readability(circuits: CircuitStatus[], strain: (Strain | null)[], supports: ReturnType<Rack['supports']>): Readability {
-    const parts: Readability['parts'] = [];
-    const made = circuits.map((s, i) => ({ s, i })).filter(({ s }) => s.connected);
-    // the slack: none pulled taut or kinked, and no more than half a metre beyond the route
-    if (made.length) {
-      let sum = 0;
-      for (const { s } of made) {
-        if (strain[s.cable]) continue;
-        const extra = this.cableLength(s.cable) - this.routeLength(s.cable)!;
-        sum += Math.max(0, Math.min(1, 1 - (extra - 0.5)));
-      }
-      parts.push({ name: 'Le mou juste', value: sum / made.length, tip: 'ni tendu ni plié, et pas plus de 50 cm de trop' });
-    }
-    // copper cords of the colour of their service
-    if (this.level.colorByService) {
-      const cu = made.filter(({ s }) => this.cables[s.cable].type === 'CU');
-      if (cu.length) {
-        const ok = cu.filter(({ s, i }) => this.cables[s.cable].color === SERVICES[this.circuits[i].service].color).length;
-        parts.push({ name: 'Couleurs', value: ok / cu.length, tip: 'chaque cordon cuivre de la couleur de son service' });
-      }
-    }
-    // bundles of one service
-    const serviceOf = new Map<number, number>();
-    circuits.forEach((s, i) => { if (s.connected) serviceOf.set(s.cable, this.circuits[i].service); });
-    const straps = this.straps.filter((st) => st.nodes.length >= 2);
-    if (straps.length) {
-      const pure = straps.filter((st) => new Set(st.nodes.map((i) => serviceOf.get(this.sim.cableOf[i]) ?? -1)).size === 1).length;
-      parts.push({ name: 'Faisceaux', value: pure / straps.length, tip: 'un seul service par velcro' });
-    }
-    // fibre and copper in separate ducts and managers
-    const x = this.sim.x;
-    if (new Set(this.cables.map((cb) => cb.type === 'CU')).size > 1) {
-      let used = 0, mixed = 0;
-      for (const sp of supports) {
-        const kinds = new Set<boolean>();
-        this.cables.forEach((cb) => {
-          for (let k = 4; k < cb.count - 4; k += 2) {
-            const i = cb.start + k;
-            if (insideBox(sp, x[3 * i], x[3 * i + 1], x[3 * i + 2])) { kinds.add(cb.type === 'CU'); break; }
-          }
-        });
-        if (kinds.size) used++;
-        if (kinds.size > 1) mixed++;
-      }
-      if (used) parts.push({ name: 'Fibre et cuivre', value: 1 - mixed / used, tip: 'la fibre et le cuivre dans des supports séparés' });
-    }
-    // cords crossing each other in front of the cabinet, out of every support
-    const crossings = this.crossings(supports);
-    parts.push({ name: 'Croisements', value: Math.max(0, 1 - crossings / Math.max(4, this.cables.length)), tip: `${crossings} croisement${crossings > 1 ? 's' : ''} hors des supports` });
-    const note = Math.round((100 * parts.reduce((a, p) => a + p.value, 0)) / parts.length);
-    return { note, parts };
+  /** how each node of a cord is held (see evaluation.ts) */
+  holdMap(c: number): Uint8Array {
+    return holdMap(this, c);
   }
 
-  /** pairs of cord segments crossing seen from the front, where neither is in a support */
-  private crossings(supports: ReturnType<Rack['supports']>): number {
-    const x = this.sim.x;
-    const segs: { c: number; ax: number; ay: number; bx: number; by: number }[] = [];
-    this.cables.forEach((cb, c) => {
-      if (!cb.ends[0].port && !cb.ends[1].port) return;
-      for (let k = 0; k < cb.count - 1; k++) {
-        const i = cb.start + k;
-        if (x[3 * i + 2] > 0.3) continue;
-        if (supports.some((s) => insideBox(s, x[3 * i], x[3 * i + 1], x[3 * i + 2]))) continue;
-        segs.push({ c, ax: x[3 * i], ay: x[3 * i + 1], bx: x[3 * i + 3], by: x[3 * i + 4] });
-      }
-    });
-    // a grid of 5 cm cells, each segment in every cell its box covers; a pair of cords counted once
-    const cell = 0.05, cols = 64, grid = new Map<number, number[]>();
-    segs.forEach((s, j) => {
-      const x0 = Math.floor(Math.min(s.ax, s.bx) / cell), x1 = Math.floor(Math.max(s.ax, s.bx) / cell);
-      const y0 = Math.floor(Math.min(s.ay, s.by) / cell), y1 = Math.floor(Math.max(s.ay, s.by) / cell);
-      for (let gx = x0; gx <= x1; gx++) {
-        for (let gy = y0; gy <= y1; gy++) {
-          const key = (gy + cols) * 4 * cols + gx + cols;
-          const list = grid.get(key);
-          if (list) list.push(j); else grid.set(key, [j]);
-        }
-      }
-    });
-    const n = this.cables.length, seen = new Uint8Array(n * n);
-    let pairs = 0;
-    for (const list of grid.values()) {
-      for (let a = 0; a < list.length; a++) {
-        const p = segs[list[a]];
-        for (let b = a + 1; b < list.length; b++) {
-          const q = segs[list[b]];
-          if (p.c === q.c || seen[p.c * n + q.c]) continue;
-          if (cross(p, q)) { seen[p.c * n + q.c] = seen[q.c * n + p.c] = 1; pairs++; }
-        }
-      }
-    }
-    return pairs;
+  /** a cord pulled taut or a fibre kinked; null when neither */
+  strain(c: number): Strain | null {
+    return cordStrain(this, c);
+  }
+
+  /** ports of the lines connected as planned (their LEDs are green) */
+  okPorts(ev?: Evaluation): Set<string> {
+    return okPorts(this, ev);
   }
 
   /** straps round three cords or more, lying in a manager or a duct */
-  bundleCount(supports = this.rack.supports()): number {
-    return this.straps.filter((st) => {
-      if (st.nodes.length < 3) return false;
-      const [x, y, z] = this.strapCentre(st);
-      return supports.some((s) => insideBox(s, x, y, z));
-    }).length;
+  bundleCount(): number {
+    return bundleCount(this);
   }
-}
-
-/** do two segments of the front view cross? */
-function cross(p: { ax: number; ay: number; bx: number; by: number }, q: { ax: number; ay: number; bx: number; by: number }): boolean {
-  const o = (ax: number, ay: number, bx: number, by: number, cx: number, cy: number) => Math.sign((bx - ax) * (cy - ay) - (by - ay) * (cx - ax));
-  return o(p.ax, p.ay, p.bx, p.by, q.ax, q.ay) * o(p.ax, p.ay, p.bx, p.by, q.bx, q.by) < 0
-    && o(q.ax, q.ay, q.bx, q.by, p.ax, p.ay) * o(q.ax, q.ay, q.bx, q.by, p.bx, p.by) < 0;
 }
 
 function dist3(a: V3, b: V3): number {
