@@ -6,12 +6,14 @@ import type { Controller } from '../play/controller';
 import type { Evaluation } from '../game/evaluation';
 import { UNLOCK_STARS } from '../game/levels/campaign';
 import type { LevelDef } from '../game/levels/levelDef';
-import { formatTime } from './format';
+import { formatMoney, formatTime } from './format';
 import { hide, show, starsHtml } from './dom';
 import { $ } from '../lib/page';
 import { levelAfter, type LevelResult } from './progress';
 import { readabilityText } from './messages';
 import { tr } from './language';
+import type { PayItem, Payslip } from '../game/pay';
+import { assertNever } from '../lib/assertNever';
 import { levelTitle } from './levelTexts';
 import { saveBeforeAfter } from './beforeAfterImage';
 
@@ -22,6 +24,15 @@ export interface Outcome {
   challengeWonBefore: boolean;
   /** the result as lines to share (the cabinet of the day), or null */
   share: string | null;
+  /** what the job paid, or null (the tutorial, the zen) */
+  pay: Pay | null;
+}
+
+/** a job's payslip, what was paid of it (a replay pays only what it adds), and the € on hand after */
+export interface Pay {
+  slip: Payslip;
+  paid: number;
+  coins: number;
 }
 
 export interface ResultActions {
@@ -34,12 +45,13 @@ export interface ResultActions {
 }
 
 export function showResult(ctl: Controller, level: LevelDef, ev: Evaluation, outcome: Outcome, actions: ResultActions): void {
-  const { result, challengeWonBefore, share } = outcome;
+  const { result, challengeWonBefore, share, pay } = outcome;
   $('#result-stars').innerHTML = starsHtml(ev.stars, true);
   $('#result-time').textContent = tr({ fr: `Temps : ${formatTime(result.time)}`, en: `Time: ${formatTime(result.time)}` });
   $<HTMLImageElement>('#ba-before').src = ctl.before ?? '';
   $<HTMLImageElement>('#ba-after').src = ctl.capture();
   $('#result-lines').innerHTML = resultLines(level, ev, result, challengeWonBefore).map((l) => `<li>${l}</li>`).join('');
+  $('#result-pay').innerHTML = pay ? payHtml(pay) : '';
   $('#result-note').innerHTML = noteHtml(ctl.startNote, ev, result);
 
   const next = levelAfter(level);
@@ -101,6 +113,26 @@ function resultLines(level: LevelDef, ev: Evaluation, result: LevelResult, chall
       : tr({ fr: `⏱ Défi chrono : ★★★ en moins de ${par}${challengeWonBefore ? ' (déjà réussi)' : ''}.`, en: `⏱ Time challenge: ★★★ in less than ${par}${challengeWonBefore ? ' (won already)' : ''}.` }));
   }
   return lines;
+}
+
+/** the payslip: what each line earned, what was paid, the € on hand */
+function payHtml(pay: Pay): string {
+  const lines = pay.slip.lines.map((l) => `<span>${payItemName(l.item)} <b>${formatMoney(l.amount)}</b></span>`).join('');
+  const paid = pay.paid === pay.slip.total
+    ? tr({ fr: `Salaire : <b>+${formatMoney(pay.paid)}</b>`, en: `Pay: <b>+${formatMoney(pay.paid)}</b>` })
+    : tr({ fr: `Salaire : <b>+${formatMoney(pay.paid)}</b> (déjà payé ${formatMoney(pay.slip.total - pay.paid)} pour ce niveau)`, en: `Pay: <b>+${formatMoney(pay.paid)}</b> (${formatMoney(pay.slip.total - pay.paid)} paid already for this level)` });
+  return `<div class="paid">${paid}<span class="coins">${tr({ fr: 'Solde', en: 'Balance' })} ${formatMoney(pay.coins)}</span></div><div class="slip">${lines}</div>`;
+}
+
+function payItemName(item: PayItem): string {
+  switch (item) {
+    case 'links': return tr({ fr: 'Liaisons', en: 'Links' });
+    case 'tidy': return tr({ fr: 'Rangement', en: 'Tidiness' });
+    case 'readability': return tr({ fr: 'Lisibilité', en: 'Readability' });
+    case 'budget': return tr({ fr: 'Budget épargné', en: 'Budget spared' });
+    case 'challenge': return tr({ fr: 'Défi', en: 'Challenge' });
+    default: return assertNever(item);
+  }
 }
 
 /** the readability note: from where the cabinet started, to now, and the record */

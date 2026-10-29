@@ -91,6 +91,10 @@ ranger. La jauge **Propreté** résume les critères ; un câble qui devient pro
 s'allume en vert avec une note. Chaque niveau propose aussi un **défi chrono**
 (★★★ en moins d'un temps donné).
 
+Chaque chantier validé (sauf le tutoriel et le zen) est **payé** : un montant par liaison branchée,
+plus pour une baie rangée, une prime de lisibilité, une autre pour le budget d'interruption épargné,
+et le défi réussi. Rejouer un niveau ne paie que ce qu'on ajoute à sa meilleure fiche de paie.
+
 La note de **lisibilité**, sur 100, départage les baies à ★★★ : le mou juste
 (ni tendu, ni plus de 50 cm de trop), chaque cordon cuivre de la couleur de son
 service, des faisceaux d'un seul service, la fibre et le cuivre dans des

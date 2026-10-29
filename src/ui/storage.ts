@@ -21,6 +21,19 @@ export interface DailyResult {
   lines: number[];
 }
 
+/** what the player has earned and spent: the € on hand, the best payslip of each level, the looks bought and worn, the finds */
+export interface Wallet {
+  coins: number;
+  /** € of the best payslip of each level (a replay pays only what it adds) */
+  best: Record<string, number>;
+  /** ids of the looks bought (ui/shop.ts) */
+  owned: string[];
+  /** the look worn in each slot, by slot */
+  equipped: Record<string, string>;
+  /** ids of the finds picked up (game/finds.ts) */
+  finds: string[];
+}
+
 /** best result per level id: stars (1..3), time (s), readability note (0..100), and the time challenges won */
 export interface Progress {
   stars: Record<string, number>;
@@ -65,6 +78,14 @@ const ENTRIES = {
     format: (v: Record<string, DailyResult>) => JSON.stringify(v),
     valid: (v: Record<string, DailyResult>) => isRecord(v) && Object.values(v).every((r) => isRecord(r) && typeof r.stars === 'number' && Array.isArray(r.lines)),
   } satisfies Entry<Record<string, DailyResult>>,
+  /** what the player earned, bought and found */
+  wallet: {
+    key: 'cable.wallet',
+    fallback: (): Wallet => ({ coins: 0, best: {}, owned: [], equipped: {}, finds: [] }),
+    parse: (raw: string): Wallet => ({ coins: 0, best: {}, owned: [], equipped: {}, finds: [], ...JSON.parse(raw) }),
+    format: (v: Wallet) => JSON.stringify(v),
+    valid: (v: Wallet) => typeof v.coins === 'number' && isRecord(v.best) && Array.isArray(v.owned) && isRecord(v.equipped) && Array.isArray(v.finds),
+  } satisfies Entry<Wallet>,
   /** the tutorial was finished or skipped once */
   tutorialDone: {
     key: 'cable.tutorial',

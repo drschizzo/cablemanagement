@@ -24,7 +24,9 @@ import type { CordInfo, Hint, HoverNote } from '../play/messages';
 import { StockMenu } from './stockMenu';
 import { SchedulePanel } from './schedulePanel';
 import { LevelBrief } from './levelBrief';
-import { fileName, showResult, type Outcome } from './resultScreen';
+import { fileName, showResult, type Outcome, type Pay } from './resultScreen';
+import { payslip } from '../game/pay';
+import { earn } from './wallet';
 import { TimelapsePlayer } from './timelapsePlayer';
 import { recordDaily, shareText, streak } from './daily';
 import { LevelMenu } from './levelMenu';
@@ -265,18 +267,27 @@ export class Hud {
 
   /** keeps the result where its kind of level keeps it; what the result screen shows of it */
   private record(level: LevelDef, ev: Evaluation, time: number, moves: number): Outcome {
-    // zen keeps no score
-    if (level.kind === 'zen') return { result: { stars: ev.stars, time, moves, note: ev.readability.note, previousStars: 0, previousNote: undefined, challengeWon: false }, challengeWonBefore: false, share: null };
+    // zen keeps no score, and pays nothing
+    if (level.kind === 'zen') return { result: { stars: ev.stars, time, moves, note: ev.readability.note, previousStars: 0, previousNote: undefined, challengeWon: false }, challengeWonBefore: false, share: null, pay: null };
     if (level.kind === 'daily') {
       const days = load('daily');
       const result = recordDaily(days, level, ev, time, moves);
       save('daily', days);
-      return { result, challengeWonBefore: false, share: shareText(level, days[level.date], streak(days, level.date)) };
+      return { result, challengeWonBefore: false, share: shareText(level, days[level.date], streak(days, level.date)), pay: this.pay(level, ev, false) };
     }
     const challengeWonBefore = !!this.progress.challenges[level.id];
     const result = recordResult(this.progress, level, ev.stars, time, moves, ev.readability.note);
     save('progress', this.progress);
-    return { result, challengeWonBefore, share: null };
+    return { result, challengeWonBefore, share: null, pay: level.kind === 'tutorial' ? null : this.pay(level, ev, result.challengeWon) };
+  }
+
+  /** the job's payslip, paid into the wallet (a replay pays only what it adds) */
+  private pay(level: LevelDef, ev: Evaluation, challengeWon: boolean): Pay {
+    const wallet = load('wallet');
+    const slip = payslip(ev, challengeWon);
+    const paid = earn(wallet, level.id, slip);
+    save('wallet', wallet);
+    return { slip, paid, coins: wallet.coins };
   }
 
   private openPause(): void {
