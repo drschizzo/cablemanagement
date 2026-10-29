@@ -4,7 +4,7 @@
 // without wading through French.
 
 import type { CircuitIndex } from '../game/cables';
-import type { FibreType } from '../game/cordTypes';
+import type { CordType } from '../game/cordTypes';
 import type { Strain } from '../game/evaluation';
 import type { RouteError } from '../game/routeLaying';
 import type { ItemKind } from '../game/supplies';
@@ -52,7 +52,7 @@ export type Hint =
 
 /** the cord under the pointer */
 export interface CordInfo {
-  type: FibreType;
+  type: CordType;
   /** the ports of its ends (null: loose), or null when it is unmarked and not traced yet */
   ends: (string | null)[] | null;
   /** m */

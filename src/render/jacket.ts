@@ -7,11 +7,11 @@
 // same from afar (and do not shimmer).
 
 import * as THREE from 'three';
-import type { FibreType } from '../game/cordTypes';
+import type { CordType } from '../game/cordTypes';
 import { patchMaterial, type MaterialPatch } from './threeCompat/materialPatch';
 
 /** kinds of cord, the row of their marking in the atlas */
-export const JACKET_KIND = { CU: 0, OS2: 1, OM4: 2, PWR: 3 } as const satisfies Record<FibreType, number>;
+export const JACKET_KIND = { CU: 0, OS2: 1, OM4: 2, PWR: 3 } as const satisfies Record<CordType, number>;
 
 const PRINT = [
   'CAT6A U/FTP 4x2xAWG26/7 LSZH IEC 60332-1 500 MHz  ',

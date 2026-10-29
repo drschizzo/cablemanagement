@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { COLUMN_X, FRONT_Z, Rack, SIDE_BACK, U, WALL_X, type Port, type UnitSpec } from '../game/rack';
-import type { FibreType } from '../game/cordTypes';
+import type { CordType } from '../game/cordTypes';
 import { disposeTree, shared } from './dispose';
 import { assertNever } from '../lib/assertNever';
 import { mergeStatic } from './batch';
@@ -49,7 +49,7 @@ export class RackView {
   /** the light of its LEDs, for the cords in front of it */
   readonly glow: LedGlow;
 
-  constructor(private rack: Rack, panelTypes: Map<number, FibreType>, private opts: RackViewOptions = {}) {
+  constructor(private rack: Rack, panelTypes: Map<number, CordType>, private opts: RackViewOptions = {}) {
     this.group.add(this.itemsGroup);
     this.buildCabinet();
     rack.units.forEach((u, k) => this.buildUnit(k, panelTypes.get(k) ?? 'OS2'));
@@ -235,7 +235,7 @@ export class RackView {
     if (this.opts.roomFloor !== false) this.group.add(buildRoom(bot));
   }
 
-  private buildUnit(k: number, type: FibreType): void {
+  private buildUnit(k: number, type: CordType): void {
     const rack = this.rack;
     const u = rack.units[k];
     const y = rack.unitY(k);

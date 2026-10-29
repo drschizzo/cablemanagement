@@ -10,7 +10,7 @@ import type { IncidentEvent } from '../game/incidents';
 import type { CustomError } from '../game/levels/customLevel';
 import { assertNever } from '../lib/assertNever';
 import { formatCost, formatDecimal } from './format';
-import { fibreName, serviceName, supplyName } from './names';
+import { cordTypeName, serviceName, supplyName } from './names';
 import { tr } from './language';
 
 export function strainLabel(strain: Strain): string {
@@ -116,7 +116,7 @@ export function hintHtml(h: Hint): string {
 export function cordTooltipHtml(cord: CordInfo, notes: HoverNote[]): string {
   const where = cord.ends ? cord.ends.map((p) => p ?? '—').join(' ↔ ') : tr({ fr: 'sans marque — <b>T</b> pour le tracer', en: 'unmarked — <b>T</b> to trace it' });
   const ends = `${where} · ${formatDecimal(cord.length, 2)} m`;
-  let html = `<b>${fibreName(cord.type)}</b> · ${ends}`;
+  let html = `<b>${cordTypeName(cord.type)}</b> · ${ends}`;
   if (cord.line >= 0) html += ` · <span class="ok">${tr({ fr: 'liaison', en: 'link' })} ${cord.line + 1} ✓</span>`;
   if (cord.strain) html += ` · <span class="warn">${strainLabel(cord.strain)}</span>`;
   return html + notes.map((n) => `<br><i>${hoverNoteText(n)}</i>`).join('');

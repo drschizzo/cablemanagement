@@ -2,7 +2,7 @@
 // may be plugged, hooked in the air or loose, and the straps that close round
 // several cords. The indices are plain numbers; their names say which is which.
 
-import type { FibreType } from './cordTypes';
+import type { CordType } from './cordTypes';
 import type { V3 } from '../lib/vec3';
 
 /** a cord: its place in World.cables */
@@ -30,7 +30,7 @@ export interface CableEnd {
 }
 
 export interface Cable {
-  type: FibreType;
+  type: CordType;
   /** its first node; it has `count` */
   start: NodeIndex;
   count: number;
@@ -44,7 +44,7 @@ export type ReadonlyCable = Readonly<Omit<Cable, 'ends'>> & { readonly ends: rea
 
 /** where a cord lies at the start: its type, the port of each end, its nodes (x, y, z flat) */
 export interface CableStart {
-  type: FibreType;
+  type: CordType;
   /** port of each end at the start (null = hanging loose) */
   ends: [string | null, string | null];
   points: number[];

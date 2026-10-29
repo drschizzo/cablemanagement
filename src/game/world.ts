@@ -12,7 +12,7 @@ import { SERVICES } from './services';
 import { MaintenanceWindow } from './maintenanceWindow';
 import { Incidents, type IncidentEvent } from './incidents';
 import { placeFind, type Find, type FindId } from './finds';
-import { CORD_KINDS, type FibreType } from './cordTypes';
+import { CORD_KINDS, type CordType } from './cordTypes';
 import type { Cable, CableEnd, CableIndex, CircuitIndex, EndIndex, NodeIndex, ReadonlyCable, Strap, CableStart } from './cables';
 import { coilInCrate, minLengthThrough, shapeForLength } from './cordShapes';
 import type { LevelDef } from './levels/levelDef';
@@ -84,11 +84,11 @@ export class World {
   readonly bend: number;
 
   /** a patch cord of this type through these nodes, for the solver */
-  private cord(type: FibreType, points: number[]): CableInit {
+  private cord(type: CordType, points: number[]): CableInit {
     return { ...CABLES.patchCord.cable, points, radius: this.radius, bend: this.stiffness(type) };
   }
 
-  stiffness(type: FibreType): number {
+  stiffness(type: CordType): number {
     return this.bend || CORD_KINDS[type].stiffness;
   }
 
@@ -317,7 +317,7 @@ export class World {
   }
 
   /** takes a new cord of that length out of the stock, into the crate; −1 when there is none left */
-  takeCord(type: FibreType, length: number, color?: string): number {
+  takeCord(type: CordType, length: number, color?: string): number {
     const left = this.newCords.get(length) ?? 0;
     if (left <= 0) return -1;
     this.newCords.set(length, left - 1);
@@ -325,7 +325,7 @@ export class World {
   }
 
   /** a new cord, dropped in the crate */
-  addCable(type: FibreType, length: number, color?: string): number {
+  addCable(type: CordType, length: number, color?: string): number {
     const n = Math.max(3, Math.round(length / this.seg));
     const rests = new Array(n).fill(length / n);
     this.rebuild(new Map(), [{ points: this.coil(rests), rests, type, color }]);
@@ -337,7 +337,7 @@ export class World {
    * every pin, strap, rest length (an added cord's are given) and pinch, and
    * what the keepers know of the cords (a replaced one is still handled)
    */
-  private rebuild(replace: Map<number, number[]>, append: { points: number[]; rests: number[]; type: FibreType; color?: string }[] = []): void {
+  private rebuild(replace: Map<number, number[]>, append: { points: number[]; rests: number[]; type: CordType; color?: string }[] = []): void {
     const old = this.simulation;
     const threaded = old.threaded;
     const defs = this.cableList.map((cb, k) => {

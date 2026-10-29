@@ -2,12 +2,12 @@
 // length. A cord taken drops coiled into the crate on the floor.
 
 import type { Controller } from '../play/controller';
-import { CATALOGUE, CORD_KINDS, type FibreType, FIBRE_COLORS } from '../game/cordTypes';
+import { CATALOGUE, CORD_KINDS, type CordType } from '../game/cordTypes';
 import { SERVICES } from '../game/services';
 import type { LevelDef } from '../game/levels/levelDef';
 import { formatLength } from './format';
 import { $ } from '../lib/page';
-import { fibreName, serviceName } from './names';
+import { cordTypeName, serviceName } from './names';
 import { tr } from './language';
 
 export class StockMenu {
@@ -24,7 +24,7 @@ export class StockMenu {
 
   toggle(ctl: Controller, level: LevelDef): void {
     const types = [...new Set(ctl.world.circuits.map((c) => c.type))];
-    let type: FibreType = types[0];
+    let type: CordType = types[0];
     let color: string | undefined = level.colorByService ? SERVICES[0].color : undefined;
     const render = () => {
       const stock = ctl.world.cordStock;
@@ -35,17 +35,17 @@ export class StockMenu {
       });
       const foot = tr({ fr: `Dérivations : <b>${bypasses}</b><span>Cliquez le ⚡ d'une liaison du plan.</span>`, en: `Bypasses: <b>${bypasses}</b><span>Click the ⚡ of a link on the schedule.</span>` });
       this.menu.innerHTML = `<div class="h">${head}</div>
-        ${types.length > 1 ? `<div class="types">${types.map((t) => `<button data-t="${t}" class="${t === type ? 'cur' : ''}"><i style="background:${FIBRE_COLORS[t]}"></i>${fibreName(t)}</button>`).join('')}</div>` : ''}
+        ${types.length > 1 ? `<div class="types">${types.map((t) => `<button data-t="${t}" class="${t === type ? 'cur' : ''}"><i style="background:${CORD_KINDS[t].color}"></i>${cordTypeName(t)}</button>`).join('')}</div>` : ''}
         ${CORD_KINDS[type].takesServiceColor && level.colorByService ? `<div class="colors">${SERVICES.slice(0, Math.max(1, level.services)).map((sv, i) => `<button data-c="${sv.color}" class="${sv.color === color ? 'cur' : ''}" style="background:${sv.color}" title="${serviceName(i)}"></button>`).join('')}</div>` : ''}
         <div class="grid">${CATALOGUE.map((L) => `<button data-l="${L}" ${(stock.get(L) ?? 0) > 0 ? '' : 'disabled'}>${formatLength(L)}<small>×${stock.get(L) ?? 0}</small></button>`).join('')}</div>
         ${level.bypass ? `<div class="h foot">${foot}</div>` : ''}`;
-      this.menu.querySelectorAll<HTMLButtonElement>('[data-t]').forEach((b) => { b.onclick = () => { type = b.dataset.t as FibreType; render(); }; });
+      this.menu.querySelectorAll<HTMLButtonElement>('[data-t]').forEach((b) => { b.onclick = () => { type = b.dataset.t as CordType; render(); }; });
       this.menu.querySelectorAll<HTMLButtonElement>('[data-c]').forEach((b) => { b.onclick = () => { color = b.dataset.c; render(); }; });
       this.menu.querySelectorAll<HTMLButtonElement>('[data-l]').forEach((b) => {
         b.onclick = () => {
           const length = Number(b.dataset.l);
           if (!ctl.newCord(type, length, CORD_KINDS[type].takesServiceColor ? color : undefined)) return;
-          this.onTaken(tr({ fr: `Cordon ${fibreName(type)} de ${formatLength(length)} dans le bac.`, en: `A ${formatLength(length)} ${fibreName(type)} cord in the crate.` }));
+          this.onTaken(tr({ fr: `Cordon ${cordTypeName(type)} de ${formatLength(length)} dans le bac.`, en: `A ${formatLength(length)} ${cordTypeName(type)} cord in the crate.` }));
           render();
         };
       });

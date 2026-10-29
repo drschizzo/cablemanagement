@@ -5,7 +5,7 @@
 import type { Rack, UnitSpec } from '../rack';
 import type { ItemKind, Stock } from '../supplies';
 import type { Circuit } from '../schedule';
-import type { FibreType } from '../cordTypes';
+import type { CordType } from '../cordTypes';
 import type { CableStart, StrapStart } from '../cables';
 import type { IncidentSpec } from '../incidents';
 import type { FindId } from '../finds';
@@ -26,7 +26,7 @@ interface LevelBase {
   mess: number;
   labels: boolean;
   services: number;
-  types: FibreType[];
+  types: CordType[];
   /** the supports and velcros the player is given */
   inventory: Partial<Stock>;
   preinstalled: { kind: ItemKind; unit: number; side: number }[];
@@ -55,7 +55,7 @@ interface LevelBase {
   /** one-to-one patching: each panel port to the same port of the switch right below */
   pairing?: boolean;
   /** links between equipment (switch uplinks, firewall, router, servers), on top of the panel cords */
-  links?: { a: string; b: string; service?: number; type?: FibreType }[];
+  links?: { a: string; b: string; service?: number; type?: CordType }[];
   /** a hand-written patching schedule instead of a random one */
   schedule?: (rack: Rack) => Circuit[];
   /** where the cords lie at the start, when the level knows it already (a cabinet carried over: the career); otherwise drawn */

@@ -11,7 +11,7 @@ import { disposeTree } from '../render/dispose';
 import { World } from '../game/world';
 import type { Evaluation } from '../game/evaluation';
 import type { Port } from '../game/rack';
-import type { FibreType } from '../game/cordTypes';
+import type { CordType } from '../game/cordTypes';
 import type { LevelDef } from '../game/levels/levelDef';
 import { sfx } from '../audio/sfx';
 import type { ControllerEvents, GestureCounters, PlayContext, Tool, ToolHandler } from './context';
@@ -129,7 +129,7 @@ export class Controller implements PlayContext, InputCommands {
     this.world = new World(level);
     this.world.preroll(30);
     if (threaded) this.world.sim.startWorker();
-    const types = new Map<number, FibreType>();
+    const types = new Map<number, CordType>();
     this.world.circuits.forEach((c) => types.set(this.world.rack.port(c.a).unit, c.type));
     this.rackView = new RackView(this.world.rack, types, { labelOf: (u) => events.unitLabel(u) });
     this.pointer = new Pointer(stage);
@@ -438,7 +438,7 @@ export class Controller implements PlayContext, InputCommands {
   }
 
   /** a new cord from the stock, in the crate; false when there is none of that length left */
-  newCord(type: FibreType, length: number, color?: string): boolean {
+  newCord(type: CordType, length: number, color?: string): boolean {
     this.stopLaying();
     if (this.world.takeCord(type, length, color) < 0) {
       this.events.onToast({ kind: 'noCordOfThatLength' });

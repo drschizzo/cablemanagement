@@ -16,7 +16,7 @@ import { CABLE_R } from '../game/rack';
 import { SERVICES } from '../game/services';
 import { rng } from '../lib/random';
 import { connectorGeos } from '../render/cableView';
-import { FIBRE_COLORS } from '../game/cordTypes';
+import { CORD_KINDS } from '../game/cordTypes';
 import { JACKET_KIND, jacketMaterial, jacketed } from '../render/jacket';
 
 /** cords at most (on screen at once): past it, the oldest, deep in the heap, makes room */
@@ -273,7 +273,7 @@ export class CableRain {
     const copper = kind < 0.72;
     this.copper[c] = copper ? 1 : 0;
     const type = copper ? 'CU' : kind < 0.86 ? 'OS2' : 'OM4';
-    const color = copper ? (r() < 0.25 ? FIBRE_COLORS.CU : SERVICES[Math.floor(r() * SERVICES.length)].color) : FIBRE_COLORS[type];
+    const color = copper ? (r() < 0.25 ? CORD_KINDS.CU.color : SERVICES[Math.floor(r() * SERVICES.length)].color) : CORD_KINDS[type].color;
     this.col.set(color);
     this.tube.lay(c * (NODES - 1), c * NODES, NODES, this.col, r() * 3, seg, JACKET_KIND[type]);
     // the plugs of the other kind, out of sight

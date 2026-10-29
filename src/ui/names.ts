@@ -2,7 +2,7 @@
 // the supplies, the cord types, the equipment of the rack, the finds. game/ describes
 // them by their ids; their names live here, with the rest of the words.
 
-import type { FibreType } from '../game/cordTypes';
+import type { CordType } from '../game/cordTypes';
 import type { Supply } from '../game/supplies';
 import type { UnitSpec } from '../game/rack';
 import type { FindId } from '../game/finds';
@@ -69,15 +69,15 @@ export function countOf(supply: Supply, count: number): string {
   return `${count} ${count > 1 ? names.plural : names.singular}`;
 }
 
-const FIBRE_NAMES: Record<FibreType, Words> = {
+const CORD_TYPE_NAMES: Record<CordType, Words> = {
   OS2: { fr: 'Monomode OS2', en: 'Single-mode OS2' },
   OM4: { fr: 'Multimode OM4', en: 'Multimode OM4' },
   CU: { fr: 'Cuivre RJ45', en: 'Copper RJ45' },
   PWR: { fr: 'Alimentation C13', en: 'Power C13' },
 };
 
-export function fibreName(type: FibreType): string {
-  return tr(FIBRE_NAMES[type]);
+export function cordTypeName(type: CordType): string {
+  return tr(CORD_TYPE_NAMES[type]);
 }
 
 /** what the face plate of a unit says it is: "Switch S", "Pare-feu" */

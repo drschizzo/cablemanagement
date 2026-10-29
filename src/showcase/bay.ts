@@ -9,7 +9,7 @@ import { CableView } from '../render/cableView';
 import { disposeTree } from '../render/dispose';
 import { World } from '../game/world';
 import { showcaseRack } from '../game/levels/showcaseRack';
-import type { FibreType } from '../game/cordTypes';
+import type { CordType } from '../game/cordTypes';
 import { resample, tidyLayout } from '../game/idealRoutes';
 import type { V3 } from '../lib/vec3';
 import type { CableStart } from '../game/cables';
@@ -81,7 +81,7 @@ export class Bay {
     stage.scene.add(b.group);
     if (state === 'tidy') {
       await pause();
-      const types = new Map<number, FibreType>();
+      const types = new Map<number, CordType>();
       w.circuits.forEach((c) => types.set(w.rack.port(c.a).unit, c.type));
       b.rackView = new RackView(w.rack, types, { roomFloor: false, labelOf });
       b.group.add(b.rackView.group);

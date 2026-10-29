@@ -15,7 +15,7 @@ import { JACKET_KIND, jacketMaterial, jacketed } from './jacket';
 import { Straps } from './straps';
 import { DEFAULT_LOOK } from './look';
 import type { CableIndex } from '../game/cables';
-import { CORD_KINDS, FIBRE_COLORS, type CordPlug, type FibreType } from '../game/cordTypes';
+import { CORD_KINDS, type CordPlug, type CordType } from '../game/cordTypes';
 import { assertNever } from '../lib/assertNever';
 
 
@@ -72,7 +72,7 @@ const PINCH_SOFT = new THREE.Color('#2f5866'), PINCH_FIRM = new THREE.Color('#6f
 const Z = new THREE.Vector3(0, 0, 1);
 const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 /** the housing of a plug, when it is not the clear one of its connector */
-const HOUSING: Partial<Record<FibreType, THREE.Color>> = { OS2: new THREE.Color('#2d6fd8'), OM4: new THREE.Color('#d9cfa3') };
+const HOUSING: Partial<Record<CordType, THREE.Color>> = { OS2: new THREE.Color('#2d6fd8'), OM4: new THREE.Color('#d9cfa3') };
 /** how clear an RJ45 plug is (its transmission) */
 const CLEAR = 0.6;
 
@@ -112,7 +112,7 @@ export class CableView {
     this.straps = new Straps(new THREE.MeshStandardMaterial({ color: velcro, roughness: 0.9 }));
     let segments = 0, nodes = 0;
     world.cables.forEach((cb) => {
-      this.cables.push({ visible: true, color: new THREE.Color(cb.color ?? FIBRE_COLORS[cb.type]) });
+      this.cables.push({ visible: true, color: new THREE.Color(cb.color ?? CORD_KINDS[cb.type].color) });
       segments += cb.count - 1;
       nodes = Math.max(nodes, cb.start + cb.count);
     });
