@@ -125,7 +125,7 @@ chantier.
 
 ### Fenêtre de maintenance et services
 
-La baie est en production : les liaisons qui fonctionnent au départ (marquées
+À partir du niveau 3, la baie est en production : les liaisons qui fonctionnent au départ (marquées
 ⚡ dans le plan) portent du trafic. Chaque seconde où l'une d'elles est coupée
 coûte le **poids de son service** sur un **budget d'interruption**, affiché en
 haut de l'écran :

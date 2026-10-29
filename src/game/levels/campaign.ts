@@ -13,8 +13,9 @@ export const LEVELS: CampaignLevel[] = [
     find: 'postit',
     // 0 B, 1 panel, 2 manager, 3 switch
     units: [BLANK, copperPanel('A', 12), BLANK, ethernetSwitch('S', 12), BLANK, BLANK],
+    // nothing in production yet: plugging and tidying only (the rules come level by level)
     cables: 4, wrong: 0, loose: 1, slack: [0.12, 0.2], mess: 1,
-    downtime: 40, cords: [[0.25, 2], [0.5, 3]],
+    cords: [[0.25, 2], [0.5, 3]],
     labels: false, services: 1, types: ['CU'], colorByService: true,
     inventory: { velcro: 2 },
     preinstalled: [fingerManager(2)],
@@ -27,8 +28,9 @@ export const LEVELS: CampaignLevel[] = [
     find: 'usb',
     // 1 panel, 2 manager, 6 manager (to place), 7 switch
     units: [BLANK, copperPanel('A', 12), BLANK, BLANK, BLANK, BLANK, BLANK, ethernetSwitch('S', 12), BLANK, BLANK],
+    // production waits for level 3
     cables: 6, wrong: 1, loose: 0, slack: [0.6, 1.0], mess: 2,
-    downtime: 60, cords: [[0.5, 7]],
+    cords: [[0.5, 7]],
     labels: false, services: 2, types: ['CU'], colorByService: true,
     inventory: { fingerManager: 1, duct: 2, ring: 2, velcro: 3 },
     preinstalled: [fingerManager(2)],

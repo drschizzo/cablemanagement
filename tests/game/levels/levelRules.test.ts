@@ -1,4 +1,5 @@
-// The rules a level plays by, read from what the level is.
+// The rules a level plays by, and the campaign as a ladder: each level adds
+// its own, the first ones are plugging and tidying only.
 import { describe, expect, it } from 'vitest';
 import { levelRules } from '../../../src/game/levels/levelRules';
 import { LEVELS } from '../../../src/game/levels/campaign';
@@ -10,6 +11,11 @@ const byId = (id: string) => [...LEVELS, ...PUZZLES].find((l) => l.id === id)!;
 describe('the rules of a level', () => {
   it('every cabinet has its LEDs and its taut cords', () => {
     for (const level of [...LEVELS, ...PUZZLES]) expect(levelRules(level)).toEqual(expect.arrayContaining(['leds', 'taut']));
+  });
+
+  it('the first two levels of the campaign have nothing in production', () => {
+    expect(levelRules(LEVELS[0])).toEqual(['leds', 'taut']);
+    expect(levelRules(LEVELS[1])).not.toContain('maintenance');
   });
 
   it('production comes with its bypass at level 3', () => {

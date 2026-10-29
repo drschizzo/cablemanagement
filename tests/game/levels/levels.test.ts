@@ -81,7 +81,8 @@ describe('three stars are possible, with the level\'s own stock', () => {
   }
 
   it('past the downtime budget, an incident: two stars at most', () => {
-    const lv = LEVELS[0];
+    // the first level with links in production
+    const lv = LEVELS.find((l) => l.downtime !== undefined)!;
     const kit = tidyKit(lv);
     const w = new World(kit, tidyLayout(kit).starts);
     for (let f = 0; f < 240; f++) w.sim.step();
