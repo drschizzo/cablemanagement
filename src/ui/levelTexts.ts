@@ -186,39 +186,43 @@ const PUZZLES: Record<string, Words<LevelText>> = {
   },
 };
 
-/** the career's tickets, in order: a title and what the client asks */
+/**
+ * The career's tickets, in order: a title and what the client asks. The
+ * client is Radio Pinède, a small local radio station of the south: a link
+ * cut is dead air, and everybody hears it.
+ */
 const TICKETS: Words<LevelText>[] = [
   {
-    fr: { title: 'Premier jour chez Lumen', brief: 'L\'Imprimerie Lumen vous confie sa baie. Le technicien d\'avant est parti sans laisser d\'adresse, ni de baie rangée. Remettez de l\'ordre : ce que vous rangez aujourd\'hui, vous le retrouverez à chaque visite.' },
-    en: { title: 'First day at Lumen', brief: 'Lumen Printing hands you its cabinet. The technician before left no address, and no tidy cabinet. Put it in order: what you tidy today, you will find again on every visit.' },
+    fr: { title: 'Premier jour à Radio Pinède', brief: 'Radio Pinède, 98.4 FM, la radio de la côte depuis 1986. Le technicien d\'avant est parti à la retraite en laissant la baie comme un plat de nouilles et un post-it : « Bon courage ». La matinale est en direct pendant que vous travaillez : chaque coupure, ce sont des auditeurs qui entendent un blanc. Ce que vous rangez aujourd\'hui, vous le retrouverez à chaque visite.' },
+    en: { title: 'First day at Radio Pinède', brief: 'Radio Pinède, 98.4 FM, the voice of the coast since 1986. The technician before you retired, leaving the cabinet like a bowl of noodles and a post-it: “Good luck”. The morning show is on air while you work: every cut is dead air for the listeners. What you tidy today, you will find again on every visit.' },
   },
   {
-    fr: { title: 'Les nouveaux bureaux', brief: 'L\'atelier s\'agrandit : six postes de plus à brasser du panneau A au switch S. Le stagiaire a déjà tiré les cordons… à sa façon.' },
-    en: { title: 'The new offices', brief: 'The workshop grows: six more desks to patch from panel A to switch S. The intern has already run the cords… his own way.' },
+    fr: { title: 'La rédaction s\'installe', brief: 'Six journalistes rejoignent la radio pour le journal de midi. Six postes à brasser du panneau A au switch S. Le stagiaire a déjà tiré les cordons « pour aider ». Merci, le stagiaire.' },
+    en: { title: 'The newsroom moves in', brief: 'Six journalists join the station for the midday news. Six desks to patch from panel A to switch S. The intern has already run the cords “to help”. Thank you, intern.' },
   },
   {
-    fr: { title: 'Le serveur de fichiers', brief: 'Un serveur arrive en bas de la baie : ses deux cartes réseau vont sur le switch S. Il porte le stockage.' },
-    en: { title: 'The file server', brief: 'A server arrives at the bottom of the cabinet: its two network cards go to switch S. It carries the storage.' },
+    fr: { title: 'Quarante ans de cassettes', brief: 'La directrice a fait numériser toutes les archives : quarante ans d\'émissions, de jingles et d\'interviews de maires. Le serveur qui les garde arrive en bas de la baie ; ses deux cartes réseau vont sur le switch S. Il porte le stockage : le couper, c\'est faire taire 1986 à 2026.' },
+    en: { title: 'Forty years of tapes', brief: 'The director had all the archives digitised: forty years of shows, jingles and interviews with mayors. The server that keeps them arrives at the bottom of the cabinet; its two network cards go to switch S. It carries the storage: cutting it silences 1986 to 2026.' },
   },
   {
-    fr: { title: 'La compta déménage', brief: 'La comptabilité change d\'étage : quatre liaisons ne servent plus (leurs cordons sont encore branchés : au bac), quatre nouvelles les remplacent. Et le téléphone va sonner.' },
-    en: { title: 'Accounting moves', brief: 'Accounting changes floors: four links are out of service (their cords are still plugged: into the crate), four new ones replace them. And the phone will ring.' },
+    fr: { title: 'L\'émission de nuit déménage', brief: 'L\'émission de nuit change de studio : quatre liaisons ne servent plus (leurs cordons sont encore branchés : au bac), quatre nouvelles les remplacent. L\'animateur, lui, est déjà à l\'antenne, et il a votre numéro.' },
+    en: { title: 'The night show moves', brief: 'The night show changes studios: four links are out of service (their cords are still plugged: into the crate), four new ones replace them. The host, for his part, is already on air, and he has your number.' },
   },
   {
-    fr: { title: 'Deuxième panneau', brief: 'Un deuxième panneau et son switch sont installés sous le premier. Huit liaisons à créer, et le switch T à relier au pare-feu.' },
-    en: { title: 'Second panel', brief: 'A second panel and its switch are installed under the first. Eight links to make, and switch T to link to the firewall.' },
+    fr: { title: 'Le festival de la pinède', brief: 'Trois jours de concerts sous les pins, retransmis en direct. Un deuxième panneau et son switch sont installés sous le premier pour la régie mobile : huit liaisons à créer, et le switch T à relier au pare-feu. Les techniciens son passeront derrière vous ; laissez-leur une baie lisible.' },
+    en: { title: 'The pine forest festival', brief: 'Three days of concerts under the pines, broadcast live. A second panel and its switch are installed under the first for the mobile control room: eight links to make, and switch T to link to the firewall. The sound crew will come after you; leave them a cabinet they can read.' },
   },
   {
-    fr: { title: 'Lundi noir', brief: 'Rien ne va : de vieux cordons ont lâché, et les utilisateurs appellent. Testez, remplacez, rétablissez.' },
-    en: { title: 'Black Monday', brief: 'Nothing works: old cords have given up, and users are calling. Test, replace, restore.' },
+    fr: { title: 'La nuit de l\'orage', brief: 'La foudre est tombée sur l\'antenne cette nuit. De vieux cordons n\'ont pas survécu, et le standard sonne sans arrêt. Testez, remplacez, rétablissez : la matinale commence dans une heure.' },
+    en: { title: 'The night of the storm', brief: 'Lightning struck the mast last night. Some old cords did not survive, and the switchboard will not stop ringing. Test, replace, restore: the morning show starts in an hour.' },
   },
   {
-    fr: { title: 'Le second serveur', brief: 'Un second serveur, branché sur le switch T. Pour ★★★, deux faisceaux de velcro.' },
-    en: { title: 'The second server', brief: 'A second server, plugged into switch T. For ★★★, two velcro bundles.' },
+    fr: { title: 'Radio Pinède sur internet', brief: 'La radio s\'écoute désormais partout, même à Montréal où vit le cousin du présentateur météo. Le serveur de diffusion se branche sur le switch T. Pour ★★★, deux faisceaux de velcro : le streaming ne pardonne pas le désordre.' },
+    en: { title: 'Radio Pinède goes online', brief: 'The station can now be heard anywhere, even in Montreal where the weatherman\'s cousin lives. The streaming server plugs into switch T. For ★★★, two velcro bundles: streaming does not forgive a mess.' },
   },
   {
-    fr: { title: 'L\'audit', brief: 'Un auditeur passe demain. Rien de nouveau : tout doit être impeccable, serré en quatre faisceaux au moins.' },
-    en: { title: 'The audit', brief: 'An auditor comes tomorrow. Nothing new: everything must be spotless, strapped in four bundles at least.' },
+    fr: { title: 'Le direct des 40 ans', brief: 'Ce soir, Radio Pinède fête ses 40 ans en direct, avec le maire, la fanfare et tous les anciens animateurs. Rien de nouveau dans la baie : tout doit être impeccable, serré en quatre faisceaux au moins. Pas un blanc à l\'antenne.' },
+    en: { title: 'The 40th anniversary, live', brief: 'Tonight Radio Pinède celebrates its 40 years live, with the mayor, the brass band and every former host. Nothing new in the cabinet: everything must be spotless, strapped in four bundles at least. Not a second of dead air.' },
   },
 ];
 

@@ -23,7 +23,7 @@ export class CareerPanel {
       confirmLeaving(tr({ fr: 'Recommencer la carrière ?', en: 'Start the career over?' }), tr({ fr: 'Recommencer', en: 'Start over' }),
         () => { save('career', null); this.show(this.start, this.back); },
         () => show('#career'),
-        tr({ fr: 'La baie du client repartira du désordre du premier jour.', en: 'The client\'s cabinet will go back to the mess of the first day.' }));
+        tr({ fr: 'La baie de Radio Pinède repartira du désordre du premier jour.', en: 'Radio Pinède\'s cabinet will go back to the mess of the first day.' }));
     };
   }
 

@@ -1,9 +1,9 @@
-// The career: one client, one cabinet, ticket after ticket. The first visit
-// finds the cabinet in a mess; each ticket after starts from the cabinet as
-// the player left it (cabinetState.ts), installs new equipment in the units
-// kept free for it, patches new links, takes others out of service. What was
-// tidied stays tidy; what was botched is still there. Its words are in
-// ui/levelTexts.ts.
+// The career: one client (a small local radio station), one cabinet, ticket
+// after ticket. The first visit finds the cabinet in a mess; each ticket
+// after starts from the cabinet as the player left it (cabinetState.ts),
+// installs new equipment in the units kept free for it, patches new links,
+// takes others out of service. What was tidied stays tidy; what was botched
+// is still there. Its words are in ui/levelTexts.ts.
 
 import type { LevelDef, TicketLevel } from './levelDef';
 import type { CabinetState } from '../cabinetState';
@@ -57,22 +57,22 @@ const SEED = 7300;
 export const TICKETS: TicketSpec[] = [
   // the first day: put the cabinet in order
   { services: 2, downtime: 160, bypass: 1, inventory: { fingerManager: 1, duct: 2, ring: 2, velcro: 3 }, cords: [[0.5, 3], [0.75, 3], [1, 3]] },
-  // the new offices: six links more on the panel
+  // the newsroom moves in: six links more on the panel
   { add: 6, services: 3, downtime: 140, bypass: 1, inventory: { velcro: 3 }, cords: [[0.5, 3], [0.75, 3], [1, 2]] },
-  // the file server
+  // the archives server
   { install: [{ unit: 12, spec: server('X', 0.03) }], links: [{ from: 'S', to: 'X1', service: 4 }, { from: 'S', to: 'X2', service: 4 }],
     add: 2, services: 5, downtime: 160, bypass: 1, inventory: { fingerManager: 1, ring: 2, velcro: 2 }, cords: [[1, 2], [1.5, 2], [2, 2]] },
-  // accounting moves: links out, links in, and the phone rings
+  // the night show moves: links out, links in, and the phone rings
   { remove: 4, add: 4, services: 5, downtime: 180, bypass: 2, incidents: 2, inventory: { velcro: 2 }, cords: [[0.5, 2], [0.75, 3], [1, 2]] },
-  // a second panel and its switch
+  // the festival: a second panel and its switch
   { install: [{ unit: 4, spec: copperPanel('B', 24) }, { unit: 5, spec: ethernetSwitch('T', 24) }], links: [{ from: 'T', to: 'F2' }],
     add: 8, services: 5, downtime: 220, bypass: 2, inventory: { fingerManager: 1, duct: 2, velcro: 4 }, cords: [[0.15, 6], [0.25, 4], [0.5, 4], [1, 3]] },
-  // the breakdown: old cords broken inside, and users calling
+  // the storm: old cords broken inside, and listeners calling
   { add: 2, faults: 2, incidents: 2, services: 5, downtime: 200, bypass: 2, inventory: { velcro: 2 }, cords: [[0.5, 3], [0.75, 3], [1, 3]] },
-  // the second server
+  // online: the streaming server
   { install: [{ unit: 13, spec: server('Y', 0.09) }], links: [{ from: 'T', to: 'Y1', service: 4 }, { from: 'T', to: 'Y2', service: 4 }],
     add: 4, services: 6, downtime: 240, bypass: 2, bundles: 2, inventory: { ring: 2, velcro: 6 }, cords: [[1, 3], [1.5, 3], [2, 2]] },
-  // the audit: nothing new, everything perfect, in bundles
+  // the 40th anniversary live: nothing new, everything perfect, in bundles
   { services: 6, downtime: 260, bypass: 2, bundles: 4, inventory: { velcro: 8 }, cords: [[0.5, 4], [0.75, 4], [1, 4]] },
 ];
 

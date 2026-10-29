@@ -77,7 +77,7 @@ export class ModesPanel {
       },
       {
         name: { fr: 'Carrière', en: 'Career' },
-        what: { fr: 'Un client, une seule baie, ticket après ticket : vous la retrouvez comme vous l\'avez laissée.', en: 'One client, one cabinet, ticket after ticket: you find it as you left it.' },
+        what: { fr: 'Radio Pinède, 98.4 FM : une seule baie, ticket après ticket, retrouvée comme vous l\'avez laissée.', en: 'Radio Pinède, 98.4 FM: one cabinet, ticket after ticket, found as you left it.' },
         status: () => tr({ fr: `Ticket ${Math.min(load('career').done + 1, TICKETS.length)}/${TICKETS.length}`, en: `Ticket ${Math.min(load('career').done + 1, TICKETS.length)}/${TICKETS.length}` }),
         open: lead(() => this.actions.career(start, reopen)),
       },
