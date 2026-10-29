@@ -12,7 +12,9 @@ import { $ } from '../lib/page';
 import { isUnlocked } from './progress';
 import { levelTitle } from './levelTexts';
 import { tr } from './language';
-import type { LevelSection } from './modesPanel';
+
+/** a section of the levels menu */
+export type LevelSection = 'campaign' | 'puzzles';
 
 export class LevelMenu {
   private start: (level: LevelDef) => void = () => {};

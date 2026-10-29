@@ -14,9 +14,7 @@ import { hide, show } from './dom';
 import { load, type Progress } from './storage';
 import { streak } from './daily';
 import { tr, type Words } from './language';
-
-/** a section of the levels menu */
-export type LevelSection = 'campaign' | 'puzzles';
+import type { LevelSection } from './levelMenu';
 
 /** where the cards lead; each gets `start` (what a level chosen does) and `back` (back to the modes) */
 export interface ModesActions {
