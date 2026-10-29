@@ -24,7 +24,7 @@ const LANES_Z = 6;
  * side duct of `side`, into the `lower` manager and up into its other port.
  * `curl`: a panel right above its switch, port to port, no manager at all.
  */
-export function routePlan(rack: Rack, circuits: Circuit[]) {
+export function routePlan(rack: Rack, circuits: readonly Circuit[]) {
   const mgrs = rack.items.filter((it) => it.kind === 'fingerManager').map((it) => it.unit);
   return circuits.map((c) => {
     const a = rack.port(c.a), b = rack.port(c.b);
@@ -37,7 +37,7 @@ export function routePlan(rack: Rack, circuits: Circuit[]) {
   });
 }
 
-export function tidyRoutes(rack: Rack, circuits: Circuit[], radius: number, seg = SEG): V3[][] {
+export function tidyRoutes(rack: Rack, circuits: readonly Circuit[], radius: number, seg = SEG): V3[][] {
   const plan = routePlan(rack, circuits);
   // lanes, per side and per manager (a manager may serve cords leaving a panel
   // and cords arriving at a switch: they share its lanes); duct columns per side

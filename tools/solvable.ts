@@ -33,7 +33,7 @@ for (const lv of LEVELS) {
   for (let f = 0; f < 240; f++) w.sim.step();
   strapBundles(w, lv.bundles ?? 0);
   for (let f = 0; f < 60; f++) w.sim.step();
-  w.circuits.forEach((ci, i) => { for (const e of w.cables[i].ends) e.label = ci.service; });
+  w.circuits.forEach((ci, i) => w.labelCord(i, ci.service));
   const ev = w.evaluate();
   const added = kit.preinstalled.slice(lv.preinstalled.length);
   const count = (k: string) => added.filter((p) => p.kind === k).length;

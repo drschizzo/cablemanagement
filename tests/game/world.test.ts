@@ -88,9 +88,12 @@ describe('plugging and the maintenance window', () => {
   });
 
   it('a cord of the wrong type does not make a line', () => {
-    const lv: LevelDef = { ...L1 };
-    const v = new World(lv);
-    v.cables[0].type = 'OS2';
+    const v = new World(L1);
+    // its ports freed, then joined by a new fibre cord from the stock
+    const { a, b } = v.circuits[0];
+    for (const id of [a, b]) { const p = v.rack.port(id).plugged; if (p) v.unplug(p.cable, p.end); }
+    const fibre = v.addCable('OS2', 1);
+    expect(v.plug(fibre, 0, a) && v.plug(fibre, 1, b)).toBe(true);
     expect(v.circuitUp(0)).toBe(false);
     expect(v.evaluate().circuits[0].connected).toBe(false);
   });
@@ -111,7 +114,7 @@ describe('labels, straps and cord lengths', () => {
   it('a cord plugged as planned takes the label of its service, at both ends', () => {
     const w = new World({ ...L1, labels: true });
     const svc = w.circuits[0].service;
-    for (const e of w.cables[0].ends) e.label = null;
+    w.labelCord(0, null);
     expect(w.evaluate().circuits[0].labelled).toBe(false);
     const port = w.cables[0].ends[1].port!;
     w.unplug(0, 1);
@@ -211,7 +214,7 @@ describe('what the player sees while tidying', () => {
     const port = w.cables[0].ends[0].port!;
     const s = w.snapshot();
     w.unplug(0, 0);
-    w.cables[0].ends[1].label = 2;
+    w.setLabel(0, 1, 2);
     w.sim.moveNodes(w.cables[0].start, [0.3, 0.3, 0.3]);
     expect(w.restore(s)).toBe(true);
     expect(w.cables[0].ends[0].port).toBe(port);

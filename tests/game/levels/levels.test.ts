@@ -53,7 +53,7 @@ function finishedWorld(lv: LevelDef) {
   for (let f = 0; f < 240; f++) w.sim.step();
   strapBundles(w, lv.bundles ?? 0);
   for (let f = 0; f < 60; f++) w.sim.step();
-  w.circuits.forEach((ci, i) => { for (const e of w.cables[i].ends) e.label = ci.service; });
+  w.circuits.forEach((ci, i) => w.labelCord(i, ci.service));
   return w;
 }
 
@@ -89,7 +89,7 @@ describe('three stars are possible, with the level\'s own stock', () => {
   it('the tidy cabinet of the before/after is perfect', () => {
     const w = new World(showcaseRack('tidy', 7));
     w.sim.teleport(w.tidyTargets());
-    w.circuits.forEach((ci, i) => { for (const e of w.cables[i].ends) e.label = ci.service; });
+    w.circuits.forEach((ci, i) => w.labelCord(i, ci.service));
     const ev = w.evaluate();
     expect(ev.routed).toBe(ev.total);
     expect(ev.clear).toBe(ev.total);

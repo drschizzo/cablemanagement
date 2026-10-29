@@ -100,7 +100,7 @@ export class Closet {
     const w = this.tidy.world;
     this.tidy.rackView!.itemsGroup.visible = true;
     sfx.place();
-    for (const cb of w.cables) for (const e of cb.ends) e.label = null;
+    w.cables.forEach((_, c) => w.labelCord(c, null));
     // row after row, left to right: the closet fills up like a printed page
     const order = w.cables.map((_, c) => c).sort((p, q) => {
       const a = w.rack.port(w.circuits[p].a), b = w.rack.port(w.circuits[q].a);
@@ -116,7 +116,7 @@ export class Closet {
       takeoff: () => {},
       land: (c, k) => {
         this.swap(c, this.tidy, this.mess);
-        for (const e of w.cables[c].ends) e.label = w.circuits[c].service;
+        w.labelCord(c, w.circuits[c].service);
         if (sound && k % 2 === 0) sfx.land(k);
       },
       done: () => {
@@ -138,7 +138,7 @@ export class Closet {
   messUp(later: (ms: number, f: () => void) => void, done: () => void): void {
     const tw = this.tidy.world;
     tw.clearStraps();
-    for (const cb of tw.cables) for (const e of cb.ends) e.label = null;
+    tw.cables.forEach((_, c) => tw.labelCord(c, null));
     sfx.whoosh();
     // the last cord in is the first one out; each slumps from its middle to the floor
     const order = this.mess.world.cables.map((_, c) => c).reverse();

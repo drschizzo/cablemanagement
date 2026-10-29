@@ -39,6 +39,9 @@ export interface Cable {
   color?: string;
 }
 
+/** a cord as World shows it: changed through World's methods only */
+export type ReadonlyCable = Readonly<Omit<Cable, 'ends'>> & { readonly ends: readonly [Readonly<CableEnd>, Readonly<CableEnd>] };
+
 export interface Strap {
   /** the solver's bundle that holds it */
   bundle: number;

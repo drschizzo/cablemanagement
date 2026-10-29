@@ -21,7 +21,7 @@ export class MaintenanceWindow {
    * `bypassesLeft`: the bypasses the player is given.
    */
   constructor(
-    private circuits: Circuit[],
+    private circuits: readonly Circuit[],
     private isUp: (i: CircuitIndex) => boolean,
     readonly budget: number,
     public bypassesLeft: number,

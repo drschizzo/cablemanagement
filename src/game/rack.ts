@@ -101,10 +101,20 @@ export interface Guide {
 export class Rack {
   units: UnitSpec[];
   ports: Port[] = [];
-  items: Item[] = [];
+  private itemList: Item[] = [];
   topY: number;
   floorY: number;
   private nextItem = 1;
+
+  /** the cable management items installed */
+  get items(): readonly Item[] {
+    return this.itemList;
+  }
+
+  /** every item taken out (the mess of the before/after demo has none yet) */
+  clearItems(): void {
+    this.itemList = [];
+  }
 
   /** an open two-post rack: no walls, no cabinet floor, the room floor just below */
   open: boolean;
@@ -160,14 +170,14 @@ export class Rack {
     if (!this.canPlace(kind, unit, side)) return null;
     const it: Item = { id: this.nextItem++, kind, unit, side, span: kind === 'duct' ? DUCT_SPAN : 1, locked };
     if (kind === 'duct') it.unit = this.ductStart(unit);
-    this.items.push(it);
+    this.itemList.push(it);
     return it;
   }
 
   removeItem(id: number): boolean {
-    const i = this.items.findIndex((it) => it.id === id && !it.locked);
+    const i = this.itemList.findIndex((it) => it.id === id && !it.locked);
     if (i < 0) return false;
-    this.items.splice(i, 1);
+    this.itemList.splice(i, 1);
     return true;
   }
 
@@ -178,9 +188,9 @@ export class Rack {
   canPlace(kind: ItemKind, unit: number, side: number): boolean {
     if (unit < 0 || unit >= this.units.length) return false;
     if (kind === 'fingerManager') {
-      return this.units[unit].kind === 'blank' && !this.items.some((it) => it.kind === 'fingerManager' && it.unit === unit);
+      return this.units[unit].kind === 'blank' && !this.itemList.some((it) => it.kind === 'fingerManager' && it.unit === unit);
     }
-    const sideItems = this.items.filter((it) => it.kind !== 'fingerManager' && it.side === side);
+    const sideItems = this.itemList.filter((it) => it.kind !== 'fingerManager' && it.side === side);
     if (kind === 'duct') {
       const u0 = this.ductStart(unit);
       return !sideItems.some((it) => it.unit < u0 + DUCT_SPAN && u0 < it.unit + it.span);
@@ -190,8 +200,8 @@ export class Rack {
 
   /** the item covering a slot (for removal) */
   itemAt(kind: ItemKind, unit: number, side: number): Item | undefined {
-    if (kind === 'fingerManager') return this.items.find((it) => it.kind === 'fingerManager' && it.unit === unit);
-    return this.items.find((it) => it.kind !== 'fingerManager' && it.side === side && unit >= it.unit && unit < it.unit + it.span);
+    if (kind === 'fingerManager') return this.itemList.find((it) => it.kind === 'fingerManager' && it.unit === unit);
+    return this.itemList.find((it) => it.kind !== 'fingerManager' && it.side === side && unit >= it.unit && unit < it.unit + it.span);
   }
 
   // ---------------------------------------------------- collision shapes
@@ -210,7 +220,7 @@ export class Rack {
       // the room floor all around, nothing else: cords spill out freely
       S.push({ kind: 'box', min: [-1.2, this.floorY - 0.05, -0.5], max: [1.2, this.floorY, 1.2] });
       S.push({ kind: 'box', min: [-COLUMN_X, this.floorY, -0.5], max: [COLUMN_X, bottom - 0.02, 0] });
-      for (const it of this.items) this.itemStatics(it, S);
+      for (const it of this.itemList) this.itemStatics(it, S);
       return S;
     }
     // floor of the cabinet and roof
@@ -230,7 +240,7 @@ export class Rack {
     S.push({ kind: 'box', min: [-0.45, top + 0.12, -0.5], max: [0.45, top + 0.16, 0.3] });
     // the part of the column below the first unit (cabinet plinth)
     S.push({ kind: 'box', min: [-COLUMN_X, this.floorY, -0.5], max: [COLUMN_X, bottom - 0.02, 0] });
-    for (const it of this.items) this.itemStatics(it, S);
+    for (const it of this.itemList) this.itemStatics(it, S);
     return S;
   }
 
@@ -302,7 +312,7 @@ export class Rack {
 
   /** every guide of the cabinet */
   guides(): Guide[] {
-    return this.items.map((it) => this.guide(it));
+    return this.itemList.map((it) => this.guide(it));
   }
 
   guide(it: Item): Guide {
@@ -358,7 +368,7 @@ export class Rack {
 
   /** where a cable counts as held by the management */
   supports(): SupportBox[] {
-    return this.items.map((it) => this.supportBox(it));
+    return this.itemList.map((it) => this.supportBox(it));
   }
 
   private supportBox(it: Item): SupportBox {

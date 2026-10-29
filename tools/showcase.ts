@@ -19,7 +19,7 @@ for (const seed of seeds) {
 
   const w = new World(showcaseRack('tidy', seed, pairs));
   w.sim.teleport(w.tidyTargets());
-  w.circuits.forEach((ci, i) => { for (const e of w.cables[i].ends) e.label = ci.service; });
+  w.circuits.forEach((ci, i) => w.labelCord(i, ci.service));
   const ev = w.evaluate();
   const x = w.sim.x;
   const faults: string[] = [];

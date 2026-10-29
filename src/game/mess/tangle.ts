@@ -81,7 +81,7 @@ export function makeSchedule(level: LevelDef, rack: Rack, r: () => number): Circ
   return out;
 }
 
-export function makeCables(level: LevelDef, rack: Rack, circuits: Circuit[], r: () => number, lengths?: number[]): CableStart[] {
+export function makeCables(level: LevelDef, rack: Rack, circuits: readonly Circuit[], r: () => number, lengths?: number[]): CableStart[] {
   const n = circuits.length;
   const ends: [string | null, string | null][] = circuits.map((c) => [c.a, c.b]);
   // wrong ports: move one end to a free port of the same equipment kind

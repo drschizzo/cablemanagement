@@ -11,7 +11,7 @@ import { stockOf, type ItemKind, type Stock } from './supplies';
 import { SERVICES } from './services';
 import { MaintenanceWindow } from './maintenanceWindow';
 import type { FibreType } from './cordTypes';
-import type { Cable, CableEnd, CableIndex, CircuitIndex, EndIndex, NodeIndex, Strap } from './cables';
+import type { Cable, CableEnd, CableIndex, CircuitIndex, EndIndex, NodeIndex, ReadonlyCable, Strap } from './cables';
 import { coilInCrate, minLengthThrough, shapeForLength } from './cordShapes';
 import type { LevelDef } from './levels/levelDef';
 import { makeCables, makeSchedule, rng, type CableStart, type Circuit } from './mess/tangle';
@@ -26,25 +26,59 @@ export interface Snapshot {
 }
 
 export class World {
-  level: LevelDef;
-  rack: Rack;
-  sim: ThreadedSim;
-  circuits: Circuit[];
-  cables: Cable[] = [];
-  straps: Strap[] = [];
+  readonly level: LevelDef;
+  readonly rack: Rack;
+  readonly circuits: readonly Circuit[];
+  // the state changes through the methods only: the fields behind the getters below are private
+  private simulation: ThreadedSim;
+  private cableList: Cable[] = [];
+  private strapList: Strap[] = [];
+  private supplies: Stock;
+  private newCords: Map<number, number>;
+  private itemsChanged = 0;
+  private cablesRebuilt = 0;
+
+  /** the solver (a new one when the cords are rebuilt) */
+  get sim(): ThreadedSim {
+    return this.simulation;
+  }
+
+  get cables(): readonly ReadonlyCable[] {
+    return this.cableList;
+  }
+
+  get straps(): readonly Readonly<Strap>[] {
+    return this.strapList;
+  }
+
   /** the supports and velcros left */
-  stock: Stock;
+  get stock(): Readonly<Stock> {
+    return this.supplies;
+  }
+
+  /** new cords left in the stock, by length (m) */
+  get cordStock(): ReadonlyMap<number, number> {
+    return this.newCords;
+  }
+
   /** bumps when the rack items change (the view rebuilds them) */
-  itemsVersion = 0;
+  get itemsVersion(): number {
+    return this.itemsChanged;
+  }
+
+  /** bumps when the cords are rebuilt (another length, a new cord) */
+  get cablesVersion(): number {
+    return this.cablesRebuilt;
+  }
   /** before/after demo: the tidy route of each cord, the items to install */
   tidyPaths: V3[][] = [];
   setAside: { kind: ItemKind; unit: number; side: number }[] = [];
 
   /** cord segment length and radius of this cabinet */
-  seg: number;
-  radius: number;
+  readonly seg: number;
+  readonly radius: number;
   /** bending stiffness override (0: by cord type) */
-  bend: number;
+  readonly bend: number;
 
   /** patch cords are springy: copper about twice as stiff as a fibre jumper */
   /** a patch cord of this type through these nodes, for the solver */
@@ -72,7 +106,7 @@ export class World {
     // before/after demo: tidy cords are cut to their route; the mess has no managers yet
     if (level.showcase === 'mess') {
       this.setAside = this.rack.items.map((it) => ({ kind: it.kind, unit: it.unit, side: it.side }));
-      this.rack.items = [];
+      this.rack.clearItems();
     }
     if (level.showcase === 'tidy') {
       // the cords are laid along their tidy routes, cut to length (no tangle to draw: it was half
@@ -83,10 +117,10 @@ export class World {
     // big cabinets trade a substep for frame rate (≈ 13 ms instead of 18 for 40 cords);
     // the solver settings were tuned at these substep counts (see `refSubsteps`)
     const big = level.cables >= 20;
-    this.sim = new ThreadedSim(big ? { substeps: 2, refSubsteps: 2, iterations: 5 } : { substeps: 3, refSubsteps: 3, iterations: 6 });
-    const at = this.sim.build(this.starts.map((s) => this.cord(s.type, s.points)));
+    this.simulation = new ThreadedSim(big ? { substeps: 2, refSubsteps: 2, iterations: 5 } : { substeps: 3, refSubsteps: 3, iterations: 6 });
+    const at = this.simulation.build(this.starts.map((s) => this.cord(s.type, s.points)));
     this.starts.forEach((s, c) => {
-      this.cables.push({
+      this.cableList.push({
         type: s.type,
         start: at[c],
         count: s.points.length / 3,
@@ -97,9 +131,9 @@ export class World {
         if (s.ends[e]) this.plug(c, e, s.ends[e]!);
       }
     });
-    this.sim.setStatics(this.rack.statics());
-    this.stock = stockOf(level.inventory);
-    this.cordStock = new Map(level.cords ?? []);
+    this.simulation.setStatics(this.rack.statics());
+    this.supplies = stockOf(level.inventory);
+    this.newCords = new Map(level.cords ?? []);
     this.maintenance = new MaintenanceWindow(this.circuits, (i) => this.circuitUp(i), level.downtime ?? Infinity, level.bypass ?? 0);
   }
 
@@ -112,7 +146,7 @@ export class World {
   circuitUp(i: CircuitIndex): boolean {
     const ci = this.circuits[i];
     const cable = this.rack.cableJoining(ci.a, ci.b);
-    return cable >= 0 && this.cables[cable].type === ci.type;
+    return cable >= 0 && this.cableList[cable].type === ci.type;
   }
 
   /** the production links a cord carries now (unplugging it cuts them) */
@@ -120,14 +154,11 @@ export class World {
     return [...this.maintenance.live].filter((i) => this.circuitUp(i) && this.rack.port(this.circuits[i].a).plugged?.cable === c);
   }
 
-  /** bumps when the cords are rebuilt (a cord swapped for another length) */
-  cablesVersion = 0;
-
   /** length of a cord (m) */
   cableLength(c: CableIndex): number {
-    const cb = this.cables[c];
+    const cb = this.cableList[c];
     let L = 0;
-    for (let k = 0; k < cb.count - 1; k++) L += this.sim.rest[cb.start + k];
+    for (let k = 0; k < cb.count - 1; k++) L += this.simulation.rest[cb.start + k];
     return L;
   }
 
@@ -137,8 +168,8 @@ export class World {
   }
 
   private cablePoints(c: CableIndex): V3[] {
-    const cb = this.cables[c];
-    const x = this.sim.x;
+    const cb = this.cableList[c];
+    const x = this.simulation.x;
     const out: V3[] = [];
     for (let k = 0; k < cb.count; k++) { const i = 3 * (cb.start + k); out.push([x[i], x[i + 1], x[i + 2]]); }
     return out;
@@ -171,11 +202,11 @@ export class World {
 
   /** length of the tidy route between the two ports a cord is plugged into (null: not plugged at both ends) */
   routeLength(c: CableIndex): number | null {
-    const [pa, pb] = this.cables[c].ends.map((e) => e.port);
+    const [pa, pb] = this.cableList[c].ends.map((e) => e.port);
     if (!pa || !pb) return null;
     // the route starts from the upper port
     const [a, b] = this.rack.port(pa).unit <= this.rack.port(pb).unit ? [pa, pb] : [pb, pa];
-    return polyLength(tidyRoutes(this.rack, [{ a, b, type: this.cables[c].type, service: 0 }], this.radius, this.seg)[0]);
+    return polyLength(tidyRoutes(this.rack, [{ a, b, type: this.cableList[c].type, service: 0 }], this.radius, this.seg)[0]);
   }
 
   // ------------------------------------------------------- undo
@@ -183,23 +214,23 @@ export class World {
   /** what an undo puts back: every node, every plug, every label (null when the cords were rebuilt since) */
   snapshot(): Snapshot {
     return {
-      version: this.cablesVersion,
-      x: Float64Array.from(this.sim.x),
-      pinches: this.sim.pinches.map((p) => ({ ...p, rest: [...p.rest], q: [...p.q] })),
-      ends: this.cables.map((cb) => cb.ends.map((e) => ({ ...e }))),
+      version: this.cablesRebuilt,
+      x: Float64Array.from(this.simulation.x),
+      pinches: this.simulation.pinches.map((p) => ({ ...p, rest: [...p.rest], q: [...p.q] })),
+      ends: this.cableList.map((cb) => cb.ends.map((e) => ({ ...e }))),
     };
   }
 
   /** puts a snapshot back; false when the cords have been rebuilt since (another length, a new cord) */
   restore(s: Snapshot): boolean {
-    if (s.version !== this.cablesVersion || s.ends.length !== this.cables.length) return false;
-    this.cables.forEach((cb, c) => cb.ends.forEach((e, k) => {
+    if (s.version !== this.cablesRebuilt || s.ends.length !== this.cableList.length) return false;
+    this.cableList.forEach((cb, c) => cb.ends.forEach((e, k) => {
       if (e.port !== s.ends[c][k].port) this.unplug(c, k);
       this.unpark(c, k);
     }));
-    this.sim.teleport(s.x);
-    this.sim.loadPinches(s.pinches);
-    this.cables.forEach((cb, c) => cb.ends.forEach((e, k) => {
+    this.simulation.teleport(s.x);
+    this.simulation.loadPinches(s.pinches);
+    this.cableList.forEach((cb, c) => cb.ends.forEach((e, k) => {
       const want = s.ends[c][k];
       if (want.port && e.port !== want.port) this.plug(c, k, want.port);
       else if (!want.port && want.parked) this.park(c, k, want.parked);
@@ -221,20 +252,17 @@ export class World {
   /** unplugs a cord, coils it and throws it in the crate (its straps come off) */
   depositCable(c: CableIndex): void {
     for (const e of [0, 1]) { this.unplug(c, e); this.unpark(c, e); }
-    const cb = this.cables[c];
-    for (const st of [...this.straps]) if (st.nodes.some((i) => i >= cb.start && i < cb.start + cb.count)) this.removeStrap(st);
-    const rests = Array.from(this.sim.rest.subarray(cb.start, cb.start + cb.count - 1));
-    this.sim.moveNodes(cb.start, this.coil(rests));
+    const cb = this.cableList[c];
+    for (const st of [...this.strapList]) if (st.nodes.some((i) => i >= cb.start && i < cb.start + cb.count)) this.removeStrap(st);
+    const rests = Array.from(this.simulation.rest.subarray(cb.start, cb.start + cb.count - 1));
+    this.simulation.moveNodes(cb.start, this.coil(rests));
   }
-
-  /** new cords left in the stock, by length (m) */
-  cordStock: Map<number, number>;
 
   /** takes a new cord of that length out of the stock, into the crate; −1 when there is none left */
   takeCord(type: FibreType, length: number, color?: string): number {
-    const left = this.cordStock.get(length) ?? 0;
+    const left = this.newCords.get(length) ?? 0;
     if (left <= 0) return -1;
-    this.cordStock.set(length, left - 1);
+    this.newCords.set(length, left - 1);
     return this.addCable(type, length, color);
   }
 
@@ -243,7 +271,7 @@ export class World {
     const n = Math.max(3, Math.round(length / this.seg));
     const rests = new Array(n).fill(length / n);
     this.rebuild(new Map(), [{ points: this.coil(rests), rests, type, color }]);
-    return this.cables.length - 1;
+    return this.cableList.length - 1;
   }
 
   /**
@@ -252,72 +280,72 @@ export class World {
    * what the keepers know of the cords (a replaced one is still handled)
    */
   private rebuild(replace: Map<number, number[]>, append: { points: number[]; rests: number[]; type: FibreType; color?: string }[] = []): void {
-    const old = this.sim;
+    const old = this.simulation;
     const threaded = old.threaded;
-    const defs = this.cables.map((cb, k) => {
+    const defs = this.cableList.map((cb, k) => {
       const points = replace.get(k) ?? Array.from(old.x.subarray(3 * cb.start, 3 * (cb.start + cb.count)));
       return this.cord(cb.type, points);
     });
     for (const a of append) defs.push(this.cord(a.type, a.points));
-    const rests = this.cables.map((cb) => Array.from(old.rest.subarray(cb.start, cb.start + cb.count)));
+    const rests = this.cableList.map((cb) => Array.from(old.rest.subarray(cb.start, cb.start + cb.count)));
     for (const a of append) rests.push(a.rests);
-    const kept = this.cables.map((cb, k) => ({
+    const kept = this.cableList.map((cb, k) => ({
       handled: old.handled[k],
       lastHand: replace.has(k) || old.lastHand[k] < 0 ? -1 : old.lastHand[k] - cb.start,
       keepOf: replace.has(k) ? null : old.keepOf.slice(cb.start, cb.start + cb.count),
     }));
-    const straps = this.straps.map((s) => s.nodes.map((i) => {
-      const k = old.cableOf[i], cb = this.cables[k];
+    const straps = this.strapList.map((s) => s.nodes.map((i) => {
+      const k = old.cableOf[i], cb = this.cableList[k];
       return { k, f: (i - cb.start) / (cb.count - 1) };
     }));
-    const ends = this.cables.map((cb) => cb.ends.map((e) => e.port));
+    const ends = this.cableList.map((cb) => cb.ends.map((e) => e.port));
     // the pinches of the cords kept, by cord and place along it
     const pinches = old.pinches.filter((p) => !replace.has(old.cableOf[p.a])).map((p) => {
       const k = old.cableOf[p.a];
-      return { k, off: p.a - this.cables[k].start, p };
+      return { k, off: p.a - this.cableList[k].start, p };
     });
     old.dispose();
     for (const p of this.rack.ports) p.plugged = null;
     for (const a of append) {
-      this.cables.push({ type: a.type, start: 0, count: 0, ends: [{ port: null, label: null }, { port: null, label: null }], color: a.color });
+      this.cableList.push({ type: a.type, start: 0, count: 0, ends: [{ port: null, label: null }, { port: null, label: null }], color: a.color });
       ends.push([null, null]);
     }
-    this.sim = new ThreadedSim({ ...old.P });
-    const at = this.sim.build(defs);
-    this.cables.forEach((cb, k) => {
+    this.simulation = new ThreadedSim({ ...old.P });
+    const at = this.simulation.build(defs);
+    this.cableList.forEach((cb, k) => {
       cb.start = at[k];
       cb.count = defs[k].points.length / 3;
-      if (!replace.has(k)) for (let j = 0; j < cb.count - 1; j++) this.sim.rest[cb.start + j] = rests[k][j];
+      if (!replace.has(k)) for (let j = 0; j < cb.count - 1; j++) this.simulation.rest[cb.start + j] = rests[k][j];
       const parked = cb.ends.map((e) => e.parked);
       cb.ends.forEach((e) => { e.port = null; e.parked = null; });
       ends[k].forEach((port, e) => { if (port) this.plug(k, e, port); else if (parked[e]) this.park(k, e, parked[e]!); });
     });
-    this.sim.setStatics(this.rack.statics());
+    this.simulation.setStatics(this.rack.statics());
     kept.forEach((s, k) => {
-      const cb = this.cables[k];
-      this.sim.handled[k] = s.handled;
-      this.sim.lastHand[k] = s.lastHand < 0 ? -1 : cb.start + s.lastHand;
-      if (s.keepOf) this.sim.keepOf.set(s.keepOf, cb.start);
+      const cb = this.cableList[k];
+      this.simulation.handled[k] = s.handled;
+      this.simulation.lastHand[k] = s.lastHand < 0 ? -1 : cb.start + s.lastHand;
+      if (s.keepOf) this.simulation.keepOf.set(s.keepOf, cb.start);
     });
-    this.sim.loadPinches(pinches.map(({ k, off, p }) => ({ ...p, a: this.cables[k].start + off })));
-    this.straps = straps.map((list) => {
+    this.simulation.loadPinches(pinches.map(({ k, off, p }) => ({ ...p, a: this.cableList[k].start + off })));
+    this.strapList = straps.map((list) => {
       const nodes = list.map(({ k, f }) => {
-        const cb = this.cables[k];
+        const cb = this.cableList[k];
         return cb.start + Math.min(cb.count - 3, Math.max(2, Math.round(f * (cb.count - 1))));
       });
       const r = Math.max(this.radius * 2, Math.sqrt(nodes.length) * this.radius * 1.25);
-      return { bundle: this.sim.addBundle(nodes, r), nodes };
+      return { bundle: this.simulation.addBundle(nodes, r), nodes };
     });
-    if (threaded) this.sim.startWorker();
-    this.cablesVersion++;
+    if (threaded) this.simulation.startWorker();
+    this.cablesRebuilt++;
   }
 
   /** node positions of the tidy cabinet (before/after demo) */
   tidyTargets(): Float64Array {
-    const out = Float64Array.from(this.sim.x);
-    this.cables.forEach((cb, c) => {
+    const out = Float64Array.from(this.simulation.x);
+    this.cableList.forEach((cb, c) => {
       const arcs = [0];
-      for (let k = 0; k < cb.count - 1; k++) arcs.push(arcs[k] + this.sim.rest[cb.start + k]);
+      for (let k = 0; k < cb.count - 1; k++) arcs.push(arcs[k] + this.simulation.rest[cb.start + k]);
       resample(this.tidyPaths[c], arcs, out, cb.start);
     });
     return out;
@@ -327,22 +355,22 @@ export class World {
   installDemoItems(on: boolean): void {
     if (on) {
       if (this.rack.items.length === 0) for (const it of this.setAside) this.rack.addItem(it.kind, it.unit, it.side, true);
-    } else this.rack.items = [];
-    this.sim.setStatics(this.rack.statics());
-    this.itemsVersion++;
+    } else this.rack.clearItems();
+    this.simulation.setStatics(this.rack.statics());
+    this.itemsChanged++;
   }
 
   clearStraps(): void {
-    for (const s of [...this.straps]) this.removeStrap(s);
+    for (const s of [...this.strapList]) this.removeStrap(s);
   }
 
   dispose(): void {
-    this.sim.dispose();
+    this.simulation.dispose();
   }
 
   /** settle the starting mess before the player sees it */
   preroll(frames: number): void {
-    for (let f = 0; f < frames; f++) this.sim.step();
+    for (let f = 0; f < frames; f++) this.simulation.step();
   }
 
   // --------------------------------------------------------------- ends
@@ -353,20 +381,30 @@ export class World {
    * loops that run over every node (drawing, picking, scoring), read it.
    */
   nodePosition(i: NodeIndex): V3 {
-    const x = this.sim.x;
+    const x = this.simulation.x;
     return [x[3 * i], x[3 * i + 1], x[3 * i + 2]];
+  }
+
+  /** the label on one end of a cord (null: none) */
+  setLabel(c: CableIndex, e: EndIndex, service: number | null): void {
+    this.cableList[c].ends[e].label = service;
+  }
+
+  /** both ends of a cord labelled with a service (null: no label) */
+  labelCord(c: CableIndex, service: number | null): void {
+    for (const end of this.cableList[c].ends) end.label = service;
   }
 
   /** the connector node and the next one, for end 0 or 1 of a cable */
   endNodes(c: CableIndex, e: EndIndex): [NodeIndex, NodeIndex] {
-    const cb = this.cables[c];
+    const cb = this.cableList[c];
     return e === 0 ? [cb.start, cb.start + 1] : [cb.start + cb.count - 1, cb.start + cb.count - 2];
   }
 
   /** which end a node belongs to, if it is part of a connector */
   endOfNode(node: NodeIndex): { cable: CableIndex; end: EndIndex } | null {
-    const c = this.sim.cableOf[node];
-    const cb = this.cables[c];
+    const c = this.simulation.cableOf[node];
+    const cb = this.cableList[c];
     const k = node - cb.start;
     if (k <= 1) return { cable: c, end: 0 };
     if (k >= cb.count - 2) return { cable: c, end: 1 };
@@ -376,11 +414,11 @@ export class World {
   plug(c: CableIndex, e: EndIndex, portId: string): boolean {
     const port = this.rack.port(portId);
     if (port.plugged) return false;
-    const end = this.cables[c].ends[e];
+    const end = this.cableList[c].ends[e];
     if (end.port) this.unplug(c, e);
     const [n0, n1] = this.endNodes(c, e);
     end.parked = null;
-    this.sim.pinEnd(n0, n1, [port.x, port.y, CONNECTOR], [port.x, port.y, CONNECTOR + this.seg]);
+    this.simulation.pinEnd(n0, n1, [port.x, port.y, CONNECTOR], [port.x, port.y, CONNECTOR + this.seg]);
     port.plugged = { cable: c, end: e };
     end.port = portId;
     this.autoLabel(c);
@@ -389,7 +427,7 @@ export class World {
 
   /** a cord plugged on both ports of a line of the schedule takes its service's label, at both ends */
   private autoLabel(c: CableIndex): void {
-    const cb = this.cables[c];
+    const cb = this.cableList[c];
     const [pa, pb] = cb.ends.map((e) => e.port);
     if (!this.level.labels || !pa || !pb) return;
     const ci = this.circuits.find((q) => q.type === cb.type && ((q.a === pa && q.b === pb) || (q.a === pb && q.b === pa)));
@@ -398,39 +436,39 @@ export class World {
 
   /** a free connector let go in the air: it stays hooked there until taken again */
   park(c: CableIndex, e: EndIndex, at?: [V3, V3]): void {
-    const end = this.cables[c].ends[e];
+    const end = this.cableList[c].ends[e];
     if (end.port) return;
     const [n0, n1] = this.endNodes(c, e);
-    const x = this.sim.x;
+    const x = this.simulation.x;
     const p = at ?? [[x[3 * n0], x[3 * n0 + 1], x[3 * n0 + 2]], [x[3 * n1], x[3 * n1 + 1], x[3 * n1 + 2]]];
     end.parked = p;
-    this.sim.pinEnd(n0, n1, p[0], p[1]);
+    this.simulation.pinEnd(n0, n1, p[0], p[1]);
   }
 
   /** a hooked connector is taken again */
   unpark(c: CableIndex, e: EndIndex): void {
-    const end = this.cables[c].ends[e];
+    const end = this.cableList[c].ends[e];
     if (!end.parked) return;
     end.parked = null;
     const [n0, n1] = this.endNodes(c, e);
-    this.sim.unpin(n0);
-    this.sim.unpin(n1);
+    this.simulation.unpin(n0);
+    this.simulation.unpin(n1);
   }
 
   unplug(c: CableIndex, e: EndIndex): void {
-    const end = this.cables[c].ends[e];
+    const end = this.cableList[c].ends[e];
     if (!end.port) return;
     this.rack.port(end.port).plugged = null;
     end.port = null;
     const [n0, n1] = this.endNodes(c, e);
-    this.sim.unpin(n0);
-    this.sim.unpin(n1);
+    this.simulation.unpin(n0);
+    this.simulation.unpin(n1);
   }
 
   /** tip of the connector of an end (where it enters a port) */
   connectorTip(c: CableIndex, e: EndIndex): [number, number, number] {
     const [n0, n1] = this.endNodes(c, e);
-    const x = this.sim.x;
+    const x = this.simulation.x;
     const dx = x[3 * n0] - x[3 * n1], dy = x[3 * n0 + 1] - x[3 * n1 + 1], dz = x[3 * n0 + 2] - x[3 * n1 + 2];
     const L = Math.hypot(dx, dy, dz) || 1;
     return [x[3 * n0] + (dx / L) * CONNECTOR, x[3 * n0 + 1] + (dy / L) * CONNECTOR, x[3 * n0 + 2] + (dz / L) * CONNECTOR];
@@ -439,24 +477,24 @@ export class World {
   // -------------------------------------------------------------- items
 
   placeItem(kind: ItemKind, unit: number, side: number): Item | null {
-    if (this.stock[kind] <= 0) return null;
+    if (this.supplies[kind] <= 0) return null;
     const it = this.rack.addItem(kind, unit, side);
     if (!it) return null;
-    this.stock[kind]--;
+    this.supplies[kind]--;
     this.refreshStatics();
     return it;
   }
 
   removeItem(it: Item): boolean {
     if (!this.rack.removeItem(it.id)) return false;
-    this.stock[it.kind]++;
+    this.supplies[it.kind]++;
     this.refreshStatics();
     return true;
   }
 
   private refreshStatics(): void {
-    this.sim.setStatics(this.rack.statics());
-    this.itemsVersion++;
+    this.simulation.setStatics(this.rack.statics());
+    this.itemsChanged++;
   }
 
   // ------------------------------------------------------------- velcro
@@ -467,13 +505,13 @@ export class World {
    * leaving the bundle for a port, which a band round them all would cut across
    */
   addStrap(px: number, py: number, pz: number, reach = 0.03, along?: [number, number, number]): Strap | null {
-    if (this.stock.velcro <= 0) return null;
-    const x = this.sim.x;
+    if (this.supplies.velcro <= 0) return null;
+    const x = this.simulation.x;
     const best = new Map<number, { node: number; d: number }>();
-    for (let c = 0; c < this.cables.length; c++) {
-      const cb = this.cables[c];
+    for (let c = 0; c < this.cableList.length; c++) {
+      const cb = this.cableList[c];
       for (let i = cb.start + 2; i < cb.start + cb.count - 2; i++) {
-        if (this.sim.bundleOf[i] >= 0) continue;
+        if (this.simulation.bundleOf[i] >= 0) continue;
         if (along) {
           const ex = x[3 * i + 3] - x[3 * i - 3], ey = x[3 * i + 4] - x[3 * i - 2], ez = x[3 * i + 5] - x[3 * i - 1];
           if (Math.abs(ex * along[0] + ey * along[1] + ez * along[2]) < 0.9 * Math.hypot(ex, ey, ez)) continue;
@@ -488,24 +526,24 @@ export class World {
 
   /** straps these nodes together (one of each cord); needs two of them, and a velcro left */
   strapNodes(nodes: number[]): Strap | null {
-    if (this.stock.velcro <= 0 || nodes.length < 2) return null;
+    if (this.supplies.velcro <= 0 || nodes.length < 2) return null;
     // the strap holds the bundle as tight as the cords allow
     const r = Math.max(this.radius * 2, Math.sqrt(nodes.length) * this.radius * 1.25);
-    const bundle = this.sim.addBundle(nodes, r);
+    const bundle = this.simulation.addBundle(nodes, r);
     const s = { bundle, nodes };
-    this.straps.push(s);
-    this.stock.velcro--;
+    this.strapList.push(s);
+    this.supplies.velcro--;
     return s;
   }
 
-  removeStrap(s: Strap): void {
-    this.sim.removeBundle(s.bundle);
-    this.straps = this.straps.filter((q) => q !== s);
-    this.stock.velcro++;
+  removeStrap(s: Readonly<Strap>): void {
+    this.simulation.removeBundle(s.bundle);
+    this.strapList = this.strapList.filter((q) => q !== s);
+    this.supplies.velcro++;
   }
 
-  strapCentre(s: Strap): [number, number, number] {
-    const x = this.sim.x;
+  strapCentre(s: Readonly<Strap>): [number, number, number] {
+    const x = this.simulation.x;
     let cx = 0, cy = 0, cz = 0;
     for (const i of s.nodes) { cx += x[3 * i]; cy += x[3 * i + 1]; cz += x[3 * i + 2]; }
     const n = s.nodes.length;
