@@ -5,7 +5,7 @@
 
 import { SERVICES } from './services';
 import type { Circuit } from './mess/tangle';
-import type { CircuitIndex } from './world';
+import type { CircuitIndex } from './cables';
 
 export class MaintenanceWindow {
   /** links that worked at the start: the service must keep running */

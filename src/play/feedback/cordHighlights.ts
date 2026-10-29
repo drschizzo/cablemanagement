@@ -5,7 +5,8 @@
 // fibre, a tone generator on copper).
 
 import type { Evaluation } from '../../game/evaluation';
-import type { CableIndex, CircuitIndex, World } from '../../game/world';
+import type { CableIndex, CircuitIndex } from '../../game/cables';
+import type { World } from '../../game/world';
 import type { CableView } from '../../render/cableView';
 import type { RackView } from '../../render/rackView';
 

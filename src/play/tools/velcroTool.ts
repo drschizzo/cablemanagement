@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { sfx } from '../../audio/sfx';
 import { disposeTree } from '../../render/dispose';
-import type { Strap } from '../../game/world';
+import type { Strap } from '../../game/cables';
 import type { PlayContext, ToolHandler } from '../context';
 import type { ScreenPoint } from '../pointer';
 

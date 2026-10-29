@@ -1,0 +1,41 @@
+// What a cord is in the game: a stretch of the solver's nodes, two ends that
+// may be plugged, hooked in the air or loose, and the straps that close round
+// several cords. The indices are plain numbers; their names say which is which.
+
+import type { FibreType } from './cordTypes';
+import type { V3 } from './idealRoutes';
+
+/** a cord: its place in World.cables */
+export type CableIndex = number;
+/** one of the two ends of a cord: 0 (at its first node) or 1 */
+export type EndIndex = number;
+/** a node of the solver: the nodes of every cord, in one array */
+export type NodeIndex = number;
+/** a line of the schedule: its place in World.circuits */
+export type CircuitIndex = number;
+
+export interface CableEnd {
+  /** the port it is plugged into, or null */
+  port: string | null;
+  /** the service on its label, or null */
+  label: number | null;
+  /** a free connector hooked where it was let go (connector node, the next one), or null */
+  parked?: [V3, V3] | null;
+}
+
+export interface Cable {
+  type: FibreType;
+  /** its first node; it has `count` */
+  start: NodeIndex;
+  count: number;
+  ends: [CableEnd, CableEnd];
+  /** jacket colour, when it is not the fibre type's */
+  color?: string;
+}
+
+export interface Strap {
+  /** the solver's bundle that holds it */
+  bundle: number;
+  /** one node of each cord it closes round */
+  nodes: NodeIndex[];
+}

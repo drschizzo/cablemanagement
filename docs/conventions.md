@@ -100,7 +100,10 @@ this.on(window, 'pointerup', (e: PointerEvent) => this.pointerUp(e));
 
 **Tester d'abord ce qui est pur.** Une fonction qui reçoit des données et rend un résultat se teste en trois lignes
 (`tests/format.test.ts`, `tests/app/urlOptions.test.ts`). C'est une raison de plus pour sortir la logique des
-classes qui touchent au DOM ou à three.js : `readUrlOptions` lit une chaîne plutôt que `location`.
+classes qui touchent au DOM, à three.js ou à la physique : `readUrlOptions` lit une chaîne plutôt que `location` ;
+les règles de la progression (`ui/progress.ts`) sont sorties de l'écran de résultat ; la forme d'un cordon remis à
+une autre longueur (`game/cordShapes.ts`) est sortie du `World` et se teste sur une liste de points écrite à la
+main. Un hasard qu'on veut tester se passe en paramètre (`coilInCrate(…, random)`).
 
 **Remplacer ce qui est lourd par un double.** `tests/play/undoHistory.test.ts` donne à l'historique un faux monde
 qui numérote ses instantanés ; `tests/game/maintenanceWindow.test.ts` remplace toute la baie par un ensemble de

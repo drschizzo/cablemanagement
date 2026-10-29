@@ -229,7 +229,8 @@ Pour une première lecture, suivre le chemin d'un clic :
 3. le clic arrive à un outil, par exemple `src/play/tools/handTool.ts`, qui
    saisit le cordon et le branche avec `World.plug` (`src/game/world.ts`) ;
 4. `src/game/evaluation.ts` note la baie, et le contrôleur prévient
-   l'interface (`src/ui/hud.ts`) par un événement.
+   l'interface par un événement : `src/ui/hud.ts` le passe au panneau du plan
+   (`src/ui/schedulePanel.ts`).
 
 ### Commandes utiles
 

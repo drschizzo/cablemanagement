@@ -1,6 +1,7 @@
 // The game state of one cabinet: the physics, the rack and its items, the
-// cords with their ends and labels, the velcro straps, the inventory, the
-// maintenance window. How tidy it all is: evaluation.ts.
+// cords (cables.ts) with their ends and labels, the velcro straps, the crate
+// and the stock, the inventory, the maintenance window. How tidy it all is:
+// evaluation.ts.
 
 import { CABLES, type CableInit, type Pinch } from '@drschizzo/avbd-cables';
 import { bundleCount, cordStrain, evaluate, holdMap, okPorts, type Evaluation, type Strain } from './evaluation';
@@ -9,42 +10,11 @@ import { CABLE_R, CONNECTOR, Rack, SEG, type Item, type ItemKind } from './rack'
 import { SERVICES } from './services';
 import { MaintenanceWindow } from './maintenanceWindow';
 import type { FibreType } from './cordTypes';
+import type { Cable, CableEnd, CableIndex, CircuitIndex, EndIndex, NodeIndex, Strap } from './cables';
+import { coilInCrate, minLengthThrough, shapeForLength } from './cordShapes';
 import type { LevelDef } from './levels/levelDef';
 import { makeCables, makeSchedule, rng, type CableStart, type Circuit } from './mess/tangle';
 import { pathToNodes, polyLength, resample, tidyRoutes, type V3 } from './idealRoutes';
-
-/** a cord: its place in World.cables */
-export type CableIndex = number;
-/** one of the two ends of a cord: 0 (at its first node) or 1 */
-export type EndIndex = number;
-/** a node of the solver: the nodes of every cord, in one array */
-export type NodeIndex = number;
-/** a line of the schedule: its place in World.circuits */
-export type CircuitIndex = number;
-
-export interface CableEnd {
-  port: string | null;
-  label: number | null;
-  /** a free connector hooked where it was let go (connector node, the next one), or null */
-  parked?: [V3, V3] | null;
-}
-
-export interface Cable {
-  type: FibreType;
-  /** its first node; it has `count` */
-  start: NodeIndex;
-  count: number;
-  ends: [CableEnd, CableEnd];
-  /** jacket colour, when it is not the fibre type's */
-  color?: string;
-}
-
-export interface Strap {
-  /** the solver's bundle that holds it */
-  bundle: number;
-  /** one node of each cord it closes round */
-  nodes: NodeIndex[];
-}
 
 export interface Snapshot {
   version: number;
@@ -162,9 +132,7 @@ export class World {
 
   /** the shortest cord that still reaches from one end to the other */
   minCableLength(c: CableIndex): number {
-    const q = this.cablePoints(c);
-    const n = q.length;
-    return dist3(q[0], q[1]) + dist3(q[1], q[n - 2]) + dist3(q[n - 2], q[n - 1]) + 0.02;
+    return minLengthThrough(this.cablePoints(c));
   }
 
   private cablePoints(c: CableIndex): V3[] {
@@ -183,34 +151,9 @@ export class World {
    */
   setCableLength(c: CableIndex, L: number): boolean {
     if (L < this.minCableLength(c)) return false;
-    const q = this.cablePoints(c);
-    const n = q.length;
-    const a = q[1], b = q[n - 2];
-    // straight route and belly direction, per node (by arc fraction between the boots)
-    const cum = [0];
-    for (let k = 2; k < n - 1; k++) cum.push(cum[cum.length - 1] + dist3(q[k], q[k - 1]));
-    const tot = cum[cum.length - 1] || 1;
-    const frac = (k: number) => (k <= 1 ? 0 : k >= n - 2 ? 1 : cum[k - 1] / tot);
-    const shape = (t: number): V3[] => q.map((p, k) => {
-      if (k <= 1 || k >= n - 2) return p;
-      const f = frac(k);
-      if (t <= 1) {
-        const s: V3 = [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
-        return [s[0] + (p[0] - s[0]) * t, s[1] + (p[1] - s[1]) * t, s[2] + (p[2] - s[2]) * t];
-      }
-      // the belly hangs down, and forward once it meets the floor
-      const w = Math.sin(Math.PI * f) * (t - 1);
-      const floor = this.rack.floorY + this.radius + 0.004;
-      const y = p[1] - w;
-      return y >= floor ? [p[0], y, p[2] + w * 0.25] : [p[0], floor, p[2] + w * 0.25 + (floor - y)];
-    });
-    let lo = 0, hi = 1;
-    if (polyLength(shape(1)) < L) { hi = 2; while (polyLength(shape(hi)) < L && hi < 64) hi = 1 + (hi - 1) * 2; lo = 1; }
-    for (let it = 0; it < 30; it++) {
-      const m = (lo + hi) / 2;
-      if (polyLength(shape(m)) < L) lo = m; else hi = m;
-    }
-    const fresh = pathToNodes(shape((lo + hi) / 2), this.seg);
+    // the lowest a node may lie: its cord resting on the floor
+    const floorY = this.rack.floorY + this.radius + 0.004;
+    const fresh = pathToNodes(shapeForLength(this.cablePoints(c), L, floorY), this.seg);
     this.rebuild(new Map([[c, fresh]]));
     return true;
   }
@@ -266,25 +209,12 @@ export class World {
 
   // ------------------------------------------------------- crate, stock
 
+  /** coils thrown into the crate so far: each falls a little higher than the last */
   private thrown = 0;
 
   /** a coil of cord (as it comes out of its bag), at a random spot of the crate */
   private coil(rests: number[]): number[] {
-    const c = this.rack.crate();
-    const R = 0.055 + Math.random() * 0.02;
-    const cx = c.min[0] + R + 0.02 + Math.random() * (c.max[0] - c.min[0] - 2 * R - 0.04);
-    const cz = c.min[2] + R + 0.02 + Math.random() * (c.max[2] - c.min[2] - 2 * R - 0.04);
-    // drop it from a little higher each time: the coils pile up into a heap
-    const y0 = c.min[1] + 0.03 + (this.thrown++ % 8) * 0.012;
-    const tilt = (Math.random() - 0.5) * 0.4;
-    const out: number[] = [];
-    let s = 0;
-    for (let k = 0; k <= rests.length; k++) {
-      const a = s / R;
-      out.push(cx + Math.cos(a) * R, y0 + (a / (2 * Math.PI)) * this.radius * 2.6 + Math.sin(a) * R * tilt, cz + Math.sin(a) * R);
-      if (k < rests.length) s += rests[k];
-    }
-    return out;
+    return coilInCrate(this.rack.crate(), rests, this.radius, this.thrown++);
   }
 
   /** unplugs a cord, coils it and throws it in the crate (its straps come off) */
@@ -597,8 +527,4 @@ export class World {
   bundleCount(): number {
     return bundleCount(this);
   }
-}
-
-function dist3(a: V3, b: V3): number {
-  return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 }

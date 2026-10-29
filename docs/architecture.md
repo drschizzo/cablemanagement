@@ -18,8 +18,10 @@ src/
     urlOptions.ts   ?sync, ?bays, ?pairs, ?seed : lus depuis une chaîne, donc testables
     viewInsets.ts   le cadrage de la baie dans la place que laissent les panneaux
   game/         LES RÈGLES et la physique de la baie                       sans three.js ni DOM : tourne sous Node
-    world.ts        World, l'état d'une partie : cordons et leurs bouts, branchement, velcros, bac, stock ;
-                    indices nommés (CableIndex, EndIndex, NodeIndex, CircuitIndex)
+    world.ts        World, l'état d'une partie : cordons et leurs bouts, branchement, velcros, bac, stock
+    cables.ts       ce qu'est un cordon (Cable, CableEnd, Strap) et ses indices nommés (CableIndex, EndIndex,
+                    NodeIndex, CircuitIndex)
+    cordShapes.ts   la géométrie d'un cordon hors physique : remis à une autre longueur, enroulé dans le bac
     evaluation.ts   le score : chaque liaison (branchée, rangée, dégagée, étiquetée, sans tension), étoiles,
                     lisibilité, propreté — des fonctions qui lisent un World sans le modifier
     maintenanceWindow.ts  liaisons en production, budget d'interruption, dérivations
@@ -60,7 +62,15 @@ src/
     cableView.ts    les câbles (tubes de three-cable-tubes), leurs connecteurs et étiquettes
     jacket.ts, straps.ts, leds.ts, ledGlow.ts   gaine vue de près, velcros, voyants et leur lumière
     bevel.ts, batch.ts, dispose.ts, cinema.ts   pièces légères, moins d'appels de dessin, mémoire GPU, dernière passe
-  ui/           L'INTERFACE HTML : HUD (plan, outils, résultat), icônes, tutoriel
+  ui/           L'INTERFACE HTML autour de la baie
+    hud.ts          Hud : assemble les panneaux, et les petites choses (aide, bulle, message, chronomètre)
+    toolbar.ts      la barre d'outils et ce qui reste en stock ; stockMenu.ts, le stock de cordons neufs
+    schedulePanel.ts le plan de brassage, ses jauges, le budget d'interruption, le bouton Valider
+    levelBrief.ts   le brief d'un niveau, puis la préparation
+    resultScreen.ts l'écran de résultat ; levelMenu.ts, le menu des niveaux
+    progress.ts     la progression du joueur : meilleur score, niveau ouvert, niveau suivant (fonctions pures)
+    tutorial.ts     le tutoriel guidé, par-dessus un niveau
+    dom.ts, icons.ts petites aides DOM, icônes de la barre d'outils
   audio/        les effets sonores, synthétisés
   format.ts     nombres et durées tels que le joueur les lit
   storage.ts    données gardées dans le navigateur (clés, valeurs par défaut, validation)
@@ -162,10 +172,11 @@ par niveau) et tutoriel terminé. Les clés sont celles des versions précédent
 |---|---|
 | un niveau | une entrée dans `LEVELS` (`game/levels/campaign.ts`), bâtie avec les équipements de `game/levels/equipment.ts` ; `tests/game/levels/levels.test.ts` vérifie son plan, qu'il ne se gagne pas sans rien faire et qu'il peut atteindre 3 étoiles avec son seul inventaire (`tidyKit`) |
 | un équipement de baie | `UnitSpec` et le constructeur de `Rack` (`game/rack.ts`), son rendu dans `render/rackView.ts` |
-| un élément de rangement | `ItemKind`, `canPlace`, `statics` et `supports` dans `game/rack.ts`, `buildItem` dans `render/rackItems.ts`, un outil dans `TOOLS` (`ui/hud.ts`) |
-| un outil | un `ToolHandler` dans `play/tools/`, son nom dans `Tool` (`play/context.ts`) et dans `Controller.tools`, son bouton dans `TOOLS` (`ui/hud.ts`) |
+| un élément de rangement | `ItemKind`, `canPlace`, `statics` et `supports` dans `game/rack.ts`, `buildItem` dans `render/rackItems.ts`, un outil dans `TOOLS` (`ui/toolbar.ts`) |
+| un outil | un `ToolHandler` dans `play/tools/`, son nom dans `Tool` (`play/context.ts`) et dans `Controller.tools`, son bouton dans `TOOLS` (`ui/toolbar.ts`) |
 | un repère visuel pendant un geste | une classe dans `play/feedback/`, mise à jour par l'outil ou par `Controller.tick` |
-| un critère de score | `evaluate()` (`game/evaluation.ts`), sa colonne dans le plan (`ui/hud.ts`) |
+| un critère de score | `evaluate()` (`game/evaluation.ts`), sa colonne dans le plan (`ui/schedulePanel.ts`) |
+| un panneau de l'interface | un fichier dans `ui/`, créé et appelé par `Hud` (`ui/hud.ts`) |
 | une étape du tutoriel | `STEPS` dans `ui/tutorial.ts` (`done` lit `ctl.counters` ou l'état du monde) |
 | un message du contrôleur à l'interface | `ControllerEvents` (`play/context.ts`), relié dans `app/app.ts` |
 | un raccourci clavier | `InputRouter.bindKeys` (`play/inputRouter.ts`), son action sur le contrôleur ou l'outil |
