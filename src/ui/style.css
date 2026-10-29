@@ -655,7 +655,17 @@ body.touring #toolbar, body.touring #side, body.touring #hint, body.touring #top
 @media (max-width: 720px) { #editor .ed-body { grid-template-columns: 1fr; } }
 
 /* ---- the game modes: a card each, what it is and where the player stands */
-#modes-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; margin-top: 14px; }
+#modes-cards { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; }
+.mode-group h2 { margin: 0 0 6px; font: 500 10.5px var(--mono); color: var(--dim); text-transform: uppercase; letter-spacing: 0.08em; }
+.mode-group .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; }
+.mode-card.locked { cursor: default; opacity: 0.55; }
+.mode-card.locked:hover { border-color: var(--line); background: var(--panel-solid); }
+.mode-card .lock { margin-top: 8px; font: 11px var(--mono); color: var(--dim); display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.mode-card .lock button { white-space: nowrap; }
+.mode-card .free-controls { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.mode-card .free-controls label { font-size: 12.5px; color: var(--dim); cursor: pointer; }
+.mode-card .free-controls label input { accent-color: var(--accent); vertical-align: -1px; }
+.mode-card .free-controls button.link { align-self: flex-start; font-size: 11px; }
 .mode-card { text-align: left; background: var(--panel-solid); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
 .mode-card:hover, .mode-card:focus-visible { border-color: var(--accent-line); background: #131514; outline: none; }
 .mode-card .t { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-weight: 600; color: var(--text); }

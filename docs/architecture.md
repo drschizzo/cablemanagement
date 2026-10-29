@@ -48,7 +48,7 @@ src/
                     zen, baie du jour, vitrine, banc), les règles qu'il joue en plus de brancher et ranger (levelRules :
                     voyants, tension, fenêtre de maintenance, faisceaux, pannes…), les équipements nommés, la campagne et le tutoriel, les puzzles,
                     la carrière (un client, ses tickets, chacun bâti sur la baie laissée par le précédent),
-                    la baie sur mesure de l'éditeur (customLevel : sa palette, ses règles, son code de partage), la partie libre et le zen, la baie du jour
+                    la baie sur mesure de l'éditeur (customLevel : sa palette, ses règles, son code de partage), la partie libre et son réglage zen, la baie du jour
                     (tirée de la date : la même pour tous), les baies de la vitrine
   play/         UNE PARTIE EN COURS : relie game, render et l'interface
     controller.ts   Controller : la boucle à pas fixe, ce que la baie montre de son état, les actions du HUD
@@ -101,8 +101,9 @@ src/
                     repliées), puis la préparation ; ruleTexts.ts, les mots de chaque règle
     timelapsePlayer.ts le timelapse lu en boucle, et enregistré en vidéo (MediaRecorder) ; beforeAfterImage.ts, la baie
                     avant / après en une image ; share.ts, l'adresse du jeu et les fichiers offerts au joueur
-    resultScreen.ts l'écran de résultat ; modesPanel.ts, les modes de jeu (une carte chacun) ; levelMenu.ts, une section à la
-                    fois (la campagne et son tutoriel, ou les puzzles)
+    resultScreen.ts l'écran de résultat ; modesPanel.ts, les modes de jeu en trois groupes (histoire, défis, partie libre
+                    avec son réglage zen et l'éditeur) ; modeLocks.ts, quels modes sont ouverts (fonctions pures, et les données gardées qu'elles lisent) ;
+                    levelMenu.ts, une section à la fois (la campagne et son tutoriel, ou les puzzles)
     pauseMenu.ts    le menu d'un niveau (☰ Menu, Échap) : le chrono attend ; consignes, recommencer, niveaux,
                     paramètres, accueil ; confirmDialog.ts, la question avant de quitter une baie entamée
     settingsPanel.ts les paramètres : qualité de l'image (auto, préréglages, détails) et son
@@ -125,7 +126,7 @@ src/
     names.ts        le nom des choses : services (et ce qu'ils portent), fournitures, sortes de cordon, plaques des équipements
     levelTexts.ts   les mots de chaque niveau : titre, brief, conseils (ceux de la campagne par id ; les autres d'après ce qu'ils sont)
     tutorial.ts     le tutoriel guidé, par-dessus un niveau
-    titleScreen.ts  les boutons de l'écran titre ; showcaseSwitch.ts, l'interrupteur
+    titleScreen.ts  les boutons de l'écran titre (Commencer seul au premier lancement) ; showcaseSwitch.ts, l'interrupteur
                     Avant / Après et sa légende
     panelMargins.ts la place que les panneaux couvrent à chaque bord de l'écran : la baie est cadrée dans le reste
     notice.ts       le bandeau qui conseille le joueur quand la carte graphique est trop lente
@@ -238,7 +239,7 @@ sur le fil principal.
 ## Données dans le navigateur
 
 `ui/storage.ts` déclare chaque entrée (clé, valeur par défaut, validation) : progression (étoiles et meilleurs temps
-par niveau), tutoriel terminé, règles déjà rencontrées, carrière (tickets faits, la baie du client telle que laissée), dernière baie de l'éditeur, portefeuille (salaire, cosmétiques achetés, trouvailles), baies du jour (le meilleur résultat de chaque date), langue (celle du navigateur tant que le joueur n'en a pas choisi), musique coupée, qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu) et son
+par niveau), tutoriel terminé, règles déjà rencontrées, partie libre ouverte d'avance, carrière (tickets faits, la baie du client telle que laissée), dernière baie de l'éditeur, portefeuille (salaire, cosmétiques achetés, trouvailles), baies du jour (le meilleur résultat de chaque date), langue (celle du navigateur tant que le joueur n'en a pas choisi), musique coupée, qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu) et son
 coupé. Les clés sont celles des versions précédentes.
 
 ## Ajouter…

@@ -1,5 +1,5 @@
-// Free play: a cabinet generated at random, of any size; and its zen variant,
-// without clock or budget.
+// Free play: a cabinet generated at random, of any size; and its zen setting,
+// without budget nor anything pressing.
 
 import type { UnitSpec } from '../rack';
 import type { FreeLevel, ZenLevel } from './levelDef';
@@ -40,23 +40,20 @@ export function freeLevel(cables: number, seed: number): FreeLevel {
   };
 }
 
-/** cords of a zen cabinet */
-export const ZEN_CORDS = 36;
-
 /**
- * Zen: a big cabinet of free play with nothing pressing. No link in
- * production (no downtime budget, no incident, no broken cord, nothing
- * to find), and material to spare,
- * cords of every length included.
+ * Zen: a cabinet of free play with nothing pressing (free play's setting).
+ * No link in production (no downtime budget, no incident, no broken cord,
+ * nothing to find), and material to spare, cords of every length included.
  */
-export function zenLevel(seed: number): ZenLevel {
-  const free = freeLevel(ZEN_CORDS, seed);
+export function zenLevel(cables: number, seed: number): ZenLevel {
+  const free = freeLevel(cables, seed);
   const { downtime, bypass, incidents, faults, find, ...rest } = free;
+  const each = Math.ceil(cables / 3);
   return {
     ...rest,
-    id: `zen-${seed}`,
+    id: `zen-${cables}-${seed}`,
     kind: 'zen',
-    cords: [[0.5, 12], [0.75, 12], [1, 12], [1.5, 12], [2, 8]],
-    inventory: { fingerManager: 6, duct: 8, ring: 8, velcro: 20 },
+    cords: [[0.5, each], [0.75, each], [1, each], [1.5, each], [2, Math.ceil(cables / 4.5)]],
+    inventory: { fingerManager: (free.inventory.fingerManager ?? 0) + 2, duct: 8, ring: 8, velcro: Math.ceil(cables * 0.55) },
   };
 }

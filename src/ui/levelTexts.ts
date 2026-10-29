@@ -246,8 +246,8 @@ function textOf(level: LevelDef): LevelText {
       en: { title: `Free play — ${level.cables} cords`, brief: 'A cabinet generated at random.' },
     });
     case 'zen': return tr({
-      fr: { title: 'Mode zen', brief: `Une grande baie de ${level.cables} câbles, rien en production, pas de chrono : prenez votre temps. Le matériel ne manque pas.` },
-      en: { title: 'Zen mode', brief: `A big cabinet of ${level.cables} cords, nothing in production, no clock: take your time. There is material to spare.` },
+      fr: { title: `Partie libre zen — ${level.cables} câbles`, brief: `Une baie de ${level.cables} câbles, rien en production, pas de budget : prenez votre temps, en musique. Le matériel ne manque pas.` },
+      en: { title: `Zen free play — ${level.cables} cords`, brief: `A cabinet of ${level.cables} cords, nothing in production, no budget: take your time, with music. There is material to spare.` },
     });
     case 'custom': return tr({
       fr: { title: `Baie sur mesure — ${level.cables} câbles`, brief: 'Une baie composée dans l\'éditeur. Son lien la partage telle quelle.' },

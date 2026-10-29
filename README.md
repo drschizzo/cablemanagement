@@ -35,15 +35,20 @@ npm run dev
 ```
 
 Le jeu s'ouvre sur http://localhost:5173, sur l'**écran titre** : une salle de
-baies en désordre. Un bouton principal (Jouer), la baie du jour et les **modes de jeu** (une carte
-par mode : campagne, puzzles, carrière, baie du jour, zen, partie libre, éditeur), puis en discret
-le tutoriel, l'atelier et les paramètres. L'interrupteur **Avant / Après** montre la même salle une
-fois rangée.
+baies en désordre. Au premier lancement, un seul bouton, **Commencer**, et en discret le tutoriel et
+les paramètres. L'interrupteur **Avant / Après** montre la même salle une fois rangée.
 
-Au premier lancement, **Commencer** ouvre le **tutoriel**, qui présente chaque
-outil pas à pas, puis le premier niveau. Par la suite, le même bouton reprend
-au premier niveau pas encore réussi. L'écran titre mène aussi au tutoriel, aux
-**Niveaux** (le tutoriel, la campagne et la partie libre) et aux **Paramètres**.
+**Commencer** ouvre le **tutoriel**, qui présente les gestes de base pas à pas, puis le premier
+niveau. Par la suite, le même bouton reprend au premier niveau pas encore réussi, et l'écran titre
+montre aussi les **modes de jeu**, en trois groupes :
+
+| Groupe | Modes | S'ouvre |
+|---|---|---|
+| Histoire | la campagne, puis la carrière | la carrière avec le niveau 4 |
+| Défis | les puzzles express, la baie du jour | les puzzles avec le niveau 2, la baie du jour avec le niveau 3 |
+| Partie libre | une baie au hasard (réglage zen), ou composée dans l'éditeur | avec le niveau 8, ou tout de suite sur demande |
+
+Un mode pas encore ouvert dit le niveau qui l'ouvre ; un mode déjà joué reste ouvert.
 
 Dans un niveau, **☰ Menu** (ou **Échap**) met le jeu en pause : consignes,
 recommencer, choisir un autre niveau, paramètres, retour à l'accueil. Quitter
@@ -205,12 +210,11 @@ comptés en haut de l'écran : seuls les actes de technicien comptent (brancher,
 retirer un support ou un velcro, le bac, le Stock) ; ranger un câble, à la main, au Chemin ou au
 peigne, est gratuit. Chaque défi laisse un ou deux gestes de marge sur le minimum.
 
-La **partie libre** génère une baie au hasard, de 4 à 48 câbles.
+La **partie libre** génère une baie au hasard, de 4 à 48 câbles. Son réglage **zen** n'y met rien en
+production (ni budget, ni incident, ni panne), du matériel en abondance, et une musique d'ambiance
+générée à la volée (coupable dans les Paramètres).
 
-Le **mode zen** (menu des niveaux) : une grande baie de 36 câbles, rien en production, pas de chrono,
-du matériel en abondance, et une musique d'ambiance générée à la volée (coupable dans les Paramètres).
-
-L'**éditeur de baie** (menu des niveaux) compose une baie avec une palette d'équipements (panneaux,
+L'**éditeur de baie** (depuis la carte de la partie libre) compose une baie avec une palette d'équipements (panneaux,
 switchs, pare-feu, routeur, serveurs, onduleur, unités vides), du haut vers le bas, et règle ses
 câbles, son désordre, ses services et sa fenêtre de maintenance. On la joue aussitôt, ou on copie
 son **lien** (`?rack=CODE`), qui l'ouvre telle quelle chez quelqu'un d'autre.

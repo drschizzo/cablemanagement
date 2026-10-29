@@ -1,10 +1,12 @@
-// The buttons of the title screen (the workshop's once it is open), and its
-// progress bar while the aisle falls.
+// The buttons of the title screen, and its progress bar while the aisle
+// falls. A first visit offers one way only, Start; the game modes, the
+// cabinet of the day and the workshop show once they are open.
 
 import { LEVELS, TUTORIAL } from '../game/levels/campaign';
 import type { LevelDef } from '../game/levels/levelDef';
 import { load } from './storage';
 import { isWorkshopOpen } from './shop';
+import { isModeOpen, savedModeRecords } from './modeLocks';
 import { $ } from '../lib/page';
 import { levelTitle } from './levelTexts';
 import { dayKey } from '../game/levels/dailyLevel';
@@ -54,6 +56,8 @@ export class TitleScreen {
       : tr({ fr: 'Jouer →', en: 'Play →' });
     play.title = this.firstVisit() ? tr({ fr: 'Le tutoriel, puis le niveau 1', en: 'The tutorial, then level 1' }) : '';
     byId('title-shop').style.display = isWorkshopOpen(load('progress'), load('career'), load('wallet')) ? '' : 'none';
+    byId('title-modes').style.display = this.firstVisit() ? 'none' : '';
+    byId('title-daily').style.display = isModeOpen('daily', savedModeRecords()) ? '' : 'none';
     this.refreshDaily();
   }
 

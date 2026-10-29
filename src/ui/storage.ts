@@ -128,6 +128,13 @@ const ENTRIES = {
     },
     format: (v: Rule[]) => JSON.stringify(v),
   } satisfies Entry<Rule[]>,
+  /** free play was opened ahead of the campaign (ui/modeLocks.ts) */
+  freeOpen: {
+    key: 'cable.free-open',
+    fallback: (): boolean => false,
+    parse: (raw: string) => raw === 'on',
+    format: () => 'on',
+  } satisfies Entry<boolean>,
   /** the tutorial was finished or skipped once */
   tutorialDone: {
     key: 'cable.tutorial',
