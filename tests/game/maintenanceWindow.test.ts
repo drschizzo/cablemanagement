@@ -13,9 +13,8 @@ const circuits: Circuit[] = [
 
 function windowWith(upAtStart: number[], bypasses = 0, budget = 100) {
   const up = new Set(upAtStart);
-  const stock = { bypass: bypasses };
-  const maintenance = new MaintenanceWindow(circuits, (i) => up.has(i), budget, stock);
-  return { up, stock, maintenance };
+  const maintenance = new MaintenanceWindow(circuits, (i) => up.has(i), budget, bypasses);
+  return { up, maintenance };
 }
 
 describe('the maintenance window', () => {
@@ -42,15 +41,15 @@ describe('the maintenance window', () => {
   });
 
   it('a bypass carries its link while it is cut, and comes back once it is restored', () => {
-    const { up, stock, maintenance } = windowWith([2], 1);
+    const { up, maintenance } = windowWith([2], 1);
     expect(maintenance.toggleBypass(2)).toBe(true);
-    expect(stock.bypass).toBe(0);
+    expect(maintenance.bypassesLeft).toBe(0);
     up.delete(2);
     expect(maintenance.tick(5)).toEqual([]);
     expect(maintenance.downtime).toBe(0);
     up.add(2);
     expect(maintenance.tick(0.1)).toEqual([2]);
-    expect(stock.bypass).toBe(1);
+    expect(maintenance.bypassesLeft).toBe(1);
     expect(maintenance.bypassed.size).toBe(0);
   });
 

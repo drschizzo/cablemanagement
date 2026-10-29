@@ -18,13 +18,13 @@ export class MaintenanceWindow {
   /**
    * `isUp`: whether a link carries traffic now (one cord of the right type
    * joins its two ports); `budget`: the downtime allowed (Infinity: none);
-   * `stock`: the bypasses left, shared with the player's inventory.
+   * `bypassesLeft`: the bypasses the player is given.
    */
   constructor(
     private circuits: Circuit[],
     private isUp: (i: CircuitIndex) => boolean,
     readonly budget: number,
-    private stock: { bypass: number },
+    public bypassesLeft: number,
   ) {
     // what works at the start is in production
     circuits.forEach((_, i) => { if (isUp(i)) this.live.add(i); });
@@ -55,7 +55,7 @@ export class MaintenanceWindow {
         if (!up) bypass.cut = true;
         else if (bypass.cut) {
           this.bypassed.delete(i);
-          this.stock.bypass++;
+          this.bypassesLeft++;
           back.push(i);
         }
       } else if (!up) this.downtime += dt * this.weight(i);
@@ -67,12 +67,12 @@ export class MaintenanceWindow {
   toggleBypass(i: CircuitIndex): boolean {
     if (this.bypassed.has(i)) {
       this.bypassed.delete(i);
-      this.stock.bypass++;
+      this.bypassesLeft++;
       return true;
     }
-    if (!this.live.has(i) || this.stock.bypass <= 0) return false;
+    if (!this.live.has(i) || this.bypassesLeft <= 0) return false;
     this.bypassed.set(i, { cut: !this.isUp(i) });
-    this.stock.bypass--;
+    this.bypassesLeft--;
     return true;
   }
 

@@ -61,14 +61,14 @@ describe('plugging and the maintenance window', () => {
     const v = new World({ ...L1, bypass: 1 });
     const port = v.cables[0].ends[0].port!;
     expect(v.maintenance.toggleBypass(0)).toBe(true);
-    expect(v.inventory.bypass).toBe(0);
+    expect(v.maintenance.bypassesLeft).toBe(0);
     expect(v.maintenance.toggleBypass(1)).toBe(false); // none left
     v.unplug(0, 0);
     v.maintenance.tick(5);
     expect(v.maintenance.downtime).toBe(0);
     v.plug(0, 0, port);
     expect(v.maintenance.tick(0.1)).toEqual([0]);
-    expect(v.inventory.bypass).toBe(1);
+    expect(v.maintenance.bypassesLeft).toBe(1);
     expect(v.maintenance.bypassed.size).toBe(0);
   });
 
@@ -99,13 +99,13 @@ describe('plugging and the maintenance window', () => {
 describe('labels, straps and cord lengths', () => {
   it('a strap drawn across cords holds the nodes it was given, one velcro each', () => {
     const w = new World(L1);
-    const before = w.inventory.velcro;
+    const before = w.stock.velcro;
     const nodes = [w.cables[0].start + 6, w.cables[1].start + 6];
     expect(w.strapNodes(nodes.slice(0, 1))).toBeNull(); // one cord: nothing to strap
     const s = w.strapNodes(nodes)!;
     expect(s.nodes).toEqual(nodes);
     expect(nodes.every((i) => w.sim.bundleOf[i] === s.bundle)).toBe(true);
-    expect(w.inventory.velcro).toBe(before - 1);
+    expect(w.stock.velcro).toBe(before - 1);
   });
 
   it('a cord plugged as planned takes the label of its service, at both ends', () => {
@@ -155,7 +155,7 @@ describe('labels, straps and cord lengths', () => {
 
   it('a strap needs two cords within reach, and goes back to the stock', () => {
     const w = new World(L1);
-    const before = w.inventory.velcro;
+    const before = w.stock.velcro;
     expect(w.addStrap(5, 5, 5)).toBeNull(); // nothing there
     const [a] = w.endNodes(0, 0);
     const i = a + 4, x = w.sim.x;
@@ -164,9 +164,9 @@ describe('labels, straps and cord lengths', () => {
     w.sim.moveNodes(j, [x[3 * i] + 0.002, x[3 * i + 1], x[3 * i + 2]]);
     const s = w.addStrap(x[3 * i], x[3 * i + 1], x[3 * i + 2], 0.01)!;
     expect(s).not.toBeNull();
-    expect(w.inventory.velcro).toBe(before - 1);
+    expect(w.stock.velcro).toBe(before - 1);
     w.removeStrap(s);
-    expect(w.inventory.velcro).toBe(before);
+    expect(w.stock.velcro).toBe(before);
   });
 
   it('a cord too short to join its ends is refused; a longer one keeps its ports', () => {
@@ -319,7 +319,7 @@ describe('a cord laid along a drawn route', () => {
     units: [B, { kind: 'panel', name: 'A', ports: 12, style: 'copper' }, B, B, B, B, B, B, { kind: 'switch', name: 'S', ports: 12, style: 'switch' }, B, B],
     cables: 2, wrong: 0, loose: 0, slack: [0.3, 0.4], mess: 1,
     labels: false, services: 1, types: ['CU'], colorByService: true, inventory: {},
-    preinstalled: [{ kind: 'hmgr', unit: 2, side: 0 }, { kind: 'hmgr', unit: 7, side: 0 }, { kind: 'vring', unit: 3, side: 1 }, { kind: 'vring', unit: 5, side: 1 }],
+    preinstalled: [{ kind: 'fingerManager', unit: 2, side: 0 }, { kind: 'fingerManager', unit: 7, side: 0 }, { kind: 'ring', unit: 3, side: 1 }, { kind: 'ring', unit: 5, side: 1 }],
     seed: 2, seg: 0.025,
   };
 

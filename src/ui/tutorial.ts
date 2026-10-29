@@ -29,7 +29,7 @@ const unitBox = (ctl: Controller, kind: string): Box | null => {
 
 const mgrBox = (ctl: Controller): Box | null => {
   const rack = ctl.world.rack;
-  const it = rack.items.find((i) => i.kind === 'hmgr');
+  const it = rack.items.find((i) => i.kind === 'fingerManager');
   if (!it) return null;
   return { min: [-COLUMN_X + 0.005, rack.unitBottom(it.unit), -0.004], max: [COLUMN_X - 0.005, rack.unitBottom(it.unit) + U, 0.08] };
 };
@@ -47,7 +47,7 @@ const sideBox = (ctl: Controller): Box => {
 };
 
 /** nodes of any cord inside the holding volume of an item kind */
-function held(ctl: Controller, kind: 'hmgr' | 'duct'): number {
+function held(ctl: Controller, kind: 'fingerManager' | 'duct'): number {
   const w = ctl.world;
   const ids = new Set(w.rack.items.filter((i) => i.kind === kind).map((i) => i.id));
   const boxes = w.rack.supports().filter((s) => ids.has(s.item));
@@ -123,7 +123,7 @@ const STEPS: Step[] = [
     task: 'Rangez un câble dans le guide-câbles',
     spot: mgrBox,
     tool: 'route',
-    done: (ctl) => held(ctl, 'hmgr') >= 6,
+    done: (ctl) => held(ctl, 'fingerManager') >= 6,
   },
 
 

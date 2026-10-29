@@ -1,6 +1,7 @@
 // Every level builds, its schedule makes sense, and a perfect cabinet is possible.
 import { describe, it, expect } from 'vitest';
 import { World } from '../../../src/game/world';
+import { ITEM_KINDS } from '../../../src/game/supplies';
 import { LEVELS, TUTORIAL } from '../../../src/game/levels/campaign';
 import { freeLevel } from '../../../src/game/levels/freeLevel';
 import { showcaseRack } from '../../../src/game/levels/showcaseRack';
@@ -71,7 +72,7 @@ describe('three stars are possible, with the level\'s own stock', () => {
     it(`${lv.id} ${lv.title}`, () => {
       const kit = tidyKit(lv);
       const added = kit.preinstalled.slice(lv.preinstalled.length);
-      for (const k of ['hmgr', 'duct', 'vring'] as const) expect(added.filter((p) => p.kind === k).length).toBeLessThanOrEqual(lv.inventory[k] ?? 0);
+      for (const k of ITEM_KINDS) expect(added.filter((p) => p.kind === k).length).toBeLessThanOrEqual(lv.inventory[k] ?? 0);
       expect(finished(lv).stars).toBe(3);
     });
   }

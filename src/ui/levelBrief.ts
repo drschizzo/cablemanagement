@@ -5,6 +5,7 @@
 
 import type { Controller, Tool } from '../play/controller';
 import { SERVICES } from '../game/services';
+import { ALL_SUPPLIES, ITEM_KINDS, countOf } from '../game/supplies';
 import type { LevelDef } from '../game/levels/levelDef';
 import { formatCost, formatLength, formatTime } from '../format';
 import { $, hide, show } from './dom';
@@ -31,7 +32,7 @@ export class LevelBrief {
     $('#brief-go').onclick = () => {
       hide('#brief');
       if (!ctl) return;
-      const hasSupports = (['hmgr', 'duct', 'vring'] as const).some((k) => (level.inventory[k] ?? 0) > 0);
+      const hasSupports = ITEM_KINDS.some((k) => (level.inventory[k] ?? 0) > 0);
       if (!this.prepared && !level.tutorial && hasSupports) this.prepare(ctl);
       else if (!ctl.preparing) ctl.running = true;
       this.prepared = true;
@@ -70,11 +71,7 @@ function briefTips(level: LevelDef, ctl: Controller | null): string[] {
 
 /** the material the level gives: supports, velcros, new cords */
 function materialLine(level: LevelDef): string {
-  const inv = level.inventory;
-  const parts = [
-    inv.hmgr ? `${inv.hmgr} guide-câbles` : '', inv.duct ? `${inv.duct} goulottes` : '',
-    inv.vring ? `${inv.vring} anneaux` : '', inv.velcro ? `${inv.velcro} velcros` : '',
-  ].filter(Boolean);
+  const parts = ALL_SUPPLIES.filter((s) => level.inventory[s]).map((s) => countOf(s, level.inventory[s]!));
   const cords = (level.cords ?? []).map(([length, count]) => `${count} × ${formatLength(length)}`);
   if (cords.length) parts.push(`cordons neufs : ${cords.join(', ')}`);
   return parts.length ? `Matériel : ${parts.join(', ')}.` : '';

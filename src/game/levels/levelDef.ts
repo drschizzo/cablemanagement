@@ -1,7 +1,8 @@
 // What a level is made of: its rack, its cords and their starting mess, the
 // player's stock, and the rules it plays by.
 
-import type { ItemKind, Rack, UnitSpec } from '../rack';
+import type { Rack, UnitSpec } from '../rack';
+import type { ItemKind, Stock } from '../supplies';
 import type { Circuit } from '../mess/tangle';
 import type { FibreType } from '../cordTypes';
 
@@ -25,7 +26,8 @@ export interface LevelDef {
   labels: boolean;
   services: number;
   types: FibreType[];
-  inventory: Partial<Record<ItemKind | 'velcro', number>>;
+  /** the supports and velcros the player is given */
+  inventory: Partial<Stock>;
   preinstalled: { kind: ItemKind; unit: number; side: number }[];
   seed: number;
   tips?: string[];

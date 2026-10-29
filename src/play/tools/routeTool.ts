@@ -37,6 +37,9 @@ interface Sketch {
 }
 
 export class RouteTool implements ToolHandler {
+  readonly cursor = 'crosshair';
+  readonly worksOnCords = true;
+  readonly worksWhilePreparing = false;
   private sketch: Sketch | null = null;
   /** a cord being laid along its way */
   private laying: RouteRun | null = null;

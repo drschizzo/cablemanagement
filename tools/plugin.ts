@@ -32,7 +32,7 @@ const bench = (seed: number): LevelDef => ({
   units: [B, { kind: 'panel', name: 'A', ports: 12, style: 'copper' }, B, { kind: 'switch', name: 'S', ports: 12, style: 'switch' }, B, B, B, B],
   cables: 4, wrong: 0, loose: 0, slack: [SLACK, SLACK + 0.2], mess: 1,
   labels: false, services: 1, types: ['CU'], colorByService: true,
-  inventory: {}, preinstalled: [{ kind: 'hmgr', unit: 2, side: 0 }],
+  inventory: {}, preinstalled: [{ kind: 'fingerManager', unit: 2, side: 0 }],
   seed, seg: 0.025,
 });
 
@@ -42,7 +42,7 @@ for (const seed of seeds) for (const c of [0, 1, 2, 3]) for (const port of ['A2'
   Object.assign(w.sim.P, params);
   w.preroll(60);
   const sim = w.sim, rack = w.rack;
-  const room = rack.guides().find((g) => g.kind === 'hmgr')!.room;
+  const room = rack.guides().find((g) => g.kind === 'fingerManager')!.room;
   const cb = w.cables[c];
   const pa = rack.port(port);
   if (pa.plug >= 0) w.unplug(pa.plug >> 1, pa.plug & 1);

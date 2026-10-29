@@ -27,7 +27,7 @@ export class StockMenu {
     let color: string | undefined = level.colorByService ? SERVICES[0].color : undefined;
     const render = () => {
       const stock = ctl.world.cordStock;
-      const bypasses = ctl.world.inventory.bypass;
+      const bypasses = ctl.world.maintenance.bypassesLeft;
       this.menu.innerHTML = `<div class="h">Stock de cordons neufs<span>Ils arrivent enroulés dans le bac, au sol. Remplacer un cordon branché coupe sa liaison le temps de changer.</span></div>
         ${types.length > 1 ? `<div class="types">${types.map((t) => `<button data-t="${t}" class="${t === type ? 'cur' : ''}"><i style="background:${FIBRE_COLORS[t]}"></i>${FIBRE_NAMES[t]}</button>`).join('')}</div>` : ''}
         ${type === 'CU' && level.colorByService ? `<div class="colors">${SERVICES.slice(0, Math.max(1, level.services)).map((sv) => `<button data-c="${sv.color}" class="${sv.color === color ? 'cur' : ''}" style="background:${sv.color}" title="${sv.name}"></button>`).join('')}</div>` : ''}

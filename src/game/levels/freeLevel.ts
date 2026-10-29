@@ -22,7 +22,7 @@ export function freeLevel(cables: number, seed: number): LevelDef {
     labels: true, services: Math.min(6, 1 + Math.round(cables / 8)), types: ['CU'], colorByService: true,
     downtime: 200, bypass: 2,
     cords: [[1, Math.ceil(cables / 6)], [1.5, Math.ceil(cables / 6)], [2, Math.ceil(cables / 8)]],
-    inventory: { hmgr: panels + switches, duct: 6, vring: 6, velcro: Math.ceil(cables / 3) },
+    inventory: { fingerManager: panels + switches, duct: 6, ring: 6, velcro: Math.ceil(cables / 3) },
     preinstalled: [],
     seed,
   };

@@ -29,6 +29,9 @@ interface Line {
 }
 
 export class VelcroTool implements ToolHandler {
+  readonly cursor = 'crosshair';
+  readonly worksOnCords = false;
+  readonly worksWhilePreparing = false;
   private line: Line | null = null;
   private view = new THREE.Group();
 
@@ -107,7 +110,7 @@ export class VelcroTool implements ToolHandler {
       ctx.events.onToast('Velcro : tracez un trait en travers des câbles à serrer (un clic sur un velcro l\'enlève).');
       return;
     }
-    if (ctx.world.inventory.velcro <= 0) { ctx.events.onToast('Plus de velcro.'); sfx.error(); return; }
+    if (ctx.world.stock.velcro <= 0) { ctx.events.onToast('Plus de velcro.'); sfx.error(); return; }
     if (line.nodes.length < 2) { ctx.events.onToast('Le trait doit croiser au moins deux câbles qui passent côte à côte.'); sfx.error(); return; }
     ctx.world.strapNodes(line.nodes);
     sfx.velcro();

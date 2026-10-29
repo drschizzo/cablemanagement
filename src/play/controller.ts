@@ -157,8 +157,8 @@ export class Controller implements PlayContext, InputCommands {
     for (const tool of Object.values(this.tools)) tool.cancel();
     this.tool = t;
     this.supports.updateGhost();
-    this.pointer.setCursor(t === 'hand' ? 'grab' : 'crosshair');
-    if (t !== 'hand' && this.hover) this.setHover(null);
+    this.pointer.setCursor(this.tools[t].cursor);
+    if (this.hover && !this.tools[t].hoverChanged) this.setHover(null);
   }
 
   /** highlights the cords and ports of one line of the schedule (−1: none) */
@@ -271,11 +271,8 @@ export class Controller implements PlayContext, InputCommands {
     this.setHover(p);
     if (!p) { this.events.onHover(null, 0, 0); return; }
     const stacked = this.picker.pickAll().length;
-    let notes = '';
-    if (this.tool === 'hand' && this.hand.pinchNear(p.node) >= 0) notes += '<br><i>Coude pincé — Espace : le relâcher</i>';
-    if (this.tool === 'hand' && this.hand.otherHandAt(p.node)) notes += '<br><i>Tenu par l\'autre main — E : la lâcher</i>';
-    if (stacked > 1) notes += `<br><i>${stacked} câbles sous le curseur — Tab : suivant</i>`;
-    this.events.onHover(this.describe(p) + notes, e.clientX, e.clientY);
+    const notes = stacked > 1 ? [`${stacked} câbles sous le curseur — Tab : suivant`] : [];
+    this.events.onHover(this.describe(p, notes), e.clientX, e.clientY);
   }
 
   /** Tab: the next cord under the pointer */
@@ -285,7 +282,7 @@ export class Controller implements PlayContext, InputCommands {
     this.setHover(next.pick);
     const rect = this.stage.renderer.domElement.getBoundingClientRect();
     const px = this.pointer.px;
-    this.events.onHover(`${this.describe(next.pick)}<br><i>${next.index + 1}/${next.count} sous le curseur — Tab : suivant</i>`, rect.left + px.x, rect.top + px.y);
+    this.events.onHover(this.describe(next.pick, [`${next.index + 1}/${next.count} sous le curseur — Tab : suivant`]), rect.left + px.x, rect.top + px.y);
   }
 
   clearHover(): void {
@@ -293,19 +290,20 @@ export class Controller implements PlayContext, InputCommands {
     this.events.onHover(null, 0, 0);
   }
 
-  private describe(p: CordPick): string {
-    return describeCord(this.world, this.lastEval, this.tool, this.highlights.traced, p);
+  /** the tooltip of a cord: what it is, what the chosen tool can do with it, then `extra` lines */
+  private describe(p: CordPick, extra: string[]): string {
+    const notes = [...(this.tools[this.tool].hoverNotes?.(p) ?? []), ...extra];
+    return describeCord(this.world, this.lastEval, this.highlights.traced, p) + notes.map((n) => `<br><i>${n}</i>`).join('');
   }
 
   private setHover(p: CordPick | null): void {
     const prev = this.hover?.cable ?? -1;
     if (p && p.cable !== this.lastHoveredCable) { this.counters.hovered++; this.lastHoveredCable = p.cable; }
     this.hover = p;
-    // the pinch under the pointer, which Space would let go of; the pinches of the cord under it
-    this.cableView.pinchHover = p && this.tool === 'hand' ? this.hand.pinchNear(p.node) : -1;
-    this.cableView.pinchShown = p && this.tool === 'hand' ? p.cable : -1;
+    this.cableView.pinchHover = -1;
+    this.cableView.pinchShown = -1;
+    this.tools[this.tool].hoverChanged?.(p);
     if ((p?.cable ?? -1) !== prev) this.refreshHighlights();
-    if (this.tool === 'hand') this.pointer.setCursor(p ? (p.end >= 0 || this.world.endOfNode(p.node) ? 'pointer' : 'grab') : 'default');
   }
 
   /** the focused line's cords, the cord in hand or under the pointer: lit; the others not */

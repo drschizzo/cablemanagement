@@ -11,12 +11,13 @@
 // contacts stay hard: a cord that meets something stops there.
 
 import {
-  CONNECTOR, COLUMN_X, WALL_X, DUCT_FRONT, DUCT_PITCH, DUCT_SLIT_X, FINGER_R, HMGR_TIP, RING_FRONT, RING_GAP, SIDE_IN, SIDE_OUT,
-  hmgrFingers, type Guide, type Port,
+  CONNECTOR, COLUMN_X, WALL_X, DUCT_FRONT, DUCT_PITCH, DUCT_SLIT_X, FINGER_R, MANAGER_TIP, RING_FRONT, RING_GAP, SIDE_IN, SIDE_OUT,
+  managerFingers, type Guide, type Port,
 } from './rack';
 import type { World } from './world';
 import { dist, lerp, polyLength, type V3 } from './vec3';
 import type { CableIndex, EndIndex } from './cables';
+import { assertNever } from './exhaustive';
 
 /** the plane in front of every guide where a cord is carried across (z) */
 export const FRONT = 0.12;
@@ -55,7 +56,7 @@ const inBox = (b: Guide['reach'], p: V3) => p.every((v, d) => v >= b.min[d] && v
 
 /** the middle of the slot between two fingers of a manager row nearest x */
 function slotX(x: number): number {
-  const xs = hmgrFingers();
+  const xs = managerFingers();
   let best = x, bd = Infinity;
   for (let i = 0; i < xs.length - 1; i++) {
     const m = (xs[i] + xs[i + 1]) / 2;
@@ -157,9 +158,7 @@ function routeThrough(w: World, c: CableIndex, guides: Guide[], drawn: V3[][], p
     pts.push(...drawn[k]);
     const prev = pts.length ? pts[pts.length - 1] : null;
     const lane = cordsLyingIn(w, c, g);
-    const pass = g.kind === 'hmgr' ? throughManager(g, lane, prev, next(k + 1), w.radius)
-      : g.kind === 'vring' ? throughRing(g, lane, w.radius)
-      : throughDuct(g, lane, prev, next(k + 1), w.radius);
+    const pass = throughGuide(g, lane, prev, next(k + 1), w.radius);
     pts.push(...pass.points);
     if (pass.run) runs.push(pass.run);
   });
@@ -167,6 +166,15 @@ function routeThrough(w: World, c: CableIndex, guides: Guide[], drawn: V3[][], p
   if (pb) pts.push(...exit(pb, pts.length && pts[pts.length - 1][1] < pb.y ? -1 : 1).reverse());
   // no repeated points
   return { route: pts.filter((p, k) => k === 0 || dist(p, pts[k - 1]) > 1e-4), runs };
+}
+
+function throughGuide(g: Guide, lane: number, prev: V3 | null, next: V3 | null, r: number): GuidePass {
+  switch (g.kind) {
+    case 'fingerManager': return throughManager(g, lane, prev, next, r);
+    case 'ring': return throughRing(g, lane, r);
+    case 'duct': return throughDuct(g, lane, prev, next, r);
+    default: return assertNever(g.kind);
+  }
 }
 
 /** the cords other than c already lying in a guide: each takes a lane of its own */
@@ -388,12 +396,12 @@ const SPREAD = [1, 1, 0.6, 0.25];
 function entry(guides: Guide[], p: V3): Entry | null {
   let g: Guide | null = null;
   for (const q of guides) if (inBox(q.reach, p)) { g = q; break; }
-  if (g?.kind === 'hmgr' && p[1] <= g.room.max[1] && p[1] >= g.room.min[1] - 0.004) {
+  if (g?.kind === 'fingerManager' && p[1] <= g.room.max[1] && p[1] >= g.room.min[1] - 0.004) {
     // over the tips, under the top row, then down onto the fingers
-    const gap = (g.room.min[1] + HMGR_TIP + g.room.max[1]) / 2;
+    const gap = (g.room.min[1] + MANAGER_TIP + g.room.max[1]) / 2;
     return { dx: 0, dy: gap - p[1], z: p[2] };
   }
-  if (g?.kind === 'vring') {
+  if (g?.kind === 'ring') {
     // by the open corner
     const s = Math.sign(g.room.min[0] + g.room.max[0]);
     return { dx: s * (SIDE_OUT - 0.004 - RING_GAP / 2) - p[0], dy: 0, z: RING_FRONT - RING_GAP / 2 };

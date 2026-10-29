@@ -13,9 +13,6 @@ import type { RouteTool } from './tools/routeTool';
 import type { SupportsTool } from './tools/supportsTool';
 import type { CableIndex } from '../game/cables';
 
-/** the tools that work on a cord (the others work on the rack) */
-const CORD_TOOLS = new Set<Tool>(['hand', 'route']);
-
 export interface ToolSet {
   byName: Record<Tool, ToolHandler>;
   /** the tools that may have a gesture under way, in the order they get the pointer */
@@ -84,9 +81,10 @@ export class InputRouter {
     // any gesture stops a cord being laid where it is
     this.tools.route.stopLaying();
     // preparing, the cabinet stands still: the view moves, the cords wait
-    if (this.level.preparing && this.level.tool !== 'supports') { this.startPan(e); return; }
+    const tool = this.tools.byName[this.level.tool];
+    if (this.level.preparing && !tool.worksWhilePreparing) { this.startPan(e); return; }
     // nothing for the tool under the pointer: drag the view
-    if (!this.tools.byName[this.level.tool].pointerDown(e)) this.startPan(e);
+    if (!tool.pointerDown(e)) this.startPan(e);
   }
 
   private pointerMove(e: PointerEvent): void {
@@ -97,7 +95,7 @@ export class InputRouter {
       return;
     }
     for (const t of this.tools.withGestures) if (t.pointerMove(e)) return;
-    if (CORD_TOOLS.has(this.level.tool)) this.level.hoverCords(e);
+    if (this.tools.byName[this.level.tool].worksOnCords) this.level.hoverCords(e);
     else this.level.clearHover();
     this.tools.supports.updateGhost();
   }
@@ -157,7 +155,7 @@ export class InputRouter {
       if (e.repeat) return;
       const hovered = level.hoveredCord();
       if (hand.carried) hand.setPinch('space', true);
-      else if (hovered && level.tool === 'hand') hand.unpinchAt(hovered);
+      else if (hovered && this.tools.byName[level.tool] === hand) hand.unpinchAt(hovered);
     });
     key('keyup', (e) => { if (e.code === 'Space') hand.setPinch('space', false); });
     // E: the other hand takes the cord carried, or lets go
@@ -176,7 +174,7 @@ export class InputRouter {
     key('keydown', (e) => {
       if (e.key !== 'Tab' || hand.carried || overlayOpen()) return;
       e.preventDefault();
-      if (CORD_TOOLS.has(level.tool)) level.cyclePick();
+      if (this.tools.byName[level.tool].worksOnCords) level.cyclePick();
     });
   }
 }

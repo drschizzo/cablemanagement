@@ -16,7 +16,7 @@ const bench = (seed: number): LevelDef => ({
   units: [B, { kind: 'panel', name: 'A', ports: 12, style: 'copper' }, B, B, B, B, B, B, { kind: 'switch', name: 'S', ports: 12, style: 'switch' }, B, B],
   cables: 4, wrong: 0, loose: 0, slack: [1.2, 1.6], mess: 1,
   labels: false, services: 1, types: ['CU'], colorByService: true,
-  inventory: {}, preinstalled: [{ kind: 'hmgr', unit: 2, side: 0 }],
+  inventory: {}, preinstalled: [{ kind: 'fingerManager', unit: 2, side: 0 }],
   seed, seg: 0.025,
 });
 

@@ -8,6 +8,8 @@
 
 import type { StaticBox, StaticCapsule } from '@drschizzo/avbd-cables';
 import type { RackShape } from './physics/rackCableSim';
+import type { ItemKind } from './supplies';
+import { assertNever } from './exhaustive';
 
 export const U = 0.04445;
 export const COLUMN_X = 0.25; // half width of the equipment column (with its ears)
@@ -22,7 +24,7 @@ export const FRONT_Z = 0.25; // front edge of the cabinet
 export const ROOM_FLOOR = (r: { floorY: number }) => r.floorY - 0.03;
 export const CABLE_R = 0.0022; // 3 mm jacket, a bit thicker for legibility
 
-export type UnitKind = 'panel' | 'switch' | 'hmgr' | 'blank' | 'server';
+export type UnitKind = 'panel' | 'switch' | 'fingerManager' | 'blank' | 'server';
 
 export interface UnitSpec {
   kind: UnitKind;
@@ -47,14 +49,12 @@ export interface Port {
   plug: number;
 }
 
-export type ItemKind = 'hmgr' | 'duct' | 'vring';
-
 export interface Item {
   id: number;
   kind: ItemKind;
   /** top unit it occupies */
   unit: number;
-  /** −1 left, +1 right (duct, vring) */
+  /** −1 left, +1 right (duct, ring) */
   side: number;
   /** units covered (duct) */
   span: number;
@@ -77,7 +77,7 @@ export const DUCT_SPAN = 4;
 /** finger radius of the guides */
 export const FINGER_R = 0.003;
 /** height of the upturned tips of a manager's bottom fingers */
-export const HMGR_TIP = 0.016;
+export const MANAGER_TIP = 0.016;
 /** front bar of a ring, and the gap left open at its outer end (and above its outer post) */
 export const RING_FRONT = 0.065;
 export const RING_GAP = 0.024;
@@ -170,10 +170,10 @@ export class Rack {
 
   canPlace(kind: ItemKind, unit: number, side: number): boolean {
     if (unit < 0 || unit >= this.units.length) return false;
-    if (kind === 'hmgr') {
-      return this.units[unit].kind === 'blank' && !this.items.some((it) => it.kind === 'hmgr' && it.unit === unit);
+    if (kind === 'fingerManager') {
+      return this.units[unit].kind === 'blank' && !this.items.some((it) => it.kind === 'fingerManager' && it.unit === unit);
     }
-    const sideItems = this.items.filter((it) => it.kind !== 'hmgr' && it.side === side);
+    const sideItems = this.items.filter((it) => it.kind !== 'fingerManager' && it.side === side);
     if (kind === 'duct') {
       const u0 = this.ductStart(unit);
       return !sideItems.some((it) => it.unit < u0 + DUCT_SPAN && u0 < it.unit + it.span);
@@ -183,8 +183,8 @@ export class Rack {
 
   /** the item covering a slot (for removal) */
   itemAt(kind: ItemKind, unit: number, side: number): Item | undefined {
-    if (kind === 'hmgr') return this.items.find((it) => it.kind === 'hmgr' && it.unit === unit);
-    return this.items.find((it) => it.kind !== 'hmgr' && it.side === side && unit >= it.unit && unit < it.unit + it.span);
+    if (kind === 'fingerManager') return this.items.find((it) => it.kind === 'fingerManager' && it.unit === unit);
+    return this.items.find((it) => it.kind !== 'fingerManager' && it.side === side && unit >= it.unit && unit < it.unit + it.span);
   }
 
   // ---------------------------------------------------- collision shapes
@@ -230,47 +230,67 @@ export class Rack {
   // Nothing lets a cord through: each guide has an opening a cord plugged at
   // both ends can be slid in by (see `guide`).
   private itemStatics(it: Item, S: RackShape[]): void {
-    const r = FINGER_R;
-    if (it.kind === 'hmgr') {
-      // finger manager: rows of fingers above and below the channel. Cords
-      // from the equipment pass between them; a cord laid in the channel
-      // rests on the bottom fingers, kept in by their upturned tips (a cord
-      // goes in over them, under the top row)
-      const y0 = this.unitBottom(it.unit) + 0.004, y1 = this.unitBottom(it.unit) + U - 0.004;
-      const xs = hmgrFingers();
-      for (const x of xs) {
-        S.push(cap(x, y0, 0.004, x, y0, RING_DEPTH, r, it.id));
-        S.push(cap(x, y0, RING_DEPTH, x, y0 + HMGR_TIP, RING_DEPTH, r, it.id));
-        S.push(cap(x, y1, 0.004, x, y1, RING_DEPTH, r, it.id));
-      }
-      // the trough between the finger rows keeps a cord let go in it: it no
-      // longer slips out through the slots or over the tips, dragged by its
-      // hanging tail
-      S.push({ kind: 'keeper', min: [xs[0] - r, y0 + r, 0.002], max: [xs[xs.length - 1] + r, y1 - r, RING_DEPTH - r], owner: it.id });
-    } else if (it.kind === 'vring') {
-      // a hook: open at its front outer corner, where a cord slips in
-      const y = this.unitY(it.unit);
-      const s = it.side;
-      const xi = s * (SIDE_IN + 0.004), xo = s * (SIDE_OUT - 0.004);
-      S.push(cap(xi, y, SIDE_BACK, xi, y, RING_FRONT, r, it.id));
-      S.push(cap(xi, y, RING_FRONT, xo - s * RING_GAP, y, RING_FRONT, r, it.id));
-      S.push(cap(xo, y, SIDE_BACK, xo, y, RING_FRONT - RING_GAP, r, it.id));
-    } else {
-      const yTop = this.topY - it.unit * U - 0.004;
-      const yBot = this.topY - (it.unit + it.span) * U + 0.004;
-      const s = it.side;
-      const xm = s * DUCT_SLIT_X;
-      // slotted inner wall (cords from the managers pass between its
-      // fingers), and two lips in front, either side of a slit a cord slips in by
-      const n = Math.max(2, Math.round((yTop - yBot) / DUCT_PITCH));
-      for (let k = 0; k <= n; k++) {
-        const y = yBot + ((yTop - yBot) * k) / n;
-        S.push(cap(s * SIDE_IN, y, SIDE_BACK, s * SIDE_IN, y, DUCT_FRONT, r, it.id));
-        S.push(cap(s * SIDE_IN, y, DUCT_FRONT, xm - s * DUCT_SLIT, y, DUCT_FRONT, r, it.id));
-        S.push(cap(xm + s * DUCT_SLIT, y, DUCT_FRONT, s * SIDE_OUT, y, DUCT_FRONT, r, it.id));
-      }
-      S.push(box(s, SIDE_OUT, SIDE_OUT + 0.006, yBot, yTop, SIDE_BACK, DUCT_FRONT, it.id));
+    switch (it.kind) {
+      case 'fingerManager': return this.managerStatics(it, S);
+      case 'ring': return this.ringStatics(it, S);
+      case 'duct': return this.ductStatics(it, S);
+      default: assertNever(it.kind);
     }
+  }
+
+  /** the collision shapes of one item (what a ghost of it is drawn from) */
+  itemShapes(it: Item): RackShape[] {
+    const S: RackShape[] = [];
+    this.itemStatics(it, S);
+    return S;
+  }
+
+  private managerStatics(it: Item, S: RackShape[]): void {
+    const r = FINGER_R;
+    // finger manager: rows of fingers above and below the channel. Cords
+    // from the equipment pass between them; a cord laid in the channel
+    // rests on the bottom fingers, kept in by their upturned tips (a cord
+    // goes in over them, under the top row)
+    const y0 = this.unitBottom(it.unit) + 0.004, y1 = this.unitBottom(it.unit) + U - 0.004;
+    const xs = managerFingers();
+    for (const x of xs) {
+      S.push(cap(x, y0, 0.004, x, y0, RING_DEPTH, r, it.id));
+      S.push(cap(x, y0, RING_DEPTH, x, y0 + MANAGER_TIP, RING_DEPTH, r, it.id));
+      S.push(cap(x, y1, 0.004, x, y1, RING_DEPTH, r, it.id));
+    }
+    // the trough between the finger rows keeps a cord let go in it: it no
+    // longer slips out through the slots or over the tips, dragged by its
+    // hanging tail
+    S.push({ kind: 'keeper', min: [xs[0] - r, y0 + r, 0.002], max: [xs[xs.length - 1] + r, y1 - r, RING_DEPTH - r], owner: it.id });
+  }
+
+  private ringStatics(it: Item, S: RackShape[]): void {
+    const r = FINGER_R;
+    // a hook: open at its front outer corner, where a cord slips in
+    const y = this.unitY(it.unit);
+    const s = it.side;
+    const xi = s * (SIDE_IN + 0.004), xo = s * (SIDE_OUT - 0.004);
+    S.push(cap(xi, y, SIDE_BACK, xi, y, RING_FRONT, r, it.id));
+    S.push(cap(xi, y, RING_FRONT, xo - s * RING_GAP, y, RING_FRONT, r, it.id));
+    S.push(cap(xo, y, SIDE_BACK, xo, y, RING_FRONT - RING_GAP, r, it.id));
+  }
+
+  private ductStatics(it: Item, S: RackShape[]): void {
+    const r = FINGER_R;
+    const yTop = this.topY - it.unit * U - 0.004;
+    const yBot = this.topY - (it.unit + it.span) * U + 0.004;
+    const s = it.side;
+    const xm = s * DUCT_SLIT_X;
+    // slotted inner wall (cords from the managers pass between its
+    // fingers), and two lips in front, either side of a slit a cord slips in by
+    const n = Math.max(2, Math.round((yTop - yBot) / DUCT_PITCH));
+    for (let k = 0; k <= n; k++) {
+      const y = yBot + ((yTop - yBot) * k) / n;
+      S.push(cap(s * SIDE_IN, y, SIDE_BACK, s * SIDE_IN, y, DUCT_FRONT, r, it.id));
+      S.push(cap(s * SIDE_IN, y, DUCT_FRONT, xm - s * DUCT_SLIT, y, DUCT_FRONT, r, it.id));
+      S.push(cap(xm + s * DUCT_SLIT, y, DUCT_FRONT, s * SIDE_OUT, y, DUCT_FRONT, r, it.id));
+    }
+    S.push(box(s, SIDE_OUT, SIDE_OUT + 0.006, yBot, yTop, SIDE_BACK, DUCT_FRONT, it.id));
   }
 
   /** every guide of the cabinet */
@@ -279,31 +299,43 @@ export class Rack {
   }
 
   guide(it: Item): Guide {
+    switch (it.kind) {
+      case 'fingerManager': return this.managerGuide(it);
+      case 'ring': return this.ringGuide(it);
+      case 'duct': return this.ductGuide(it);
+      default: return assertNever(it.kind);
+    }
+  }
+
+  private managerGuide(it: Item): Guide {
     const r = FINGER_R;
-    const side = (s: number, a: number, b: number): [number, number] => (s > 0 ? [a, b] : [-b, -a]);
-    if (it.kind === 'hmgr') {
-      const y0 = this.unitBottom(it.unit) + 0.004, y1 = this.unitBottom(it.unit) + U - 0.004;
-      const xs = hmgrFingers();
-      return {
-        item: it.id, kind: it.kind,
-        room: { min: [xs[0] - r, y0 + r, 0.004], max: [xs[xs.length - 1] + r, y1 - r, RING_DEPTH - r] },
-        reach: { min: [-COLUMN_X, y0 - 0.006, 0], max: [COLUMN_X, y1 + 0.006, RING_DEPTH + 0.012] },
-      };
-    }
-    const s = it.side;
-    const [rx0, rx1] = side(s, SIDE_IN - 0.006, SIDE_OUT + 0.006);
-    if (it.kind === 'vring') {
-      const y = this.unitY(it.unit);
-      const [x0, x1] = side(s, SIDE_IN + 0.004 + r, SIDE_OUT - 0.004 - r);
-      return {
-        item: it.id, kind: it.kind,
-        room: { min: [x0, y - 0.004, SIDE_BACK], max: [x1, y + 0.004, RING_FRONT - r] },
-        reach: { min: [rx0, y - 0.035, SIDE_BACK], max: [rx1, y + 0.035, 0.08] },
-      };
-    }
+    const y0 = this.unitBottom(it.unit) + 0.004, y1 = this.unitBottom(it.unit) + U - 0.004;
+    const xs = managerFingers();
+    return {
+      item: it.id, kind: it.kind,
+      room: { min: [xs[0] - r, y0 + r, 0.004], max: [xs[xs.length - 1] + r, y1 - r, RING_DEPTH - r] },
+      reach: { min: [-COLUMN_X, y0 - 0.006, 0], max: [COLUMN_X, y1 + 0.006, RING_DEPTH + 0.012] },
+    };
+  }
+
+  private ringGuide(it: Item): Guide {
+    const r = FINGER_R, s = it.side;
+    const y = this.unitY(it.unit);
+    const [x0, x1] = sideSpan(s, SIDE_IN + 0.004 + r, SIDE_OUT - 0.004 - r);
+    const [rx0, rx1] = sideSpan(s, SIDE_IN - 0.006, SIDE_OUT + 0.006);
+    return {
+      item: it.id, kind: it.kind,
+      room: { min: [x0, y - 0.004, SIDE_BACK], max: [x1, y + 0.004, RING_FRONT - r] },
+      reach: { min: [rx0, y - 0.035, SIDE_BACK], max: [rx1, y + 0.035, 0.08] },
+    };
+  }
+
+  private ductGuide(it: Item): Guide {
+    const r = FINGER_R, s = it.side;
     const yTop = this.topY - it.unit * U - 0.004;
     const yBot = this.topY - (it.unit + it.span) * U + 0.004;
-    const [x0, x1] = side(s, SIDE_IN + r, SIDE_OUT);
+    const [x0, x1] = sideSpan(s, SIDE_IN + r, SIDE_OUT);
+    const [rx0, rx1] = sideSpan(s, SIDE_IN - 0.006, SIDE_OUT + 0.006);
     return {
       item: it.id, kind: it.kind,
       room: { min: [x0, yBot, SIDE_BACK], max: [x1, yTop, DUCT_FRONT - r] },
@@ -319,23 +351,29 @@ export class Rack {
 
   /** where a cable counts as held by the management */
   supports(): SupportBox[] {
-    const out: SupportBox[] = [];
-    for (const it of this.items) {
-      if (it.kind === 'hmgr') {
-        const y0 = this.unitBottom(it.unit);
-        out.push({ min: [-0.25, y0 - 0.01, -0.01], max: [0.25, y0 + U + 0.004, RING_DEPTH + 0.004], item: it.id });
-      } else if (it.kind === 'vring') {
-        const y = this.unitY(it.unit);
-        const [a, b] = it.side > 0 ? [SIDE_IN - 0.01, SIDE_OUT + 0.004] : [-SIDE_OUT - 0.004, -SIDE_IN + 0.01];
-        out.push({ min: [a, y - 0.05, SIDE_BACK - 0.01], max: [b, y + 0.05, 0.072], item: it.id });
-      } else {
-        const yTop = this.topY - it.unit * U, yBot = this.topY - (it.unit + it.span) * U;
-        const [a, b] = it.side > 0 ? [SIDE_IN - 0.01, SIDE_OUT + 0.004] : [-SIDE_OUT - 0.004, -SIDE_IN + 0.01];
-        out.push({ min: [a, yBot - 0.02, SIDE_BACK - 0.01], max: [b, yTop + 0.02, 0.078], item: it.id });
-      }
-    }
-    return out;
+    return this.items.map((it) => this.supportBox(it));
   }
+
+  private supportBox(it: Item): SupportBox {
+    // the side channels, left or right
+    const [a, b] = it.side > 0 ? [SIDE_IN - 0.01, SIDE_OUT + 0.004] : [-SIDE_OUT - 0.004, -SIDE_IN + 0.01];
+    switch (it.kind) {
+      case 'fingerManager': {
+        const y0 = this.unitBottom(it.unit);
+        return { min: [-0.25, y0 - 0.01, -0.01], max: [0.25, y0 + U + 0.004, RING_DEPTH + 0.004], item: it.id };
+      }
+      case 'ring': {
+        const y = this.unitY(it.unit);
+        return { min: [a, y - 0.05, SIDE_BACK - 0.01], max: [b, y + 0.05, 0.072], item: it.id };
+      }
+      case 'duct': {
+        const yTop = this.topY - it.unit * U, yBot = this.topY - (it.unit + it.span) * U;
+        return { min: [a, yBot - 0.02, SIDE_BACK - 0.01], max: [b, yTop + 0.02, 0.078], item: it.id };
+      }
+      default: return assertNever(it.kind);
+    }
+  }
+
 
   /** length of a tidy route between two ports, for sizing the cords */
   idealRoute(a: Port, b: Port): number {
@@ -347,7 +385,7 @@ export class Rack {
   }
 }
 
-export function hmgrFingers(): number[] {
+export function managerFingers(): number[] {
   const out: number[] = [];
   for (let x = -0.22; x <= 0.2201; x += 0.022) out.push(x);
   return out;
@@ -360,4 +398,9 @@ function cap(ax: number, ay: number, az: number, bx: number, by: number, bz: num
 function box(side: number, x0: number, x1: number, y0: number, y1: number, z0: number, z1: number, owner = -1): StaticBox {
   const a = side * x0, b = side * x1;
   return { kind: 'box', min: [Math.min(a, b), y0, z0], max: [Math.max(a, b), y1, z1], owner };
+}
+
+/** a span of x on the left (s < 0) or the right (s > 0) side, given by its right-side bounds */
+function sideSpan(s: number, a: number, b: number): [number, number] {
+  return s > 0 ? [a, b] : [-b, -a];
 }

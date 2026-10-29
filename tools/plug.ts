@@ -22,7 +22,7 @@ const bench = (seed: number): LevelDef => ({
   cables: 4, wrong: 0, loose: 0, slack: [SLACK, SLACK + 0.1], mess: 1,
   labels: false, services: 1, types: ['CU'], colorByService: true,
   inventory: {},
-  preinstalled: [{ kind: 'hmgr', unit: 2, side: 0 }, { kind: 'hmgr', unit: 7, side: 0 }, { kind: 'duct', unit: 4, side: 1 }],
+  preinstalled: [{ kind: 'fingerManager', unit: 2, side: 0 }, { kind: 'fingerManager', unit: 7, side: 0 }, { kind: 'duct', unit: 4, side: 1 }],
   seed, seg: 0.025,
 });
 
@@ -44,8 +44,8 @@ for (const seed of seeds) for (const c of [0, 1, 2, 3]) for (const off of offs) 
   w.unplug(c, 1);
   if (cb.ends[0].port !== pa.id) { w.unplug(c, 0); w.plug(c, 0, pa.id); }
   for (let f = 0; f < 60; f++) sim.step();
-  const mgrs = guides.filter((g) => g.kind === 'hmgr');
-  const side = guides.filter((g) => g.kind !== 'hmgr');
+  const mgrs = guides.filter((g) => g.kind === 'fingerManager');
+  const side = guides.filter((g) => g.kind !== 'fingerManager');
   const order = [mgrs[0], ...side, mgrs[1]];
   const res = planRoute(w, c, order, null);
   if ('error' in res) continue;

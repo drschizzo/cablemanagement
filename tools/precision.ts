@@ -15,7 +15,7 @@ const bench: LevelDef = {
   units: [B, { kind: 'panel', name: 'A', ports: 12, style: 'copper' }, B, B, B, B, B, B, { kind: 'switch', name: 'S', ports: 12, style: 'switch' }, B, B],
   cables: 4, wrong: 0, loose: 0, slack: [0.5, 0.7], mess: 1,
   labels: false, services: 1, types: ['CU'], colorByService: true,
-  inventory: {}, preinstalled: [{ kind: 'hmgr', unit: 2, side: 0 }, { kind: 'duct', unit: 3, side: 1 }, { kind: 'duct', unit: 7, side: 1 }],
+  inventory: {}, preinstalled: [{ kind: 'fingerManager', unit: 2, side: 0 }, { kind: 'duct', unit: 3, side: 1 }, { kind: 'duct', unit: 7, side: 1 }],
   seed: 5,
   seg: envNumber('SEG', 0.025),
 };
@@ -62,7 +62,7 @@ function worstStaticPen(w: World): number {
 }
 
 /** the hand: grab a node, follow waypoints at the controller's speed, hold, release */
-function gesture(w: World, node: number, path: number[][], hold = 20, kind: 'hmgr' | 'duct' = 'duct'): { peakAfter: number; settle: number; stretchPeak: number; atRelease: number } {
+function gesture(w: World, node: number, path: number[][], hold = 20, kind: 'fingerManager' | 'duct' = 'duct'): { peakAfter: number; settle: number; stretchPeak: number; atRelease: number } {
   const sim = w.sim;
   sim.grab(node);
   const t = [...sim.grabTarget];
@@ -82,7 +82,7 @@ function gesture(w: World, node: number, path: number[][], hold = 20, kind: 'hmg
   for (let f = 0; f < hold; f++) sim.step();
   if (env.WHERE) {
     const g = sim.grabNode;
-    console.log(`   au lâcher : main (${sim.grabTarget.map((v) => v.toFixed(3))}) nœud (${[0, 1, 2].map((d) => sim.x[3 * g + d].toFixed(3))}) dans goulotte ${nodesIn(w, sim.cableOf[g], 'duct')} guide ${nodesIn(w, sim.cableOf[g], 'hmgr')}`);
+    console.log(`   au lâcher : main (${sim.grabTarget.map((v) => v.toFixed(3))}) nœud (${[0, 1, 2].map((d) => sim.x[3 * g + d].toFixed(3))}) dans goulotte ${nodesIn(w, sim.cableOf[g], 'duct')} guide ${nodesIn(w, sim.cableOf[g], 'fingerManager')}`);
   }
   const atRelease = nodesIn(w, sim.cableOf[sim.grabNode], kind);
   sim.release();
@@ -116,7 +116,7 @@ function gesture(w: World, node: number, path: number[][], hold = 20, kind: 'hmg
   return { peakAfter, settle, stretchPeak, atRelease };
 }
 
-function nodesIn(w: World, c: number, kind: 'hmgr' | 'duct'): number {
+function nodesIn(w: World, c: number, kind: 'fingerManager' | 'duct'): number {
   const ids = new Set(w.rack.items.filter((i) => i.kind === kind).map((i) => i.id));
   const boxes = w.rack.supports().filter((s) => ids.has(s.item));
   const cb = w.cables[c], x = w.sim.x;
@@ -150,8 +150,8 @@ const t0 = performance.now();
   const y = w.rack.unitY(2);
   const px = w.rack.port(cb.ends[0].port!).x;
   const dir = px < 0 ? 1 : -1;
-  const g = gesture(w, node, [[px, y + 0.004, 0.04], [px + dir * 0.3, y + 0.004, 0.04]], 20, 'hmgr');
-  console.log(`S2 guide-câbles : ${g.atRelease} nœuds posés au lâcher, ${nodesIn(w, c, 'hmgr')} restent, pic vitesse après lâcher ${g.peakAfter.toFixed(2)} m/s, repos ${g.settle < 0 ? 'jamais' : (g.settle / 60).toFixed(1) + ' s'}, étirement max ${(g.stretchPeak * 100).toFixed(1)} %, pénétration ${(statPen(w) * 1000).toFixed(1)} mm`);
+  const g = gesture(w, node, [[px, y + 0.004, 0.04], [px + dir * 0.3, y + 0.004, 0.04]], 20, 'fingerManager');
+  console.log(`S2 guide-câbles : ${g.atRelease} nœuds posés au lâcher, ${nodesIn(w, c, 'fingerManager')} restent, pic vitesse après lâcher ${g.peakAfter.toFixed(2)} m/s, repos ${g.settle < 0 ? 'jamais' : (g.settle / 60).toFixed(1) + ' s'}, étirement max ${(g.stretchPeak * 100).toFixed(1)} %, pénétration ${(statPen(w) * 1000).toFixed(1)} mm`);
 }
 // S3, S4: settling
 for (const li of [3, 7]) {

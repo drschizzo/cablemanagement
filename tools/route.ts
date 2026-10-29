@@ -27,8 +27,8 @@ const bench = (seed: number): LevelDef => ({
   labels: false, services: 1, types: ['CU'], colorByService: true,
   inventory: {},
   preinstalled: via === 'duct'
-    ? [{ kind: 'hmgr', unit: 2, side: 0 }, { kind: 'hmgr', unit: 7, side: 0 }, { kind: 'duct', unit: 4, side: 1 }]
-    : [{ kind: 'hmgr', unit: 2, side: 0 }, { kind: 'hmgr', unit: 7, side: 0 }, { kind: 'vring', unit: 3, side: 1 }, { kind: 'vring', unit: 5, side: 1 }],
+    ? [{ kind: 'fingerManager', unit: 2, side: 0 }, { kind: 'fingerManager', unit: 7, side: 0 }, { kind: 'duct', unit: 4, side: 1 }]
+    : [{ kind: 'fingerManager', unit: 2, side: 0 }, { kind: 'fingerManager', unit: 7, side: 0 }, { kind: 'ring', unit: 3, side: 1 }, { kind: 'ring', unit: 5, side: 1 }],
   seed, seg: 0.025,
 });
 
@@ -71,8 +71,8 @@ for (const seed of seeds) for (const c of [0, 1, 2, 3]) {
   w.unplug(c, 1);
   if (cb.ends[0].port !== pa.id) { w.unplug(c, 0); w.plug(c, 0, pa.id); }
   settleFor(w, 60);
-  const mgrs = guides.filter((g) => g.kind === 'hmgr');
-  const side = guides.filter((g) => g.kind !== 'hmgr').sort((p, q) => q.room.max[1] - p.room.max[1]);
+  const mgrs = guides.filter((g) => g.kind === 'fingerManager');
+  const side = guides.filter((g) => g.kind !== 'fingerManager').sort((p, q) => q.room.max[1] - p.room.max[1]);
   const order = [mgrs[0], ...side, mgrs[1]];
   const res = planRoute(w, c, order, pb);
   tot.runs++;
@@ -133,7 +133,7 @@ function nodesIn(w: World, c: number, order: Guide[]): number[] {
   return order.map((g) => {
     let n = 0;
     for (let i = cb.start; i < cb.start + cb.count; i++) if (inside(g.room, sim.x, i)) n++;
-    if (g.kind === 'vring') {
+    if (g.kind === 'ring') {
       const y = (g.room.min[1] + g.room.max[1]) / 2, x = sim.x;
       for (let i = cb.start; i < cb.start + cb.count - 1; i++) {
         const y0 = x[3 * i + 1], y1 = x[3 * i + 4];

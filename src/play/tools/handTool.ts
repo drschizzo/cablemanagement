@@ -52,6 +52,9 @@ interface Carry {
 }
 
 export class HandTool implements ToolHandler {
+  readonly cursor = 'grab';
+  readonly worksOnCords = true;
+  readonly worksWhilePreparing = false;
   private carry: Carry | null = null;
   readonly plumbLine = new PlumbLine();
 
@@ -91,6 +94,30 @@ export class HandTool implements ToolHandler {
   }
 
   cancel(): void {}
+
+  /** the pinches of the cord under the pointer, the one Space would let go of; a connector shows as one */
+  hoverChanged(p: CordPick | null): void {
+    const ctx = this.ctx;
+    ctx.cableView.pinchHover = p ? this.pinchNear(p.node) : -1;
+    ctx.cableView.pinchShown = p ? p.cable : -1;
+    ctx.pointer.setCursor(p ? (this.isConnector(p) ? 'pointer' : 'grab') : 'default');
+  }
+
+  hoverNotes(p: CordPick): string[] {
+    const w = this.ctx.world, notes: string[] = [];
+    if (this.isConnector(p)) {
+      const plugged = w.cables[p.cable].ends[p.end >= 0 ? p.end : w.endOfNode(p.node)!.end].port;
+      notes.push(plugged ? 'connecteur : saisir et tirer pour débrancher' : 'connecteur : relâchez-le devant un port pour le brancher');
+    }
+    notes.push('T : tracer · Suppr : au bac');
+    if (this.pinchNear(p.node) >= 0) notes.push('Coude pincé — Espace : le relâcher');
+    if (this.otherHandAt(p.node)) notes.push('Tenu par l\'autre main — E : la lâcher');
+    return notes;
+  }
+
+  private isConnector(p: CordPick): boolean {
+    return p.end >= 0 || !!this.ctx.world.endOfNode(p.node);
+  }
 
   dispose(): void {
     this.ctx.stage.scene.remove(this.plumbLine.group);

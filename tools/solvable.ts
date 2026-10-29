@@ -11,7 +11,8 @@ import { World } from '../src/game/world';
 import { CATALOGUE } from '../src/game/cordTypes';
 import { LEVELS } from '../src/game/levels/campaign';
 import { SERVICES } from '../src/game/services';
-import { polyLength, routePlan, strapBundles, tidyKit, tidyRoutes } from '../src/game/idealRoutes';
+import { polyLength } from '../src/game/vec3';
+import { routePlan, strapBundles, tidyKit, tidyRoutes } from '../src/game/idealRoutes';
 import { planRoute, RouteRun } from '../src/game/routeLaying';
 import type { Guide } from '../src/game/rack';
 import { env } from './env';
@@ -36,9 +37,9 @@ for (const lv of LEVELS) {
   const ev = w.evaluate();
   const added = kit.preinstalled.slice(lv.preinstalled.length);
   const count = (k: string) => added.filter((p) => p.kind === k).length;
-  const stock = `guide-câbles ${count('hmgr')}/${lv.inventory.hmgr ?? 0} goulottes ${count('duct')}/${lv.inventory.duct ?? 0} anneaux ${count('vring')}/${lv.inventory.vring ?? 0}`;
+  const stock = `guide-câbles ${count('fingerManager')}/${lv.inventory.fingerManager ?? 0} goulottes ${count('duct')}/${lv.inventory.duct ?? 0} anneaux ${count('ring')}/${lv.inventory.ring ?? 0}`;
   const bad = w.cables.map((cb, c) => (ev.cableRouted[c] ? '' : `R:${cb.ends.map((e) => e.port).join('-')} `) + (ev.cableObstructs[c] ? `O:${cb.ends.map((e) => e.port).join('-')} ` : '')).join('');
-  console.log(`${lv.id}: routed ${ev.routed}/${ev.total} clear ${ev.clear} relaxed ${ev.relaxed} stars ${ev.stars} lisibilité ${ev.readability.note} bundles ${ev.bundles}/${ev.bundlesNeeded} velcro ${(lv.inventory.velcro ?? 0) - w.inventory.velcro}/${lv.inventory.velcro ?? 0} | ${stock} ${bad}`);
+  console.log(`${lv.id}: routed ${ev.routed}/${ev.total} clear ${ev.clear} relaxed ${ev.relaxed} stars ${ev.stars} lisibilité ${ev.readability.note} bundles ${ev.bundles}/${ev.bundlesNeeded} velcro ${(lv.inventory.velcro ?? 0) - w.stock.velcro}/${lv.inventory.velcro ?? 0} | ${stock} ${bad}`);
 }
 
 console.log('\nAu départ : les liaisons en production rangées sans les débrancher');
@@ -58,8 +59,8 @@ for (const lv of LEVELS) {
     const [p] = routePlan(w.rack, [ci]);
     // the way a technician takes: the manager by the first port, down its side, the manager by the other
     const lo = Math.min(p.upper, p.lower), hi = Math.max(p.upper, p.lower);
-    const side = guides.filter((g) => g.kind !== 'hmgr' && itemOf(g.item).side === p.side && itemOf(g.item).unit + itemOf(g.item).span > lo && itemOf(g.item).unit <= hi);
-    const mgr = (u: number) => guides.filter((g) => g.kind === 'hmgr' && itemOf(g.item).unit === u);
+    const side = guides.filter((g) => g.kind !== 'fingerManager' && itemOf(g.item).side === p.side && itemOf(g.item).unit + itemOf(g.item).span > lo && itemOf(g.item).unit <= hi);
+    const mgr = (u: number) => guides.filter((g) => g.kind === 'fingerManager' && itemOf(g.item).unit === u);
     const top = w.rack.port(ci.a).unit < w.rack.port(ci.b).unit;
     side.sort((a, b) => (itemOf(a.item).unit - itemOf(b.item).unit) * (top ? 1 : -1));
     // a cord from a panel to the switch right under it: its slack goes in the manager below them

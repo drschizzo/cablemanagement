@@ -1,12 +1,13 @@
 // The game state of one cabinet: the physics, the rack and its items, the
 // cords (cables.ts) with their ends and labels, the velcro straps, the crate
-// and the stock, the inventory, the maintenance window. How tidy it all is:
+// and the stock of new cords, the supports and velcros left, the maintenance window. How tidy it all is:
 // evaluation.ts.
 
 import { CABLES, type CableInit, type Pinch } from '@drschizzo/avbd-cables';
 import { bundleCount, cordStrain, evaluate, holdMap, okPorts, type Evaluation, type Strain } from './evaluation';
 import { ThreadedSim } from './physics/threadedSim';
-import { CABLE_R, CONNECTOR, Rack, SEG, type Item, type ItemKind } from './rack';
+import { CABLE_R, CONNECTOR, Rack, SEG, type Item } from './rack';
+import { stockOf, type ItemKind, type Stock } from './supplies';
 import { SERVICES } from './services';
 import { MaintenanceWindow } from './maintenanceWindow';
 import type { FibreType } from './cordTypes';
@@ -24,8 +25,6 @@ export interface Snapshot {
   ends: CableEnd[][];
 }
 
-export type Inventory = Record<ItemKind | 'velcro' | 'bypass', number>;
-
 export class World {
   level: LevelDef;
   rack: Rack;
@@ -33,7 +32,8 @@ export class World {
   circuits: Circuit[];
   cables: Cable[] = [];
   straps: Strap[] = [];
-  inventory: Inventory;
+  /** the supports and velcros left */
+  stock: Stock;
   /** bumps when the rack items change (the view rebuilds them) */
   itemsVersion = 0;
   /** before/after demo: the tidy route of each cord, the items to install */
@@ -98,9 +98,9 @@ export class World {
       }
     });
     this.sim.setStatics(this.rack.statics());
-    this.inventory = { hmgr: 0, duct: 0, vring: 0, velcro: 0, ...level.inventory, bypass: level.bypass ?? 0 };
+    this.stock = stockOf(level.inventory);
     this.cordStock = new Map(level.cords ?? []);
-    this.maintenance = new MaintenanceWindow(this.circuits, (i) => this.circuitUp(i), level.downtime ?? Infinity, this.inventory);
+    this.maintenance = new MaintenanceWindow(this.circuits, (i) => this.circuitUp(i), level.downtime ?? Infinity, level.bypass ?? 0);
   }
 
   // ------------------------------------------------- maintenance window
@@ -429,17 +429,17 @@ export class World {
   // -------------------------------------------------------------- items
 
   placeItem(kind: ItemKind, unit: number, side: number): Item | null {
-    if (this.inventory[kind] <= 0) return null;
+    if (this.stock[kind] <= 0) return null;
     const it = this.rack.addItem(kind, unit, side);
     if (!it) return null;
-    this.inventory[kind]--;
+    this.stock[kind]--;
     this.refreshStatics();
     return it;
   }
 
   removeItem(it: Item): boolean {
     if (!this.rack.removeItem(it.id)) return false;
-    this.inventory[it.kind]++;
+    this.stock[it.kind]++;
     this.refreshStatics();
     return true;
   }
@@ -457,7 +457,7 @@ export class World {
    * leaving the bundle for a port, which a band round them all would cut across
    */
   addStrap(px: number, py: number, pz: number, reach = 0.03, along?: [number, number, number]): Strap | null {
-    if (this.inventory.velcro <= 0) return null;
+    if (this.stock.velcro <= 0) return null;
     const x = this.sim.x;
     const best = new Map<number, { node: number; d: number }>();
     for (let c = 0; c < this.cables.length; c++) {
@@ -478,20 +478,20 @@ export class World {
 
   /** straps these nodes together (one of each cord); needs two of them, and a velcro left */
   strapNodes(nodes: number[]): Strap | null {
-    if (this.inventory.velcro <= 0 || nodes.length < 2) return null;
+    if (this.stock.velcro <= 0 || nodes.length < 2) return null;
     // the strap holds the bundle as tight as the cords allow
     const r = Math.max(this.radius * 2, Math.sqrt(nodes.length) * this.radius * 1.25);
     const bundle = this.sim.addBundle(nodes, r);
     const s = { bundle, nodes };
     this.straps.push(s);
-    this.inventory.velcro--;
+    this.stock.velcro--;
     return s;
   }
 
   removeStrap(s: Strap): void {
     this.sim.removeBundle(s.bundle);
     this.straps = this.straps.filter((q) => q !== s);
-    this.inventory.velcro++;
+    this.stock.velcro++;
   }
 
   strapCentre(s: Strap): [number, number, number] {

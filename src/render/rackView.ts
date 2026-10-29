@@ -230,12 +230,12 @@ export class RackView {
     const y = rack.unitY(k);
     const w = COLUMN_X * 2 - 0.036;
     // the body of the equipment behind its face: seen from the side, and it gives the rack a solid shadow
-    if (u.kind !== 'hmgr' && u.kind !== 'blank') this.add(bevelBox(w - 0.01, U - 0.003, 0.3, 0.002), rackMat.body, 0, y, -0.16).castShadow = true;
+    if (u.kind !== 'fingerManager' && u.kind !== 'blank') this.add(bevelBox(w - 0.01, U - 0.003, 0.3, 0.002), rackMat.body, 0, y, -0.16).castShadow = true;
     if (u.kind === 'blank') {
       this.add(roundedBox(w, U - 0.001, 0.01, 0.0015), rackMat.blank, 0, y, -0.005).castShadow = true;
       return;
     }
-    if (u.kind === 'hmgr') return;
+    if (u.kind === 'fingerManager') return;
     if (u.kind === 'server') {
       if (u.style === 'ups') this.buildUps(y, w);
       else this.buildServer(y, w);

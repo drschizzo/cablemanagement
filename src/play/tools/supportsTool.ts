@@ -7,10 +7,9 @@ import { sfx } from '../../audio/sfx';
 import { buildItem } from '../../render/rackItems';
 import { ghostBadMat, ghostMat } from '../../render/rackMaterials';
 import { disposeTree } from '../../render/dispose';
-import { COLUMN_X, U, WALL_X, type Item, type ItemKind } from '../../game/rack';
+import { COLUMN_X, U, WALL_X, type Item } from '../../game/rack';
+import { SUPPLIES, type ItemKind } from '../../game/supplies';
 import type { PlayContext, ToolHandler } from '../context';
-
-const ITEM_NAMES: Record<ItemKind, string> = { hmgr: 'guide-câbles', duct: 'goulotte', vring: 'anneau' };
 
 /** what a click would do: put an item of this kind there, or take off the one there */
 interface Slot {
@@ -21,6 +20,9 @@ interface Slot {
 }
 
 export class SupportsTool implements ToolHandler {
+  readonly cursor = 'crosshair';
+  readonly worksOnCords = false;
+  readonly worksWhilePreparing = true;
   private ghost: THREE.Group | null = null;
   /** what the ghost shows, to rebuild it only when that changes */
   private ghostKey = '';
@@ -64,14 +66,14 @@ export class SupportsTool implements ToolHandler {
     const unit = Math.floor((rack.topY - p.y) / U);
     if (unit < 0 || unit >= rack.units.length) return null;
     if (Math.abs(p.x) < COLUMN_X) {
-      const existing = rack.itemAt('hmgr', unit, 0);
-      return { kind: 'hmgr', unit, side: 0, existing };
+      const existing = rack.itemAt('fingerManager', unit, 0);
+      return { kind: 'fingerManager', unit, side: 0, existing };
     }
     if (Math.abs(p.x) < COLUMN_X - 0.03 || Math.abs(p.x) > WALL_X + 0.04) return null;
     const side = Math.sign(p.x);
     const existing = rack.itemAt('duct', unit, side);
     if (existing) return { kind: existing.kind, unit, side, existing };
-    const kind: ItemKind = this.shift || ctx.world.inventory.duct <= 0 ? 'vring' : 'duct';
+    const kind: ItemKind = this.shift || ctx.world.stock.duct <= 0 ? 'ring' : 'duct';
     return { kind, unit, side };
   }
 
@@ -84,8 +86,8 @@ export class SupportsTool implements ToolHandler {
       w.removeItem(s.existing);
       sfx.remove();
     } else {
-      if (w.inventory[s.kind] <= 0) { ctx.events.onToast(`Plus de ${ITEM_NAMES[s.kind]} en stock.`); sfx.error(); return; }
-      if (!w.placeItem(s.kind, s.unit, s.side)) { ctx.events.onToast(s.kind === 'hmgr' ? 'Un guide-câbles se pose dans une unité vide.' : 'Emplacement occupé.'); sfx.error(); return; }
+      if (w.stock[s.kind] <= 0) { ctx.events.onToast(`Plus de ${SUPPLIES[s.kind].singular} en stock.`); sfx.error(); return; }
+      if (!w.placeItem(s.kind, s.unit, s.side)) { ctx.events.onToast(s.kind === 'fingerManager' ? 'Un guide-câbles se pose dans une unité vide.' : 'Emplacement occupé.'); sfx.error(); return; }
       sfx.place();
     }
     this.updateGhost(true);
@@ -102,7 +104,7 @@ export class SupportsTool implements ToolHandler {
     this.removeGhost();
     if (!s) return;
     const rack = ctx.world.rack, k = s.kind;
-    const ok = s.existing ? !s.existing.locked : rack.canPlace(k, s.unit, s.side) && ctx.world.inventory[k] > 0;
+    const ok = s.existing ? !s.existing.locked : rack.canPlace(k, s.unit, s.side) && ctx.world.stock[k] > 0;
     const it: Item = s.existing ?? { id: -99, kind: k, unit: k === 'duct' ? rack.ductStart(s.unit) : s.unit, side: s.side, span: k === 'duct' ? 4 : 1, locked: false };
     this.ghost = buildItem(rack, { ...it, id: -99 }, null, s.existing || !ok ? ghostBadMat : ghostMat);
     ctx.stage.scene.add(this.ghost);

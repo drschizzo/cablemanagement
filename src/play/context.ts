@@ -8,7 +8,7 @@ import type { World } from '../game/world';
 import type { Evaluation } from '../game/evaluation';
 import type { Port } from '../game/rack';
 import type { Pointer } from './pointer';
-import type { CordPicker } from './picking';
+import type { CordPick, CordPicker } from './picking';
 import type { UndoHistory } from './undoHistory';
 import type { PortHint } from './feedback/portHint';
 import type { HoldView } from './feedback/holdView';
@@ -74,6 +74,16 @@ export interface PlayContext {
  * meanwhile: a tool answers true only while a gesture of its own is under way.
  */
 export interface ToolHandler {
+  /** the cursor over the view while it is chosen */
+  readonly cursor: string;
+  /** it works on the cords (hover, Tab through the cords under the pointer), not on the rack */
+  readonly worksOnCords: boolean;
+  /** usable during the preparation, while the cords stand still */
+  readonly worksWhilePreparing: boolean;
+  /** the cord under the pointer changed: what the tool shows of it (cursor, pinches…) */
+  hoverChanged?(pick: CordPick | null): void;
+  /** what the tooltip of the cord under the pointer adds for this tool, one line each */
+  hoverNotes?(pick: CordPick): string[];
   /** the left button went down with this tool chosen: false when it took nothing (the view pans instead) */
   pointerDown(e: PointerEvent): boolean;
   /** the pointer moved: true when it was this tool's gesture */

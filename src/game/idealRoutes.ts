@@ -8,7 +8,8 @@
 // the shortest run to the side rides in front, the others pass behind the
 // points where it drops in.
 
-import { CONNECTOR, DUCT_SPAN, Rack, SEG, SIDE_BACK, SIDE_IN, SIDE_OUT, insideBox, type ItemKind, type Port } from './rack';
+import { CONNECTOR, DUCT_SPAN, Rack, SEG, SIDE_BACK, SIDE_IN, SIDE_OUT, insideBox, type Port } from './rack';
+import { stockOf, type ItemKind } from './supplies';
 import { makeSchedule, rng, type Circuit } from './mess/tangle';
 import type { World } from './world';
 import { bundleCount } from './evaluation';
@@ -24,7 +25,7 @@ const LANES_Z = 6;
  * `curl`: a panel right above its switch, port to port, no manager at all.
  */
 export function routePlan(rack: Rack, circuits: Circuit[]) {
-  const mgrs = rack.items.filter((it) => it.kind === 'hmgr').map((it) => it.unit);
+  const mgrs = rack.items.filter((it) => it.kind === 'fingerManager').map((it) => it.unit);
   return circuits.map((c) => {
     const a = rack.port(c.a), b = rack.port(c.b);
     const upper = nearestManager(mgrs, a.unit, +1);
@@ -114,7 +115,7 @@ export function tidyRoutes(rack: Rack, circuits: Circuit[], radius: number, seg 
  */
 export function tidyKit(level: LevelDef): LevelDef {
   const pre = [...level.preinstalled];
-  const stock = { hmgr: 0, duct: 0, vring: 0, ...level.inventory };
+  const stock = stockOf(level.inventory);
   const rack = new Rack(level.units, { open: level.open });
   for (const p of pre) rack.addItem(p.kind, p.unit, p.side, true);
   const circuits = level.schedule ? level.schedule(rack) : makeSchedule(level, rack, rng(level.seed));
@@ -126,10 +127,10 @@ export function tidyKit(level: LevelDef): LevelDef {
   // managers: the empty units right next to the equipment the schedule uses come first
   const used = new Set(circuits.flatMap((c) => [rack.port(c.a).unit, rack.port(c.b).unit]));
   const near = (k: number) => Number(used.has(k - 1)) + Number(used.has(k + 1));
-  const blanks = level.units.map((_, k) => k).filter((k) => level.units[k].kind === 'blank' && rack.canPlace('hmgr', k, 0));
+  const blanks = level.units.map((_, k) => k).filter((k) => level.units[k].kind === 'blank' && rack.canPlace('fingerManager', k, 0));
   for (const k of blanks.sort((a, b) => near(b) - near(a) || a - b)) {
-    if (stock.hmgr <= 0 || near(k) === 0) break;
-    if (place('hmgr', k, 0)) stock.hmgr--;
+    if (stock.fingerManager <= 0 || near(k) === 0) break;
+    if (place('fingerManager', k, 0)) stock.fingerManager--;
   }
   // the stretch of each side channel the cords run down, between their two managers
   const span: Record<number, [number, number]> = { [-1]: [Infinity, -Infinity], [1]: [Infinity, -Infinity] };
@@ -155,7 +156,7 @@ export function tidyKit(level: LevelDef): LevelDef {
   }
   for (const t of todo) {
     for (const u of t.units) {
-      for (let k = u; k < u + DUCT_SPAN && k <= span[t.side][1] && stock.vring > 0; k += 2) if (place('vring', k, t.side)) stock.vring--;
+      for (let k = u; k < u + DUCT_SPAN && k <= span[t.side][1] && stock.ring > 0; k += 2) if (place('ring', k, t.side)) stock.ring--;
     }
   }
   return { ...level, preinstalled: pre, showcase: 'tidy', wrong: 0, loose: 0 };

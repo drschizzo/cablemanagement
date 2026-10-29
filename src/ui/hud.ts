@@ -13,7 +13,7 @@ import { isMuted, setMuted, sfx } from '../audio/sfx';
 import { load, save } from '../storage';
 import { formatTime } from '../format';
 import { $, hide } from './dom';
-import { STOCK_KEY, TOOLS, Toolbar, toolHelp } from './toolbar';
+import { STOCK_KEY, Toolbar, toolForKey, toolHelp } from './toolbar';
 import { StockMenu } from './stockMenu';
 import { SchedulePanel } from './schedulePanel';
 import { LevelBrief } from './levelBrief';
@@ -77,7 +77,7 @@ export class Hud {
   refreshInventory(): void {
     const ctl = this.ctl;
     if (!ctl || !this.level) return;
-    this.toolbar.showStock(ctl.world.inventory, this.level, ctl.world.rack.items.some((i) => !i.locked));
+    this.toolbar.showStock(ctl.world.stock, this.level, ctl.world.rack.items.some((i) => !i.locked));
   }
 
   onEval(ev: Evaluation): void {
@@ -141,8 +141,8 @@ export class Hud {
   /** the interface's keys: the tools, the stock, the view, the sound, the debug line */
   private onKey(e: KeyboardEvent): void {
     if (!this.ctl || document.querySelector('.overlay.on')) return;
-    const tool = TOOLS.find((t) => t.key === e.key.toLowerCase());
-    if (tool) { this.selectTool(tool.tool); return; }
+    const tool = toolForKey(e.key);
+    if (tool) { this.selectTool(tool); return; }
     if (e.key === STOCK_KEY) { this.toggleStock(); return; }
     if (e.key === 'Escape') this.selectTool('hand');
     else if (e.key === 'r' || e.key === 'R') this.ctl.stage.resetView();

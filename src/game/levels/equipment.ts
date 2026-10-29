@@ -22,4 +22,4 @@ export const SERVER: UnitSpec = { kind: 'server', style: 'server', label: 'Serve
 export const UPS: UnitSpec = { kind: 'server', style: 'ups', label: 'Onduleur' };
 
 /** a finger manager installed in this unit */
-export const fingerManager = (unit: number) => ({ kind: 'hmgr' as const, unit, side: 0 });
+export const fingerManager = (unit: number) => ({ kind: 'fingerManager' as const, unit, side: 0 });

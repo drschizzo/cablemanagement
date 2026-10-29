@@ -53,11 +53,11 @@ describe('the rack', () => {
 
   it('a finger manager goes in an empty unit, once', () => {
     const r = new Rack(units);
-    expect(r.addItem('hmgr', 1, 0)).toBeNull(); // the panel's unit
-    const m = r.addItem('hmgr', 2, 0)!;
+    expect(r.addItem('fingerManager', 1, 0)).toBeNull(); // the panel's unit
+    const m = r.addItem('fingerManager', 2, 0)!;
     expect(m).not.toBeNull();
-    expect(r.canPlace('hmgr', 2, 0)).toBe(false);
-    expect(r.itemAt('hmgr', 2, 0)).toBe(m);
+    expect(r.canPlace('fingerManager', 2, 0)).toBe(false);
+    expect(r.itemAt('fingerManager', 2, 0)).toBe(m);
   });
 
   it('ducts cover four units on one side and do not overlap', () => {
@@ -67,21 +67,21 @@ describe('the rack', () => {
     expect(d.unit).toBe(0);
     expect(r.canPlace('duct', 2, 1)).toBe(false);
     expect(r.canPlace('duct', 2, -1)).toBe(true);
-    expect(r.canPlace('vring', 3, 1)).toBe(false);
-    expect(r.canPlace('vring', 4, 1)).toBe(true);
+    expect(r.canPlace('ring', 3, 1)).toBe(false);
+    expect(r.canPlace('ring', 4, 1)).toBe(true);
   });
 
   it('a locked item stays', () => {
     const r = new Rack(units);
-    const m = r.addItem('hmgr', 2, 0, true)!;
+    const m = r.addItem('fingerManager', 2, 0, true)!;
     expect(r.removeItem(m.id)).toBe(false);
-    const free = r.addItem('hmgr', 4, 0)!;
+    const free = r.addItem('fingerManager', 4, 0)!;
     expect(r.removeItem(free.id)).toBe(true);
   });
 
   it('every item makes a volume where a cord counts as held', () => {
     const r = new Rack(units);
-    const m = r.addItem('hmgr', 2, 0)!;
+    const m = r.addItem('fingerManager', 2, 0)!;
     const [s] = r.supports();
     expect(s.item).toBe(m.id);
     expect(insideBox(s, 0, r.unitY(2), 0.03)).toBe(true);
