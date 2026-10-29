@@ -27,7 +27,7 @@ export function recordResult(progress: Progress, level: LevelDef, stars: number,
   progress.stars[id] = Math.max(previousStars, stars);
   if (!progress.times[id] || time < progress.times[id]) progress.times[id] = time;
   progress.notes[id] = Math.max(previousNote ?? 0, note);
-  const challengeWon = !!level.par && stars === 3 && time <= level.par;
+  const challengeWon = level.kind === 'campaign' && stars === 3 && time <= level.par;
   if (challengeWon) progress.challenges[id] = true;
   return { stars, time, note, previousStars, previousNote, challengeWon };
 }

@@ -117,7 +117,7 @@ export function evaluate(w: World): Evaluation {
   const labelled = w.level.labels ? count((s) => s.labelled) : n;
   const relaxed = count((s) => s.relaxed);
   const bundles = bundleCount(w, supports);
-  const bundlesNeeded = w.level.bundles ?? 0;
+  const bundlesNeeded = w.level.kind === 'campaign' ? w.level.bundles ?? 0 : 0;
   let stars = 0;
   if (connected === n) {
     stars = 1;

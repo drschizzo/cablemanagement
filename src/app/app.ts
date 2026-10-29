@@ -72,7 +72,7 @@ export class App {
       }, this.threaded);
       this.ctl = ctl;
       hud.attach(ctl, level);
-      if (level.tutorial) this.mode = new Tutorial(ctl, hud, { showcase: () => this.startShowcase(), play: () => this.playNext() });
+      if (level.kind === 'tutorial') this.mode = new Tutorial(ctl, hud, { showcase: () => this.startShowcase(), play: () => this.playNext() });
       else if (brief) hud.showBrief(level);
       measureInsets(this.stage);
     });

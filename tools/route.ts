@@ -21,7 +21,7 @@ const slack = envNumber('SLACK', 0.3);
 const via = env.VIA ?? 'rings';
 const B = { kind: 'blank' as const };
 const bench = (seed: number): LevelDef => ({
-  id: 'route', title: '', brief: '',
+  id: 'route', kind: 'bench', title: '', brief: '',
   units: [B, { kind: 'panel', name: 'A', ports: 12, style: 'copper' }, B, B, B, B, B, B, { kind: 'switch', name: 'S', ports: 12, style: 'switch' }, B, B],
   cables: 4, wrong: 0, loose: 0, slack: [slack, slack + 0.1], mess: 1,
   labels: false, services: 1, types: ['CU'], colorByService: true,

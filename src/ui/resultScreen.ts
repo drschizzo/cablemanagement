@@ -55,7 +55,7 @@ function resultLines(level: LevelDef, ev: Evaluation, result: LevelResult, chall
       ? '★★ : rangez au moins 70 % des liaisons, façade dégagée à 85 %.'
       : '★★★ : tout rangé, façade entièrement dégagée, aucun cordon tendu ni plié' + (ev.bundlesNeeded ? `, ${ev.bundlesNeeded} faisceaux` : '') + (level.downtime !== undefined ? ', budget d\'interruption tenu' : '') + '.');
   }
-  if (level.par) {
+  if (level.kind === 'campaign') {
     lines.push(result.challengeWon
       ? `⏱ Défi chrono réussi : ★★★ en moins de ${formatTime(level.par)} !`
       : `⏱ Défi chrono : ★★★ en moins de ${formatTime(level.par)}${challengeWonBefore ? ' (déjà réussi)' : ''}.`);

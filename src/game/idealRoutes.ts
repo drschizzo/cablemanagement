@@ -8,9 +8,9 @@
 // the shortest run to the side rides in front, the others pass behind the
 // points where it drops in.
 
-import { CONNECTOR, DUCT_SPAN, Rack, SEG, SIDE_BACK, SIDE_IN, SIDE_OUT, insideBox, type Port } from './rack';
+import { CABLE_R, CONNECTOR, DUCT_SPAN, Rack, SEG, SIDE_BACK, SIDE_IN, SIDE_OUT, insideBox, type Port } from './rack';
 import { stockOf, type ItemKind } from './supplies';
-import { makeSchedule, rng, type Circuit } from './mess/tangle';
+import { makeSchedule, rng, type CableStart, type Circuit } from './mess/tangle';
 import type { World } from './world';
 import { bundleCount } from './evaluation';
 import type { LevelDef } from './levels/levelDef';
@@ -109,7 +109,7 @@ export function tidyRoutes(rack: Rack, circuits: readonly Circuit[], radius: num
  * A level as a careful technician would finish it, with the level's own
  * stock and nothing more: its finger managers in the empty units next to the
  * equipment in use, its ducts (then its rings) down the side channels the
- * cords take, and every cord cut to its tidy route and plugged as planned.
+ * cords take, its cords to be laid on their tidy routes (tidyLayout) and plugged as planned.
  * Its score says whether the level can reach three stars (tools/solvable.ts,
  * tests/game/levels/levels.test.ts).
  */
@@ -159,7 +159,7 @@ export function tidyKit(level: LevelDef): LevelDef {
       for (let k = u; k < u + DUCT_SPAN && k <= span[t.side][1] && stock.ring > 0; k += 2) if (place('ring', k, t.side)) stock.ring--;
     }
   }
-  return { ...level, preinstalled: pre, showcase: 'tidy', wrong: 0, loose: 0 };
+  return { ...level, preinstalled: pre, wrong: 0, loose: 0 };
 }
 
 /** the two pinned connector nodes, then the cord leaving the boot towards the manager */
@@ -248,4 +248,30 @@ export function strapBundles(w: World, bundles: number): void {
       if (st && bundleCount(w, supports) === before) w.removeStrap(st);
     }
   }
+}
+
+/**
+ * A level's cords laid along their tidy routes, cut to length (the tidy
+ * cabinet of the before/after demo): where each cord starts, for World, and
+ * the route of each, for tidyTargets.
+ */
+export function tidyLayout(level: LevelDef): { starts: CableStart[]; paths: V3[][] } {
+  const rack = new Rack(level.units, { open: level.open });
+  for (const p of level.preinstalled) rack.addItem(p.kind, p.unit, p.side, true);
+  const circuits = level.schedule ? level.schedule(rack) : makeSchedule(level, rack, rng(level.seed));
+  const seg = level.seg ?? SEG;
+  const paths = tidyRoutes(rack, circuits, level.radius ?? CABLE_R, seg);
+  const starts = circuits.map((ci, c) => ({ type: ci.type, ends: [ci.a, ci.b] as [string, string], points: pathToNodes(paths[c], seg) }));
+  return { starts, paths };
+}
+
+/** where every node of a world's cords is once laid along `paths` (their tidy routes) */
+export function tidyTargets(w: World, paths: V3[][]): Float64Array {
+  const out = Float64Array.from(w.sim.x);
+  w.cables.forEach((cb, c) => {
+    const arcs = [0];
+    for (let k = 0; k < cb.count - 1; k++) arcs.push(arcs[k] + w.sim.rest[cb.start + k]);
+    resample(paths[c], arcs, out, cb.start);
+  });
+  return out;
 }

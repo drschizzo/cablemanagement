@@ -12,7 +12,7 @@ const params = envParams();
 const seeds = envSeeds('1,2,3,4,5');
 const B = { kind: 'blank' as const };
 const bench = (seed: number): LevelDef => ({
-  id: 'fold', title: '', brief: '',
+  id: 'fold', kind: 'bench', title: '', brief: '',
   units: [B, { kind: 'panel', name: 'A', ports: 12, style: 'copper' }, B, B, B, B, B, B, { kind: 'switch', name: 'S', ports: 12, style: 'switch' }, B, B],
   cables: 4, wrong: 0, loose: 0, slack: [1.2, 1.6], mess: 1,
   labels: false, services: 1, types: ['CU'], colorByService: true,

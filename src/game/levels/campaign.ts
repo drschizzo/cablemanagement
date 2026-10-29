@@ -1,13 +1,14 @@
 // The levels of the game, in order, and the guided tutorial.
 
-import { UNLOCK_STARS, type LevelDef } from './levelDef';
+import { UNLOCK_STARS, type CampaignLevel, type TutorialLevel } from './levelDef';
 import { BLANK, FIREWALL, ROUTER, SERVER, UPS, copperPanel, ethernetSwitch, fingerManager, opticalPanel, opticalSwitch, server } from './equipment';
 
 const LENGTH_TIP = 'Un cordon trop long se remplace par un cordon neuf du Stock (0), qui arrive dans le bac : il faut couper la liaison le temps de changer. Le stock est compté : choisissez bien qui reçoit quel cordon.';
 
-export const LEVELS: LevelDef[] = [
+export const LEVELS: CampaignLevel[] = [
   {
     id: 'l1',
+    kind: 'campaign',
     title: 'Premier brassage',
     brief: 'Quatre cordons pendent devant le switch, et l\'un d\'eux n\'est même plus branché. Rebranchez-le, puis couchez-les dans le guide-câbles pour dégager la façade.',
     // 0 B, 1 panel, 2 manager, 3 switch
@@ -28,6 +29,7 @@ export const LEVELS: LevelDef[] = [
   },
   {
     id: 'l2',
+    kind: 'campaign',
     title: 'Le mou',
     brief: 'Les cordons sont beaucoup trop longs, et l\'un d\'eux est sur le mauvais port. Corrigez-le, puis remplacez les cordons par d\'autres à la bonne longueur, ou rangez le surplus dans une goulotte.',
     // 1 panel, 2 manager, 6 manager (to place), 7 switch
@@ -46,6 +48,7 @@ export const LEVELS: LevelDef[] = [
   },
   {
     id: 'l3',
+    kind: 'campaign',
     title: 'Erreurs de brassage',
     brief: 'Quelqu\'un a brassé à l\'aveugle et a relié le pare-feu au hasard. Suivez le plan : rebranchez chaque cordon sur le bon port, puis rangez.',
     // 1 panel, 2 mgr, 4 switch, 5 mgr, 6 firewall
@@ -66,6 +69,7 @@ export const LEVELS: LevelDef[] = [
   },
   {
     id: 'l4',
+    kind: 'campaign',
     title: 'Étiquetage',
     brief: 'Pare-feu, routeur, switch : chaque liaison doit porter l\'étiquette de son service aux deux bouts.',
     // 1 panel, 2 mgr, 4 switch, 5 mgr, 6 firewall, 7 mgr, 8 router
@@ -82,6 +86,7 @@ export const LEVELS: LevelDef[] = [
   },
   {
     id: 'l5',
+    kind: 'campaign',
     title: 'Fibre et cuivre',
     brief: 'Un tiroir optique, un panneau cuivre et deux serveurs. Ne mélangez pas les fibres et le cuivre : chaque cordon a son type.',
     // 1 fibre drawer, 2 mgr, 3 copper panel, 4 mgr, 7 switch, 8 mgr, 9 firewall, 10 mgr, 11-12 servers
@@ -97,6 +102,7 @@ export const LEVELS: LevelDef[] = [
   },
   {
     id: 'l6',
+    kind: 'campaign',
     title: 'Salle serveurs',
     brief: 'Deux panneaux, deux switchs, le cœur de réseau et les serveurs : 25 liaisons. Déposez ce qui gêne dans le bac, rebrassez proprement, et serrez les câbles en faisceaux.',
     // 1 A, 2 S, 3 mgr, 4 B, 5 T, 6 mgr, 8 firewall, 9 mgr, 10 router, 11 mgr, 12-13 servers
@@ -122,6 +128,7 @@ export const LEVELS: LevelDef[] = [
   },
   {
     id: 'l7',
+    kind: 'campaign',
     title: 'Migration',
     brief: 'Trois panneaux et trois switchs, une fibre vers l\'opérateur, beaucoup de ports à corriger. La migration se fait en production, avec un budget d\'interruption serré.',
     // 1 fibre, 2 mgr, 3 free (the fibres lying in the drawer's manager would hang in front of A's ports),
@@ -144,6 +151,7 @@ export const LEVELS: LevelDef[] = [
   },
   {
     id: 'l8',
+    kind: 'campaign',
     title: 'Le plat de spaghettis',
     brief: 'Le local technique que personne n\'ose ouvrir : quatre panneaux, quatre switchs, le pare-feu, le routeur, les serveurs. Les vieux cordons ne portent aucune marque : tracez-les pour savoir où ils vont. Bonne chance.',
     // 1 A, 2 S, 3 mgr, 4 B, 5 T, 6 mgr, 7 C, 8 U, 9 mgr, 10 D, 11 V, 12 mgr, 13 firewall, 14 mgr, 15 router, 16 mgr, 17-18 servers
@@ -167,8 +175,9 @@ export const LEVELS: LevelDef[] = [
 ];
 
 /** the guided tutorial: a small cabinet, one wrong port */
-export const TUTORIAL: LevelDef = {
+export const TUTORIAL: TutorialLevel = {
   id: 'tuto',
+  kind: 'tutorial',
   title: 'Tutoriel',
   brief: '',
   units: [BLANK, opticalPanel('A', 12), BLANK, BLANK, BLANK, BLANK, BLANK, opticalSwitch('S', 12), BLANK, BLANK],
@@ -177,10 +186,9 @@ export const TUTORIAL: LevelDef = {
   inventory: { fingerManager: 1, duct: 1, ring: 1, velcro: 2 },
   preinstalled: [{ kind: 'fingerManager', unit: 2, side: 0 }],
   seed: 5,
-  tutorial: true,
 };
 
 /** the first level not yet tidy enough to open the next one (undefined: all are) */
-export function nextLevelToPlay(stars: Record<string, number>): LevelDef | undefined {
+export function nextLevelToPlay(stars: Record<string, number>): CampaignLevel | undefined {
   return LEVELS.find((l) => (stars[l.id] ?? 0) < UNLOCK_STARS);
 }

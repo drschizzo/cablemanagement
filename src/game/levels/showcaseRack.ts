@@ -42,17 +42,18 @@ export function showcaseRack(state: 'mess' | 'tidy', seed: number, pairs?: numbe
   const shortest = (1.3 + random() * 0.3) * tall;
   return {
     id: `showcase-${state}`,
+    kind: 'showcase',
     title: 'Avant / Après',
     brief: '',
     units: closet.units, cables: circuits.length, wrong: 0, loose: 0, slack: [0, 0], mess: 3,
     labels: true, services: 6, types: ['CU'],
     inventory: { velcro: 60 },
-    preinstalled: [
+    // the mess is the cabinet before anyone tidied it: no managers, no ducts yet
+    preinstalled: state === 'mess' ? [] : [
       ...managers.map(fingerManager),
       ...[-1, 1].flatMap((side) => ducts.map((unit) => ({ kind: 'duct' as const, unit, side }))),
     ],
     seed,
-    showcase: state,
     // the old cords of the mess are limp, the new ones springy
     bend: state === 'mess' ? 1.5 : 0,
     open: true,

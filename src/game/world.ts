@@ -15,7 +15,7 @@ import type { Cable, CableEnd, CableIndex, CircuitIndex, EndIndex, NodeIndex, Re
 import { coilInCrate, minLengthThrough, shapeForLength } from './cordShapes';
 import type { LevelDef } from './levels/levelDef';
 import { makeCables, makeSchedule, rng, type CableStart, type Circuit } from './mess/tangle';
-import { pathToNodes, resample, tidyRoutes } from './idealRoutes';
+import { pathToNodes, tidyRoutes } from './idealRoutes';
 import { polyLength, type V3 } from './vec3';
 
 export interface Snapshot {
@@ -70,9 +70,6 @@ export class World {
   get cablesVersion(): number {
     return this.cablesRebuilt;
   }
-  /** before/after demo: the tidy route of each cord, the items to install */
-  tidyPaths: V3[][] = [];
-  setAside: { kind: ItemKind; unit: number; side: number }[] = [];
 
   /** cord segment length and radius of this cabinet */
   readonly seg: number;
@@ -93,7 +90,11 @@ export class World {
   /** where every cord was laid at the start (its tangle, or its tidy route) */
   readonly starts: CableStart[];
 
-  /** `starts`: the tangle already drawn for this level (by another World, in a worker): not drawn again */
+  /**
+   * `starts`: where the cords lie at the start, when it is known already (the
+   * tangle drawn by another World in a worker, or the tidy routes of the
+   * before/after demo: see tidyLayout); otherwise the tangle is drawn here.
+   */
   constructor(level: LevelDef, starts?: CableStart[]) {
     this.level = level;
     this.seg = level.seg ?? SEG;
@@ -103,17 +104,7 @@ export class World {
     for (const p of level.preinstalled) this.rack.addItem(p.kind, p.unit, p.side, true);
     const r = rng(level.seed);
     this.circuits = level.schedule ? level.schedule(this.rack) : makeSchedule(level, this.rack, r);
-    // before/after demo: tidy cords are cut to their route; the mess has no managers yet
-    if (level.showcase === 'mess') {
-      this.setAside = this.rack.items.map((it) => ({ kind: it.kind, unit: it.unit, side: it.side }));
-      this.rack.clearItems();
-    }
-    if (level.showcase === 'tidy') {
-      // the cords are laid along their tidy routes, cut to length (no tangle to draw: it was half
-      // the time it took to build, for nothing)
-      this.tidyPaths = tidyRoutes(this.rack, this.circuits, this.radius, this.seg);
-      this.starts = this.circuits.map((ci, c) => ({ type: ci.type, ends: [ci.a, ci.b] as [string, string], points: pathToNodes(this.tidyPaths[c], this.seg) }));
-    } else this.starts = starts ?? makeCables(level, this.rack, this.circuits, r);
+    this.starts = starts ?? makeCables(level, this.rack, this.circuits, r);
     // big cabinets trade a substep for frame rate (≈ 13 ms instead of 18 for 40 cords);
     // the solver settings were tuned at these substep counts (see `refSubsteps`)
     const big = level.cables >= 20;
@@ -338,26 +329,6 @@ export class World {
     });
     if (threaded) this.simulation.startWorker();
     this.cablesRebuilt++;
-  }
-
-  /** node positions of the tidy cabinet (before/after demo) */
-  tidyTargets(): Float64Array {
-    const out = Float64Array.from(this.simulation.x);
-    this.cableList.forEach((cb, c) => {
-      const arcs = [0];
-      for (let k = 0; k < cb.count - 1; k++) arcs.push(arcs[k] + this.simulation.rest[cb.start + k]);
-      resample(this.tidyPaths[c], arcs, out, cb.start);
-    });
-    return out;
-  }
-
-  /** installs the managers and ducts of the demo (true) or takes them out (false) */
-  installDemoItems(on: boolean): void {
-    if (on) {
-      if (this.rack.items.length === 0) for (const it of this.setAside) this.rack.addItem(it.kind, it.unit, it.side, true);
-    } else this.rack.clearItems();
-    this.simulation.setStatics(this.rack.statics());
-    this.itemsChanged++;
   }
 
   clearStraps(): void {

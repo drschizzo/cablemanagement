@@ -5,8 +5,8 @@ import { ITEM_KINDS } from '../../../src/game/supplies';
 import { LEVELS, TUTORIAL } from '../../../src/game/levels/campaign';
 import { freeLevel } from '../../../src/game/levels/freeLevel';
 import { showcaseRack } from '../../../src/game/levels/showcaseRack';
-import type { LevelDef } from '../../../src/game/levels/levelDef';
-import { strapBundles, tidyKit } from '../../../src/game/idealRoutes';
+import type { CampaignLevel, LevelDef } from '../../../src/game/levels/levelDef';
+import { strapBundles, tidyKit, tidyLayout, tidyTargets } from '../../../src/game/idealRoutes';
 
 const ALL: LevelDef[] = [...LEVELS, TUTORIAL, freeLevel(30, 1), showcaseRack('mess', 1), showcaseRack('tidy', 1)];
 
@@ -44,12 +44,13 @@ describe('levels', () => {
 });
 
 /** the cabinet of a level finished by a careful technician, settled and labelled */
-function finished(lv: LevelDef) {
+function finished(lv: CampaignLevel) {
   return finishedWorld(lv).evaluate();
 }
 
-function finishedWorld(lv: LevelDef) {
-  const w = new World(tidyKit(lv));
+function finishedWorld(lv: CampaignLevel) {
+  const kit = tidyKit(lv);
+  const w = new World(kit, tidyLayout(kit).starts);
   for (let f = 0; f < 240; f++) w.sim.step();
   strapBundles(w, lv.bundles ?? 0);
   for (let f = 0; f < 60; f++) w.sim.step();
@@ -79,7 +80,8 @@ describe('three stars are possible, with the level\'s own stock', () => {
 
   it('past the downtime budget, an incident: two stars at most', () => {
     const lv = LEVELS[0];
-    const w = new World(tidyKit(lv));
+    const kit = tidyKit(lv);
+    const w = new World(kit, tidyLayout(kit).starts);
     for (let f = 0; f < 240; f++) w.sim.step();
     expect(w.evaluate().stars).toBe(3);
     w.maintenance.downtime = w.maintenance.budget + 1;
@@ -87,8 +89,10 @@ describe('three stars are possible, with the level\'s own stock', () => {
   });
 
   it('the tidy cabinet of the before/after is perfect', () => {
-    const w = new World(showcaseRack('tidy', 7));
-    w.sim.teleport(w.tidyTargets());
+    const level = showcaseRack('tidy', 7);
+    const { starts, paths } = tidyLayout(level);
+    const w = new World(level, starts);
+    w.sim.teleport(tidyTargets(w, paths));
     w.circuits.forEach((ci, i) => w.labelCord(i, ci.service));
     const ev = w.evaluate();
     expect(ev.routed).toBe(ev.total);

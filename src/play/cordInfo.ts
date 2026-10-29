@@ -12,7 +12,8 @@ export function cordInfo(world: World, ev: Evaluation, traced: Set<number>, p: C
   const cb = world.cables[p.cable];
   const line = ev.circuits.findIndex((s) => s.cable === p.cable);
   // an unmarked cord says where it goes once traced, or once it makes its line
-  const known = !world.level.blind || traced.has(p.cable) || (line >= 0 && ev.circuits[line].connected);
+  const blind = world.level.kind === 'campaign' && !!world.level.blind;
+  const known = !blind || traced.has(p.cable) || (line >= 0 && ev.circuits[line].connected);
   return {
     type: cb.type,
     ends: known ? cb.ends.map((e) => e.port) : null,

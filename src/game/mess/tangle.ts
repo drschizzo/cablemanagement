@@ -114,7 +114,7 @@ export function makeCables(level: LevelDef, rack: Rack, circuits: readonly Circu
   const layers = shuffle([...Array(n).keys()], r);
   return circuits.map((c, i) => {
     const pa = rack.port(c.a), pb = rack.port(c.b);
-    const ml = level.messLength;
+    const ml = level.kind === 'showcase' ? level.messLength : undefined;
     const length = lengths?.[i] ?? (ml ? ml[0] + r() * (ml[1] - ml[0]) : rack.idealRoute(pa, pb) + level.slack[0] + r() * (level.slack[1] - level.slack[0]));
     const z = 0.02 + ((layers[i] + 0.5) / n) * 0.12;
     const points = tangledPath(rack, ends[i], length, z, level, r);
@@ -140,7 +140,7 @@ function endFrame(rack: Rack, port: Port | null, r: () => number, SEG: number): 
 function tangledPath(rack: Rack, ends: [string | null, string | null], length: number, z: number, level: LevelDef, r: () => number): number[] {
   const SEG = level.seg ?? DEFAULT_SEG;
   const mess = level.mess;
-  const spread = level.messSpread;
+  const spread = level.kind === 'showcase' ? level.messSpread : undefined;
   const A = endFrame(rack, ends[0] ? rack.port(ends[0]) : null, r, SEG);
   const Bf = endFrame(rack, ends[1] ? rack.port(ends[1]) : null, r, SEG);
   const target = length - 2 * SEG;

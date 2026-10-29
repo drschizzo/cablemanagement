@@ -10,7 +10,8 @@ import { disposeTree } from '../render/dispose';
 import { World } from '../game/world';
 import { showcaseRack } from '../game/levels/showcaseRack';
 import type { FibreType } from '../game/cordTypes';
-import { resample } from '../game/idealRoutes';
+import { resample, tidyLayout } from '../game/idealRoutes';
+import type { V3 } from '../game/vec3';
 import type { CableStart } from '../game/mess/tangle';
 import type { Place } from './aisleLayout';
 
@@ -58,6 +59,9 @@ export class Bay {
   /** time not yet stepped by the physics (s) */
   private acc = 0;
 
+  /** the tidy cabinet: the tidy route of each cord (empty for the mess) */
+  tidyPaths: V3[][] = [];
+
   private constructor(public world: World) {}
 
   /**
@@ -65,7 +69,11 @@ export class Bay {
    * the tangle of the mess, already drawn.
    */
   static async make(stage: Stage, state: 'mess' | 'tidy', seed: number, at: Place, pairs: number | undefined, pause: Pause, starts?: CableStart[]): Promise<Bay> {
-    const b = new Bay(new World(showcaseRack(state, seed, pairs), starts));
+    const level = showcaseRack(state, seed, pairs);
+    // the tidy cabinet: its cords laid on their tidy routes, cut to length (no tangle to draw)
+    const layout = state === 'tidy' ? tidyLayout(level) : null;
+    const b = new Bay(new World(level, layout?.starts ?? starts));
+    b.tidyPaths = layout?.paths ?? [];
     const w = b.world;
     b.group.visible = false;
     b.group.position.set(at.x, 0, at.z);
@@ -182,7 +190,7 @@ export class Bay {
    * The tidy route of every cord of `tidy` (same schedule, shorter cords),
    * sampled at the nodes of our cords: where they go to be swapped for them.
    */
-  tidyShapes(tidy: World): Float64Array {
+  tidyShapes(tidy: Bay): Float64Array {
     const out = Float64Array.from(this.world.sim.x);
     const rest = this.world.sim.rest;
     this.world.cables.forEach((cb, c) => {

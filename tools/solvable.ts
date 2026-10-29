@@ -12,7 +12,7 @@ import { CATALOGUE } from '../src/game/cordTypes';
 import { LEVELS } from '../src/game/levels/campaign';
 import { SERVICES } from '../src/game/services';
 import { polyLength } from '../src/game/vec3';
-import { routePlan, strapBundles, tidyKit, tidyRoutes } from '../src/game/idealRoutes';
+import { routePlan, strapBundles, tidyKit, tidyLayout, tidyRoutes } from '../src/game/idealRoutes';
 import { planRoute, RouteRun } from '../src/game/routeLaying';
 import type { Guide } from '../src/game/rack';
 import { env } from './env';
@@ -20,7 +20,8 @@ import { env } from './env';
 
 /** length of every line's tidy route, in the level's finished cabinet (m) */
 function tidyRoutesOf(lv: (typeof LEVELS)[number]): number[] {
-  const w = new World(tidyKit(lv));
+  const kit = tidyKit(lv);
+  const w = new World(kit, tidyLayout(kit).starts);
   return tidyRoutes(w.rack, w.circuits, w.radius, w.seg).map(polyLength);
 }
 
@@ -29,7 +30,7 @@ const REWORK = 15;
 
 for (const lv of LEVELS) {
   const kit = tidyKit(lv);
-  const w = new World(kit);
+  const w = new World(kit, tidyLayout(kit).starts);
   for (let f = 0; f < 240; f++) w.sim.step();
   strapBundles(w, lv.bundles ?? 0);
   for (let f = 0; f < 60; f++) w.sim.step();

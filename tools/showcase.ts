@@ -4,6 +4,7 @@
 declare const process: { argv: string[] };
 import { World } from '../src/game/world';
 import { SHOWCASE_SETTLE, showcaseRack } from '../src/game/levels/showcaseRack';
+import { tidyLayout, tidyTargets } from '../src/game/idealRoutes';
 
 const seeds = process.argv[2] ? process.argv[2].split(',').map(Number) : [1, 2, 3, 4, 5, 6, 7, 8];
 const pairs = process.argv[3] ? Number(process.argv[3]) : undefined;
@@ -17,8 +18,10 @@ for (const seed of seeds) {
   for (let i = 0; i < m.sim.n; i++) if (m.sim.x[3 * i + 1] < m.rack.floorY + 0.02) low++;
   for (const v of m.sim.x) if (!Number.isFinite(v)) nan++;
 
-  const w = new World(showcaseRack('tidy', seed, pairs));
-  w.sim.teleport(w.tidyTargets());
+  const tidyLevel = showcaseRack('tidy', seed, pairs);
+  const { starts: tidyStarts, paths } = tidyLayout(tidyLevel);
+  const w = new World(tidyLevel, tidyStarts);
+  w.sim.teleport(tidyTargets(w, paths));
   w.circuits.forEach((ci, i) => w.labelCord(i, ci.service));
   const ev = w.evaluate();
   const x = w.sim.x;

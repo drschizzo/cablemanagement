@@ -28,7 +28,7 @@ const SLACK = envNumber('SLACK', 0.8);
 const X0 = envNumber('X0', -0.34);
 const B = { kind: 'blank' as const };
 const bench = (seed: number): LevelDef => ({
-  id: 'plugin', title: '', brief: '',
+  id: 'plugin', kind: 'bench', title: '', brief: '',
   units: [B, { kind: 'panel', name: 'A', ports: 12, style: 'copper' }, B, { kind: 'switch', name: 'S', ports: 12, style: 'switch' }, B, B, B, B],
   cables: 4, wrong: 0, loose: 0, slack: [SLACK, SLACK + 0.2], mess: 1,
   labels: false, services: 1, types: ['CU'], colorByService: true,

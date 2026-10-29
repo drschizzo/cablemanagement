@@ -9,6 +9,7 @@ import type { CableStart } from '../game/mess/tangle';
 import { sfx } from '../audio/sfx';
 import { Bay, type Pause } from './bay';
 import type { Place } from './aisleLayout';
+import { tidyTargets } from '../game/idealRoutes';
 
 /** one closet of the aisle: its mess and its tidy self, drawn on the same rack */
 export class Closet {
@@ -51,7 +52,7 @@ export class Closet {
     // the tidy closet is shown exactly on its routes: a demonstration, perfect every time
     const tw = this.tidy.world;
     tw.sim.hold = true;
-    tw.sim.teleport(tw.tidyTargets());
+    tw.sim.teleport(tidyTargets(tw, this.tidy.tidyPaths));
     this.tidy.cordsVisible = false;
     // nothing on screen until the mess has fallen: only its end state is shown
     this.visible = false;
@@ -75,7 +76,7 @@ export class Closet {
     // frozen as it fell
     this.mess.world.sim.hold = true;
     this.messPos = Float64Array.from(this.mess.world.sim.x);
-    this.tidyShapes = this.mess.tidyShapes(this.tidy.world);
+    this.tidyShapes = this.mess.tidyShapes(this.tidy);
     this.mess.cableView.update(true);
   }
 

@@ -9,7 +9,8 @@ import type { FibreType } from '../cordTypes';
 /** stars a level needs before the next one opens: connected is not enough, it must be tidy */
 export const UNLOCK_STARS = 2;
 
-export interface LevelDef {
+/** what every level has, whatever its kind */
+interface LevelBase {
   id: string;
   title: string;
   brief: string;
@@ -31,11 +32,6 @@ export interface LevelDef {
   preinstalled: { kind: ItemKind; unit: number; side: number }[];
   seed: number;
   tips?: string[];
-  /**
-   * Before/after demo: 'mess' cords are long and tangled, the managers set
-   * aside; 'tidy' cords are cut to the length of their tidy route.
-   */
-  showcase?: 'mess' | 'tidy';
   /** bending stiffness of the cords (1 = default) */
   bend?: number;
   /** cord segment length and radius (m), when not the defaults */
@@ -43,10 +39,6 @@ export interface LevelDef {
   radius?: number;
   /** an open two-post rack (no cabinet walls) */
   open?: boolean;
-  /** where the starting mess may wander: half width, depth range in front of the rack, pull of the detours towards the floor (power) */
-  messSpread?: { x: number; z: [number, number]; fall?: number };
-  /** absolute cord lengths of the mess (m), instead of tidy route + slack */
-  messLength?: [number, number];
   /** cords coloured by their service (copper patch cords) */
   colorByService?: boolean;
   /**
@@ -65,12 +57,41 @@ export interface LevelDef {
   links?: { a: string; b: string; service?: number }[];
   /** a hand-written patching schedule instead of a random one */
   schedule?: (rack: Rack) => Circuit[];
-  /** guided tutorial */
-  tutorial?: boolean;
+}
+
+/** a level of the campaign, in order */
+export interface CampaignLevel extends LevelBase {
+  kind: 'campaign';
+  /** the time challenge: three stars in less than this (s) */
+  par: number;
   /** three stars need this many velcro bundles: a strap round three cords or more, in a manager or a duct */
   bundles?: number;
   /** old unmarked cords: where one goes only shows once it is traced, or plugged as planned */
   blind?: boolean;
-  /** the time challenge: three stars in less than this (s) */
-  par?: number;
 }
+
+/** the guided tutorial, over a small cabinet */
+export interface TutorialLevel extends LevelBase {
+  kind: 'tutorial';
+}
+
+/** free play: a cabinet generated at random */
+export interface FreeLevel extends LevelBase {
+  kind: 'free';
+}
+
+/** a cabinet of the before/after aisle (the title screen) */
+export interface ShowcaseLevel extends LevelBase {
+  kind: 'showcase';
+  /** where the starting mess may wander: half width, depth range in front of the rack, pull of the detours towards the floor (power) */
+  messSpread: { x: number; z: [number, number]; fall?: number };
+  /** absolute cord lengths of the mess (m), instead of tidy route + slack */
+  messLength: [number, number];
+}
+
+/** a cabinet built by a bench of tools/, to measure one gesture */
+export interface BenchLevel extends LevelBase {
+  kind: 'bench';
+}
+
+export type LevelDef = CampaignLevel | TutorialLevel | FreeLevel | ShowcaseLevel | BenchLevel;

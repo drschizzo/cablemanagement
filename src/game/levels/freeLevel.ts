@@ -14,6 +14,7 @@ export function freeLevel(cables: number, seed: number): LevelDef {
   units.push(FIREWALL, BLANK, ROUTER, BLANK, SERVER, UPS);
   return {
     id: `free-${cables}-${seed}`,
+    kind: 'free',
     title: `Partie libre — ${cables} câbles`,
     brief: 'Une baie générée au hasard.',
     units, cables,

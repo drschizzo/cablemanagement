@@ -33,7 +33,7 @@ export class LevelBrief {
       hide('#brief');
       if (!ctl) return;
       const hasSupports = ITEM_KINDS.some((k) => (level.inventory[k] ?? 0) > 0);
-      if (!this.prepared && !level.tutorial && hasSupports) this.prepare(ctl);
+      if (!this.prepared && level.kind !== 'tutorial' && hasSupports) this.prepare(ctl);
       else ctl.resume();
       this.prepared = true;
     };
@@ -56,7 +56,7 @@ export class LevelBrief {
 /** the level's own tips, then those of its rules (time challenge, tension, maintenance window, LEDs) */
 function briefTips(level: LevelDef, ctl: Controller | null): string[] {
   const tips = [...(level.tips ?? [])];
-  if (level.par) tips.push(`<b>Défi chrono</b> : ★★★ en moins de ${formatTime(level.par)}.`);
+  if (level.kind === 'campaign') tips.push(`<b>Défi chrono</b> : ★★★ en moins de ${formatTime(level.par)}.`);
   tips.push('<b>Ni tendu ni plié</b> : un cordon bien plus court que son chemin rangé, ou une fibre pliée en angle vif, ne vaut pas ★★★.');
   if (level.downtime !== undefined) {
     const used = [...new Set(ctl?.world.circuits.map((c) => c.service) ?? [])].sort((a, b) => SERVICES[b].weight - SERVICES[a].weight);
