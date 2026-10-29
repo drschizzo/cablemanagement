@@ -196,25 +196,37 @@
         <h1 data-i18n="editor.title"></h1>
         <p class="sub" data-i18n="editor.sub"></p>
         <div class="ed-body">
-          <div>
-            <h2 data-i18n="editor.units"></h2>
-            <div id="ed-units"></div>
+          <section class="ed-rack-side">
+            <h2><span data-i18n="editor.units"></span> <span id="ed-count"></span></h2>
+            <div class="ed-rack"><div id="ed-units"></div></div>
+            <h2 data-i18n="editor.add"></h2>
             <div id="ed-palette"></div>
-          </div>
-          <div class="ed-rules">
+          </section>
+          <section class="ed-rules">
             <h2 data-i18n="editor.rules"></h2>
-            <label><input id="ed-cables" type="range" min="1" max="48" /> <span id="ed-cables-val"></span></label>
-            <label><span data-i18n="editor.services"></span> <input id="ed-services" type="range" min="1" max="6" /> <span id="ed-services-val"></span></label>
-            <label><span data-i18n="editor.difficulty"></span> <select id="ed-difficulty"></select></label>
-            <label><input id="ed-maintenance" type="checkbox" /> <span data-i18n="editor.maintenance"></span></label>
-            <p id="ed-error" class="sub"></p>
-            <div class="row">
+            <div class="ed-field">
+              <div class="ed-label"><span data-i18n="editor.cords"></span><b id="ed-cables-val"></b></div>
+              <input id="ed-cables" type="range" min="1" max="48" />
+            </div>
+            <div class="ed-field">
+              <div class="ed-label"><span data-i18n="editor.services"></span><span id="ed-services-dots"></span></div>
+              <div id="ed-services" class="choices six"></div>
+            </div>
+            <div class="ed-field">
+              <div class="ed-label"><span data-i18n="editor.difficulty"></span></div>
+              <div id="ed-difficulty" class="choices three"></div>
+            </div>
+            <label class="ed-toggle"><input id="ed-maintenance" type="checkbox" /><i></i><span data-i18n="editor.maintenance"></span></label>
+            <p id="ed-error"></p>
+            <div class="ed-actions">
               <button id="ed-link" class="ghost"></button>
               <button id="ed-play" class="primary" data-i18n="editor.play"></button>
             </div>
-            <h2 data-i18n="editor.import"></h2>
-            <div class="row"><input id="ed-code" type="text" data-i18n-placeholder="editor.code" /><button id="ed-import" class="ghost" data-i18n="editor.open"></button></div>
-          </div>
+            <div class="ed-import">
+              <input id="ed-code" type="text" data-i18n-placeholder="editor.code" />
+              <button id="ed-import" class="ghost" data-i18n="editor.open"></button>
+            </div>
+          </section>
         </div>
       </div>
     </div>

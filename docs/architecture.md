@@ -107,7 +107,8 @@ src/
                     niveau ouvert, niveau suivant (fonctions pures)
     shop.ts         l'atelier : son catalogue, acheter et porter un look (fonctions pures) ; shopPanel.ts, son panneau
     wallet.ts       le salaire encaissé : un niveau rejoué ne paie que ce qu'il ajoute à sa meilleure fiche de paie
-    editorPanel.ts  l'éditeur de baie : équipements empilés, règles, jouer ou copier le lien (?rack=CODE)
+    editorPanel.ts  l'éditeur de baie : la baie en élévation (une bande par unité, aux couleurs de son équipement), la
+                    palette, les règles, jouer ou copier le lien (?rack=CODE)
     outcome.ts      ce que laisse une baie validée, selon sa sorte de niveau : record, salaire, partage, niveau suivant
     career.ts       la carrière : le ticket à jouer, le ticket validé (la baie gardée) ; careerPanel.ts, son panneau
     daily.ts        les baies du jour réussies : le meilleur de chaque jour, les jours de suite, le résultat à partager
