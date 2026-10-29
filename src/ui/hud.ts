@@ -30,7 +30,7 @@ import { fileName, showResult } from './resultScreen';
 import { recordOutcome } from './outcome';
 import { TimelapsePlayer } from './timelapsePlayer';
 import { ShopPanel } from './shopPanel';
-import { collectFind } from './wallet';
+import { collectFind } from './shop';
 import { CareerPanel } from './careerPanel';
 import { ModesPanel } from './modesPanel';
 import { EditorPanel } from './editorPanel';
@@ -161,12 +161,12 @@ export class Hud {
     this.modes.show(choose, back);
   }
 
-  /** the player picked up a find: kept in the wallet, its story told */
+  /** the player picked up a find: kept in the workshop, its story told */
   found(find: FindId): void {
-    const wallet = load('wallet');
-    const isNew = collectFind(wallet, find);
-    save('wallet', wallet);
-    const count = `${wallet.finds.length}/${FINDS.length}`;
+    const workshop = load('workshop');
+    const isNew = collectFind(workshop, find);
+    save('workshop', workshop);
+    const count = `${workshop.finds.length}/${FINDS.length}`;
     this.toast(isNew
       ? tr({ fr: `Trouvaille : ${findName(find)} ! ${findStory(find)} (${count})`, en: `Found: ${findName(find)}! ${findStory(find)} (${count})` })
       : tr({ fr: `${findName(find)}, encore. Il est déjà dans votre collection.`, en: `${findName(find)} again. It is in your collection already.` }), STORY_MS);

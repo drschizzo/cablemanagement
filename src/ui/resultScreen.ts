@@ -1,21 +1,20 @@
 // The result screen, once the cabinet is validated: the stars and the time,
-// the cabinet before and after, the checks one by one, the readability note
-// and its record, and the way on (next level, back to work, menu, home).
+// the cabinet before and after, the checks one by one, and the way on (next
+// level, back to work, menu, home).
 
 import type { Controller } from '../play/controller';
 import { nextStar, type Evaluation } from '../game/evaluation';
 import { UNLOCK_STARS } from '../game/levels/campaign';
 import type { LevelDef } from '../game/levels/levelDef';
-import { formatMoney, formatTime } from './format';
+import { formatTime } from './format';
 import { hide, show, starsHtml } from './dom';
 import { $ } from '../lib/page';
 import type { LevelResult } from './progress';
-import type { Outcome, Pay } from './outcome';
-import { readabilityText, starNeedText } from './messages';
+import type { Outcome } from './outcome';
+import { starNeedText } from './messages';
 import { tr } from './language';
-import type { PayItem } from '../game/pay';
-import { assertNever } from '../lib/assertNever';
 import { levelTitle } from './levelTexts';
+import { levelRules } from '../game/levels/levelRules';
 import { saveBeforeAfter } from './beforeAfterImage';
 
 export interface ResultActions {
@@ -29,14 +28,12 @@ export interface ResultActions {
 }
 
 export function showResult(ctl: Controller, level: LevelDef, ev: Evaluation, outcome: Outcome, actions: ResultActions): void {
-  const { result, challengeWonBefore, share, pay } = outcome;
+  const { result, challengeWonBefore, share } = outcome;
   $('#result-stars').innerHTML = starsHtml(ev.stars, true);
   $('#result-time').textContent = tr({ fr: `Temps : ${formatTime(result.time)}`, en: `Time: ${formatTime(result.time)}` });
   $<HTMLImageElement>('#ba-before').src = ctl.before ?? '';
   $<HTMLImageElement>('#ba-after').src = ctl.capture();
   $('#result-lines').innerHTML = resultLines(level, ev, result, challengeWonBefore).map((l) => `<li>${l}</li>`).join('');
-  $('#result-pay').innerHTML = pay ? payHtml(pay) : '';
-  $('#result-note').innerHTML = noteHtml(ctl.startNote, ev, result);
 
   showNext(outcome.next, actions);
   $('#result-again').onclick = () => { hide('#result'); ctl.resume(); };
@@ -47,7 +44,7 @@ export function showResult(ctl: Controller, level: LevelDef, ev: Evaluation, out
   $('#result-replay').onclick = () => { hide('#result'); actions.replay(); };
   const after = $<HTMLImageElement>('#ba-after').src;
   $('#result-image').onclick = () => void saveBeforeAfter(ctl.before ?? after, after,
-    { title: levelTitle(level), stars: ev.stars, noteBefore: ctl.startNote, noteAfter: ev.readability.note }, `${fileName(level)}.png`);
+    { title: levelTitle(level), stars: ev.stars }, `${fileName(level)}.png`);
   show('#result');
 }
 
@@ -62,6 +59,9 @@ function resultLines(level: LevelDef, ev: Evaluation, result: LevelResult, chall
   ];
   const bundles = `${Math.min(ev.bundles, ev.bundlesNeeded)}/${ev.bundlesNeeded}`;
   if (ev.bundlesNeeded) lines.push(tr({ fr: `Faisceaux : ${bundles}`, en: `Bundles: ${bundles}` }));
+  if (levelRules(level).includes('separation')) lines.push(ev.mixedSupports
+    ? tr({ fr: `Goulottes ou anneaux mêlés : ${ev.mixedSupports}`, en: `Mixed ducts or rings: ${ev.mixedSupports}` })
+    : tr({ fr: 'Chaque famille dans son couloir', en: 'Each family down its own channel' }));
   if (level.downtime !== undefined) {
     const spent = Math.round(ev.downtime);
     lines.push(ev.downtime > ev.budget
@@ -97,36 +97,6 @@ function showNext(next: Outcome['next'], actions: ResultActions): void {
     ? tr({ fr: `${'★'.repeat(UNLOCK_STARS)} pour le niveau suivant`, en: `${'★'.repeat(UNLOCK_STARS)} for the next level` })
     : next.level.kind === 'ticket' ? tr({ fr: 'Ticket suivant →', en: 'Next ticket →' }) : tr({ fr: 'Niveau suivant →', en: 'Next level →' });
   button.onclick = () => { if (next.open) { hide('#result'); actions.start(next.level); } };
-}
-
-/** the payslip: what each line earned, what was paid, the € on hand */
-function payHtml(pay: Pay): string {
-  const lines = pay.slip.lines.map((l) => `<span>${payItemName(l.item)} <b>${formatMoney(l.amount)}</b></span>`).join('');
-  const paid = pay.paid === pay.slip.total
-    ? tr({ fr: `Salaire : <b>+${formatMoney(pay.paid)}</b>`, en: `Pay: <b>+${formatMoney(pay.paid)}</b>` })
-    : tr({ fr: `Salaire : <b>+${formatMoney(pay.paid)}</b> (déjà payé ${formatMoney(pay.slip.total - pay.paid)} pour ce niveau)`, en: `Pay: <b>+${formatMoney(pay.paid)}</b> (${formatMoney(pay.slip.total - pay.paid)} paid already for this level)` });
-  return `<div class="paid">${paid}<span class="coins">${tr({ fr: 'Solde', en: 'Balance' })} ${formatMoney(pay.coins)}</span></div><div class="slip">${lines}</div>`;
-}
-
-function payItemName(item: PayItem): string {
-  switch (item) {
-    case 'links': return tr({ fr: 'Liaisons', en: 'Links' });
-    case 'tidy': return tr({ fr: 'Rangement', en: 'Tidiness' });
-    case 'readability': return tr({ fr: 'Lisibilité', en: 'Readability' });
-    case 'budget': return tr({ fr: 'Interruption évitée', en: 'Downtime avoided' });
-    case 'challenge': return tr({ fr: 'Défi réussi', en: 'Challenge won' });
-    default: return assertNever(item);
-  }
-}
-
-/** the readability note: from where the cabinet started, to now, and the record */
-function noteHtml(startNote: number, ev: Evaluation, result: LevelResult): string {
-  const { note, previousNote } = result;
-  const best = previousNote !== undefined ? Math.max(previousNote, note) : 0;
-  const isNew = previousNote !== undefined && note > previousNote;
-  const record = previousNote !== undefined ? tr({ fr: ` · record ${best}${isNew ? ' — nouveau record !' : ''}`, en: ` · best ${best}${isNew ? ' — new best!' : ''}` }) : '';
-  return `<div class="grade"><s>${startNote}</s><span class="to">→</span><b>${note}</b><span>${tr({ fr: 'Lisibilité', en: 'Readability' })}${record}</span></div>`
-    + ev.readability.parts.map((p) => { const t = readabilityText(p); return `<div class="part"><span>${t.name}</span><div class="bar"><div class="fill" style="width:${Math.round(p.value * 100)}%"></div></div><i>${t.tip}</i></div>`; }).join('');
 }
 
 /** the button that copies the result to share, when there is one */

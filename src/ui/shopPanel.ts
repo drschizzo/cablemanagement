@@ -1,11 +1,10 @@
-// The workshop, from the title screen: the € on hand, for each slot the looks
-// to buy or to equip (a swatch each), and the finds picked up so far.
+// The workshop, from the title screen: the stars won, for each slot the looks
+// open or still to win (a swatch each), and the finds picked up so far.
 
 import { load, save } from './storage';
 import { hide, show } from './dom';
 import { $ } from '../lib/page';
-import { LOOK_SLOTS, SHOP, buy, equip, isOwned, equippedIn, type LookSlot } from './shop';
-import { formatMoney } from './format';
+import { LOOK_SLOTS, SHOP, equip, equippedIn, isOpen, starsWon, type LookSlot } from './shop';
 import { language, tr } from './language';
 import { assertNever } from '../lib/assertNever';
 import { FINDS, type FindId } from '../game/finds';
@@ -30,8 +29,9 @@ export class ShopPanel {
   }
 
   private render(): void {
-    const wallet = load('wallet');
-    $('#shop-coins').textContent = formatMoney(wallet.coins);
+    const workshop = load('workshop');
+    const stars = starsWon(load('progress'), load('career'));
+    $('#shop-stars').textContent = `${stars} ★`;
     const box = $('#shop-items');
     box.innerHTML = '';
     for (const slot of LOOK_SLOTS) {
@@ -39,23 +39,23 @@ export class ShopPanel {
       title.textContent = slotName(slot);
       const row = document.createElement('div');
       row.className = 'swatches';
-      const equipped = equippedIn(wallet, slot);
+      const equipped = equippedIn(workshop, stars, slot);
       for (const item of SHOP.filter((i) => i.slot === slot)) {
-        const owned = isOwned(wallet, item);
+        const open = isOpen(stars, item);
         const button = document.createElement('button');
-        button.className = 'swatch' + (item === equipped ? ' cur' : '') + (owned ? '' : ' locked');
-        button.disabled = !owned && wallet.coins < item.price;
-        button.innerHTML = `<i style="background:${item.value}"></i><span>${tr(item.name)}</span><small>${item === equipped ? tr({ fr: 'équipé', en: 'equipped' }) : owned ? tr({ fr: 'équiper', en: 'equip' }) : formatMoney(item.price)}</small>`;
+        button.className = 'swatch' + (item === equipped ? ' cur' : '') + (open ? '' : ' locked');
+        button.disabled = !open;
+        button.innerHTML = `<i style="background:${item.value}"></i><span>${tr(item.name)}</span><small>${item === equipped ? tr({ fr: 'équipé', en: 'equipped' }) : open ? tr({ fr: 'équiper', en: 'equip' }) : `${item.stars} ★`}</small>`;
         button.onclick = () => {
-          const w = load('wallet');
-          if (owned ? equip(w, item) : buy(w, item) && equip(w, item)) save('wallet', w);
+          const w = load('workshop');
+          if (equip(w, stars, item)) save('workshop', w);
           this.render();
         };
         row.appendChild(button);
       }
       box.append(title, row);
     }
-    this.renderFinds(wallet.finds);
+    this.renderFinds(workshop.finds);
   }
 
   /** the finds: those picked up with their story, the others as where to look */

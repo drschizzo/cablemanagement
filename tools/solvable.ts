@@ -40,7 +40,7 @@ for (const lv of LEVELS) {
   const count = (k: string) => added.filter((p) => p.kind === k).length;
   const stock = `guide-câbles ${count('fingerManager')}/${lv.inventory.fingerManager ?? 0} goulottes ${count('duct')}/${lv.inventory.duct ?? 0} anneaux ${count('ring')}/${lv.inventory.ring ?? 0}`;
   const bad = w.cables.map((cb, c) => (ev.cableRouted[c] ? '' : `R:${cb.ends.map((e) => e.port).join('-')} `) + (ev.cableObstructs[c] ? `O:${cb.ends.map((e) => e.port).join('-')} ` : '')).join('');
-  console.log(`${lv.id}: routed ${ev.routed}/${ev.total} clear ${ev.clear} relaxed ${ev.relaxed} stars ${ev.stars} lisibilité ${ev.readability.note} bundles ${ev.bundles}/${ev.bundlesNeeded} velcro ${(lv.inventory.velcro ?? 0) - w.stock.velcro}/${lv.inventory.velcro ?? 0} | ${stock} ${bad}`);
+  console.log(`${lv.id}: routed ${ev.routed}/${ev.total} clear ${ev.clear} relaxed ${ev.relaxed} stars ${ev.stars} bundles ${ev.bundles}/${ev.bundlesNeeded} velcro ${(lv.inventory.velcro ?? 0) - w.stock.velcro}/${lv.inventory.velcro ?? 0} | ${stock} ${bad}`);
 }
 
 console.log('\nAu départ : les liaisons en production rangées sans les débrancher');

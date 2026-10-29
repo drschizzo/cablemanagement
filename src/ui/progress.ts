@@ -1,6 +1,6 @@
-// The player's progress, level by level: best stars, best time, best
-// readability note, challenge won (the time challenge of the campaign, the
-// gestures challenge of the puzzles); and the rules and gestures already met. Pure
+// The player's progress, level by level: best stars, best time, challenge
+// won (the time challenge of the campaign, the gestures challenge of the
+// puzzles); and the rules and gestures already met. Pure
 // functions over the saved record: saving it is the caller's business
 // (storage.ts).
 
@@ -18,10 +18,8 @@ export interface LevelResult {
   time: number;
   /** gestures that changed the cabinet */
   moves: number;
-  note: number;
-  /** stars and note recorded before this result (note: undefined if never validated) */
+  /** stars recorded before this result */
   previousStars: number;
-  previousNote: number | undefined;
   /** three stars within the level's challenge (time, or gestures) */
   challengeWon: boolean;
 }
@@ -37,16 +35,14 @@ export function isChallengeWon(level: LevelDef, stars: number, time: number, mov
 }
 
 /** keeps the best of each in the record, and tells what it held before */
-export function recordResult(progress: Progress, level: LevelDef, stars: number, time: number, moves: number, note: number): LevelResult {
+export function recordResult(progress: Progress, level: LevelDef, stars: number, time: number, moves: number): LevelResult {
   const id = level.id;
   const previousStars = progress.stars[id] ?? 0;
-  const previousNote = progress.notes[id];
   progress.stars[id] = Math.max(previousStars, stars);
   if (!progress.times[id] || time < progress.times[id]) progress.times[id] = time;
-  progress.notes[id] = Math.max(previousNote ?? 0, note);
   const challengeWon = isChallengeWon(level, stars, time, moves);
   if (challengeWon) progress.challenges[id] = true;
-  return { stars, time, moves, note, previousStars, previousNote, challengeWon };
+  return { stars, time, moves, previousStars, challengeWon };
 }
 
 /** a level can be played: the first one, one after a tidy enough level, or one already played */

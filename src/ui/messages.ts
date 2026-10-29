@@ -1,11 +1,10 @@
 // Every sentence a level says to the player: the toasts, the hints under the
-// cabinet, the tooltip of a cord, what the next star needs, the readability
-// criteria, and why a cabinet of the editor cannot be played. The game sends data (play/messages.ts,
+// cabinet, the tooltip of a cord, what the next star needs, and why a cabinet of the editor cannot be played. The game sends data (play/messages.ts,
 // game/evaluation.ts, game/levels/customLevel.ts); the words live here.
 
 import type { CordInfo, Hint, HoverNote, PhysicsStats, Toast } from '../play/messages';
 import type { RouteError } from '../game/routeLaying';
-import type { ReadabilityPart, StarNeed, Strain } from '../game/evaluation';
+import type { StarNeed, Strain } from '../game/evaluation';
 import type { IncidentEvent } from '../game/incidents';
 import type { CustomError } from '../game/levels/customLevel';
 import { assertNever } from '../lib/assertNever';
@@ -159,24 +158,10 @@ export function starNeedText(need: StarNeed): string {
       const why = cm > 0 ? tr({ fr: ` : il manque jusqu'à ${cm} cm, un cordon plus long au Stock`, en: `: up to ${cm} cm short, a longer cord from the Stock` }) : '';
       return tr({ fr: `${n} ${plural(n, 'cordon tendu ou plié', 'cordons tendus ou pliés')}`, en: `${n} ${plural(n, 'cord taut or kinked', 'cords taut or kinked')}` }) + why;
     }
-    case 'bundle': { const n = need.count; return tr({ fr: `Serrez encore ${n} ${plural(n, 'faisceau', 'faisceaux')} (un velcro sur 3 câbles ou plus)`, en: `Strap ${n} more ${plural(n, 'bundle', 'bundles')} (a velcro round 3 cords or more)` }); }
+    case 'separate': { const n = need.count; return tr({ fr: `${n} ${plural(n, 'goulotte ou anneau mêle', 'goulottes ou anneaux mêlent')} fibre, cuivre ou courant`, en: `${n} ${plural(n, 'duct or ring mixes', 'ducts or rings mix')} fibre, copper or power` }); }
+    case 'bundle': { const n = need.count; return tr({ fr: `Serrez encore ${n} ${plural(n, 'faisceau', 'faisceaux')} (un velcro sur 3 câbles ou plus d'un même service)`, en: `Strap ${n} more ${plural(n, 'bundle', 'bundles')} (a velcro round 3 cords or more of one service)` }); }
     case 'incident': return tr({ fr: 'Budget d\'interruption dépassé : ★★★ n\'est plus possible', en: 'Downtime budget overrun: ★★★ is out of reach' });
     default: return assertNever(need);
-  }
-}
-
-/** a readability criterion: its name, and what it asks for */
-export function readabilityText(part: ReadabilityPart): { name: string; tip: string } {
-  switch (part.criterion) {
-    case 'slack': return tr({ fr: { name: 'Le mou juste', tip: 'ni tendu ni plié, et pas plus de 50 cm de trop' }, en: { name: 'Right slack', tip: 'neither taut nor kinked, and no more than 50 cm too long' } });
-    case 'colours': return tr({ fr: { name: 'Couleurs', tip: 'chaque cordon cuivre de la couleur de son service' }, en: { name: 'Colours', tip: 'each copper cord in its service\'s colour' } });
-    case 'bundles': return tr({ fr: { name: 'Faisceaux', tip: 'un seul service par velcro' }, en: { name: 'Bundles', tip: 'one service per velcro' } });
-    case 'separation': return tr({ fr: { name: 'Séparation', tip: 'la fibre, le cuivre et le courant dans des supports séparés' }, en: { name: 'Separation', tip: 'fibre, copper and power in separate supports' } });
-    case 'crossings': return tr({
-      fr: { name: 'Croisements', tip: `${part.crossings} croisement${part.crossings > 1 ? 's' : ''} hors des supports` },
-      en: { name: 'Crossings', tip: `${part.crossings} crossing${part.crossings > 1 ? 's' : ''} outside the supports` },
-    });
-    default: return assertNever(part);
   }
 }
 

@@ -1,10 +1,13 @@
-// The shop: looks to buy with what the jobs paid, one equipped per slot (the
-// velcros, the light round the cabinet). Its catalogue, when it opens, and
-// the rules of buying and equipping: pure functions over the saved wallet
-// (storage.ts).
+// The workshop: looks that open with the stars won, one equipped per slot
+// (the velcros, the light round the cabinet), and the finds picked up. Its
+// catalogue, when it opens, and the rules of equipping: pure functions over
+// the saved record (storage.ts).
 
 import { DEFAULT_LOOK, type Look } from '../render/look';
-import type { Career, Progress, Wallet } from './storage';
+import { LEVELS } from '../game/levels/campaign';
+import { PUZZLES } from '../game/levels/puzzles';
+import type { FindId } from '../game/finds';
+import type { Career, Progress, Workshop } from './storage';
 import type { Words } from './language';
 
 export type LookSlot = keyof Look;
@@ -13,69 +16,70 @@ export interface LookItem {
   id: string;
   slot: LookSlot;
   name: Words;
-  /** € (0: given) */
-  price: number;
+  /** stars won that open it (0: given) */
+  stars: number;
   /** the colour it gives its slot */
   value: string;
 }
 
 export const SHOP: LookItem[] = [
-  { id: 'velcro-navy', slot: 'velcro', name: { fr: 'Marine', en: 'Navy' }, price: 0, value: DEFAULT_LOOK.velcro },
-  { id: 'velcro-black', slot: 'velcro', name: { fr: 'Noir', en: 'Black' }, price: 40, value: '#151617' },
-  { id: 'velcro-red', slot: 'velcro', name: { fr: 'Rouge', en: 'Red' }, price: 60, value: '#a3242a' },
-  { id: 'velcro-green', slot: 'velcro', name: { fr: 'Vert', en: 'Green' }, price: 60, value: '#2f7d3a' },
-  { id: 'velcro-orange', slot: 'velcro', name: { fr: 'Orange', en: 'Orange' }, price: 90, value: '#d9731a' },
-  { id: 'velcro-pink', slot: 'velcro', name: { fr: 'Rose', en: 'Pink' }, price: 150, value: '#e05aa3' },
-  { id: 'accent-cool', slot: 'accent', name: { fr: 'Froide', en: 'Cool' }, price: 0, value: DEFAULT_LOOK.accent },
-  { id: 'accent-warm', slot: 'accent', name: { fr: 'Ambre', en: 'Amber' }, price: 80, value: '#ffb36b' },
-  { id: 'accent-mint', slot: 'accent', name: { fr: 'Menthe', en: 'Mint' }, price: 120, value: '#7dffc0' },
-  { id: 'accent-violet', slot: 'accent', name: { fr: 'Violette', en: 'Violet' }, price: 160, value: '#b48cff' },
-  { id: 'accent-red', slot: 'accent', name: { fr: 'Alerte rouge', en: 'Red alert' }, price: 250, value: '#ff5a5a' },
+  { id: 'velcro-navy', slot: 'velcro', name: { fr: 'Marine', en: 'Navy' }, stars: 0, value: DEFAULT_LOOK.velcro },
+  { id: 'velcro-black', slot: 'velcro', name: { fr: 'Noir', en: 'Black' }, stars: 5, value: '#151617' },
+  { id: 'velcro-red', slot: 'velcro', name: { fr: 'Rouge', en: 'Red' }, stars: 10, value: '#a3242a' },
+  { id: 'velcro-green', slot: 'velcro', name: { fr: 'Vert', en: 'Green' }, stars: 15, value: '#2f7d3a' },
+  { id: 'velcro-orange', slot: 'velcro', name: { fr: 'Orange', en: 'Orange' }, stars: 25, value: '#d9731a' },
+  { id: 'velcro-pink', slot: 'velcro', name: { fr: 'Rose', en: 'Pink' }, stars: 40, value: '#e05aa3' },
+  { id: 'accent-cool', slot: 'accent', name: { fr: 'Froide', en: 'Cool' }, stars: 0, value: DEFAULT_LOOK.accent },
+  { id: 'accent-warm', slot: 'accent', name: { fr: 'Ambre', en: 'Amber' }, stars: 8, value: '#ffb36b' },
+  { id: 'accent-mint', slot: 'accent', name: { fr: 'Menthe', en: 'Mint' }, stars: 20, value: '#7dffc0' },
+  { id: 'accent-violet', slot: 'accent', name: { fr: 'Violette', en: 'Violet' }, stars: 32, value: '#b48cff' },
+  { id: 'accent-red', slot: 'accent', name: { fr: 'Alerte rouge', en: 'Red alert' }, stars: 50, value: '#ff5a5a' },
 ];
 
-/** the campaign level whose sign-off opens the workshop (its pay shows from then on) */
+/** the campaign level whose sign-off opens the workshop */
 const WORKSHOP_OPENS_AT = 'l3';
 
-/**
- * The workshop, and the pay that feeds it, show once the player knows the
- * trade: past the first levels of the campaign, or a ticket of the career
- * done. The jobs before pay all the same: the wallet is full when it opens.
- */
-export function isWorkshopOpen(progress: Progress, career: Career, wallet: Wallet): boolean {
-  return (progress.stars[WORKSHOP_OPENS_AT] ?? 0) > 0 || career.done > 0 || wallet.owned.length > 0;
+/** the workshop shows once the player knows the trade: past the first levels of the campaign, or a ticket of the career done */
+export function isWorkshopOpen(progress: Progress, career: Career): boolean {
+  return (progress.stars[WORKSHOP_OPENS_AT] ?? 0) > 0 || career.done > 0;
 }
 
-/** the slots, in the order of the shop */
+/** the best stars of every campaign level, puzzle and ticket of the career, added up */
+export function starsWon(progress: Progress, career: Career): number {
+  const levels = [...LEVELS, ...PUZZLES].reduce((sum, l) => sum + (progress.stars[l.id] ?? 0), 0);
+  return levels + career.stars.reduce((sum, s) => sum + (s ?? 0), 0);
+}
+
+/** the slots, in the order of the workshop */
 export const LOOK_SLOTS = Object.keys(DEFAULT_LOOK) as LookSlot[];
 
-export function isOwned(wallet: Wallet, item: LookItem): boolean {
-  return item.price === 0 || wallet.owned.includes(item.id);
+export function isOpen(stars: number, item: LookItem): boolean {
+  return stars >= item.stars;
 }
 
-/** the item equipped in a slot: the one chosen, or the one given */
-export function equippedIn(wallet: Wallet, slot: LookSlot): LookItem {
-  const chosen = SHOP.find((i) => i.id === wallet.equipped[slot] && i.slot === slot);
-  return chosen && isOwned(wallet, chosen) ? chosen : SHOP.find((i) => i.slot === slot && i.price === 0)!;
+/** the item equipped in a slot: the one chosen while it is open, or the one given */
+export function equippedIn(workshop: Workshop, stars: number, slot: LookSlot): LookItem {
+  const chosen = SHOP.find((i) => i.id === workshop.equipped[slot] && i.slot === slot);
+  return chosen && isOpen(stars, chosen) ? chosen : SHOP.find((i) => i.slot === slot && i.stars === 0)!;
 }
 
-/** buys an item; false when it is owned already or the wallet is too light */
-export function buy(wallet: Wallet, item: LookItem): boolean {
-  if (isOwned(wallet, item) || wallet.coins < item.price) return false;
-  wallet.coins -= item.price;
-  wallet.owned.push(item.id);
+/** equips an item in its slot; false when it is not open yet */
+export function equip(workshop: Workshop, stars: number, item: LookItem): boolean {
+  if (!isOpen(stars, item)) return false;
+  workshop.equipped[item.slot] = item.id;
   return true;
 }
 
-/** equips an item in its slot; false when it is not owned */
-export function equip(wallet: Wallet, item: LookItem): boolean {
-  if (!isOwned(wallet, item)) return false;
-  wallet.equipped[item.slot] = item.id;
-  return true;
-}
-
-/** the look the wallet's items give */
-export function lookOf(wallet: Wallet): Look {
+/** the look the equipped items give */
+export function lookOf(workshop: Workshop, stars: number): Look {
   const look = { ...DEFAULT_LOOK };
-  for (const slot of LOOK_SLOTS) look[slot] = equippedIn(wallet, slot).value;
+  for (const slot of LOOK_SLOTS) look[slot] = equippedIn(workshop, stars, slot).value;
   return look;
+}
+
+/** a find picked up joins the collection; false when it was in it already */
+export function collectFind(workshop: Workshop, find: FindId): boolean {
+  if (workshop.finds.includes(find)) return false;
+  workshop.finds.push(find);
+  return true;
 }

@@ -1,6 +1,6 @@
 // The game sends data; the words are tested here, where they are written.
 import { describe, expect, it } from 'vitest';
-import { cordTooltipHtml, hintHtml, readabilityText, toastText } from '../../src/ui/messages';
+import { cordTooltipHtml, hintHtml, starNeedText, toastText } from '../../src/ui/messages';
 
 describe('the messages of a level', () => {
   it('says how much a cord lacks for a route', () => {
@@ -24,7 +24,8 @@ describe('the messages of a level', () => {
     expect(cordTooltipHtml({ ...cord, ends: ['A1', null] }, [{ kind: 'traceOrCrate' }])).toContain('A1 ↔ — · 1,50 m<br><i>T : tracer');
   });
 
-  it('names every readability criterion', () => {
-    expect(readabilityText({ criterion: 'crossings', value: 0.5, crossings: 2 }).tip).toBe('2 croisements hors des supports');
+  it('tells how much the tautest cord lacks', () => {
+    expect(starNeedText({ kind: 'relax', count: 2, short: 0.123 })).toBe('2 cordons tendus ou pliés : il manque jusqu\'à 13 cm, un cordon plus long au Stock');
+    expect(starNeedText({ kind: 'relax', count: 1, short: 0 })).toBe('1 cordon tendu ou plié');
   });
 });

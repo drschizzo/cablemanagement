@@ -9,7 +9,7 @@ export type CordType = 'OS2' | 'OM4' | 'CU' | 'PWR';
 export type CordPlug = 'lc' | 'rj45' | 'c13';
 
 interface CordKind {
-  /** fibre and copper are not run in the same supports (readability) */
+  /** fibre, copper and power are not run in the same supports (three stars) */
   family: 'fibre' | 'copper' | 'power';
   /** bending stiffness of the cord for the solver */
   stiffness: number;

@@ -22,13 +22,13 @@ src/
     cables.ts       ce qu'est un cordon (Cable, CableEnd, Strap) et ses indices nommés (CableIndex, EndIndex,
                     NodeIndex, CircuitIndex)
     cordShapes.ts   la géométrie d'un cordon hors physique : remis à une autre longueur, enroulé dans le bac
-    evaluation.ts   le score : chaque liaison (branchée, rangée, dégagée, étiquetée, sans tension), étoiles,
-                    ce qui manque à l'étoile suivante (nextStar), lisibilité — des fonctions qui lisent un World sans le modifier
+    evaluation.ts   le score : chaque liaison (branchée, rangée, dégagée, étiquetée, sans tension), les couloirs qui
+                    mêlent les familles, les faisceaux, étoiles, ce qui manque à l'étoile suivante (nextStar) — des
+                    fonctions qui lisent un World sans le modifier
     maintenanceWindow.ts  liaisons en production, budget d'interruption, dérivations
     cabinetState.ts une baie telle que le joueur la laisse (équipements, supports, plan, cordons branchés, velcros),
                     pour la retrouver à la visite suivante (la carrière)
     finds.ts        les trouvailles : l'objet qu'un niveau cache (LevelBase.find), et où il est posé
-    pay.ts          ce que rapporte un chantier : les liaisons, le rangement, la lisibilité, le budget épargné, le défi
     incidents.ts    les incidents pendant le chantier (un collègue débranche une liaison, un utilisateur appelle) :
                     joués par Incidents, appliqués à la baie par World.workGoesOn
     rack.ts         baie 19", ports, éléments de rangement, formes de collision, zones de rangement
@@ -96,8 +96,8 @@ src/
   ui/           L'INTERFACE HTML autour de la baie
     hud.ts          Hud : assemble les panneaux, et les petites choses (aide, bulle, message, chronomètre)
     toolbar.ts      la barre d'outils et ce qui reste en stock ; stockMenu.ts, le stock de cordons neufs
-    schedulePanel.ts le plan de brassage, le budget d'interruption, l'étoile suivante et ce qui lui manque, la
-                    lisibilité (dès ★★), les jauges repliées, le bouton Valider
+    schedulePanel.ts le plan de brassage, le budget d'interruption, l'étoile suivante et ce qui lui manque, les
+                    jauges repliées, le bouton Valider
     levelBrief.ts   le brief d'un niveau (ses conseils, les règles et les gestes qu'on y rencontre pour la première fois,
                     les autres repliés), puis la préparation ; ruleTexts.ts, les mots de chaque règle et de chaque geste
     timelapsePlayer.ts le timelapse lu en boucle, et enregistré en vidéo (MediaRecorder) ; beforeAfterImage.ts, la baie
@@ -110,16 +110,14 @@ src/
     settingsPanel.ts les paramètres : qualité de l'image (auto, préréglages, détails) et son
     progress.ts     la progression du joueur : meilleur score, défi réussi (chrono de la campagne, gestes d'un puzzle),
                     niveau ouvert, niveau suivant, règles déjà rencontrées (fonctions pures)
-    shop.ts         l'atelier : son catalogue, quand il ouvre, acheter et porter un look (fonctions pures) ;
-                    shopPanel.ts, son panneau
-    wallet.ts       le salaire encaissé (un niveau rejoué ne paie que ce qu'il ajoute à sa meilleure fiche de paie) et les
-                    trouvailles gardées
+    shop.ts         l'atelier : son catalogue, quand il ouvre, les étoiles gagnées qui ouvrent chaque look, le porter,
+                    les trouvailles gardées (fonctions pures) ; shopPanel.ts, son panneau
     editorPanel.ts  l'éditeur de baie : la baie en élévation (une bande par unité, aux couleurs de son équipement), la
                     palette, les règles, jouer ou copier le lien (?rack=CODE)
-    outcome.ts      ce que laisse une baie validée, selon sa sorte de niveau : record, salaire, partage, niveau suivant
+    outcome.ts      ce que laisse une baie validée, selon sa sorte de niveau : record, partage, niveau suivant
     career.ts       la carrière : le ticket à jouer, le ticket validé (la baie gardée) ; careerPanel.ts, son panneau
     daily.ts        les baies du jour réussies : le meilleur de chaque jour, les jours de suite, le résultat à partager
-    messages.ts     tous les textes d'une partie : messages, aides, bulle d'un cordon, critères de lisibilité, et pourquoi
+    messages.ts     tous les textes d'une partie : messages, aides, bulle d'un cordon, et pourquoi
                     une baie de l'éditeur ne se joue pas
     keyHints.ts     les touches qui comptent à l'instant (outil en main, cordon survolé), en touches de clavier sous la baie
     language.ts     la langue parlée (français, anglais) : tr({ fr, en }) choisit les mots, onLanguageChange fait
@@ -240,7 +238,7 @@ sur le fil principal.
 ## Données dans le navigateur
 
 `ui/storage.ts` déclare chaque entrée (clé, valeur par défaut, validation) : progression (étoiles et meilleurs temps
-par niveau), tutoriel terminé, règles et gestes déjà rencontrés, partie libre ouverte d'avance, carrière (tickets faits, la baie du client telle que laissée), dernière baie de l'éditeur, portefeuille (salaire, cosmétiques achetés, trouvailles), baies du jour (le meilleur résultat de chaque date), langue (celle du navigateur tant que le joueur n'en a pas choisi), musique coupée, qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu) et son
+par niveau), tutoriel terminé, règles et gestes déjà rencontrés, partie libre ouverte d'avance, carrière (tickets faits, la baie du client telle que laissée), dernière baie de l'éditeur, atelier (looks portés, trouvailles ; sous la clé du portefeuille d'avant), baies du jour (le meilleur résultat de chaque date), langue (celle du navigateur tant que le joueur n'en a pas choisi), musique coupée, qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu) et son
 coupé. Les clés sont celles des versions précédentes.
 
 ## Ajouter…

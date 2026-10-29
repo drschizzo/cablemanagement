@@ -18,7 +18,7 @@ export const PAGE_TEXTS: Record<string, Words> = {
   'career.over': { fr: 'Carrière terminée : les 40 ans sont passés en direct sans un blanc. La directrice vous offre un mug Radio Pinède. Bravo !', en: 'Career over: the 40th anniversary went out live without a second of dead air. The director gives you a Radio Pinède mug. Well done!' },
   'career.reset': { fr: 'Recommencer la carrière', en: 'Start the career over' },
   'shop.finds': { fr: 'Trouvailles', en: 'Finds' },
-  'shop.balance': { fr: 'Votre solde, gagné sur les chantiers :', en: 'Your balance, earned on the jobs:' },
+  'shop.stars': { fr: 'Chaque couleur s\'ouvre avec les étoiles gagnées. Vous en avez', en: 'Each colour opens with the stars won. You have' },
   'common.before': { fr: 'Avant', en: 'Before' },
   'common.after': { fr: 'Après', en: 'After' },
   'top.menu': { fr: '☰ Menu', en: '☰ Menu' },

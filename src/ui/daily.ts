@@ -17,10 +17,10 @@ export function linesOf(ev: Evaluation): number[] {
   return ev.circuits.map((s) => (s.connected && s.routed && s.clear && s.relaxed ? 2 : s.connected ? 1 : 0));
 }
 
-/** is `a` better than `b`: more stars, then a better note, then less time */
+/** is `a` better than `b`: more stars, then less downtime, then less time */
 function isBetter(a: DailyResult, b: DailyResult): boolean {
   if (a.stars !== b.stars) return a.stars > b.stars;
-  if (a.note !== b.note) return a.note > b.note;
+  if (a.downtime !== b.downtime) return a.downtime < b.downtime;
   return a.time < b.time;
 }
 
@@ -28,9 +28,9 @@ function isBetter(a: DailyResult, b: DailyResult): boolean {
 export function recordDaily(record: Record<string, DailyResult>, level: DailyLevel, ev: Evaluation, time: number, moves: number): LevelResult {
   const before = record[level.date];
   // no budget (Infinity) is kept as 0: JSON has no Infinity
-  const now: DailyResult = { stars: ev.stars, time, note: ev.readability.note, downtime: Math.round(ev.downtime), budget: Number.isFinite(ev.budget) ? ev.budget : 0, lines: linesOf(ev) };
+  const now: DailyResult = { stars: ev.stars, time, downtime: Math.round(ev.downtime), budget: Number.isFinite(ev.budget) ? ev.budget : 0, lines: linesOf(ev) };
   if (!before || isBetter(now, before)) record[level.date] = now;
-  return { stars: ev.stars, time, moves, note: now.note, previousStars: before?.stars ?? 0, previousNote: before?.note, challengeWon: false };
+  return { stars: ev.stars, time, moves, previousStars: before?.stars ?? 0, challengeWon: false };
 }
 
 /** days in a row with a cabinet signed off, up to today (or to yesterday, while today's is still to do) */
@@ -54,7 +54,7 @@ export function shareText(level: DailyLevel, result: DailyResult, days: number):
   const budget = result.budget ? ` · ⚡ ${result.downtime}/${result.budget}` : '';
   return [
     tr({ fr: `Brassage — baie du jour n° ${level.number}`, en: `Brassage — cabinet of the day #${level.number}` }),
-    `${stars} · ⏱ ${formatTime(result.time)} · ${tr({ fr: 'lisibilité', en: 'readability' })} ${result.note}${budget}`,
+    `${stars} · ⏱ ${formatTime(result.time)}${budget}`,
     ...grid,
     days > 1 ? tr({ fr: `🔥 ${days} jours de suite`, en: `🔥 ${days} days in a row` }) : '',
     GAME_URL,

@@ -15,12 +15,12 @@ beforeEach(() => {
 
 describe('browser storage', () => {
   it('a missing entry reads as its default', () => {
-    expect(load('progress')).toEqual({ stars: {}, times: {}, challenges: {}, notes: {} });
+    expect(load('progress')).toEqual({ stars: {}, times: {}, challenges: {} });
     expect(load('tutorialDone')).toBe(false);
   });
 
   it('keeps the progress, under the key of earlier versions', () => {
-    const p = { stars: { l1: 3 }, times: { l1: 42 }, challenges: { l1: true }, notes: { l1: 87 } };
+    const p = { stars: { l1: 3 }, times: { l1: 42 }, challenges: { l1: true } };
     save('progress', p);
     expect(JSON.parse(mem.get('cable.progress')!)).toEqual(p);
     expect(load('progress')).toEqual(p);
@@ -28,23 +28,28 @@ describe('browser storage', () => {
 
   it('an old save without the times or the challenges still reads', () => {
     mem.set('cable.progress', '{"stars":{"l2":1}}');
-    expect(load('progress')).toEqual({ stars: { l2: 1 }, times: {}, challenges: {}, notes: {} });
+    expect(load('progress')).toEqual({ stars: { l2: 1 }, times: {}, challenges: {} });
   });
 
   it('an unreadable value, or one of another shape, reads as the default', () => {
     for (const raw of ['{', 'null', '42', '{"stars":3}']) {
       mem.set('cable.progress', raw);
-      expect(load('progress')).toEqual({ stars: {}, times: {}, challenges: {}, notes: {} });
+      expect(load('progress')).toEqual({ stars: {}, times: {}, challenges: {} });
     }
   });
 
-  it('a wallet of an earlier version gets the fields it lacked; one of another shape reads as empty', () => {
-    const empty = { coins: 0, best: {}, owned: [], equipped: {}, finds: [] };
-    mem.set('cable.wallet', '{"coins":120,"best":{"l1":50}}');
-    expect(load('wallet')).toEqual({ ...empty, coins: 120, best: { l1: 50 } });
-    for (const raw of ['{"coins":"120"}', '{"coins":5,"owned":"velcro-red"}', '{"coins":5,"best":[]}', '[]']) {
+  it('an old save forgets the readability notes it kept', () => {
+    mem.set('cable.progress', '{"stars":{"l1":3},"times":{},"challenges":{},"notes":{"l1":87}}');
+    expect(load('progress')).toEqual({ stars: { l1: 3 }, times: {}, challenges: {} });
+  });
+
+  it('the workshop reads the wallet of earlier versions, keeping its looks and finds; one of another shape reads as empty', () => {
+    const empty = { equipped: {}, finds: [] };
+    mem.set('cable.wallet', '{"coins":120,"best":{"l1":50},"owned":["velcro-red"],"equipped":{"velcro":"velcro-red"},"finds":["duck"]}');
+    expect(load('workshop')).toEqual({ equipped: { velcro: 'velcro-red' }, finds: ['duck'] });
+    for (const raw of ['{"equipped":[]}', '{"finds":"duck"}', '42']) {
       mem.set('cable.wallet', raw);
-      expect([raw, load('wallet')]).toEqual([raw, empty]);
+      expect([raw, load('workshop')]).toEqual([raw, empty]);
     }
   });
 
@@ -88,7 +93,7 @@ describe('browser storage', () => {
   it('a blocked storage does not break the game', () => {
     const blocked = () => { throw new Error('blocked'); };
     vi.stubGlobal('localStorage', { getItem: blocked, setItem: blocked, removeItem: blocked });
-    expect(load('progress')).toEqual({ stars: {}, times: {}, challenges: {}, notes: {} });
+    expect(load('progress')).toEqual({ stars: {}, times: {}, challenges: {} });
     expect(() => save('tutorialDone', true)).not.toThrow();
   });
 });

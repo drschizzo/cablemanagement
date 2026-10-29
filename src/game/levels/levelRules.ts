@@ -8,7 +8,7 @@ import { CORD_KINDS } from '../cordTypes';
 import { assertNever } from '../../lib/assertNever';
 
 /** every rule, in the order a brief tells them */
-export const RULES = ['leds', 'taut', 'kinked', 'maintenance', 'bypass', 'bundles', 'blind', 'faults', 'power', 'incidents'] as const;
+export const RULES = ['leds', 'taut', 'kinked', 'separation', 'maintenance', 'bypass', 'bundles', 'blind', 'faults', 'power', 'incidents'] as const;
 
 export type Rule = typeof RULES[number];
 
@@ -23,6 +23,7 @@ function hasRule(level: LevelDef, rule: Rule): boolean {
     // what every cabinet is judged on
     case 'leds': case 'taut': return true;
     case 'kinked': return cordTypes.some((t) => CORD_KINDS[t].kinks);
+    case 'separation': return new Set(cordTypes.map((t) => CORD_KINDS[t].family)).size > 1;
     case 'maintenance': return level.downtime !== undefined;
     case 'bypass': return level.downtime !== undefined && (level.bypass ?? 0) > 0;
     case 'bundles': return (level.bundles ?? 0) > 0;

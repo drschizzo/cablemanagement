@@ -10,7 +10,7 @@ import { Tutorial } from '../ui/tutorial';
 import { customErrorText, statsText, toastText } from '../ui/messages';
 import { isDialogOpen } from '../ui/dom';
 import { unitLabel } from '../ui/names';
-import { lookOf } from '../ui/shop';
+import { lookOf, starsWon } from '../ui/shop';
 import { load } from '../ui/storage';
 import { nextLevelToPlay } from '../game/levels/campaign';
 import type { LevelDef } from '../game/levels/levelDef';
@@ -94,7 +94,7 @@ export class App {
         isDialogOpen,
         unitLabel,
         onFind: (find) => hud.found(find),
-      }, this.threaded, lookOf(load('wallet')));
+      }, this.threaded, lookOf(load('workshop'), starsWon(load('progress'), load('career'))));
       this.ctl = ctl;
       hud.attach(ctl, level);
       if (level.kind === 'tutorial') this.mode = new Tutorial(ctl, hud, { home: () => this.startShowcase(), play: () => this.playNext() });

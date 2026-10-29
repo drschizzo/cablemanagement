@@ -3,11 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { isModeOpen, modeOpensAfter, type ModeRecords } from '../../src/ui/modeLocks';
 
 const records = (r: Partial<ModeRecords> = {}): ModeRecords => ({
-  progress: { stars: {}, times: {}, challenges: {}, notes: {} },
+  progress: { stars: {}, times: {}, challenges: {} },
   career: { done: 0, cabinet: null, stars: [] },
   daily: {}, freeOpen: false, editorDraft: '', ...r,
 });
-const signedOff = (...ids: string[]) => records({ progress: { stars: Object.fromEntries(ids.map((id) => [id, 1])), times: {}, challenges: {}, notes: {} } });
+const signedOff = (...ids: string[]) => records({ progress: { stars: Object.fromEntries(ids.map((id) => [id, 1])), times: {}, challenges: {} } });
 
 describe('the game modes', () => {
   it('a first visit has the campaign only', () => {
@@ -27,7 +27,7 @@ describe('the game modes', () => {
 
   it('stay open for a player who played them before the locks', () => {
     expect(isModeOpen('puzzles', signedOff('p3'))).toBe(true);
-    expect(isModeOpen('daily', records({ daily: { '2026-10-01': { stars: 1, time: 1, note: 1, downtime: 0, budget: 0, lines: [] } } }))).toBe(true);
+    expect(isModeOpen('daily', records({ daily: { '2026-10-01': { stars: 1, time: 1, downtime: 0, budget: 0, lines: [] } } }))).toBe(true);
     expect(isModeOpen('career', records({ career: { done: 2, cabinet: null, stars: [] } }))).toBe(true);
     expect(isModeOpen('free', records({ editorDraft: 'abc' }))).toBe(true);
     expect(isModeOpen('free', signedOff('free-16-42'))).toBe(true);

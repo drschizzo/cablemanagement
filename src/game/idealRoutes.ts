@@ -10,6 +10,7 @@
 
 import { CABLE_R, CONNECTOR, DUCT_SPAN, Rack, SEG, SIDE_BACK, SIDE_IN, SIDE_OUT, insideBox, type Port } from './rack';
 import { stockOf, type ItemKind } from './supplies';
+import { CORD_KINDS } from './cordTypes';
 import { makeSchedule, type Circuit } from './schedule';
 import { rng } from '../lib/random';
 import type { CableStart } from './cables';
@@ -20,20 +21,25 @@ import { lerp, polyLength, type V3 } from '../lib/vec3';
 
 const FINGER_R = 0.003;
 const LANES_Z = 6;
+/** duct columns left free against the wall of the duct */
+const WALL_COLUMNS = 2;
 
 /**
  * How each cord travels: out of its port into the `upper` manager, down the
  * side duct of `side`, into the `lower` manager and up into its other port.
  * `curl`: a panel right above its switch, port to port, no manager at all.
+ * Where fibre, copper and power share the cabinet, each family takes its own
+ * side (three stars want them in separate ducts).
  */
 export function routePlan(rack: Rack, circuits: readonly Circuit[]) {
   const mgrs = rack.items.filter((it) => it.kind === 'fingerManager').map((it) => it.unit);
+  const families = [...new Set(circuits.map((c) => CORD_KINDS[c.type].family))].sort();
   return circuits.map((c) => {
     const a = rack.port(c.a), b = rack.port(c.b);
     const upper = nearestManager(mgrs, a.unit, +1);
     // arrive from the manager right above the device, else right below it, else the nearest above
     const lower = mgrs.includes(b.unit - 1) ? b.unit - 1 : mgrs.includes(b.unit + 1) ? b.unit + 1 : nearestManager(mgrs, b.unit, -1);
-    const side = a.x + b.x * 0.3 < 0 ? -1 : 1;
+    const side = families.length > 1 ? (families.indexOf(CORD_KINDS[c.type].family) % 2 ? 1 : -1) : a.x + b.x * 0.3 < 0 ? -1 : 1;
     const curl = b.unit === a.unit + 1 && Math.abs(a.x - b.x) < 0.012;
     return { a, b, upper, lower, side, curl, li: 0, lo: 0, duct: 0 };
   });
@@ -41,22 +47,25 @@ export function routePlan(rack: Rack, circuits: readonly Circuit[]) {
 
 export function tidyRoutes(rack: Rack, circuits: readonly Circuit[], radius: number, seg = SEG): V3[][] {
   const plan = routePlan(rack, circuits);
-  // lanes, per side and per manager (a manager may serve cords leaving a panel
-  // and cords arriving at a switch: they share its lanes); duct columns per side
+  // lanes, per manager (it may serve cords leaving a panel and cords arriving
+  // at a switch, heading for either side: they share its lanes), the cord
+  // with the shortest run to its side in front
+  const toSide = (side: number, x: number) => Math.abs(side * 0.25 - x);
+  for (const m of new Set(plan.flatMap((p) => [p.upper, p.lower]))) {
+    const uses: { p: (typeof plan)[number]; lower: boolean; run: number }[] = [];
+    for (const p of plan) {
+      if (p.upper === m) uses.push({ p, lower: false, run: toSide(p.side, p.a.x) });
+      if (p.lower === m && p.upper !== m) uses.push({ p, lower: true, run: toSide(p.side, p.b.x) });
+    }
+    uses.sort((u, v) => v.p.side - u.p.side || u.run - v.run).forEach((u, i) => { if (u.lower) u.p.lo = i; else u.p.li = i; });
+  }
+  // duct columns per side: the cords of the upper managers ride outermost,
+  // past the two columns against the wall (a stiff cord laid there springs
+  // back out of the duct: the power cords of P10)
   const ductCount = { [-1]: 0, [1]: 0 } as Record<number, number>;
   for (const side of [-1, 1]) {
     const mine = plan.filter((p) => p.side === side);
-    const toSide = (x: number) => Math.abs(side * 0.25 - x);
-    for (const m of new Set(mine.flatMap((p) => [p.upper, p.lower]))) {
-      const uses: { p: (typeof plan)[number]; lower: boolean; x: number }[] = [];
-      for (const p of mine) {
-        if (p.upper === m) uses.push({ p, lower: false, x: p.a.x });
-        if (p.lower === m && p.upper !== m) uses.push({ p, lower: true, x: p.b.x });
-      }
-      uses.sort((u, v) => toSide(u.x) - toSide(v.x)).forEach((u, i) => { if (u.lower) u.p.lo = i; else u.p.li = i; });
-    }
-    // in the duct, the cords of the upper managers ride outermost
-    [...mine].sort((p, q) => p.upper - q.upper || p.li - q.li).forEach((p, i) => { p.duct = i; });
+    [...mine].sort((p, q) => p.upper - q.upper || p.li - q.li).forEach((p, i) => { p.duct = i + WALL_COLUMNS; });
     ductCount[side] = mine.length;
   }
   const d = 2 * radius + 0.0008;

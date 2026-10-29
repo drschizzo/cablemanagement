@@ -1,9 +1,9 @@
 // How tidy a cabinet is: for each line of the schedule, whether its cord is
 // connected, routed through the management, clear of the other ports,
-// labelled and relaxed; the stars, and what the next one needs; and the
-// readability note, beyond the stars. Reads a World, changes nothing.
+// labelled and relaxed; the side supports mixing fibre, copper and power,
+// the bundles; the stars, and what the next one needs. Reads a World, changes
+// nothing.
 
-import { SERVICES } from './services';
 import { CORD_KINDS } from './cordTypes';
 import { insideBox, type SupportBox } from './rack';
 import type { World } from './world';
@@ -17,17 +17,6 @@ export interface CircuitStatus {
   labelled: boolean;
   /** neither pulled taut nor kinked */
   relaxed: boolean;
-}
-
-/** one criterion of readability, 0..1 (ui/messages.ts names it) */
-export type ReadabilityPart =
-  | { criterion: 'slack' | 'colours' | 'bundles' | 'separation'; value: number }
-  | { criterion: 'crossings'; value: number; crossings: number };
-
-/** how readable the cabinet is, beyond the stars: each part 0..1, the note 0..100 */
-export interface Readability {
-  note: number;
-  parts: ReadabilityPart[];
 }
 
 export interface Evaluation {
@@ -50,8 +39,9 @@ export interface Evaluation {
   relaxed: number;
   /** m the tautest cord lacks to be slack enough (0: none taut) */
   tautShort: number;
-  readability: Readability;
-  /** velcro bundles (three cords or more, in the management), and how many three stars need */
+  /** ducts and rings holding cords of more than one family (fibre, copper, power) */
+  mixedSupports: number;
+  /** velcro bundles (three cords or more of one service, in the management), and how many three stars need */
   bundles: number;
   bundlesNeeded: number;
 }
@@ -121,18 +111,18 @@ export function evaluate(w: World): Evaluation {
   const labelled = w.level.labels ? count((s) => s.labelled) : n;
   const relaxed = count((s) => s.relaxed);
   const tautShort = w.cables.reduce((most, _, c) => cableStrain[c] === 'taut' ? Math.max(most, TAUT_SHORT * w.routeLength(c)! - w.cableLength(c)) : most, 0);
+  const mixedSupports = mixedSupportCount(w, supports);
   const bundles = bundleCount(w, supports);
   const bundlesNeeded = w.level.bundles ?? 0;
-  const stars = starsOf({ total: n, connected, routed, clear, labelled, relaxed, tautShort, bundles, bundlesNeeded, downtime: w.maintenance.downtime, budget: w.maintenance.budget });
+  const stars = starsOf({ total: n, connected, routed, clear, labelled, relaxed, tautShort, mixedSupports, bundles, bundlesNeeded, downtime: w.maintenance.downtime, budget: w.maintenance.budget });
   return {
     circuits, connected, routed, clear, labelled, relaxed, tautShort, total: n, stars, cableRouted, cableObstructs, cableStrain,
-    liveDown: w.maintenance.liveDown(), downtime: w.maintenance.downtime, budget: w.maintenance.budget, bundles, bundlesNeeded,
-    readability: readability(w, circuits, cableStrain, supports),
+    liveDown: w.maintenance.liveDown(), downtime: w.maintenance.downtime, budget: w.maintenance.budget, mixedSupports, bundles, bundlesNeeded,
   };
 }
 
 /** the counts the stars are read from */
-export type StarCounts = Pick<Evaluation, 'total' | 'connected' | 'routed' | 'clear' | 'labelled' | 'relaxed' | 'tautShort' | 'bundles' | 'bundlesNeeded' | 'downtime' | 'budget'>;
+export type StarCounts = Pick<Evaluation, 'total' | 'connected' | 'routed' | 'clear' | 'labelled' | 'relaxed' | 'tautShort' | 'mixedSupports' | 'bundles' | 'bundlesNeeded' | 'downtime' | 'budget'>;
 
 /** two stars need this share of the links routed, and this share clear of the ports */
 const TWO_STARS_ROUTED = 0.7;
@@ -140,13 +130,14 @@ const TWO_STARS_CLEAR = 0.85;
 
 /**
  * One star: every line connected. Two: most cords routed and clear of the
- * ports. Three: everything done, and the downtime within its budget (past
- * it, an incident: three stars are out of reach).
+ * ports. Three: everything done, each family down its own ducts and rings,
+ * and the downtime within its budget (past it, an incident: three stars are out of
+ * reach).
  */
 export function starsOf(c: StarCounts): number {
   const n = c.total;
   if (c.connected < n) return 0;
-  if (c.routed === n && c.clear === n && c.labelled === n && c.relaxed === n && c.bundles >= c.bundlesNeeded && c.downtime <= c.budget) return 3;
+  if (c.routed === n && c.clear === n && c.labelled === n && c.relaxed === n && c.mixedSupports === 0 && c.bundles >= c.bundlesNeeded && c.downtime <= c.budget) return 3;
   return c.routed >= TWO_STARS_ROUTED * n && c.clear >= TWO_STARS_CLEAR * n ? 2 : 1;
 }
 
@@ -156,7 +147,7 @@ export function starsOf(c: StarCounts): number {
  * incident: three stars are out of reach.
  */
 export type StarNeed =
-  | { kind: 'connect' | 'route' | 'clear' | 'label' | 'bundle'; count: number }
+  | { kind: 'connect' | 'route' | 'clear' | 'label' | 'separate' | 'bundle'; count: number }
   | { kind: 'relax'; count: number; short: number }
   | { kind: 'incident' };
 
@@ -171,12 +162,13 @@ export function nextStar(c: StarCounts): { stars: number; needs: StarNeed[] } | 
     return count > 0 ? [{ kind, count }] : [];
   };
   const relax: StarNeed[] = c.relaxed < n ? [{ kind: 'relax', count: n - c.relaxed, short: c.tautShort }] : [];
+  const separate: StarNeed[] = c.mixedSupports > 0 ? [{ kind: 'separate', count: c.mixedSupports }] : [];
   if (stars === 0) return { stars: 1, needs: short('connect', c.connected, n) };
   if (stars === 1) return { stars: 2, needs: [...short('route', c.routed, TWO_STARS_ROUTED * n), ...short('clear', c.clear, TWO_STARS_CLEAR * n)] };
   const incident: StarNeed[] = c.downtime > c.budget ? [{ kind: 'incident' }] : [];
   return {
     stars: 3,
-    needs: [...incident, ...short('route', c.routed, n), ...short('clear', c.clear, n), ...short('label', c.labelled, n), ...relax, ...short('bundle', c.bundles, c.bundlesNeeded)],
+    needs: [...incident, ...short('route', c.routed, n), ...short('clear', c.clear, n), ...short('label', c.labelled, n), ...relax, ...separate, ...short('bundle', c.bundles, c.bundlesNeeded)],
   };
 }
 
@@ -248,126 +240,38 @@ export function cordStrain(w: World, c: CableIndex): Strain | null {
   return null;
 }
 
-/** straps round three cords or more, lying in a manager or a duct */
+/** straps round three cords or more, all of one service, lying in a manager or a duct */
 export function bundleCount(w: World, supports = w.rack.supports()): number {
+  const serviceOf = new Map<number, number>();
+  w.circuits.forEach((ci, i) => { if (w.circuitUp(i)) serviceOf.set(w.rack.cableJoining(ci.a, ci.b), ci.service); });
   return w.straps.filter((st) => {
     if (st.nodes.length < 3) return false;
+    if (new Set(st.nodes.map((i) => serviceOf.get(w.sim.cableOf[i]) ?? -1)).size > 1) return false;
     const [x, y, z] = w.strapCentre(st);
     return supports.some((s) => insideBox(s, x, y, z));
   }).length;
 }
 
 /**
- * What a technician coming after you would think of the cabinet, beyond
- * the stars: cords with just the slack they need, of their service's
- * colour, bundles of one service, fibre and copper apart, no cords crossing
- * in front of the cabinet.
+ * Ducts and rings holding cords of more than one family: fibre, copper and
+ * power each run down their own. (A manager next to a switch with fibre and
+ * copper ports cannot help serving both.)
  */
-function readability(w: World, circuits: CircuitStatus[], strain: (Strain | null)[], supports: SupportBox[]): Readability {
-  const parts: Readability['parts'] = [];
-  const made = circuits.map((s, i) => ({ s, i })).filter(({ s }) => s.connected);
-  // the slack: none pulled taut or kinked, and no more than half a metre beyond the route
-  if (made.length) {
-    let sum = 0;
-    for (const { s } of made) {
-      if (strain[s.cable]) continue;
-      const extra = w.cableLength(s.cable) - w.routeLength(s.cable)!;
-      sum += Math.max(0, Math.min(1, 1 - (extra - 0.5)));
-    }
-    parts.push({ criterion: 'slack', value: sum / made.length });
-  }
-  // copper cords of the colour of their service
-  if (w.level.colorByService) {
-    const cu = made.filter(({ s }) => CORD_KINDS[w.cables[s.cable].type].takesServiceColor);
-    if (cu.length) {
-      const ok = cu.filter(({ s, i }) => w.cables[s.cable].color === SERVICES[w.circuits[i].service].color).length;
-      parts.push({ criterion: 'colours', value: ok / cu.length });
-    }
-  }
-  // bundles of one service
-  const serviceOf = new Map<number, number>();
-  circuits.forEach((s, i) => { if (s.connected) serviceOf.set(s.cable, w.circuits[i].service); });
-  const straps = w.straps.filter((st) => st.nodes.length >= 2);
-  if (straps.length) {
-    const pure = straps.filter((st) => new Set(st.nodes.map((i) => serviceOf.get(w.sim.cableOf[i]) ?? -1)).size === 1).length;
-    parts.push({ criterion: 'bundles', value: pure / straps.length });
-  }
-  // fibre, copper and power in separate ducts and managers
+function mixedSupportCount(w: World, supports: SupportBox[]): number {
+  if (new Set(w.cables.map((cb) => CORD_KINDS[cb.type].family)).size < 2) return 0;
   const x = w.sim.x;
-  if (new Set(w.cables.map((cb) => CORD_KINDS[cb.type].family)).size > 1) {
-    let used = 0, mixed = 0;
-    for (const sp of supports) {
-      const kinds = new Set<string>();
-      w.cables.forEach((cb) => {
-        for (let k = 4; k < cb.count - 4; k += 2) {
-          const i = cb.start + k;
-          if (insideBox(sp, x[3 * i], x[3 * i + 1], x[3 * i + 2])) { kinds.add(CORD_KINDS[cb.type].family); break; }
-        }
-      });
-      if (kinds.size) used++;
-      if (kinds.size > 1) mixed++;
-    }
-    if (used) parts.push({ criterion: 'separation', value: 1 - mixed / used });
-  }
-  // cords crossing each other in front of the cabinet, out of every support
-  const crossings = frontCrossings(w, supports);
-  parts.push({ criterion: 'crossings', value: Math.max(0, 1 - crossings / Math.max(4, w.cables.length)), crossings });
-  const note = Math.round((100 * parts.reduce((a, p) => a + p.value, 0)) / parts.length);
-  return { note, parts };
-}
-
-interface FrontSegment {
-  cable: number;
-  ax: number;
-  ay: number;
-  bx: number;
-  by: number;
-}
-
-/** pairs of cords whose segments cross seen from the front, where neither is in a support */
-function frontCrossings(w: World, supports: SupportBox[]): number {
-  const x = w.sim.x;
-  const segs: FrontSegment[] = [];
-  w.cables.forEach((cb, c) => {
-    if (!cb.ends[0].port && !cb.ends[1].port) return;
-    for (let k = 0; k < cb.count - 1; k++) {
-      const i = cb.start + k;
-      if (x[3 * i + 2] > 0.3) continue;
-      if (supports.some((s) => insideBox(s, x[3 * i], x[3 * i + 1], x[3 * i + 2]))) continue;
-      segs.push({ cable: c, ax: x[3 * i], ay: x[3 * i + 1], bx: x[3 * i + 3], by: x[3 * i + 4] });
-    }
-  });
-  // a grid of 5 cm cells, each segment in every cell its box covers; a pair of cords counted once
-  const cell = 0.05, cols = 64, grid = new Map<number, number[]>();
-  segs.forEach((s, j) => {
-    const x0 = Math.floor(Math.min(s.ax, s.bx) / cell), x1 = Math.floor(Math.max(s.ax, s.bx) / cell);
-    const y0 = Math.floor(Math.min(s.ay, s.by) / cell), y1 = Math.floor(Math.max(s.ay, s.by) / cell);
-    for (let gx = x0; gx <= x1; gx++) {
-      for (let gy = y0; gy <= y1; gy++) {
-        const key = (gy + cols) * 4 * cols + gx + cols;
-        const list = grid.get(key);
-        if (list) list.push(j); else grid.set(key, [j]);
+  const managers = new Set(w.rack.items.filter((it) => it.kind === 'fingerManager').map((it) => it.id));
+  let mixed = 0;
+  for (const sp of supports) {
+    if (managers.has(sp.item)) continue;
+    const kinds = new Set<string>();
+    w.cables.forEach((cb) => {
+      for (let k = 4; k < cb.count - 4; k += 2) {
+        const i = cb.start + k;
+        if (insideBox(sp, x[3 * i], x[3 * i + 1], x[3 * i + 2])) { kinds.add(CORD_KINDS[cb.type].family); break; }
       }
-    }
-  });
-  const n = w.cables.length, seen = new Uint8Array(n * n);
-  let pairs = 0;
-  for (const list of grid.values()) {
-    for (let a = 0; a < list.length; a++) {
-      const p = segs[list[a]];
-      for (let b = a + 1; b < list.length; b++) {
-        const q = segs[list[b]];
-        if (p.cable === q.cable || seen[p.cable * n + q.cable]) continue;
-        if (segmentsCross(p, q)) { seen[p.cable * n + q.cable] = seen[q.cable * n + p.cable] = 1; pairs++; }
-      }
-    }
+    });
+    if (kinds.size > 1) mixed++;
   }
-  return pairs;
-}
-
-/** do two segments of the front view cross? */
-function segmentsCross(p: FrontSegment, q: FrontSegment): boolean {
-  const o = (ax: number, ay: number, bx: number, by: number, cx: number, cy: number) => Math.sign((bx - ax) * (cy - ay) - (by - ay) * (cx - ax));
-  return o(p.ax, p.ay, p.bx, p.by, q.ax, q.ay) * o(p.ax, p.ay, p.bx, p.by, q.bx, q.by) < 0
-    && o(q.ax, q.ay, q.bx, q.by, p.ax, p.ay) * o(q.ax, q.ay, q.bx, q.by, p.bx, p.by) < 0;
+  return mixed;
 }

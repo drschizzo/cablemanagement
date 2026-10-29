@@ -17,8 +17,6 @@ export interface DailyResult {
   stars: number;
   /** s of play */
   time: number;
-  /** readability note, 0..100 */
-  note: number;
   /** downtime points spent, and the budget (0: none) */
   downtime: number;
   budget: number;
@@ -33,25 +31,19 @@ export interface Career {
   stars: number[];
 }
 
-/** what the player has earned and spent: the € on hand, the best payslip of each level, the looks bought and equipped, the finds */
-export interface Wallet {
-  coins: number;
-  /** € of the best payslip of each level (a replay pays only what it adds) */
-  best: Record<string, number>;
-  /** ids of the looks bought (ui/shop.ts) */
-  owned: string[];
-  /** the look equipped in each slot, by slot */
+/** the workshop: the look equipped in each slot, and the finds picked up */
+export interface Workshop {
+  /** the look equipped in each slot, by slot (ui/shop.ts) */
   equipped: Partial<Record<keyof Look, string>>;
   /** ids of the finds picked up (game/finds.ts) */
   finds: FindId[];
 }
 
-/** best result per level id: stars (1..3), time (s), readability note (0..100), and the time challenges won */
+/** best result per level id: stars (1..3), time (s), and the challenges won */
 export interface Progress {
   stars: Record<string, number>;
   times: Record<string, number>;
   challenges: Record<string, boolean>;
-  notes: Record<string, number>;
 }
 
 interface Entry<T> {
@@ -76,11 +68,14 @@ function isQualityChoice(v: QualityChoice): boolean {
 const ENTRIES = {
   progress: {
     key: 'cable.progress',
-    fallback: (): Progress => ({ stars: {}, times: {}, challenges: {}, notes: {} }),
-    // older saves may lack the times, the challenges and the notes
-    parse: (raw: string): Progress => ({ times: {}, challenges: {}, notes: {}, ...JSON.parse(raw) }),
+    fallback: (): Progress => ({ stars: {}, times: {}, challenges: {} }),
+    // older saves may lack the times and the challenges, and keep a readability note the game no longer gives
+    parse: (raw: string): Progress => {
+      const { stars, times = {}, challenges = {} } = JSON.parse(raw);
+      return { stars, times, challenges };
+    },
     format: (v: Progress) => JSON.stringify(v),
-    valid: (v: Progress) => isRecord(v.stars) && isRecord(v.times) && isRecord(v.challenges) && isRecord(v.notes),
+    valid: (v: Progress) => isRecord(v.stars) && isRecord(v.times) && isRecord(v.challenges),
   } satisfies Entry<Progress>,
   /** the cabinets of the day signed off, by date (YYYY-MM-DD) */
   daily: {
@@ -103,14 +98,17 @@ const ENTRIES = {
     format: (v: Career) => JSON.stringify(v),
     valid: (v: Career) => Number.isInteger(v.done) && v.done >= 0 && Array.isArray(v.stars) && (v.cabinet === null || (isRecord(v.cabinet) && Array.isArray(v.cabinet.cords))),
   } satisfies Entry<Career>,
-  /** what the player earned, bought and found */
-  wallet: {
+  /** the looks equipped and the finds (the key of the wallet it was, when jobs paid) */
+  workshop: {
     key: 'cable.wallet',
-    fallback: (): Wallet => ({ coins: 0, best: {}, owned: [], equipped: {}, finds: [] }),
-    parse: (raw: string): Wallet => ({ coins: 0, best: {}, owned: [], equipped: {}, finds: [], ...JSON.parse(raw) }),
-    format: (v: Wallet) => JSON.stringify(v),
-    valid: (v: Wallet) => typeof v.coins === 'number' && isRecord(v.best) && Array.isArray(v.owned) && isRecord(v.equipped) && Array.isArray(v.finds),
-  } satisfies Entry<Wallet>,
+    fallback: (): Workshop => ({ equipped: {}, finds: [] }),
+    parse: (raw: string): Workshop => {
+      const { equipped = {}, finds = [] } = JSON.parse(raw);
+      return { equipped, finds };
+    },
+    format: (v: Workshop) => JSON.stringify(v),
+    valid: (v: Workshop) => isRecord(v.equipped) && Array.isArray(v.finds),
+  } satisfies Entry<Workshop>,
   /** the code of the last cabinet composed in the editor ('' : none yet) */
   editorDraft: {
     key: 'cable.editor',

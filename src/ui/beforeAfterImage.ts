@@ -1,5 +1,5 @@
 // The cabinet before and after, side by side in one image to share: the two
-// views of the result screen, the level, the stars, the readability note.
+// views of the result screen, the level, the stars.
 
 import { tr } from './language';
 import { GAME_URL, downloadBlob } from './share';
@@ -15,8 +15,6 @@ const INK = '#e6ebe7', DIM = '#7d847f', ACCENT = '#8be3b4', BACKGROUND = '#0d0f0
 export interface BeforeAfterCaption {
   title: string;
   stars: number;
-  noteBefore: number;
-  noteAfter: number;
 }
 
 function loaded(src: string): Promise<HTMLImageElement> {
@@ -51,8 +49,8 @@ export async function saveBeforeAfter(before: string, after: string, caption: Be
   g.fillStyle = DIM;
   g.textAlign = 'left';
   const label = (text: string, x: number) => g.fillText(text, x, HEAD + VIEW_H + FOOT / 2);
-  label(`${tr({ fr: 'Avant', en: 'Before' })} · ${tr({ fr: 'lisibilité', en: 'readability' })} ${caption.noteBefore}`, PAD);
-  label(`${tr({ fr: 'Après', en: 'After' })} · ${tr({ fr: 'lisibilité', en: 'readability' })} ${caption.noteAfter}`, 2 * PAD + w);
+  label(tr({ fr: 'Avant', en: 'Before' }), PAD);
+  label(tr({ fr: 'Après', en: 'After' }), 2 * PAD + w);
   g.fillText(GAME_URL.replace('https://', ''), PAD, HEAD / 2 + 20);
   const png = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
   if (png) downloadBlob(png, filename);

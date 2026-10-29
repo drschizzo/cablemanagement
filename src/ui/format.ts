@@ -28,7 +28,3 @@ export function formatTime(seconds: number): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-/** a sum of euros, whole: "120 €" in French, "€120" in English */
-export function formatMoney(euros: number): string {
-  return tr({ fr: `${euros} €`, en: `€${euros}` });
-}

@@ -80,9 +80,8 @@ export class Controller implements PlayContext, InputCommands {
   readonly timelapse = new Timelapse<Blob>();
   /** a frame of the timelapse wanted at the next image, whatever the pace (the cabinet signed off) */
   private frameWanted = false;
-  /** the cabinet as the player found it (image), taken on the first frame, and its readability note */
+  /** the cabinet as the player found it (image), taken on the first frame */
   before: string | null = null;
-  startNote = 0;
 
   readonly pointer: Pointer;
   readonly picker: CordPicker;
@@ -161,7 +160,6 @@ export class Controller implements PlayContext, InputCommands {
     this.rackView.syncItems(this.world.itemsVersion);
     this.cableView.update(true);
     this.lastEval = this.world.evaluate();
-    this.startNote = this.lastEval.readability.note;
     this.tidyCables = tidyCablesOf(this.lastEval);
     this.refreshLeds();
     this.input = new InputRouter(stage, this.pointer, {

@@ -25,6 +25,10 @@ export function ruleTip(rule: Rule, level: LevelDef, services: number[]): string
       fr: '<b>Ni plié</b> : une fibre pliée en angle vif ne vaut pas ★★★. Laissez-lui des courbes douces.',
       en: '<b>Not kinked</b>: a fibre bent at a sharp angle is not worth ★★★. Give it gentle curves.',
     });
+    case 'separation': return tr({
+      fr: '<b>Chaque famille son couloir</b> : pour ★★★, aucune goulotte ni anneau ne mêle la fibre, le cuivre et le courant. Descendez-les par des côtés différents ; les guide-câbles, eux, se partagent.',
+      en: '<b>Each family its own channel</b>: for ★★★, no duct nor ring mixes fibre, copper and power. Take them down different sides; the cable managers can be shared.',
+    });
     case 'maintenance': return tr({
       fr: `<b>Fenêtre de maintenance</b> : les liaisons ⚡ sont en production. Chaque seconde où l'une est coupée coûte le poids de son service sur un budget de <b>${level.downtime} pts</b> : ${serviceChips(services)}. Budget dépassé : incident, plus de ★★★.`,
       en: `<b>Maintenance window</b>: the ⚡ links are in production. Every second one of them is cut costs its service's weight off a budget of <b>${level.downtime} pts</b>: ${serviceChips(services)}. Budget overrun: an incident, no more ★★★.`,
@@ -39,8 +43,8 @@ export function ruleTip(rule: Rule, level: LevelDef, services: number[]): string
     case 'bundles': {
       const n = level.bundles ?? 0;
       return tr({
-        fr: `<b>Faisceaux</b> : pour ★★★, au moins ${n} velcro${n > 1 ? 's' : ''} qui serre${n > 1 ? 'nt' : ''} chacun 3 câbles ou plus, dans un guide-câbles ou une goulotte.`,
-        en: `<b>Bundles</b>: for ★★★, at least ${n} velcro${n > 1 ? 's' : ''} strapping 3 cords or more each, in a cable manager or a duct.`,
+        fr: `<b>Faisceaux</b> : pour ★★★, au moins ${n} velcro${n > 1 ? 's' : ''} qui serre${n > 1 ? 'nt' : ''} chacun 3 câbles ou plus d'un même service, dans un guide-câbles ou une goulotte.`,
+        en: `<b>Bundles</b>: for ★★★, at least ${n} velcro${n > 1 ? 's' : ''} strapping 3 cords or more of one service each, in a cable manager or a duct.`,
       });
     }
     case 'blind': return tr({
@@ -55,8 +59,8 @@ export function ruleTip(rule: Rule, level: LevelDef, services: number[]): string
       });
     }
     case 'power': return tr({
-      fr: '<b>Courant</b> : les cordons noirs vont du bandeau électrique aux alimentations des serveurs (couper l\'une, c\'est couper le service du serveur). On ne les range pas avec les données : chaque famille ses supports.',
-      en: '<b>Power</b>: the black cords run from the power strip to the servers\' supplies (cutting one cuts the server\'s service). They are not run with the data: each family its own supports.',
+      fr: '<b>Courant</b> : les cordons noirs vont du bandeau électrique aux alimentations des serveurs (couper l\'une, c\'est couper le service du serveur).',
+      en: '<b>Power</b>: the black cords run from the power strip to the servers\' supplies (cutting one cuts the server\'s service).',
     });
     case 'incidents': return tr({
       fr: `<b>Incidents</b> : pendant le chantier, un collègue peut débrancher une liaison par erreur, et un utilisateur appeler pour une liaison coupée. Rétablie en moins de ${CALL_WAIT} s, tout va bien ; trop tard, l'appel coûte ${CALL_PENALTY} pts sur le budget.`,
@@ -78,8 +82,8 @@ export function gestureTip(gesture: Gesture): string {
       en: '<b>Ring</b>: lighter than a duct, it guides a vertical cord in a side channel (Supports tool, <b>Shift</b> + click in a channel). Handy for a few cords; beyond that, the duct holds the slack better.',
     });
     case 'velcro': return tr({
-      fr: `<b>Velcro</b> (${toolKey('velcro')}) : tracez un trait en travers des câbles côte à côte, le velcro les serre là où le trait les croise. Un clic sur un velcro l'enlève. Un faisceau d'un seul service se lit mieux.`,
-      en: `<b>Velcro</b> (${toolKey('velcro')}): draw a line across cords running side by side, the velcro straps them where the line crosses them. A click on a velcro takes it off. A bundle of one service reads better.`,
+      fr: `<b>Velcro</b> (${toolKey('velcro')}) : tracez un trait en travers des câbles côte à côte, le velcro les serre là où le trait les croise. Un clic sur un velcro l'enlève. Un faisceau ne compte que s'il est d'un seul service.`,
+      en: `<b>Velcro</b> (${toolKey('velcro')}): draw a line across cords running side by side, the velcro straps them where the line crosses them. A click on a velcro takes it off. A bundle only counts when it is of one service.`,
     });
     default: return assertNever(gesture);
   }

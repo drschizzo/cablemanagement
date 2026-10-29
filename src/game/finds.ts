@@ -1,7 +1,7 @@
 // The finds: odd things the technicians before left in the cabinets. A level
 // says which one it hides (LevelBase.find); where it lies is drawn with the
 // level, on the floor of the cabinet under the cords, on its roof, or in the
-// crate. Picking it up is the player's (a click); keeping it, the wallet's.
+// crate. Picking it up is the player's (a click); keeping it, the workshop's.
 
 import type { Rack } from './rack';
 import { FRONT_Z } from './rack';

@@ -77,8 +77,10 @@ Chaque niveau fournit un **plan de brassage** : la liste des liaisons à établi
 3. dégager la façade : aucun câble ne doit passer devant le port d'un autre ;
 4. ne rien tendre ni plier : un cordon bien plus court que son chemin rangé
    est tendu, une fibre en angle vif est pliée ;
-5. quand le niveau le demande, serrer les câbles en faisceaux : des velcros qui
-   tiennent chacun au moins trois câbles, dans un guide-câbles ou une goulotte.
+5. quand la baie mêle fibre, cuivre ou courant, donner à chaque famille son couloir : aucune
+   goulotte ni anneau ne les mêle (les guide-câbles, eux, se partagent) ;
+6. quand le niveau le demande, serrer les câbles en faisceaux : des velcros qui
+   tiennent chacun au moins trois câbles d'un même service, dans un guide-câbles ou une goulotte.
 
 Un cordon branché comme prévu reçoit tout seul l'étiquette de son service.
 
@@ -90,14 +92,17 @@ niveau 5, les faisceaux au niveau 6…), et replie les autres sous « Rappel des
 |---|---|
 | ★ | toutes les liaisons du plan sont branchées |
 | ★★ | et au moins 70 % des câbles rangés, 85 % de la façade dégagée |
-| ★★★ | tout est rangé, dégagé, sans tension (et serré en faisceaux si demandé), dans le budget d'interruption |
+| ★★★ | tout est rangé, dégagé, sans tension, chaque famille dans son couloir (et serré en faisceaux si demandé), dans le budget d'interruption |
+
+Les étoiles sont la seule note d'une baie. Le budget d'interruption est une contrainte, et le défi
+du niveau (le chrono, ou les gestes d'un puzzle) un objectif de plus pour qui le veut.
 
 Une baie validée a droit à son tour d'honneur : la caméra fait le tour de la baie
 pendant que les cordons s'allument de haut en bas, puis l'écran de résultat s'ouvre.
 
 L'écran de fin propose de **revoir le chantier en accéléré** (une image toutes les secondes et demie
 de jeu), de l'**enregistrer en vidéo**, et de télécharger l'**image avant / après** de la baie, avec
-ses étoiles et sa lisibilité.
+ses étoiles.
 
 Il faut **★★** pour ouvrir le niveau suivant : brancher ne suffit pas, il faut
 ranger. Sous le plan, l'**étoile suivante** dit ce qui lui manque encore (« Rangez encore 2 câbles
@@ -106,26 +111,15 @@ devient propre s'allume en vert avec une note. Un cordon tendu dit combien de ce
 manque. Chaque niveau a aussi un **défi chrono**
 (★★★ en moins d'un temps donné), annoncé dans son brief et rappelé par le menu des niveaux.
 
-Chaque chantier validé (sauf le tutoriel et le zen) est **payé** : un montant par liaison branchée,
-plus pour une baie rangée, une prime de lisibilité, une autre pour le budget d'interruption épargné,
-et le défi réussi. Rejouer un niveau ne paie que ce qu'on ajoute à sa meilleure fiche de paie. La
-fiche de paie et l'atelier n'apparaissent qu'après le niveau 3 (ou un ticket de la carrière) : les
-chantiers d'avant sont payés quand même, le salaire attend.
-
-L'**atelier** (écran titre) dépense ce salaire en touches personnelles : la couleur des velcros, la
-teinte de la lumière autour de la baie. Rien de ce qui porte un sens (cordons, étiquettes, voyants)
-ne change.
+L'**atelier** (écran titre, après le niveau 3 ou un ticket de la carrière) offre des touches
+personnelles : la couleur des velcros, la teinte de la lumière autour de la baie. Chacune s'ouvre
+avec les étoiles gagnées (campagne, puzzles et carrière additionnés). Rien de ce qui porte un sens
+(cordons, étiquettes, voyants) ne change.
 
 Chaque niveau de la campagne cache une **trouvaille** laissée par un technicien précédent (un post-it,
 une clé USB, un canard en plastique…) : sur le plancher de la baie sous les câbles, sur son toit ou dans
 le bac. Un clic la ramasse et raconte son histoire ; l'atelier les rassemble, et dit où chercher
 celles qui manquent (deux se cachent hors de la campagne).
-
-La note de **lisibilité**, sur 100 (affichée dès ★★), départage les baies à ★★★ : le mou juste
-(ni tendu, ni plus de 50 cm de trop), chaque cordon cuivre de la couleur de son
-service, des faisceaux d'un seul service, la fibre et le cuivre dans des
-supports séparés, pas de câbles qui se croisent devant la baie. L'écran de fin
-montre la baie et sa note avant et après, et le record du niveau.
 
 ### Préparation
 
@@ -176,7 +170,7 @@ signal ; un cordon coupé se jette au bac et se remplace par un neuf du Stock.
 Certaines baies (le puzzle P10, les baies de l'éditeur qui ont un bandeau électrique) alimentent
 leurs serveurs : des **cordons d'alimentation** noirs, raides, à fiche C13, vont des prises du
 **bandeau électrique** aux deux alimentations de chaque serveur. Couper l'une, c'est couper le service
-du serveur. La lisibilité demande de ranger fibre, cuivre et courant dans des supports séparés.
+du serveur. Pour ★★★, le courant descend par son propre couloir, à part des données.
 
 ### Cordons neufs
 
@@ -223,7 +217,7 @@ son **lien** (`?rack=CODE`), qui l'ouvre telle quelle chez quelqu'un d'autre.
 
 La **baie du jour** est la même pour tout le monde à une date donnée : petite le lundi, plus grosse le
 week-end. Le jeu garde le meilleur résultat de chaque jour et compte les jours de suite ; l'écran de
-fin propose de **copier le résultat** (étoiles, temps, lisibilité, interruption, et une grille d'un
+fin propose de **copier le résultat** (étoiles, temps, interruption, et une grille d'un
 carré par liaison : 🟩 rangée, 🟨 seulement branchée, ⬛ pas branchée) pour le partager.
 
 ## Commandes
