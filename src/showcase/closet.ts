@@ -12,12 +12,23 @@ import { Bay, type Pause } from './bay';
 import type { Place } from './aisleLayout';
 import type { UnitLabeller } from '../render/rackView';
 import { tidyTargets } from '../game/idealRoutes';
+import { clearOfGuides, dressingPath, reversed, type Knot } from './dressing';
+
+/** how long the guides take to come out of the rack, or to go back in (s) */
+const GROW = 0.45;
+
+const smooth = (p: number) => p * p * (3 - 2 * p);
 
 /** one closet of the aisle: its mess and its tidy self, drawn on the same rack */
 export class Closet {
+  /** where the mess came to rest, the cords hanging where the guides come out stepped forward out of their way */
   messPos!: Float64Array;
   /** the cords of the mess laid along the tidy routes */
   tidyShapes!: Float64Array;
+  /** the way from the mess into the guides */
+  private dressing!: Knot[];
+  /** the guides on their way out of the rack (or back in): how far out they are, where they go, and then */
+  private growth: { at: number; to: number; then: () => void } | null = null;
   /** where the mess comes to rest, if it is known already (baked, or fallen in a worker): it then does not fall here */
   private fallen: Float64Array | null = null;
 
@@ -83,8 +94,12 @@ export class Closet {
     // frozen as it fell, for good: its worker (if it fell in one) has nothing left to do
     this.mess.world.sim.hold = true;
     this.mess.world.sim.dispose();
-    this.messPos = Float64Array.from(this.mess.world.sim.x);
+    // clear of the guides from the start: they can come out of the rack and go back in, and the mess not stir
+    const rack = this.tidy.world.rack;
+    this.messPos = clearOfGuides(rack, this.mess.world.cables, this.mess.world.sim.x);
+    this.mess.world.sim.x.set(this.messPos);
     this.tidyShapes = this.mess.tidyShapes(this.tidy);
+    this.dressing = dressingPath(rack, this.messPos, this.tidyShapes);
     this.mess.cableView.update(true);
   }
 
@@ -94,8 +109,28 @@ export class Closet {
   }
 
   tick(dt: number): void {
+    if (this.growth) {
+      const g = this.growth;
+      g.at = g.to > g.at ? Math.min(g.to, g.at + dt / GROW) : Math.max(g.to, g.at - dt / GROW);
+      this.guidesOut = smooth(g.at);
+      if (g.at === g.to) {
+        this.growth = null;
+        g.then();
+      }
+    }
     this.mess.tick(dt);
     this.tidy.tick(dt);
+  }
+
+  /** how far the guides stand out of the rack (0..1): they come out of its face, in depth */
+  private set guidesOut(f: number) {
+    this.tidy.rackView!.itemsGroup.scale.z = Math.max(1e-3, f);
+  }
+
+  /** the guides come out of the rack (to 1) or go back in (to 0), then `then` */
+  private grow(to: number, then: () => void = () => {}): void {
+    this.growth = { at: 1 - to, to, then };
+    this.guidesOut = smooth(1 - to);
   }
 
   /** swaps one cord of a bay for the same cord of the other */
@@ -104,24 +139,32 @@ export class Closet {
     show.cableView.setVisible(c, true);
   }
 
-  /** the managers and ducts go in, then every cord is pulled out of the heap and dressed into its route */
+  /** the managers and ducts come out of the rack, then every cord is pulled out of the heap and dressed into its route */
   tidyUp(later: (ms: number, f: () => void) => void, sound: boolean, done: () => void): void {
     const w = this.tidy.world;
-    this.tidy.rackView!.itemsGroup.visible = true;
-    sfx.place();
     w.cables.forEach((_, c) => w.labelCord(c, null));
+    this.tidy.rackView!.itemsGroup.visible = true;
+    this.grow(1);
+    sfx.place();
+    later(150, () => this.dressUp(later, sound, done));
+  }
+
+  private dressUp(later: (ms: number, f: () => void) => void, sound: boolean, done: () => void): void {
+    const w = this.tidy.world;
     // row after row, left to right: the closet fills up like a printed page
     const order = w.cables.map((_, c) => c).sort((p, q) => {
       const a = w.rack.port(w.circuits[p].a), b = w.rack.port(w.circuits[q].a);
       return a.unit - b.unit || a.x - b.x;
     });
     sfx.whoosh();
-    this.mess.fly(this.messPos, this.tidyShapes, order, {
+    this.mess.fly(this.dressing, order, {
       stagger: 2.8 / order.length, dur: 1.2, wave: 0.5,
       // from the panel to the switch, as a technician would dress it
       lag: (s) => s,
       ease: (p) => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2),
       lift: 0.07,
+      // pushed into the guides all of a piece
+      asOne: { from: this.dressing[1].at },
       takeoff: () => {},
       land: (c, k) => {
         this.swap(c, this.tidy, this.mess);
@@ -151,17 +194,22 @@ export class Closet {
     sfx.whoosh();
     // the last cord in is the first one out; each slumps from its middle to the floor
     const order = this.mess.world.cables.map((_, c) => c).reverse();
-    this.mess.fly(this.tidyShapes, this.messPos, order, {
+    this.mess.fly(reversed(this.dressing), order, {
       stagger: 1.2 / order.length, dur: 0.9, wave: 0.35,
       lag: (s) => Math.abs(2 * s - 1),
       ease: (p) => p * p,
       lift: 0.03,
+      // drawn out of the guides all of a piece
+      asOne: { until: 1 - this.dressing[1].at },
       takeoff: (c) => this.swap(c, this.mess, this.tidy),
       land: () => {},
+      // out of the guides: they go back into the rack
       done: () => {
-        this.tidy.rackView!.itemsGroup.visible = false;
         sfx.remove();
-        later(500, done);
+        this.grow(0, () => {
+          this.tidy.rackView!.itemsGroup.visible = false;
+          later(300, done);
+        });
       },
     });
   }

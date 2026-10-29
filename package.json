@@ -22,6 +22,7 @@
     "levels": "vite-node tools/levels.ts",
     "solvable": "vite-node tools/solvable.ts",
     "showcase": "vite-node tools/showcase.ts",
+    "dressing": "vite-node tools/dressing.ts",
     "free": "vite-node tools/free.ts",
     "pinch": "vite-node tools/pinch.ts",
     "release": "vite-node tools/release.ts",

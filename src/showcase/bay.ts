@@ -10,7 +10,8 @@ import { disposeTree } from '../render/dispose';
 import { World } from '../game/world';
 import { showcaseRack } from '../game/levels/showcaseRack';
 import type { CordType } from '../game/cordTypes';
-import { resample, tidyLayout } from '../game/idealRoutes';
+import { tidyLayout } from '../game/idealRoutes';
+import { along, paces, tidyShapes, type Knot, type Pace } from './dressing';
 import type { V3 } from '../lib/vec3';
 import type { CableStart } from '../game/cables';
 import type { Place } from './aisleLayout';
@@ -18,23 +19,17 @@ import type { Place } from './aisleLayout';
 /** waits a little, so that the page may draw (or not at all) */
 export type Pause = () => Promise<void>;
 
-export interface FlightOpts {
+export interface FlightOpts extends Pace {
   stagger: number;
   dur: number;
-  /** share of the flight the motion takes to run along the cord */
-  wave: number;
-  /** when each point of the cord sets off (0..1), by its place along it (0..1) */
-  lag: (s: number) => number;
-  ease: (p: number) => number;
-  /** the cord bows out towards the viewer on its way (m) */
-  lift: number;
   takeoff: (c: number) => void;
   land: (c: number, k: number) => void;
   done: () => void;
 }
 
 interface Flight extends FlightOpts {
-  from: Float64Array;
+  /** the shapes the cords go through, the first to the last */
+  path: Knot[];
   to: Float64Array;
   vel: Float64Array;
   t: number;
@@ -56,6 +51,9 @@ export class Bay {
   group = new THREE.Group();
   flight: Flight | null = null;
   private moved!: Uint8Array;
+  /** where each point of a cord is along the flight, and how far it bows out (see paces) */
+  private flightE = new Float64Array(0);
+  private flightBow = new Float64Array(0);
   /** time not yet stepped by the physics (s) */
   private acc = 0;
 
@@ -132,14 +130,17 @@ export class Bay {
     this.rackView?.syncItems(this.world.itemsVersion);
   }
 
-  /** moves every cord from one shape to the other, one after the other in `order` */
-  fly(from: Float64Array, to: Float64Array, order: number[], o: FlightOpts): void {
+  /** moves every cord along `path`, from its first shape to its last, one after the other in `order` */
+  fly(path: Knot[], order: number[], o: FlightOpts): void {
     const starts = new Array(this.world.cables.length).fill(0);
     order.forEach((c, k) => { starts[c] = k * o.stagger; });
+    const from = path[0].x, to = path[path.length - 1].x;
+    const longest = Math.max(...this.world.cables.map((cb) => cb.count));
+    if (this.flightE.length < longest) { this.flightE = new Float64Array(longest); this.flightBow = new Float64Array(longest); }
     this.world.sim.hold = true;
     this.world.sim.x.set(from);
     this.flight = {
-      ...o, from, to, vel: new Float64Array(from.length), t: 0, starts,
+      ...o, path, to, vel: new Float64Array(from.length), t: 0, starts,
       phase: new Uint8Array(this.world.cables.length), landed: 0,
     };
   }
@@ -152,20 +153,18 @@ export class Bay {
     const steps = Math.max(1, Math.ceil(dt * 240)), h = dt / steps;
     const k2 = SPRING_W * SPRING_W, c2 = 2 * SPRING_Z * SPRING_W;
     this.moved.fill(0);
+    const e = this.flightE, bow = this.flightBow;
     this.world.cables.forEach((cb, c) => {
       const u = (m.t - m.starts[c]) / m.dur;
       if (m.phase[c] === 2 || u <= 0) return;
       if (m.phase[c] === 0) { m.phase[c] = 1; m.takeoff(c); }
       this.moved[c] = 1;
       let off = 0;
+      paces(cb.count, u, m, e, bow);
       for (let k = 0; k < cb.count; k++) {
         const i = 3 * (cb.start + k);
-        // each point of the cord has its own progress: the motion runs along it
-        const p = Math.min(1, Math.max(0, (u - m.wave * m.lag(k / (cb.count - 1))) / (1 - m.wave)));
-        const e = m.ease(p);
-        const bow = m.lift * Math.sin(Math.PI * p);
         for (let d = 0; d < 3; d++) {
-          const target = m.from[i + d] + (m.to[i + d] - m.from[i + d]) * e + (d === 2 ? bow : 0);
+          const target = along(m.path, i + d, e[k]) + (d === 2 ? bow[k] : 0);
           let xd = x[i + d], vd = v[i + d];
           for (let s = 0; s < steps; s++) {
             vd += (k2 * (target - xd) - c2 * vd) * h;
@@ -195,16 +194,7 @@ export class Bay {
    * sampled at the nodes of our cords: where they go to be swapped for them.
    */
   tidyShapes(tidy: Bay): Float64Array {
-    const out = Float64Array.from(this.world.sim.x);
-    const rest = this.world.sim.rest;
-    this.world.cables.forEach((cb, c) => {
-      // the connector tips are in the same ports; the rest of the cord along the route between them
-      const path = tidy.tidyPaths[c];
-      const arcs = [0];
-      for (let k = 1; k < cb.count - 2; k++) arcs.push(arcs[k - 1] + rest[cb.start + k]);
-      resample(path.slice(1, path.length - 1), arcs, out, cb.start + 1);
-    });
-    return out;
+    return tidyShapes(this.world, tidy.tidyPaths);
   }
 
   leds(): void {
