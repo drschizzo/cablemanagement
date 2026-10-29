@@ -162,7 +162,7 @@ export class HandTool implements ToolHandler {
     w.sim.grab(node);
     const dir = new THREE.Vector3();
     stage.camera.getWorldDirection(dir);
-    const at = new THREE.Vector3(w.sim.x[3 * node], w.sim.x[3 * node + 1], w.sim.x[3 * node + 2]);
+    const at = new THREE.Vector3(...w.nodePosition(node));
     if (pull) pull.from.copy(at);
     const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(dir.clone().negate(), at);
     const px = ctx.pointer.px;

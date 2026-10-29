@@ -51,13 +51,12 @@ function held(ctl: Controller, kind: 'fingerManager' | 'duct'): number {
   const w = ctl.world;
   const ids = new Set(w.rack.items.filter((i) => i.kind === kind).map((i) => i.id));
   const boxes = w.rack.supports().filter((s) => ids.has(s.item));
-  const x = w.sim.x;
   let best = 0;
   for (const cb of w.cables) {
     let n = 0;
     for (let k = 6; k < cb.count - 6; k++) {
       const i = cb.start + k;
-      if (boxes.some((s) => insideBox(s, x[3 * i], x[3 * i + 1], x[3 * i + 2]))) n++;
+      if (boxes.some((s) => insideBox(s, ...w.nodePosition(i)))) n++;
     }
     best = Math.max(best, n);
   }

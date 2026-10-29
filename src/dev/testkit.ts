@@ -22,7 +22,7 @@ export function installTestkit(get: () => any, stage?: unknown): void {
     const r = canvas().getBoundingClientRect();
     return [r.left + (v.x * 0.5 + 0.5) * r.width, r.top + (-v.y * 0.5 + 0.5) * r.height];
   };
-  w.__node = (i: number) => { const x = get().world.sim.x; return [x[3 * i], x[3 * i + 1], x[3 * i + 2]]; };
+  w.__node = (i: number) => get().world.nodePosition(i);
   const fire = (type: string, x: number, y: number) =>
     canvas().dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, buttons: 1, pointerId: 1, bubbles: true }));
   w.__click = async (x: number, y: number) => {

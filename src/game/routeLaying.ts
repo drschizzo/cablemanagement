@@ -115,8 +115,7 @@ function stayingEnd(w: World, c: CableIndex, ports: (Port | null)[], guides: Gui
   if (ports[0] && ports[1] && portB) return dist(portAt(ports[0]), portAt(portB)) <= dist(portAt(ports[1]), portAt(portB)) ? 1 : 0;
   if (ports[0] && ports[1]) return dist(portAt(ports[0]), first) <= dist(portAt(ports[1]), first) ? 0 : 1;
   if (ports[0] || ports[1]) return ports[0] ? 0 : 1;
-  const x = w.sim.x;
-  const tip = (e: EndIndex): V3 => { const [n0] = w.endNodes(c, e); return [x[3 * n0], x[3 * n0 + 1], x[3 * n0 + 2]]; };
+  const tip = (e: EndIndex): V3 => w.nodePosition(w.endNodes(c, e)[0]);
   return dist(tip(0), first) <= dist(tip(1), first) ? 0 : 1;
 }
 
@@ -180,12 +179,11 @@ function throughGuide(g: Guide, lane: number, prev: V3 | null, next: V3 | null, 
 
 /** the cords other than c already lying in a guide: each takes a lane of its own */
 function cordsLyingIn(w: World, c: CableIndex, g: Guide): number {
-  const x = w.sim.x;
   let n = 0;
   w.cables.forEach((other, oc) => {
     if (oc === c) return;
     let k = 0;
-    for (let i = other.start; i < other.start + other.count && k < 2; i++) if (inBox(g.room, [x[3 * i], x[3 * i + 1], x[3 * i + 2]])) k++;
+    for (let i = other.start; i < other.start + other.count && k < 2; i++) if (inBox(g.room, w.nodePosition(i))) k++;
     if (k >= 2) n++;
   });
   return n;
@@ -308,7 +306,7 @@ function nodePlaces(arcs: number[], path: V3[], toPort: boolean): (V3 | null)[] 
 
 /** the way of each node: out to the front of the cabinet, across, and in through its guide's opening */
 function nodeWays(w: World, c: CableIndex, a: EndIndex, arcs: number[], place: (V3 | null)[], fromPort: boolean, toPort: boolean): (NodeWay | null)[] {
-  const cb = w.cables[c], x = w.sim.x;
+  const cb = w.cables[c];
   const length = arcs[cb.count - 1];
   const all = w.rack.guides();
   const node = (k: number) => (a === 0 ? cb.start + k : cb.start + cb.count - 1 - k);
@@ -333,7 +331,7 @@ function nodeWays(w: World, c: CableIndex, a: EndIndex, arcs: number[], place: (
     const i = node(k);
     const T = place[k];
     if (!T || (fromPort && k <= 1)) { ways.push(null); continue; }
-    const C: V3 = [x[3 * i], x[3 * i + 1], x[3 * i + 2]];
+    const C = w.nodePosition(i);
     const e = entry(all, C);
     const out: V3[] = [C];
     if (e) out.push([C[0] + e.dx, C[1] + e.dy, e.z]);
@@ -578,7 +576,7 @@ export class RouteRun {
     if (this.done) return true;
     this.t += dt;
     const { plan, w } = this;
-    const cb = w.cables[plan.cable], x = w.sim.x;
+    const cb = w.cables[plan.cable];
     const u = Math.min(1, this.t / this.duration);
     // out (0 – 0.25), across (0.25 – 0.6), in (0.6 – 1), each eased, every
     // node at the same pace (the cord keeps a shape)
@@ -602,7 +600,7 @@ export class RouteRun {
     if (this.arrived >= 0 && plan.portB && !this.plugged) {
       const b = 1 - plan.a;
       const [n0] = w.endNodes(plan.cable, b), port = w.rack.port(plan.portB);
-      this.plugged = Math.hypot(x[3 * n0] - port.x, x[3 * n0 + 1] - port.y, x[3 * n0 + 2] - CONNECTOR) < 0.03 && !port.plugged && w.plug(plan.cable, b, plan.portB);
+      this.plugged = dist(w.nodePosition(n0), [port.x, port.y, CONNECTOR]) < 0.03 && !port.plugged && w.plug(plan.cable, b, plan.portB);
     }
     w.sim.setGoals(cb.start, this.pos, this.wt);
     if (weight <= 0) this.done = true;

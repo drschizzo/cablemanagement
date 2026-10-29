@@ -238,13 +238,13 @@ export function pathToNodes(path: V3[], seg: number): number[] {
  */
 export function strapBundles(w: World, bundles: number): void {
   const supports = w.rack.supports();
-  const x = w.sim.x;
   for (let c = 0; c < w.cables.length && bundleCount(w, supports) < bundles; c++) {
     const cb = w.cables[c];
     for (let i = cb.start + 4; i < cb.start + cb.count - 4 && bundleCount(w, supports) < bundles; i += 3) {
-      if (w.sim.bundleOf[i] >= 0 || !supports.some((s) => insideBox(s, x[3 * i], x[3 * i + 1], x[3 * i + 2]))) continue;
+      const p = w.nodePosition(i);
+      if (w.sim.bundleOf[i] >= 0 || !supports.some((s) => insideBox(s, ...p))) continue;
       const before = bundleCount(w, supports);
-      const st = w.addStrap(x[3 * i], x[3 * i + 1], x[3 * i + 2]);
+      const st = w.addStrap(...p);
       if (st && bundleCount(w, supports) === before) w.removeStrap(st);
     }
   }

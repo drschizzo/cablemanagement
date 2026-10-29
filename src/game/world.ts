@@ -347,6 +347,16 @@ export class World {
 
   // --------------------------------------------------------------- ends
 
+  /**
+   * Where a node of the solver is (m). The solver keeps every position in one
+   * flat array (x, y, z of node i at 3i, 3i+1, 3i+2): only World, and the
+   * loops that run over every node (drawing, picking, scoring), read it.
+   */
+  nodePosition(i: NodeIndex): V3 {
+    const x = this.sim.x;
+    return [x[3 * i], x[3 * i + 1], x[3 * i + 2]];
+  }
+
   /** the connector node and the next one, for end 0 or 1 of a cable */
   endNodes(c: CableIndex, e: EndIndex): [NodeIndex, NodeIndex] {
     const cb = this.cables[c];
