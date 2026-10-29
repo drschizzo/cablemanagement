@@ -63,7 +63,7 @@ export class ModesPanel {
     return [
       {
         name: { fr: 'Campagne', en: 'Campaign' },
-        what: { fr: 'Huit baies de plus en plus chargées, du premier brassage au plat de spaghettis.', en: 'Eight ever busier cabinets, from the first patch to the spaghetti bowl.' },
+        what: { fr: `${LEVELS.length} baies de plus en plus chargées, du premier brassage au plat de spaghettis.`, en: `${LEVELS.length} ever busier cabinets, from the first patch to the spaghetti bowl.` },
         status: () => `★ ${stars(LEVELS.map((l) => l.id))}/${3 * LEVELS.length}`,
         open: lead(() => this.actions.levels('campaign', start, reopen)),
       },

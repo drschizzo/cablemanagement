@@ -6,10 +6,12 @@ import { hide, show } from './dom';
 import { $ } from '../lib/page';
 import { LOOK_SLOTS, SHOP, buy, equip, isOwned, equippedIn, type LookSlot } from './shop';
 import { formatMoney } from './format';
-import { tr } from './language';
+import { language, tr } from './language';
 import { assertNever } from '../lib/assertNever';
 import { FINDS, type FindId } from '../game/finds';
 import { LEVELS } from '../game/levels/campaign';
+import { KEYS_WEEKDAY } from '../game/levels/dailyLevel';
+import { MANUAL_FROM } from '../game/levels/freeLevel';
 import { findName, findStory } from './names';
 import { levelTitle } from './levelTexts';
 
@@ -78,8 +80,14 @@ function whereHidden(id: FindId): string {
   const index = LEVELS.findIndex((l) => l.find === id);
   if (index >= 0) return tr({ fr: `Quelque part dans le niveau ${index + 1}, ${levelTitle(LEVELS[index])}.`, en: `Somewhere in level ${index + 1}, ${levelTitle(LEVELS[index])}.` });
   switch (id) {
-    case 'keys': return tr({ fr: 'Dans la baie du jour, un dimanche.', en: 'In the cabinet of the day, on a Sunday.' });
-    case 'manual': return tr({ fr: 'Dans une grande partie libre (30 câbles ou plus).', en: 'In a big free play (30 cords or more).' });
+    case 'keys': return tr({ fr: `Dans la baie du jour, un ${weekdayName(KEYS_WEEKDAY)}.`, en: `In the cabinet of the day, on a ${weekdayName(KEYS_WEEKDAY)}.` });
+    case 'manual': return tr({ fr: `Dans une grande partie libre (${MANUAL_FROM} câbles ou plus).`, en: `In a big free play (${MANUAL_FROM} cords or more).` });
     default: return tr({ fr: 'Quelque part, dans une baie.', en: 'Somewhere, in a cabinet.' });
   }
+}
+
+/** a day of the week (Monday 0) in the player's language */
+function weekdayName(weekday: number): string {
+  // 2026-10-26 was a Monday
+  return new Intl.DateTimeFormat(language(), { weekday: 'long' }).format(new Date(2026, 9, 26 + weekday));
 }

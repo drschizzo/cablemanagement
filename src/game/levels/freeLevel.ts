@@ -11,7 +11,7 @@ import { rng } from '../../lib/random';
 const INCIDENTS_FROM = 12;
 const FAULT_FROM = 16;
 /** from this many cords, the manual nobody read lies somewhere in the cabinet */
-const MANUAL_FROM = 30;
+export const MANUAL_FROM = 30;
 
 export function freeLevel(cables: number, seed: number): FreeLevel {
   const panels = Math.max(1, Math.ceil(cables / 24));

@@ -13,6 +13,7 @@ import { hide, show } from './dom';
 import { $ } from '../lib/page';
 import { countOf, serviceName, serviceWhat } from './names';
 import { tr } from './language';
+import { toolKey } from './toolbar';
 import { levelBrief, levelTips, levelTitle } from './levelTexts';
 
 export class LevelBrief {
@@ -86,8 +87,8 @@ function briefTips(level: LevelDef, ctl: Controller | null): string[] {
     en: '<b>Power</b>: the black cords run from the power strip to the servers\' supplies (cutting one cuts the server\'s service). They are not run with the data: each family its own supports.',
   }));
   if (level.faults) tips.push(tr({
-    fr: `<b>Pannes</b> : ${level.faults > 1 ? `${level.faults} vieux cordons sont coupés` : 'un vieux cordon est coupé'} à l'intérieur. Branché comme prévu, il ne porte rien et ses voyants clignotent en rouge. Le <b>Testeur</b> (4) le trouve d'un clic ; remplacez-le par un cordon neuf du Stock.`,
-    en: `<b>Faults</b>: ${level.faults > 1 ? `${level.faults} old cords are` : 'an old cord is'} broken inside. Plugged as planned, it carries nothing and its LEDs blink red. The <b>Tester</b> (4) finds it in a click; swap it for a new cord from the Stock.`,
+    fr: `<b>Pannes</b> : ${level.faults > 1 ? `${level.faults} vieux cordons sont coupés` : 'un vieux cordon est coupé'} à l'intérieur. Branché comme prévu, il ne porte rien et ses voyants clignotent en rouge. Le <b>Testeur</b> (${toolKey('tester')}) le trouve d'un clic ; remplacez-le par un cordon neuf du Stock.`,
+    en: `<b>Faults</b>: ${level.faults > 1 ? `${level.faults} old cords are` : 'an old cord is'} broken inside. Plugged as planned, it carries nothing and its LEDs blink red. The <b>Tester</b> (${toolKey('tester')}) finds it in a click; swap it for a new cord from the Stock.`,
   }));
   tips.push(tr({ fr: 'Les voyants des ports : vert = liaison conforme au plan, orange = mauvais port, rouge = liaison coupée.', en: 'The port LEDs: green = link as planned, orange = wrong port, red = link down.' }));
   return tips;

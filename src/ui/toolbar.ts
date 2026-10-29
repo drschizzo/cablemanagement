@@ -66,6 +66,11 @@ export const TOOL_BUTTONS: Record<Tool, ToolButton> = {
   },
 };
 
+/** the key that chooses a tool (the texts that name it say it too) */
+export function toolKey(tool: Tool): string {
+  return TOOL_BUTTONS[tool].key;
+}
+
 /** the tool a key chooses, if any */
 export function toolForKey(key: string): Tool | undefined {
   return (Object.keys(TOOL_BUTTONS) as Tool[]).find((t) => TOOL_BUTTONS[t].key === key.toLowerCase());

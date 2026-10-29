@@ -12,6 +12,8 @@ const FIRST_DAY = Date.UTC(2026, 9, 29);
 const DAY_MS = 86_400_000;
 /** cords by day of the week, Monday first: a gentle start, a bigger cabinet at the weekend */
 const CORDS_BY_WEEKDAY = [8, 10, 12, 14, 16, 20, 24];
+/** the day of the week (Monday 0) whose cabinet hides the keys somebody lost */
+export const KEYS_WEEKDAY = 6;
 
 /** a calendar day as YYYY-MM-DD, in the player's own time zone */
 export function dayKey(now: Date): string {
@@ -44,8 +46,7 @@ export function dailyLevel(date: string): DailyLevel {
     ...freeLevel(cables, seed),
     incidents: weekend ? drawIncidents(2, rng(seed ^ 0x51ed)) : undefined,
     faults: weekday >= 4 ? 1 : 0,
-    // the Sunday cabinet hides the keys somebody lost
-    find: weekday === 6 ? 'keys' : undefined,
+    find: weekday === KEYS_WEEKDAY ? 'keys' : undefined,
     id: `daily-${date}`,
     kind: 'daily',
     date,

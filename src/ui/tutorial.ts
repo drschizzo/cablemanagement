@@ -9,6 +9,7 @@ import { sfx } from '../audio/sfx';
 import { save } from './storage';
 import { $ } from '../lib/page';
 import { onLanguageChange, tr, type Words } from './language';
+import { STOCK_KEY, toolKey } from './toolbar';
 
 type Box = { min: [number, number, number]; max: [number, number, number] };
 
@@ -136,8 +137,8 @@ const STEPS: Step[] = [
   {
     title: { fr: 'Tracer un chemin', en: 'Draw a route' },
     text: {
-      fr: 'Pour ranger un câble, on décide par où il passe. Outil <b>Chemin</b> (touche C) : appuyez sur un câble, puis <b>tracez un trait par-dessus les guides</b> qu\'il doit traverser, dans l\'ordre. Chaque guide retenu s\'encadre de vert. Si le trait se termine sur un port libre, le bout libre du câble s\'y branche. Au relâcher, le câble est posé le long du chemin, en entrant dans chaque guide par son ouverture, sans traverser la baie. À la Main, tout se fait aussi câble par câble, à votre façon.',
-      en: 'To tidy a cord, you decide where it runs. <b>Route</b> tool (key C): press on a cord, then <b>draw a line over the guides</b> it must go through, in order. Each guide taken is framed in green. If the line ends on a free port, the cord\'s loose end is plugged there. When you let go, the cord is laid along the route, entering each guide by its opening, without going through the cabinet. With the Hand, everything can also be done cord by cord, your own way.',
+      fr: `Pour ranger un câble, on décide par où il passe. Outil <b>Chemin</b> (touche ${toolKey('route').toUpperCase()}) : appuyez sur un câble, puis <b>tracez un trait par-dessus les guides</b> qu'il doit traverser, dans l'ordre. Chaque guide retenu s'encadre de vert. Si le trait se termine sur un port libre, le bout libre du câble s'y branche. Au relâcher, le câble est posé le long du chemin, en entrant dans chaque guide par son ouverture, sans traverser la baie. À la Main, tout se fait aussi câble par câble, à votre façon.`,
+      en: `To tidy a cord, you decide where it runs. <b>Route</b> tool (key ${toolKey('route').toUpperCase()}): press on a cord, then <b>draw a line over the guides</b> it must go through, in order. Each guide taken is framed in green. If the line ends on a free port, the cord's loose end is plugged there. When you let go, the cord is laid along the route, entering each guide by its opening, without going through the cabinet. With the Hand, everything can also be done cord by cord, your own way.`,
     },
   },
 
@@ -179,8 +180,8 @@ const STEPS: Step[] = [
   {
     title: { fr: 'La goulotte', en: 'The duct' },
     text: {
-      fr: 'La <b>goulotte</b> se fixe dans un couloir latéral. Elle descend les câbles le long des montants et cache le <b>mou</b> (la longueur en trop). Prenez l\'outil <b>Supports</b> (touche 2) et cliquez dans le couloir entouré : dans un couloir, il pose une goulotte ; dans une unité vide, un guide-câbles.',
-      en: 'The <b>duct</b> fits in a side channel. It takes the cords down along the posts and hides the <b>slack</b> (the extra length). Take the <b>Supports</b> tool (key 2) and click in the circled channel: in a channel, it places a duct; in an empty unit, a cable manager.',
+      fr: `La <b>goulotte</b> se fixe dans un couloir latéral. Elle descend les câbles le long des montants et cache le <b>mou</b> (la longueur en trop). Prenez l'outil <b>Supports</b> (touche ${toolKey('supports')}) et cliquez dans le couloir entouré : dans un couloir, il pose une goulotte ; dans une unité vide, un guide-câbles.`,
+      en: `The <b>duct</b> fits in a side channel. It takes the cords down along the posts and hides the <b>slack</b> (the extra length). Take the <b>Supports</b> tool (key ${toolKey('supports')}) and click in the circled channel: in a channel, it places a duct; in an empty unit, a cable manager.`,
     },
     task: { fr: 'Posez une goulotte', en: 'Place a duct' },
     spot: sideBox,
@@ -225,8 +226,8 @@ const STEPS: Step[] = [
   {
     title: { fr: 'Le velcro', en: 'The velcro' },
     text: {
-      fr: 'Le <b>velcro</b> (touche 3) serre en faisceau des câbles côte à côte. <b>Tracez un trait en travers</b> des câbles à serrer : ceux qu\'il croise s\'allument, et au relâcher le velcro les serre là où le trait les croise. Il se place là où le plus de câbles passent côte à côte, et laisse de côté un câble croisé plus loin. Cliquez sur un velcro pour l\'enlever. Un faisceau d\'un seul service se lit mieux. Jamais de collier serré sur une fibre : il l\'écrase !',
-      en: 'The <b>velcro</b> (key 3) straps cords running side by side into a bundle. <b>Draw a line across</b> the cords to strap: those it crosses light up, and when you let go the velcro straps them where the line crosses them. It goes where most cords run side by side, and leaves out a cord crossed further on. Click a velcro to take it off. A bundle of one service reads better. Never a tight cable tie on a fibre: it crushes it!',
+      fr: `Le <b>velcro</b> (touche ${toolKey('velcro')}) serre en faisceau des câbles côte à côte. <b>Tracez un trait en travers</b> des câbles à serrer : ceux qu'il croise s'allument, et au relâcher le velcro les serre là où le trait les croise. Il se place là où le plus de câbles passent côte à côte, et laisse de côté un câble croisé plus loin. Cliquez sur un velcro pour l'enlever. Un faisceau d'un seul service se lit mieux. Jamais de collier serré sur une fibre : il l'écrase !`,
+      en: `The <b>velcro</b> (key ${toolKey('velcro')}) straps cords running side by side into a bundle. <b>Draw a line across</b> the cords to strap: those it crosses light up, and when you let go the velcro straps them where the line crosses them. It goes where most cords run side by side, and leaves out a cord crossed further on. Click a velcro to take it off. A bundle of one service reads better. Never a tight cable tie on a fibre: it crushes it!`,
     },
     task: { fr: 'Posez un velcro', en: 'Place a velcro' },
     tool: 'velcro',
@@ -236,8 +237,8 @@ const STEPS: Step[] = [
   {
     title: { fr: 'Le bon cordon', en: 'The right cord' },
     text: {
-      fr: 'Un rangement parfait passe par des cordons <b>à la bonne longueur</b> : trop longs, ils font du mou partout ; trop courts, ils sont <b>tendus</b> et ne valent pas ★★★. Le <b>Stock</b> (touche 0) fournit des cordons neufs, en nombre limité par longueur : ils arrivent dans le bac. Pour remplacer un cordon branché, il faut le débrancher, et donc couper sa liaison le temps de changer.',
-      en: 'A perfect job takes cords <b>of the right length</b>: too long, they leave slack everywhere; too short, they are <b>taut</b> and not worth ★★★. The <b>Stock</b> (key 0) provides new cords, in limited numbers per length: they arrive in the crate. To swap a plugged cord, it must be unplugged, so its link is cut while it is changed.',
+      fr: `Un rangement parfait passe par des cordons <b>à la bonne longueur</b> : trop longs, ils font du mou partout ; trop courts, ils sont <b>tendus</b> et ne valent pas ★★★. Le <b>Stock</b> (touche ${STOCK_KEY}) fournit des cordons neufs, en nombre limité par longueur : ils arrivent dans le bac. Pour remplacer un cordon branché, il faut le débrancher, et donc couper sa liaison le temps de changer.`,
+      en: `A perfect job takes cords <b>of the right length</b>: too long, they leave slack everywhere; too short, they are <b>taut</b> and not worth ★★★. The <b>Stock</b> (key ${STOCK_KEY}) provides new cords, in limited numbers per length: they arrive in the crate. To swap a plugged cord, it must be unplugged, so its link is cut while it is changed.`,
     },
     task: { fr: 'Prenez un cordon neuf au Stock', en: 'Take a new cord from the Stock' },
     done: (ctl) => ctl.world.cablesVersion > 0,
