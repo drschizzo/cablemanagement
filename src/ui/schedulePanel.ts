@@ -42,6 +42,8 @@ export class SchedulePanel {
         <td><span class="chip" data-family="${CORD_KINDS[c.type].family}" style="background:${CORD_KINDS[c.type].color}" title="${cordTypeName(c.type)}">${c.type}</span></td>
         <td class="svc" title="${serviceName(c.service)}${tr({ fr: ' : ', en: ': ' })}${serviceWhat(c.service)}${cutTip}"><span class="dot" style="background:${service.color}"></span>${serviceName(c.service)}</td>
         <td class="st"><i class="s-conn" title="${tr({ fr: 'Branchée', en: 'Plugged' })}"></i><i class="s-tidy"></i></td>`;
+      // the row takes its service's colour, as its cord and the light of its port do
+      row.style.setProperty('--svc', service.color);
       row.onmouseenter = () => ctl.focus(i);
       row.onmouseleave = () => ctl.focus(-1);
       row.title = tr({ fr: 'Cliquez : son bout libre sort du tas et s\'accroche sous son port', en: 'Click: its loose end comes out of the heap and hooks under its port' });
@@ -63,6 +65,7 @@ export class SchedulePanel {
       const tidy = row.querySelector('.s-tidy')!;
       tidy.className = 's-tidy' + (s.tidy ? ' ok' : '');
       tidy.setAttribute('title', tidyTip(s, s.cable >= 0 ? ev.cableStrain[s.cable] : null));
+      row.classList.toggle('linked', s.connected);
       row.classList.toggle('done', s.tidy);
       row.classList.toggle('cut', !!w && windowed && w.maintenance.isDown(i));
       row.classList.toggle('bypassed', !!w?.maintenance.bypassed.has(i));
