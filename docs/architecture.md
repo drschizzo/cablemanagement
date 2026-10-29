@@ -98,7 +98,8 @@ src/
     levelBrief.ts   le brief d'un niveau, puis la préparation
     timelapsePlayer.ts le timelapse lu en boucle, et enregistré en vidéo (MediaRecorder) ; beforeAfterImage.ts, la baie
                     avant / après en une image ; share.ts, l'adresse du jeu et les fichiers offerts au joueur
-    resultScreen.ts l'écran de résultat ; levelMenu.ts, le menu des niveaux (tutoriel, campagne, partie libre)
+    resultScreen.ts l'écran de résultat ; modesPanel.ts, les modes de jeu (une carte chacun) ; levelMenu.ts, une section à la
+                    fois (la campagne et son tutoriel, ou les puzzles)
     pauseMenu.ts    le menu d'un niveau (☰ Menu, Échap) : le chrono attend ; consignes, recommencer, niveaux,
                     paramètres, accueil ; confirmDialog.ts, la question avant de quitter une baie entamée
     settingsPanel.ts les paramètres : qualité de l'image (auto, préréglages, détails) et son

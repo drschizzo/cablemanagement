@@ -297,7 +297,7 @@ button:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
 #menu h1::before, #pause h1::before, #settings h1::before { content: '>'; font-family: var(--mono); font-weight: 400; color: var(--accent); margin-right: 10px; }
 /* the way back, in the corner of a panel opened from another */
 .panel > .back { position: absolute; top: 14px; right: 16px; font-size: 11px; }
-#menu-levels, #menu-puzzles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; margin: 18px 0; background: var(--line); border: 1px solid var(--line); }
+#menu-levels { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; margin: 18px 0; background: var(--line); border: 1px solid var(--line); }
 .level-card {
   position: relative; text-align: left; background: var(--panel-solid); border: 0; border-radius: 0; padding: 14px; min-height: 116px;
   transition: background 0.15s;
@@ -330,7 +330,7 @@ button:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
   .tool { width: auto; grid-template-columns: 22px auto; }
   .tool .name, .tool .key { display: none; }
   #hint { font-size: 12px; max-width: calc(100% - 330px); }
-  #menu-levels, #menu-puzzles { grid-template-columns: repeat(2, 1fr); }
+  #menu-levels { grid-template-columns: repeat(2, 1fr); }
 }
 
 /* ---- title screen: the before / after aisle, the name and the menu over it */
@@ -383,8 +383,15 @@ body:not(.booting) #title .leds i { animation: traffic 3.1s steps(1) infinite; }
 body.booting #title-load { display: flex; }
 #title-load .bar { width: 240px; height: 2px; background: rgba(255, 255, 255, 0.08); }
 #title-load .fill { height: 100%; width: 0; background: var(--accent); transition: width 0.3s; }
-#title .menu { display: flex; gap: 8px; margin-top: 16px; }
-#title .menu button { padding: 7px 16px; font-size: 13.5px; background: rgba(9, 10, 11, 0.7); backdrop-filter: blur(6px); }
+/* one way in, two more beside it, and the rest as quiet links */
+#title .menu { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 18px; }
+#title .menu .more { display: flex; gap: 8px; }
+#title .menu .more button, #title-play { padding: 7px 16px; font-size: 13.5px; background: rgba(9, 10, 11, 0.7); backdrop-filter: blur(6px); white-space: nowrap; }
+#title-play { min-width: 220px; padding: 10px 22px; font-size: 15px; }
+#title .menu .links { display: flex; gap: 4px; padding: 3px 10px; border-radius: 999px; background: rgba(9, 10, 11, 0.6); backdrop-filter: blur(6px); }
+#title .menu .links button { background: none; border: 0; padding: 2px 6px; font: 12.5px var(--sans); color: #aab0ab; }
+#title .menu .links button:hover { color: var(--text); }
+#title .menu .links button + button::before { content: '·'; margin-right: 10px; color: var(--faint); }
 /* play is outlined while the demo waits to be played, filled once the aisle is tidy */
 #title-play.primary { background: rgba(139, 227, 180, 0.12); color: var(--accent); border-color: var(--accent-line); }
 body[data-sc='after'] #title-play.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); animation: pulse 2s infinite; }
@@ -530,15 +537,23 @@ body[data-level="zen"] #timer { display: none; }
 #toolbar, #side, #hint, #topbar { transition: opacity 0.4s; }
 body.touring #toolbar, body.touring #side, body.touring #hint, body.touring #topbar, body.touring #tooltip { opacity: 0; pointer-events: none; }
 
-/* ---- the workshop: a swatch per look */
-#shop-items h2 { margin-top: 14px; }
+/* ---- the workshop: a swatch per look, dark like the rest of the panels */
+#shop-items h2, #shop h2 { margin: 18px 0 8px; font-size: 13px; font-weight: 600; color: var(--text); text-transform: uppercase; letter-spacing: 0.08em; }
 #shop .swatches { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-#shop .swatch { display: grid; grid-template-columns: 22px 1fr; grid-template-rows: auto auto; align-items: center; gap: 0 8px; text-align: left; padding: 6px 8px; }
-#shop .swatch i { grid-row: span 2; width: 22px; height: 22px; border-radius: 3px; border: 1px solid var(--line-hi); }
-#shop .swatch small { color: var(--dim); font-family: var(--mono); font-size: 10.5px; }
-#shop .swatch.cur { border-color: var(--accent); }
+#shop .swatch {
+  display: grid; grid-template-columns: 26px 1fr; grid-template-rows: auto auto; align-items: center; gap: 1px 10px;
+  text-align: left; padding: 8px 10px; background: var(--panel-solid); border: 1px solid var(--line); border-radius: var(--r);
+  color: var(--text); transition: border-color 0.15s, background 0.15s;
+}
+#shop .swatch:hover:not(:disabled) { border-color: var(--line-hi); background: #151716; }
+#shop .swatch i { grid-row: span 2; width: 26px; height: 26px; border-radius: 4px; border: 1px solid rgba(255, 255, 255, 0.22); }
+#shop .swatch span { font-size: 13px; }
+#shop .swatch small { font: 11px var(--mono); color: var(--dim); }
+#shop .swatch.cur { border-color: var(--accent); background: var(--accent-soft); }
 #shop .swatch.cur small { color: var(--accent); }
-#shop .swatch.locked span { color: var(--dim); }
+/* to buy: the price stands out; too dear for now: dimmed, still readable */
+#shop .swatch.locked small { color: var(--warn); }
+#shop .swatch:disabled { cursor: default; opacity: 0.55; }
 #shop-finds { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
 #shop .find { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; border: 1px solid var(--line); border-radius: var(--r); font-size: 12px; }
 #shop .find span { color: var(--dim); }
@@ -565,3 +580,12 @@ body.touring #toolbar, body.touring #side, body.touring #hint, body.touring #top
 #ed-error { color: var(--warn); min-height: 1.2em; }
 #ed-code { flex: 1; }
 @media (max-width: 720px) { #editor .ed-body { grid-template-columns: 1fr; } }
+
+/* ---- the game modes: a card each, what it is and where the player stands */
+#modes-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; margin-top: 14px; }
+.mode-card { text-align: left; background: var(--panel-solid); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.mode-card:hover, .mode-card:focus-visible { border-color: var(--accent-line); background: #131514; outline: none; }
+.mode-card .t { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-weight: 600; color: var(--text); }
+.mode-card .status { font: 11px var(--mono); color: var(--accent); font-weight: 400; white-space: nowrap; }
+.mode-card p { margin: 6px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--dim); }
+.mode-card input[type="range"] { width: 100%; margin-top: 8px; accent-color: var(--accent); }

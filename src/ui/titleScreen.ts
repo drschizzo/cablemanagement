@@ -13,10 +13,9 @@ import { onLanguageChange, tr } from './language';
 export interface TitleActions {
   start(level: LevelDef): void;
   playNext(): void;
-  showMenu(): void;
+  showModes(): void;
   showSettings(): void;
   showShop(): void;
-  showCareer(): void;
   /** the next level the player has to tidy (undefined: all are done) */
   nextLevel(): LevelDef | undefined;
   /** the player has stars in some level */
@@ -34,10 +33,9 @@ export class TitleScreen {
     byId('title-play').onclick = () => { if (this.firstVisit()) actions.start(TUTORIAL); else actions.playNext(); };
     byId('title-tuto').onclick = () => actions.start(TUTORIAL);
     byId('title-daily').onclick = () => actions.playDaily();
-    byId('title-levels').onclick = () => actions.showMenu();
+    byId('title-modes').onclick = () => actions.showModes();
     byId('title-settings').onclick = () => actions.showSettings();
     byId('title-shop').onclick = () => actions.showShop();
-    byId('title-career').onclick = () => actions.showCareer();
     onLanguageChange(() => this.refresh());
   }
 

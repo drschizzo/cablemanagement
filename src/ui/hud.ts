@@ -29,6 +29,7 @@ import { recordOutcome } from './outcome';
 import { TimelapsePlayer } from './timelapsePlayer';
 import { ShopPanel } from './shopPanel';
 import { CareerPanel } from './careerPanel';
+import { ModesPanel } from './modesPanel';
 import { EditorPanel } from './editorPanel';
 import { FINDS, type FindId } from '../game/finds';
 import { findName, findStory } from './names';
@@ -62,7 +63,8 @@ export class Hud {
   private brief: LevelBrief;
   private pause: PauseMenu;
   private editor = new EditorPanel();
-  private levelMenu = new LevelMenu((start, back) => this.editor.show(start, back));
+  private levelMenu = new LevelMenu();
+  private modes: ModesPanel;
   private settings: SettingsPanel;
   private timelapse = new TimelapsePlayer();
   private shop = new ShopPanel();
@@ -76,6 +78,11 @@ export class Hud {
     this.toolbar = new Toolbar((tool) => this.selectTool(tool), () => this.toggleStock());
     this.stockMenu = new StockMenu((message) => this.toast(message));
     this.brief = new LevelBrief((tool) => this.selectTool(tool));
+    this.modes = new ModesPanel({
+      levels: (section, start, back) => this.levelMenu.show(this.progress, section, start, back),
+      career: (start, back) => this.career.show(start, back),
+      editor: (start, back) => this.editor.show(start, back),
+    }, () => this.progress);
     this.settings = new SettingsPanel(quality, { isOn: () => !isMuted(), toggle: () => this.toggleSound() }, {
       isOn: () => !load('musicOff'),
       toggle: () => { save('musicOff', !load('musicOff')); this.followMusic(); },
@@ -83,7 +90,7 @@ export class Hud {
     this.pause = new PauseMenu({
       help: () => this.level && this.showBrief(this.level),
       restart: (back) => this.leaveLevel(tr({ fr: 'Recommencer le niveau ?', en: 'Restart the level?' }), tr({ fr: 'Recommencer', en: 'Restart' }), () => this.level && actions.start(this.level), back),
-      levels: (back) => this.showMenuOverLevel(back),
+      levels: (back) => this.showModesOverLevel(back),
       settings: (back) => this.settings.show(back),
       home: (back) => this.leaveLevel(tr({ fr: 'Quitter le niveau ?', en: 'Leave the level?' }), tr({ fr: 'Quitter', en: 'Leave' }), actions.home, back),
     });
@@ -140,15 +147,15 @@ export class Hud {
     else ambient.stop();
   }
 
-  /** the levels menu, out of a level or of the title screen; `back`: where its Back button returns */
-  showMenu(back: () => void = () => {}): void {
-    this.levelMenu.show(this.progress, this.actions.start, back);
+  /** the game modes, out of a level or of the title screen; `back`: where its Back button returns */
+  showModes(back: () => void = () => {}): void {
+    this.modes.show(this.actions.start, back);
   }
 
-  /** the levels menu over the level under way: the level chosen replaces it, asked first */
-  private showMenuOverLevel(back: () => void): void {
-    const choose = (level: LevelDef) => this.leaveLevel(tr({ fr: 'Changer de niveau ?', en: 'Change level?' }), tr({ fr: 'Changer', en: 'Change' }), () => this.actions.start(level), () => this.showMenuOverLevel(back));
-    this.levelMenu.show(this.progress, choose, back);
+  /** the game modes over the level under way: the level chosen replaces it, asked first */
+  private showModesOverLevel(back: () => void): void {
+    const choose = (level: LevelDef) => this.leaveLevel(tr({ fr: 'Changer de niveau ?', en: 'Change level?' }), tr({ fr: 'Changer', en: 'Change' }), () => this.actions.start(level), () => this.showModesOverLevel(back));
+    this.modes.show(choose, back);
   }
 
   /** the player picked up a find: kept in the wallet, its story told */
@@ -161,11 +168,6 @@ export class Hud {
     this.toast(isNew
       ? tr({ fr: `Trouvaille : ${findName(find)} ! ${findStory(find)} (${count})`, en: `Found: ${findName(find)}! ${findStory(find)} (${count})` })
       : tr({ fr: `${findName(find)}, encore. Il est déjà dans votre collection.`, en: `${findName(find)} again. It is in your collection already.` }), STORY_MS);
-  }
-
-  /** the career, from the title screen */
-  showCareer(): void {
-    this.career.show(this.actions.start, () => {});
   }
 
   /** the workshop, from the title screen */
@@ -287,7 +289,7 @@ export class Hud {
       showResult(ctl, level, ev, outcome, {
         start: this.actions.start,
         replay: () => this.timelapse.show(ctl.timelapse.frames, fileName(level), () => show('#result')),
-        showMenu: () => this.showMenu(() => show('#result')),
+        showModes: () => this.showModes(() => show('#result')),
         home: this.actions.home,
       });
     });

@@ -57,20 +57,17 @@
     <div id="menu" class="overlay">
       <div class="panel wide">
         <button id="menu-back" class="link back" data-i18n="common.back"></button>
-        <h1 data-i18n="menu.title"></h1>
-        <p class="sub" data-i18n="menu.sub"></p>
+        <h1 id="menu-title"></h1>
+        <p id="menu-sub" class="sub"></p>
         <div id="menu-levels"></div>
-        <h2 data-i18n="menu.puzzles"></h2>
-        <p class="sub" data-i18n="menu.puzzlesSub"></p>
-        <div id="menu-puzzles"></div>
-        <div class="free">
-          <span data-i18n="menu.free"></span>
-          <input id="free-n" type="range" min="4" max="48" step="2" value="16" />
-          <span id="free-n-val"></span>
-          <button id="free-go" data-i18n="menu.freeGo"></button>
-          <button id="zen-go" class="ghost" data-i18n="menu.zen" data-i18n-title="menu.zenTip"></button>
-          <button id="editor-go" class="ghost" data-i18n="menu.editor"></button>
-        </div>
+      </div>
+    </div>
+
+    <div id="modes" class="overlay">
+      <div class="panel wide">
+        <button id="modes-back" class="link back" data-i18n="common.back"></button>
+        <h1 data-i18n="common.modes"></h1>
+        <div id="modes-cards"></div>
       </div>
     </div>
 
@@ -104,7 +101,7 @@
           <button id="result-share" class="ghost"></button>
           <button id="result-again" class="ghost" data-i18n="result.again"></button>
           <button id="result-home" class="ghost" data-i18n="common.home"></button>
-          <button id="result-menu" class="ghost" data-i18n="common.levels"></button>
+          <button id="result-menu" class="ghost" data-i18n="common.modes"></button>
           <button id="result-next" class="primary"></button>
         </div>
       </div>
@@ -118,12 +115,15 @@
       <div id="title-load"><div class="bar"><div class="fill"></div></div></div>
       <nav class="menu">
         <button id="title-play" class="primary"></button>
-        <button id="title-daily" class="ghost"></button>
-        <button id="title-career" class="ghost" data-i18n="common.career"></button>
-        <button id="title-tuto" class="ghost" data-i18n="common.tutorial"></button>
-        <button id="title-levels" class="ghost" data-i18n="common.levels"></button>
-        <button id="title-shop" class="ghost" data-i18n="common.shop"></button>
-        <button id="title-settings" class="ghost" data-i18n="common.settings"></button>
+        <div class="more">
+          <button id="title-daily" class="ghost"></button>
+          <button id="title-modes" class="ghost" data-i18n="common.modes"></button>
+        </div>
+        <div class="links">
+          <button id="title-tuto" class="link" data-i18n="common.tutorial"></button>
+          <button id="title-shop" class="link" data-i18n="common.shop"></button>
+          <button id="title-settings" class="link" data-i18n="common.settings"></button>
+        </div>
       </nav>
     </div>
 

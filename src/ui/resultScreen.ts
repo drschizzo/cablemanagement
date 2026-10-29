@@ -22,7 +22,8 @@ export interface ResultActions {
   start(level: LevelDef): void;
   /** the timelapse of the work; back to the result after */
   replay(): void;
-  showMenu(): void;
+  /** the game modes; back to the result after */
+  showModes(): void;
   /** the title screen */
   home(): void;
 }
@@ -39,7 +40,7 @@ export function showResult(ctl: Controller, level: LevelDef, ev: Evaluation, out
 
   showNext(outcome.next, actions);
   $('#result-again').onclick = () => { hide('#result'); ctl.resume(); };
-  $('#result-menu').onclick = () => { hide('#result'); actions.showMenu(); };
+  $('#result-menu').onclick = () => { hide('#result'); actions.showModes(); };
   $('#result-home').onclick = () => { hide('#result'); actions.home(); };
   showShare(share);
   $<HTMLButtonElement>('#result-replay').disabled = !ctl.timelapse.frames.length;

@@ -35,7 +35,9 @@ npm run dev
 ```
 
 Le jeu s'ouvre sur http://localhost:5173, sur l'**écran titre** : une salle de
-baies en désordre. L'interrupteur **Avant / Après** montre la même salle une
+baies en désordre. Un bouton principal (Jouer), la baie du jour et les **modes de jeu** (une carte
+par mode : campagne, puzzles, carrière, baie du jour, zen, partie libre, éditeur), puis en discret
+le tutoriel, l'atelier et les paramètres. L'interrupteur **Avant / Après** montre la même salle une
 fois rangée.
 
 Au premier lancement, **Commencer** ouvre le **tutoriel**, qui présente chaque

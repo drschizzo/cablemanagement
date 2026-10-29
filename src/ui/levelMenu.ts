@@ -1,11 +1,8 @@
-// The levels menu: the tutorial, the cabinet of the day, then one card per
-// level of the campaign with its stars, its best time, and what opens it
-// while it is locked; the puzzles; a free game of as many cords as asked,
-// the zen mode, and the way to the cabinet editor.
+// The levels menu, a section at a time: the campaign (the tutorial, then one
+// card per level with its stars, its best time, and what opens it while it
+// is locked), or the puzzles (always open, their gestures challenge).
 
 import { LEVELS, TUTORIAL, UNLOCK_STARS } from '../game/levels/campaign';
-import { freeLevel, zenLevel } from '../game/levels/freeLevel';
-import { dailyLevel, dayKey } from '../game/levels/dailyLevel';
 import { PUZZLES } from '../game/levels/puzzles';
 import type { LevelDef, PuzzleLevel } from '../game/levels/levelDef';
 import { load, type Progress } from './storage';
@@ -15,36 +12,35 @@ import { $ } from '../lib/page';
 import { isUnlocked } from './progress';
 import { levelTitle } from './levelTexts';
 import { tr } from './language';
+import type { LevelSection } from './modesPanel';
 
 export class LevelMenu {
   private start: (level: LevelDef) => void = () => {};
   private back: () => void = () => {};
 
-  /** `openEditor`: the cabinet editor, its Play doing what a level chosen here does, its Back back to this menu */
-  constructor(openEditor: (start: (level: LevelDef) => void, back: () => void) => void) {
+  constructor() {
     $('#menu-back').onclick = () => { hide('#menu'); this.back(); };
-    $('#editor-go').onclick = () => { hide('#menu'); openEditor(this.start, () => show('#menu')); };
-    const cordCount = $<HTMLInputElement>('#free-n');
-    const cordCountLabel = $('#free-n-val');
-    cordCount.oninput = () => { cordCountLabel.textContent = tr({ fr: `${cordCount.value} câbles`, en: `${cordCount.value} cords` }); };
-    $('#free-go').onclick = () => this.choose(freeLevel(Number(cordCount.value), Math.floor(Math.random() * 1e9)));
-    $('#zen-go').onclick = () => this.choose(zenLevel(Math.floor(Math.random() * 1e9)));
   }
 
-  /** `start`: what a chosen level does; `back`: where the Back button returns */
-  show(progress: Progress, start: (level: LevelDef) => void, back: () => void): void {
+  /** `section`: the campaign or the puzzles; `start`: what a chosen level does; `back`: where the Back button returns */
+  show(progress: Progress, section: LevelSection, start: (level: LevelDef) => void, back: () => void): void {
     this.start = start;
     this.back = back;
-    // its words, in the language spoken now
-    $('#free-n').dispatchEvent(new Event('input'));
     const box = $('#menu-levels');
     box.innerHTML = '';
-    box.appendChild(this.tutorialCard());
-    box.appendChild(this.dailyCard());
-    LEVELS.forEach((level, i) => box.appendChild(this.levelCard(progress, level, i)));
-    const puzzles = $('#menu-puzzles');
-    puzzles.innerHTML = '';
-    PUZZLES.forEach((level, i) => puzzles.appendChild(this.puzzleCard(progress, level, i)));
+    if (section === 'campaign') {
+      $('#menu-title').textContent = tr({ fr: 'Campagne', en: 'Campaign' });
+      $('#menu-sub').textContent = tr({ fr: 'Deux étoiles à un niveau ouvrent le suivant.', en: 'Two stars on a level open the next one.' });
+      box.appendChild(this.tutorialCard());
+      LEVELS.forEach((level, i) => box.appendChild(this.levelCard(progress, level, i)));
+    } else {
+      $('#menu-title').textContent = tr({ fr: 'Puzzles express', en: 'Express puzzles' });
+      $('#menu-sub').textContent = tr({
+        fr: 'Une idée par baie, tous ouverts. Le défi : ★★★ en peu de gestes (brancher, débrancher, poser un support ou un velcro, le bac, le Stock). Ranger un câble, à la main, au Chemin ou au peigne, ne compte pas.',
+        en: 'One idea per cabinet, all open. The challenge: ★★★ in few gestures (plugging, unplugging, a support or a velcro, the crate, the Stock). Tidying a cord, by hand, with the Route or the comb, does not count.',
+      });
+      PUZZLES.forEach((level, i) => box.appendChild(this.puzzleCard(progress, level, i)));
+    }
     show('#menu');
   }
 
@@ -59,19 +55,6 @@ export class LevelMenu {
     card.innerHTML = `<div class="num">0</div><div class="t">${tr({ fr: 'Tutoriel', en: 'Tutorial' })}</div>
       <div class="meta">${tr({ fr: 'Les équipements, les gestes, le score', en: 'The equipment, the gestures, the score' })}</div>${load('tutorialDone') ? `<div class="best">${tr({ fr: '✓ suivi', en: '✓ done' })}</div>` : ''}`;
     card.onclick = () => this.choose(TUTORIAL);
-    return card;
-  }
-
-  /** the cabinet of the day: its number, its size, and today's best if it is done */
-  private dailyCard(): HTMLElement {
-    const level = dailyLevel(dayKey(new Date()));
-    const best = load('daily')[level.date];
-    const card = document.createElement('button');
-    card.className = 'level-card daily';
-    card.innerHTML = `<div class="num">☀</div><div class="t">${levelTitle(level)}</div>
-      <div class="meta">${tr({ fr: `${level.cables} câbles · la même pour tous`, en: `${level.cables} cords · the same for all` })}</div>
-      <div class="stars">${starsHtml(best?.stars ?? 0)}</div>${best ? `<div class="best">${formatTime(best.time)}</div>` : ''}`;
-    card.onclick = () => this.choose(level);
     return card;
   }
 

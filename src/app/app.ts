@@ -61,10 +61,9 @@ export class App {
     this.title = new TitleScreen({
       start: (level) => this.startLevel(level),
       playNext: () => this.playNext(),
-      showMenu: () => this.hud.showMenu(),
+      showModes: () => this.hud.showModes(),
       showSettings: () => this.hud.showSettings(),
       showShop: () => this.hud.showShop(),
-      showCareer: () => this.hud.showCareer(),
       nextLevel: () => nextLevelToPlay(this.hud.progress.stars),
       hasProgress: () => Object.keys(this.hud.progress.stars).length > 0,
       playDaily: () => this.startLevel(dailyLevel(dayKey(new Date()))),
@@ -139,11 +138,11 @@ export class App {
     else this.startLevel(customLevel(spec));
   }
 
-  /** the first level not yet tidy enough to open the next one, or the menu once they all are */
+  /** the first level not yet tidy enough to open the next one, or the game modes once they all are */
   playNext(): void {
     const next = nextLevelToPlay(this.hud.progress.stars);
     if (next) this.startLevel(next);
-    else this.hud.showMenu();
+    else this.hud.showModes();
   }
 
   /**
