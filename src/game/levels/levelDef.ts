@@ -7,6 +7,7 @@ import type { ItemKind, Stock } from '../supplies';
 import type { Circuit } from '../schedule';
 import type { FibreType } from '../cordTypes';
 import type { IncidentSpec } from '../incidents';
+import type { FindId } from '../finds';
 
 /** what every level has, whatever its kind */
 interface LevelBase {
@@ -61,6 +62,8 @@ interface LevelBase {
   blind?: boolean;
   /** old cords broken inside: plugged as planned, they carry nothing (the tester finds them) */
   faults?: number;
+  /** an odd thing a technician before left in the cabinet, to pick up (finds.ts) */
+  find?: FindId;
 }
 
 /** a level of the campaign, in order */

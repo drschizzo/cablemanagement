@@ -87,6 +87,8 @@ export const sfx = {
     for (let k = 0; k < 6; k++) burst(5200 + k * 300, 6, 0.012, 0.12, 0.2 + k * 0.045 + Math.random() * 0.02);
   },
   error() { tone(220, 0.12, 0.06, 0, 'square'); },
+  /** something found: a little rising sparkle */
+  find() { [988, 1319, 1760, 2637].forEach((f, i) => tone(f, 0.18, 0.04, i * 0.07, 'triangle')); },
   /** a desk phone rings twice */
   ring() { for (const at of [0, 0.5]) for (let k = 0; k < 8; k++) tone(k % 2 ? 1320 : 1100, 0.03, 0.03, at + k * 0.035, 'square'); },
   win() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.25, 0.07, i * 0.11, 'triangle')); },

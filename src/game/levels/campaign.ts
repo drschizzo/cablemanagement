@@ -10,6 +10,7 @@ export const LEVELS: CampaignLevel[] = [
   {
     id: 'l1',
     kind: 'campaign',
+    find: 'postit',
     // 0 B, 1 panel, 2 manager, 3 switch
     units: [BLANK, copperPanel('A', 12), BLANK, ethernetSwitch('S', 12), BLANK, BLANK],
     cables: 4, wrong: 0, loose: 1, slack: [0.12, 0.2], mess: 1,
@@ -23,6 +24,7 @@ export const LEVELS: CampaignLevel[] = [
   {
     id: 'l2',
     kind: 'campaign',
+    find: 'usb',
     // 1 panel, 2 manager, 6 manager (to place), 7 switch
     units: [BLANK, copperPanel('A', 12), BLANK, BLANK, BLANK, BLANK, BLANK, ethernetSwitch('S', 12), BLANK, BLANK],
     cables: 6, wrong: 1, loose: 0, slack: [0.6, 1.0], mess: 2,
@@ -36,6 +38,7 @@ export const LEVELS: CampaignLevel[] = [
   {
     id: 'l3',
     kind: 'campaign',
+    find: 'mug',
     // 1 panel, 2 mgr, 4 switch, 5 mgr, 6 firewall
     units: [BLANK, copperPanel('A', 12), BLANK, BLANK, ethernetSwitch('S', 24), BLANK, FIREWALL, BLANK, BLANK],
     cables: 8, wrong: 2, loose: 1, slack: [0.25, 0.5], mess: 2,
@@ -50,6 +53,7 @@ export const LEVELS: CampaignLevel[] = [
   {
     id: 'l4',
     kind: 'campaign',
+    find: 'duck',
     // 1 panel, 2 mgr, 4 switch, 5 mgr, 6 firewall, 7 mgr, 8 router
     units: [BLANK, copperPanel('A', 12), BLANK, BLANK, ethernetSwitch('S', 24), BLANK, FIREWALL, BLANK, ROUTER, BLANK, BLANK],
     cables: 10, wrong: 1, loose: 1, slack: [0.3, 0.6], mess: 2,
@@ -64,6 +68,7 @@ export const LEVELS: CampaignLevel[] = [
   {
     id: 'l5',
     kind: 'campaign',
+    find: 'floppy',
     // 1 fibre drawer, 2 mgr, 3 copper panel, 4 mgr, 7 switch, 8 mgr, 9 firewall, 10 mgr, 11-12 servers
     units: [BLANK, opticalPanel('A', 12), BLANK, copperPanel('B', 12), BLANK, BLANK, BLANK, ethernetSwitch('S', 24), BLANK, FIREWALL, BLANK, server('X', 0.03), server('Y', 0.09), UPS, BLANK],
     cables: 12, wrong: 2, loose: 2, slack: [0.3, 0.7], mess: 3,
@@ -78,6 +83,7 @@ export const LEVELS: CampaignLevel[] = [
   {
     id: 'l6',
     kind: 'campaign',
+    find: 'screwdriver',
     // 1 A, 2 S, 3 mgr, 4 B, 5 T, 6 mgr, 8 firewall, 9 mgr, 10 router, 11 mgr, 12-13 servers
     units: [BLANK, copperPanel('A', 24), ethernetSwitch('S', 24), BLANK, copperPanel('B', 24), ethernetSwitch('T', 24), BLANK, BLANK, FIREWALL, BLANK, ROUTER, BLANK, server('X', 0.03), server('Y', 0.09), SERVER, UPS, BLANK],
     cables: 20, wrong: 3, loose: 2, slack: [0.3, 0.8], mess: 3,
@@ -97,6 +103,7 @@ export const LEVELS: CampaignLevel[] = [
   {
     id: 'l7',
     kind: 'campaign',
+    find: 'badge',
     // 1 fibre, 2 mgr, 3 free (the fibres lying in the drawer's manager would hang in front of A's ports),
     // 4 A, 5 S, 6 mgr, 7 B, 8 T, 9 mgr, 10 C, 11 U, 12 mgr, 13 firewall, 14 mgr, 15 router
     units: [BLANK, opticalPanel('O', 12), BLANK, BLANK, copperPanel('A', 24), ethernetSwitch('S', 24), BLANK, copperPanel('B', 24), ethernetSwitch('T', 24), BLANK, copperPanel('C', 24), ethernetSwitch('U', 24), BLANK, FIREWALL, BLANK, ROUTER, BLANK, SERVER, SERVER, UPS, BLANK],
@@ -117,6 +124,7 @@ export const LEVELS: CampaignLevel[] = [
   {
     id: 'l8',
     kind: 'campaign',
+    find: 'sandwich',
     // 1 A, 2 S, 3 mgr, 4 B, 5 T, 6 mgr, 7 C, 8 U, 9 mgr, 10 D, 11 V, 12 mgr, 13 firewall, 14 mgr, 15 router, 16 mgr, 17-18 servers
     units: [BLANK, copperPanel('A', 24), ethernetSwitch('S', 24), BLANK, copperPanel('B', 24), ethernetSwitch('T', 24), BLANK, copperPanel('C', 24), ethernetSwitch('U', 24), BLANK, copperPanel('D', 24), ethernetSwitch('V', 24), BLANK, FIREWALL, BLANK, ROUTER, BLANK, server('X', 0.03), server('Y', 0.09), SERVER, SERVER, BLANK, UPS, UPS],
     cables: 28, wrong: 8, loose: 6, slack: [0.4, 1.0], mess: 5,

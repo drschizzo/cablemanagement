@@ -99,6 +99,11 @@ L'**atelier** (écran titre) dépense ce salaire en touches personnelles : la co
 teinte de la lumière autour de la baie. Rien de ce qui porte un sens (cordons, étiquettes, voyants)
 ne change.
 
+Chaque niveau de la campagne cache une **trouvaille** laissée par un technicien précédent (un post-it,
+une clé USB, un canard en plastique…) : sur le plancher de la baie sous les câbles, sur son toit ou dans
+le bac. Un clic la ramasse et raconte son histoire ; l'atelier les rassemble, et dit où chercher
+celles qui manquent (deux se cachent hors de la campagne).
+
 La note de **lisibilité**, sur 100, départage les baies à ★★★ : le mou juste
 (ni tendu, ni plus de 50 cm de trop), chaque cordon cuivre de la couleur de son
 service, des faisceaux d'un seul service, la fibre et le cuivre dans des

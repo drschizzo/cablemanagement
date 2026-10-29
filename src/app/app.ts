@@ -90,6 +90,7 @@ export class App {
         onHint: (hint) => hud.hint(hint),
         isDialogOpen,
         unitLabel,
+        onFind: (find) => hud.found(find),
       }, this.threaded, lookOf(load('wallet')));
       this.ctl = ctl;
       hud.attach(ctl, level);

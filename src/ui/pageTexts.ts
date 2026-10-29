@@ -13,6 +13,7 @@ export const PAGE_TEXTS: Record<string, Words> = {
   'common.tutorial': { fr: 'Tutoriel', en: 'Tutorial' },
   'common.cancel': { fr: 'Annuler', en: 'Cancel' },
   'common.shop': { fr: 'Atelier', en: 'Workshop' },
+  'shop.finds': { fr: 'Trouvailles', en: 'Finds' },
   'shop.balance': { fr: 'Ce que vos chantiers ont rapporté :', en: 'What your jobs have earned:' },
   'common.before': { fr: 'Avant', en: 'Before' },
   'common.after': { fr: 'Après', en: 'After' },

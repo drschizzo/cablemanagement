@@ -44,6 +44,8 @@ export function dailyLevel(date: string): DailyLevel {
     ...freeLevel(cables, seed),
     incidents: weekend ? drawIncidents(2, rng(seed ^ 0x51ed)) : undefined,
     faults: weekday >= 4 ? 1 : 0,
+    // the Sunday cabinet hides the keys somebody lost
+    find: weekday === 6 ? 'keys' : undefined,
     id: `daily-${date}`,
     kind: 'daily',
     date,

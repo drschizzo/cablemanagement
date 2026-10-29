@@ -29,6 +29,8 @@ import { payslip } from '../game/pay';
 import { earn } from './wallet';
 import { TimelapsePlayer } from './timelapsePlayer';
 import { ShopPanel } from './shopPanel';
+import { FINDS, type FindId } from '../game/finds';
+import { findName, findStory } from './names';
 import { recordDaily, shareText, streak } from './daily';
 import { LevelMenu } from './levelMenu';
 import { PauseMenu } from './pauseMenu';
@@ -38,8 +40,9 @@ import { recordResult } from './progress';
 import { levelTitle } from './levelTexts';
 import { onLanguageChange, tr } from './language';
 
-/** how long a toast stays (ms) */
+/** how long a toast stays (ms), and one that tells a story (a find) */
 const TOAST_MS = 2200;
+const STORY_MS = 6500;
 /** s of play under which leaving a level does not ask first: nothing worth keeping yet */
 const WORK_WORTH_ASKING_S = 20;
 
@@ -147,6 +150,18 @@ export class Hud {
     this.levelMenu.show(this.progress, choose, back);
   }
 
+  /** the player picked up a find: kept in the wallet, its story told */
+  found(find: FindId): void {
+    const wallet = load('wallet');
+    const isNew = !wallet.finds.includes(find);
+    if (isNew) wallet.finds.push(find);
+    save('wallet', wallet);
+    const count = `${wallet.finds.length}/${FINDS.length}`;
+    this.toast(isNew
+      ? tr({ fr: `Trouvaille : ${findName(find)} ! ${findStory(find)} (${count})`, en: `Found: ${findName(find)}! ${findStory(find)} (${count})` })
+      : tr({ fr: `${findName(find)}, encore. Il est déjà dans votre collection.`, en: `${findName(find)} again. It is in your collection already.` }), STORY_MS);
+  }
+
   /** the workshop, from the title screen */
   showShop(): void {
     this.shop.show(() => {});
@@ -210,12 +225,12 @@ export class Hud {
     tip.style.top = `${y + 14}px`;
   }
 
-  toast(text: string): void {
+  toast(text: string, ms = TOAST_MS): void {
     const el = $('#toast');
     el.textContent = text;
     el.classList.add('on');
     clearTimeout(this.toastTimer);
-    this.toastTimer = window.setTimeout(() => el.classList.remove('on'), TOAST_MS);
+    this.toastTimer = window.setTimeout(() => el.classList.remove('on'), ms);
   }
 
   stats(text: string): void {

@@ -37,6 +37,8 @@ export interface InputCommands {
   deposit(cable: CableIndex): void;
   undo(): void;
   cyclePick(): void;
+  /** a click on the find the cabinet hides picks it up: true when there was one under the pointer */
+  takeFindUnderPointer(): boolean;
 }
 
 export class InputRouter {
@@ -80,6 +82,8 @@ export class InputRouter {
     this.pointer.update(e);
     // any gesture stops a cord being laid where it is
     this.tools.route.stopLaying();
+    // whatever the tool, a click on the find picks it up
+    if (this.level.takeFindUnderPointer()) return;
     // preparing, the cabinet stands still: the view moves, the cords wait
     const tool = this.tools.byName[this.level.tool];
     if (this.level.preparing && !tool.worksWhilePreparing) { this.startPan(e); return; }

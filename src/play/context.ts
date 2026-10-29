@@ -7,6 +7,7 @@ import type { CableView } from '../render/cableView';
 import type { World } from '../game/world';
 import type { Evaluation } from '../game/evaluation';
 import type { Port, UnitSpec } from '../game/rack';
+import type { FindId } from '../game/finds';
 import type { Pointer } from './pointer';
 import type { CordPick, CordPicker } from './picking';
 import type { CordInfo, Hint, HoverNote, PhysicsStats, Toast } from './messages';
@@ -33,6 +34,8 @@ export interface ControllerEvents {
   isDialogOpen(): boolean;
   /** what the face plate of a unit says (the interface knows the words) */
   unitLabel(unit: UnitSpec): string;
+  /** the player picked up the find the cabinet hid */
+  onFind(find: FindId): void;
 }
 
 /** what the player did, for the tutorial and the puzzles */

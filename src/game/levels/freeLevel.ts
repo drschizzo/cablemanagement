@@ -10,6 +10,8 @@ import { rng } from '../../lib/random';
 /** from this many cords, free play has its incidents (a colleague, a call), and from that many, a cord broken inside */
 const INCIDENTS_FROM = 12;
 const FAULT_FROM = 16;
+/** from this many cords, the manual nobody read lies somewhere in the cabinet */
+const MANUAL_FROM = 30;
 
 export function freeLevel(cables: number, seed: number): FreeLevel {
   const panels = Math.max(1, Math.ceil(cables / 24));
@@ -30,6 +32,7 @@ export function freeLevel(cables: number, seed: number): FreeLevel {
     // their own draws, apart from the level's
     incidents: cables >= INCIDENTS_FROM ? drawIncidents(2, rng(seed ^ 0x51ed)) : undefined,
     faults: cables >= FAULT_FROM ? 1 : 0,
+    find: cables >= MANUAL_FROM ? 'manual' : undefined,
     cords: [[1, Math.ceil(cables / 6)], [1.5, Math.ceil(cables / 6)], [2, Math.ceil(cables / 8)]],
     inventory: { fingerManager: panels + switches, duct: 6, ring: 6, velcro: Math.ceil(cables / 3) },
     preinstalled: [],
@@ -42,12 +45,13 @@ export const ZEN_CORDS = 36;
 
 /**
  * Zen: a big cabinet of free play with nothing pressing. No link in
- * production (no downtime budget, no incident, no broken cord), and material to spare,
+ * production (no downtime budget, no incident, no broken cord, nothing
+ * to find), and material to spare,
  * cords of every length included.
  */
 export function zenLevel(seed: number): ZenLevel {
   const free = freeLevel(ZEN_CORDS, seed);
-  const { downtime, bypass, incidents, faults, ...rest } = free;
+  const { downtime, bypass, incidents, faults, find, ...rest } = free;
   return {
     ...rest,
     id: `zen-${seed}`,

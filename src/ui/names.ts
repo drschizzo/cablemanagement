@@ -1,10 +1,11 @@
 // What the player calls the things of the game: the services of the schedule,
-// the supplies, the cord types, the equipment of the rack. game/ describes
+// the supplies, the cord types, the equipment of the rack, the finds. game/ describes
 // them by their ids; their names live here, with the rest of the words.
 
 import type { FibreType } from '../game/cordTypes';
 import type { Supply } from '../game/supplies';
 import type { UnitSpec } from '../game/rack';
+import type { FindId } from '../game/finds';
 import { assertNever } from '../lib/assertNever';
 import { tr, type Words } from './language';
 
@@ -96,4 +97,27 @@ export function unitLabel(u: UnitSpec): string {
     case 'blank': return '';
     default: return assertNever(u.kind);
   }
+}
+
+/** each find: what it is, and the story the technician before left with it */
+const FIND_TEXTS: Record<FindId, Words<{ name: string; story: string }>> = {
+  postit: { fr: { name: 'Un post-it', story: '« Ne surtout pas débrancher le port 7. » Lequel des panneaux ? Mystère.' }, en: { name: 'A post-it', story: '“Never unplug port 7.” Which panel? Nobody knows.' } },
+  usb: { fr: { name: 'Une clé USB', story: 'Étiquetée « sauvegarde finale v3 (la bonne) ».' }, en: { name: 'A USB key', story: 'Labelled “final backup v3 (the real one)”.' } },
+  mug: { fr: { name: 'Une tasse de café', story: 'Froid depuis 2019. Il a laissé une auréole sur le switch.' }, en: { name: 'A coffee mug', story: 'Cold since 2019. It left a ring on the switch.' } },
+  duck: { fr: { name: 'Un canard en plastique', story: 'Le meilleur outil de débogage jamais inventé : on lui explique le problème, et on trouve.' }, en: { name: 'A rubber duck', story: 'The best debugging tool ever made: explain the problem to it, and you find it.' } },
+  floppy: { fr: { name: 'Une disquette', story: '« Config routeur 1998 ». Le routeur est toujours là.' }, en: { name: 'A floppy disk', story: '“Router config 1998”. The router is still here.' } },
+  screwdriver: { fr: { name: 'Un tournevis', story: 'Celui que tout le monde cherchait depuis des mois.' }, en: { name: 'A screwdriver', story: 'The one everybody had been looking for for months.' } },
+  badge: { fr: { name: 'Un badge', story: 'Celui d\'un stagiaire parti il y a trois ans. Il ouvre encore la salle.' }, en: { name: 'A badge', story: 'An intern\'s, gone three years ago. It still opens the room.' } },
+  sandwich: { fr: { name: 'Un sandwich', story: 'Mieux vaut ne pas savoir depuis quand.' }, en: { name: 'A sandwich', story: 'Better not to know since when.' } },
+  keys: { fr: { name: 'Un trousseau de clés', story: 'Les clés de la baie, enfermées dans la baie.' }, en: { name: 'A bunch of keys', story: 'The keys to the cabinet, locked in the cabinet.' } },
+  manual: { fr: { name: 'Le manuel du switch', story: 'Encore sous blister. Personne ne l\'a jamais ouvert.' }, en: { name: 'The switch manual', story: 'Still shrink-wrapped. Nobody ever opened it.' } },
+};
+
+export function findName(find: FindId): string {
+  return tr(FIND_TEXTS[find]).name;
+}
+
+/** the story a find tells */
+export function findStory(find: FindId): string {
+  return tr(FIND_TEXTS[find]).story;
 }

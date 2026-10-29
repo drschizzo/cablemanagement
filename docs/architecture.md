@@ -25,6 +25,7 @@ src/
     evaluation.ts   le score : chaque liaison (branchée, rangée, dégagée, étiquetée, sans tension), étoiles,
                     lisibilité, propreté — des fonctions qui lisent un World sans le modifier
     maintenanceWindow.ts  liaisons en production, budget d'interruption, dérivations
+    finds.ts        les trouvailles : l'objet qu'un niveau cache (LevelBase.find), et où il est posé
     pay.ts          ce que rapporte un chantier : les liaisons, le rangement, la lisibilité, le budget épargné, le défi
     incidents.ts    les incidents pendant le chantier (un collègue débranche une liaison, un utilisateur appelle) :
                     joués par Incidents, appliqués à la baie par World.workGoesOn
@@ -75,6 +76,7 @@ src/
     gpu.ts          la carte graphique utilisée, et le conseil à donner quand elle dessine trop lentement
     frontImage.ts   l'image de face de la baie (avant / après de l'écran de résultat)
     frameGrab.ts    une petite copie de l'image qui vient d'être dessinée (une image du timelapse, presque gratuite)
+    findView.ts     une trouvaille dessinée là où elle est posée (un post-it, un canard en plastique…)
     look.ts         ce que le joueur a choisi pour l'image (couleur des velcros, teinte de la lumière) : rien des règles
     cameraTour.ts   le vol de la caméra autour d'une baie validée, puis retour de face (Stage.tour)
     rackView.ts     la baie, ses équipements, ports, plaques et voyants

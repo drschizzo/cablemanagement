@@ -21,6 +21,8 @@ import { UndoHistory } from './undoHistory';
 import { cordInfo } from './cordInfo';
 import type { HoverNote } from './messages';
 import { captureFront } from '../render/frontImage';
+import { buildFind } from '../render/findView';
+import type * as THREE from 'three';
 import { grabFrame } from '../render/frameGrab';
 import { Timelapse } from './timelapse';
 import { PortHint } from './feedback/portHint';
@@ -53,6 +55,8 @@ export type Phase = 'playing' | 'paused' | 'preparing';
 const MAX_STEPS_PER_FRAME = 2;
 /** how often the cabinet is scored (s) */
 const EVAL_PERIOD = 0.4;
+/** px from the find on screen within which a click picks it up */
+const FIND_CLICK_PX = 26;
 /** px high, the frames of the timelapse */
 const TIMELAPSE_FRAME_H = 360;
 /** the flight round a signed-off cabinet (s) */
@@ -92,6 +96,8 @@ export class Controller implements PlayContext, InputCommands {
   private tools: Record<Tool, ToolHandler>;
   private input: InputRouter;
 
+  /** the find the cabinet hides, drawn where it lies (null: none, or picked up) */
+  private findView: THREE.Group | null = null;
   private otherHand = new OtherHandMarker();
   private connectorGlows = new ConnectorGlows();
   private spotlightFrame: Spotlight;
@@ -142,6 +148,10 @@ export class Controller implements PlayContext, InputCommands {
     this.cableView.lightBy(this.rackView.glow);
     stage.scene.add(this.rackView.group, this.cableView.group);
     stage.setAccent(look.accent);
+    if (this.world.find) {
+      this.findView = buildFind(this.world.find);
+      stage.scene.add(this.findView);
+    }
     const rack = this.world.rack;
     // the cabinet and, at its right, the crate on the floor
     stage.frame((rack.topY + rack.floorY) / 2 + 0.01, rack.topY - rack.floorY + 0.16, 0.6, 0.16);
@@ -165,7 +175,7 @@ export class Controller implements PlayContext, InputCommands {
     this.input.dispose();
     this.spotlightFrame.set(null);
     for (const t of Object.values(this.tools)) t.dispose();
-    for (const g of [this.rackView.group, this.cableView.group, this.otherHand.group, this.connectorGlows.group]) {
+    for (const g of [this.rackView.group, this.cableView.group, this.otherHand.group, this.connectorGlows.group, ...(this.findView ? [this.findView] : [])]) {
       this.stage.scene.remove(g);
       disposeTree(g);
     }
@@ -468,6 +478,20 @@ export class Controller implements PlayContext, InputCommands {
     this.counters.moves++;
     this.holdView.show(c, this.clock + SETTLE_SHOW);
     sfx.whoosh();
+  }
+
+  takeFindUnderPointer(): boolean {
+    const find = this.world.find, view = this.findView;
+    if (!find || !view) return false;
+    const [x, y, z] = find.at;
+    if (this.pointer.screenDistance(x, y + 0.02, z) > FIND_CLICK_PX) return false;
+    this.world.takeFind();
+    this.stage.scene.remove(view);
+    disposeTree(view);
+    this.findView = null;
+    sfx.find();
+    this.events.onFind(find.id);
+    return true;
   }
 
   /** the tracer (T over a cord): it blinks, its two ports circled */

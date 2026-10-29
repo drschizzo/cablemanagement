@@ -11,6 +11,7 @@ import { stockOf, type ItemKind, type Stock } from './supplies';
 import { SERVICES } from './services';
 import { MaintenanceWindow } from './maintenanceWindow';
 import { Incidents, type IncidentEvent } from './incidents';
+import { placeFind, type Find, type FindId } from './finds';
 import type { FibreType } from './cordTypes';
 import type { Cable, CableEnd, CableIndex, CircuitIndex, EndIndex, NodeIndex, ReadonlyCable, Strap, CableStart } from './cables';
 import { coilInCrate, minLengthThrough, shapeForLength } from './cordShapes';
@@ -128,8 +129,9 @@ export class World {
       }
     });
     this.simulation.setStatics(this.rack.statics());
-    // their own draws: the faults leave the level's (schedule, mess) as they are
+    // their own draws: the faults and the find leave the level's (schedule, mess) as they are
     this.faultyCords = new Set(shuffle(this.cableList.map((_, c) => c), rng(level.seed + 2)).slice(0, level.faults ?? 0));
+    this.hidden = placeFind(level.find, this.rack, rng(level.seed + 3));
     this.supplies = stockOf(level.inventory);
     this.newCords = new Map(level.cords ?? []);
     this.maintenance = new MaintenanceWindow(this.circuits, (i) => this.circuitUp(i), level.downtime ?? Infinity, level.bypass ?? 0);
@@ -166,6 +168,20 @@ export class World {
     const ci = this.circuits[i];
     const at = this.rack.port(ci.b).plugged ?? this.rack.port(ci.a).plugged;
     if (at) this.unplug(at.cable, at.end);
+  }
+
+  /** the find the cabinet hides, until it is picked up (null: none, or picked up already) */
+  private hidden: Find | null;
+
+  get find(): Find | null {
+    return this.hidden;
+  }
+
+  /** the find is picked up: it leaves the cabinet; which it was */
+  takeFind(): FindId | null {
+    const id = this.hidden?.id ?? null;
+    this.hidden = null;
+    return id;
   }
 
   /** a circuit carries traffic: one sound cord of the right type joins its two ports */

@@ -537,3 +537,7 @@ body.touring #toolbar, body.touring #side, body.touring #hint, body.touring #top
 #shop .swatch.cur { border-color: var(--accent); }
 #shop .swatch.cur small { color: var(--accent); }
 #shop .swatch.locked span { color: var(--dim); }
+#shop-finds { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+#shop .find { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; border: 1px solid var(--line); border-radius: var(--r); font-size: 12px; }
+#shop .find span { color: var(--dim); }
+#shop .find.unknown b { color: var(--dim); }
