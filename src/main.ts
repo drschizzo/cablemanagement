@@ -1,5 +1,5 @@
 // Entry point: puts together the stage (render/), the scenes (a level run by
-// game/controller, the tutorial over a level, the title screen over the
+// play/controller, the tutorial over a level, the title screen over the
 // before/after showcase) and the interface (ui/), then opens the title screen.
 //
 // One scene at a time: every load bumps `sceneToken`, and a load that has been

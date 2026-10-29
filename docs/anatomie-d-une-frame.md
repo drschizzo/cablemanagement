@@ -49,7 +49,7 @@ Le moteur de câbles et le dessin des tubes sont deux paquets génériques, qui 
 | --- | --- | --- |
 | Moteur physique | `vendor/cable-kit/packages/avbd-cables` (`cableSim.ts`, `threaded.ts`) | le solveur de câbles et son Worker |
 | Tubes | `vendor/cable-kit/packages/three-cable-tubes` (`tube.ts`, `shared.ts`) | les câbles dessinés par le GPU à partir de leurs nœuds |
-| Le jeu et ses câbles | `src/game` (`controller.ts`, `rackSim.ts`, `route.ts`, `world.ts`) | la boucle, les gestes, ce qui mène les câbles, les règles |
+| Le jeu et ses câbles | `src/play` (`controller.ts`, `tools/`), `src/game` (`rackCableSim.ts`, `routeLaying.ts`, `world.ts`) | la boucle, les gestes, ce qui mène les câbles, les règles |
 | Le rendu | `src/render` (`stage.ts`, `cableView.ts`, `rackView.ts`…) | la scène three.js, ses matériaux et ses passes |
 
 `docs/architecture.md` détaille l'organisation du code.
@@ -60,7 +60,7 @@ Les parties suivent l'ordre d'exécution d'une frame et peuvent se lire séparé
 
 ## 2. La boucle principale
 
-La boucle est une fonction que le navigateur rappelle avant chaque rafraîchissement de l'écran. Elle mesure le temps écoulé, fait avancer la physique par pas de durée fixe, puis dessine. Elle se trouve dans `src/game/controller.ts`, méthodes `frame` et `tick`.
+La boucle est une fonction que le navigateur rappelle avant chaque rafraîchissement de l'écran. Elle mesure le temps écoulé, fait avancer la physique par pas de durée fixe, puis dessine. Elle se trouve dans `src/play/controller.ts`, méthodes `frame` et `tick`.
 
 ### 2.1 requestAnimationFrame et la cadence
 
@@ -86,23 +86,23 @@ private frame = (): void => {
 
 La physique avance toujours par pas de 1/60 s (`P.dt`), quel que soit le rythme de l'affichage. Un solveur donne des résultats différents selon la taille du pas : avec un pas variable, un câble ne se poserait pas de la même façon sur deux machines.
 
-La boucle accumule donc le temps réel et en retire des pas entiers :
+La boucle (`stepPhysics`) accumule donc le temps réel et en retire des pas entiers :
 
 ```ts
 const h = this.world.sim.P.dt;        // 1/60 s
-this.acc += dt;
+this.physicsBacklog += dt;
 let steps = 0;
-while (this.acc >= h && steps < 2) {
-  this.stepHand();                    // la main avance vers la souris
-  this.stepRoute(h);                  // le câble posé par l'outil Chemin avance
-  this.acc -= h;
+while (this.physicsBacklog >= h && steps < MAX_STEPS_PER_FRAME) {   // 2
+  this.hand.step();                   // la main avance vers la souris
+  this.route.step(h);                 // le câble posé par l'outil Chemin avance
+  this.physicsBacklog -= h;
   steps++;
 }
-if (this.acc > h) { this.dropped += Math.floor(this.acc / h); this.acc = 0; }
+if (this.physicsBacklog > h) { this.droppedSteps += Math.floor(this.physicsBacklog / h); this.physicsBacklog = 0; }
 if (steps) this.world.sim.advance(steps);
 ```
 
-En général, une frame fait un pas. Une frame en retard en fait deux. Au-delà, le temps restant est abandonné et compté dans `dropped` : une machine trop lente pour la physique passe au ralenti au lieu d'accumuler un retard qui grandirait à chaque frame.
+En général, une frame fait un pas. Une frame en retard en fait deux. Au-delà, le temps restant est abandonné et compté dans `droppedSteps` : une machine trop lente pour la physique passe au ralenti au lieu d'accumuler un retard qui grandirait à chaque frame.
 
 ![Pas de physique et frames, sur une même durée](frame/schema-pas-fixe.png)
 
@@ -115,7 +115,7 @@ En général, une frame fait un pas. Une frame en retard en fait deux. Au-delà,
 3. `cableView.update()` : les nœuds des câbles qui ont bougé partent vers le GPU (partie 7).
 4. `rackView.syncItems(...)` : si le joueur a posé ou retiré un élément de rangement, la baie est reconstruite.
 5. Toutes les 0,4 s seulement, `reevaluate()` : le score, les voyants des ports et le plan de brassage sont recalculés.
-6. `updateGlows()` et `updateHoldView()` : surbrillance des câbles rangés et du câble tenu.
+6. `tidyGlows.update()` et `holdView.update()` (`play/feedback/`) : surbrillance des câbles rangés et du câble tenu.
 7. `stage.render()` : le dessin de l'image (parties 8 et 9).
 
 Les panneaux HTML (chronomètre, plan) ne sont pas mis à jour dans cette boucle : `main.ts` les actualise toutes les 250 ms par un `setInterval`.
@@ -132,7 +132,7 @@ Les événements de la souris ne déplacent rien directement : ils enregistrent 
 
 ### 3.1 Événements et caméra
 
-`Controller.bind()` installe les écouteurs sur le `<canvas>` : `pointermove`, `pointerdown`, `pointerup` (sur `window`, pour ne pas perdre un relâchement hors du canvas) et le clavier. Ils tiennent à jour la position du pointeur, en pixels et normalisée entre −1 et 1, le format qu'attend three.js.
+`Controller.bindInput()` installe les écouteurs sur le `<canvas>` : `pointermove`, `pointerdown`, `pointerup` (sur `window`, pour ne pas perdre un relâchement hors du canvas) et le clavier. Ils tiennent à jour la position du pointeur (`Pointer`, `play/pointer.ts`), en pixels et normalisée entre −1 et 1, le format qu'attend three.js, puis passent le geste à l'outil choisi (`play/tools/`), qui le prend ou non : sans rien sous la souris, la vue se déplace.
 
 La caméra est pilotée par `OrbitControls`, un module de three.js : bouton droit pour tourner autour de la baie, bouton du milieu ou flèches pour déplacer la vue, molette pour zoomer. Le mouvement est amorti : la caméra glisse encore un peu après le geste.
 
@@ -140,7 +140,7 @@ La caméra est pilotée par `OrbitControls`, un module de three.js : bouton droi
 
 Dans une page web, le navigateur sait sur quel élément se trouve la souris. Dans une scène 3D dessinée sur un canvas, il faut le calculer : c'est le *picking*.
 
-La méthode habituelle lance un rayon depuis la caméra et le teste contre les triangles. `pickAll()` fait plus simple : il projette à l'écran les nœuds de la physique et cherche, en 2D, le segment le plus proche du pointeur.
+La méthode habituelle lance un rayon depuis la caméra et le teste contre les triangles. `CordPicker.pickAll()` (`play/picking.ts`) fait plus simple : il projette à l'écran les nœuds de la physique et cherche, en 2D, le segment le plus proche du pointeur.
 
 1. Chaque nœud est converti en position à l'écran par la même transformation que celle du GPU (section 7.6), qui donne aussi sa distance à la caméra.
 2. Pour chaque segment entre deux nœuds consécutifs, on mesure sa distance au pointeur. Il est retenu si elle est inférieure à l'épaisseur du câble à l'écran, plus quelques pixels.
@@ -152,7 +152,7 @@ Quelques centaines de multiplications suffisent, et le résultat s'appuie sur le
 
 ### 3.3 La main
 
-Au clic, `sim.grab(nœud)` fait du nœud saisi la « main ». Ensuite, à chaque pas, `stepHand()` :
+Au clic, `sim.grab(nœud)` fait du nœud saisi la « main ». Ensuite, à chaque pas, `HandTool.step()` (`play/tools/handTool.ts`) :
 
 1. lance un rayon depuis la caméra à travers le pointeur et le coupe avec un plan vertical, à la profondeur où le câble a été saisi (avec Maj, la souris déplace la main en profondeur) ;
 2. avance la main vers ce point, d'au plus 3,5 cm par pas ;
@@ -178,7 +178,7 @@ Les autres outils agissent sur le monde physique par des appels ponctuels, appli
 
 ### 3.5 Les règles du jeu
 
-Les règles vivent dans `src/game/world.ts`, sans three.js ni DOM. `World.evaluate()` vérifie les liaisons du plan, les portions de câble qui pendent hors d'un support, la façade dégagée et les étiquettes ; elle tourne toutes les 0,4 s. Avant chaque geste, le contrôleur garde une copie de l'état pour l'annulation (Ctrl+Z, 30 états au plus).
+Les règles vivent dans `src/game/world.ts`, sans three.js ni DOM, et le score dans `src/game/evaluation.ts`. `evaluate()` vérifie les liaisons du plan, les portions de câble qui pendent hors d'un support, la façade dégagée et les étiquettes ; elle tourne toutes les 0,4 s. Avant chaque geste, l'outil garde une copie de l'état pour l'annulation (`UndoHistory`, Ctrl+Z, 30 états au plus).
 
 ### À retenir
 
@@ -190,7 +190,7 @@ Les règles vivent dans `src/game/world.ts`, sans three.js ni DOM. `World.evalua
 
 Le moteur, `avbd-cables`, représente chaque câble par une chaîne de points pesants. À chaque pas de 1/60 s, il cherche les positions de ces points qui respectent au mieux la gravité, la longueur des câbles, leur raideur et les contacts. Il utilise la méthode AVBD (*Augmented Vertex Block Descent*, Giles, Diaz et Yuksel, SIGGRAPH 2025).
 
-Le solveur, `CableSim` (`vendor/cable-kit/packages/avbd-cables/src/cableSim.ts`), ne sait rien de la baie : il manipule des nœuds, des formes statiques, des cibles et des faisceaux. Ce qui mène les câbles du jeu (les mains, les ports, le chemin) vit dans une sous-classe, `RackSim`, décrite en partie 5.
+Le solveur, `CableSim` (`vendor/cable-kit/packages/avbd-cables/src/cableSim.ts`), ne sait rien de la baie : il manipule des nœuds, des formes statiques, des cibles et des faisceaux. Ce qui mène les câbles du jeu (les mains, les ports, le chemin) vit dans une sous-classe, `RackCableSim`, décrite en partie 5.
 
 ### 4.1 Le modèle : des nœuds reliés par des segments
 
@@ -345,7 +345,7 @@ Les réglages du moteur (`SimParams`) sont donnés pour un nombre de sous-pas de
 
 ## 5. Ce que le jeu demande au moteur
 
-`RackSim` (`src/game/rackSim.ts`) est une sous-classe de `CableSim`. Elle ajoute ce que la baie demande, sans toucher au solveur : au début de chaque pas, `prepare()` pose les cibles du jeu et les drapeaux des câbles ; pendant les itérations, `nodeTerm()` ajoute la traction du creux des guide-câbles ; autour des passes de longueur, `keepHeld()` remet les nœuds retenus à leur place.
+`RackCableSim` (`src/game/rackCableSim.ts`) est une sous-classe de `CableSim`. Elle ajoute ce que la baie demande, sans toucher au solveur : au début de chaque pas, `prepare()` pose les cibles du jeu et les drapeaux des câbles ; pendant les itérations, `nodeTerm()` ajoute la traction du creux des guide-câbles ; autour des passes de longueur, `keepHeld()` remet les nœuds retenus à leur place.
 
 ### 5.1 Les cibles du jeu
 
@@ -360,7 +360,7 @@ Chaque nœud a au plus une cible. Sur un même nœud, la main l'emporte sur l'au
 
 ### 5.2 Le chemin tracé
 
-Avec l'outil Chemin, le joueur part d'un câble et trace un trait à l'écran. Chaque guide que le trait traverse rejoint le chemin, dans l'ordre du passage ; si le trait finit sur un port libre, le bout libre du câble y sera branché. Au relâcher, `planRoute` (`src/game/route.ts`) calcule le chemin du câble :
+Avec l'outil Chemin, le joueur part d'un câble et trace un trait à l'écran. Chaque guide que le trait traverse rejoint le chemin, dans l'ordre du passage ; si le trait finit sur un port libre, le bout libre du câble y sera branché. Au relâcher, `planRoute` (`src/game/routeLaying.ts`) calcule le chemin du câble :
 
 1. il part du bout qui reste en place ;
 2. il passe par les points du trait tracés hors des guides ; un cordon trop court pour tout le trait en coupe les détours, comme un câble qu'on tend ;
@@ -375,7 +375,7 @@ Le creux d'un guide-câbles (`keeper`) n'est pas une forme de collision mais une
 
 ### À retenir
 
-- Le solveur est générique ; `RackSim` y ajoute les mains, les ports, le chemin et le creux des guides.
+- Le solveur est générique ; `RackCableSim` y ajoute les mains, les ports, le chemin et le creux des guides.
 - Tout ce qui mène un câble est une cible en laisse ; aucun geste ne téléporte un câble.
 - Un câble posé par l'outil Chemin traverse les autres câbles, jamais la baie.
 
@@ -383,7 +383,7 @@ Le creux d'un guide-câbles (`keeper`) n'est pas une forme de collision mais une
 
 JavaScript exécute le code d'une page sur un seul fil. Si la physique y prenait 10 ms, il ne resterait que 6 ms pour le reste de la frame. Un Web Worker est un second fil d'exécution, sans accès au DOM, qui communique avec la page par messages (`postMessage`).
 
-`ThreadedSim` (`src/game/threadedSim.ts`) est un `RackSim` passé par `threaded()` (`avbd-cables`). Il garde dans la page une copie de la simulation : la topologie et un miroir des positions. Le jeu lit `sim.x` comme si la physique tournait sur place.
+`ThreadedSim` (`src/game/threadedSim.ts`) est un `RackCableSim` passé par `threaded()` (`avbd-cables`). Il garde dans la page une copie de la simulation : la topologie et un miroir des positions. Le jeu lit `sim.x` comme si la physique tournait sur place.
 
 - **Les modifications** (épingler, saisir, poser un velcro, changer la baie) sont appliquées à la copie locale, puis envoyées au Worker sous la forme du nom de la méthode et de ses arguments. Le Worker les rejoue dans le même ordre. Les méthodes concernées sont listées dans `mirrored`.
 - **Ce qui change sans appel**, la position de la main, part avec chaque demande de pas (`stepInput`).
@@ -391,7 +391,7 @@ JavaScript exécute le code d'une page sur un seul fil. Si la physique y prenait
 - **La réponse** porte les positions et les câbles endormis. Le tableau de positions est *transféré* : sa mémoire change de propriétaire au lieu d'être copiée.
 - **Un compteur `gen`** augmente à chaque déplacement forcé (annulation, câble reconstruit). Une réponse calculée avant porte l'ancien numéro et est ignorée.
 
-`src/game/sim.worker.ts` se borne à `hostSimWorker((p) => new RackSim(p))`. Le paramètre d'URL `?sync` garde la physique sur le fil principal, ce qui rend le déroulement déterministe pour les tests.
+`src/game/sim.worker.ts` se borne à `hostSimWorker((p) => new RackCableSim(p))`. Le paramètre d'URL `?sync` garde la physique sur le fil principal, ce qui rend le déroulement déterministe pour les tests.
 
 ![Échanges entre la page et le Worker sur quatre frames](frame/schema-worker.png)
 
@@ -469,7 +469,7 @@ p_{\text{écran}} = P \cdot V \cdot M \cdot p_{\text{objet}}
 
 ![Les repères successifs d'un sommet](frame/schema-matrices.png)
 
-La caméra est une `PerspectiveCamera` de 32° d'angle vertical : un angle étroit réduit la déformation de perspective, comme un téléobjectif. `setViewOffset` décale l'image pour centrer la baie dans la zone que les panneaux laissent libre, sans déplacer la caméra. C'est la même matrice P · V que `pickAll()` utilise pour projeter les nœuds (section 3.2).
+La caméra est une `PerspectiveCamera` de 32° d'angle vertical : un angle étroit réduit la déformation de perspective, comme un téléobjectif. `setViewOffset` décale l'image pour centrer la baie dans la zone que les panneaux laissent libre, sans déplacer la caméra. C'est la même matrice P · V que `CordPicker.pickAll()` utilise pour projeter les nœuds (section 3.2).
 
 ### À retenir
 
@@ -620,9 +620,9 @@ Le tableau suit une frame d'un niveau, dans l'ordre d'exécution.
 
 | # | Étape | Fil | Fichier, fonction | Fréquence |
 | --- | --- | --- | --- | --- |
-| 1 | Le navigateur appelle la boucle | principal | `controller.ts`, `frame` | chaque rafraîchissement, au plus 60 fois par seconde |
-| 2 | Animations d'interface | principal | `controller.ts`, `tick` | chaque frame |
-| 3 | La main et le chemin avancent | principal | `controller.ts`, `stepHand`, `stepRoute` | par pas de physique (0 à 2) |
+| 1 | Le navigateur appelle la boucle | principal | `play/controller.ts`, `frame` | chaque rafraîchissement, au plus 60 fois par seconde |
+| 2 | Animations d'interface | principal | `play/controller.ts`, `tick` | chaque frame |
+| 3 | La main et le chemin avancent | principal | `play/controller.ts`, `stepPhysics` (`HandTool.step`, `RouteTool.step`) | par pas de physique (0 à 2) |
 | 4 | Demande de pas au Worker | principal → Worker | `threaded.ts`, `advance` | chaque frame qui a un pas |
 | 5 | Cibles, contacts, 3 sous-pas × 6 itérations, sommeil | Worker | `cableSim.ts`, `step` | par pas, pendant les étapes 6 à 17 |
 | 6 | Réception des positions | Worker → principal | `threaded.ts` | quand la réponse arrive |
