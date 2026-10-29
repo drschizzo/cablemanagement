@@ -1,6 +1,7 @@
 // The settings, from the title screen or the pause menu: the language, the
 // quality of the image (adapted to the GPU, or held at a preset or as set in
-// detail) and the sound. The choices are kept in the browser (storage.ts).
+// detail), the sound and the music. The choices are kept in the browser
+// (storage.ts).
 
 import { AUTO_QUALITY, QUALITY, drawAlike, type QualityChoice, type QualitySettings } from '../render/quality';
 import { save } from './storage';
@@ -45,8 +46,9 @@ export class SettingsPanel {
   private ao = $<HTMLInputElement>('#q-ao');
   private ssr = $<HTMLInputElement>('#q-ssr');
   private soundBox = $<HTMLInputElement>('#set-sound');
+  private musicBox = $<HTMLInputElement>('#set-music');
 
-  constructor(private quality: QualityControl, private sound: SoundControl) {
+  constructor(private quality: QualityControl, private sound: SoundControl, private music: SoundControl) {
     this.buildLanguages();
     this.buildPresets();
     this.writeOptions();
@@ -57,6 +59,7 @@ export class SettingsPanel {
     }
     $('#q-reset').onclick = () => this.choose(AUTO_QUALITY);
     this.soundBox.onchange = () => { sound.toggle(); this.render(); };
+    this.musicBox.onchange = () => { music.toggle(); this.render(); };
     $('#settings-back').onclick = () => { hide('#settings'); this.back(); };
   }
 
@@ -134,6 +137,7 @@ export class SettingsPanel {
     this.ao.checked = settings.ao;
     this.ssr.checked = settings.ssr;
     this.soundBox.checked = this.sound.isOn();
+    this.musicBox.checked = this.music.isOn();
   }
 }
 

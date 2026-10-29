@@ -1,9 +1,10 @@
 // The levels menu: the tutorial, the cabinet of the day, then one card per
 // level of the campaign with its stars, its best time, and what opens it
-// while it is locked; and a free game of as many cords as asked.
+// while it is locked; a free game of as many cords as asked, and the zen
+// mode.
 
 import { LEVELS, TUTORIAL, UNLOCK_STARS } from '../game/levels/campaign';
-import { freeLevel } from '../game/levels/freeLevel';
+import { freeLevel, zenLevel } from '../game/levels/freeLevel';
 import { dailyLevel, dayKey } from '../game/levels/dailyLevel';
 import type { LevelDef } from '../game/levels/levelDef';
 import { load, type Progress } from './storage';
@@ -24,6 +25,7 @@ export class LevelMenu {
     const cordCountLabel = $('#free-n-val');
     cordCount.oninput = () => { cordCountLabel.textContent = tr({ fr: `${cordCount.value} câbles`, en: `${cordCount.value} cords` }); };
     $('#free-go').onclick = () => this.choose(freeLevel(Number(cordCount.value), Math.floor(Math.random() * 1e9)));
+    $('#zen-go').onclick = () => this.choose(zenLevel(Math.floor(Math.random() * 1e9)));
   }
 
   /** `start`: what a chosen level does; `back`: where the Back button returns */

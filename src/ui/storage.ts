@@ -88,6 +88,13 @@ const ENTRIES = {
     format: (v: Language) => v,
     valid: (v: Language) => LANGUAGES.some((l) => l.id === v),
   } satisfies Entry<Language>,
+  /** the ambient music of the zen mode is turned off */
+  musicOff: {
+    key: 'cable.music-off',
+    fallback: (): boolean => false,
+    parse: (raw: string) => raw === 'on',
+    format: () => 'on',
+  } satisfies Entry<boolean>,
   /** the sound is off */
   muted: {
     key: 'cable.muted',

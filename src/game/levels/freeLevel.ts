@@ -1,10 +1,11 @@
-// Free play: a cabinet generated at random, of any size.
+// Free play: a cabinet generated at random, of any size; and its zen variant,
+// without clock or budget.
 
 import type { UnitSpec } from '../rack';
-import type { LevelDef } from './levelDef';
+import type { FreeLevel, ZenLevel } from './levelDef';
 import { BLANK, FIREWALL, ROUTER, SERVER, UPS, copperPanel, ethernetSwitch } from './equipment';
 
-export function freeLevel(cables: number, seed: number): LevelDef {
+export function freeLevel(cables: number, seed: number): FreeLevel {
   const panels = Math.max(1, Math.ceil(cables / 24));
   const switches = Math.max(1, Math.ceil(cables / 24));
   const units: UnitSpec[] = [BLANK];
@@ -24,5 +25,25 @@ export function freeLevel(cables: number, seed: number): LevelDef {
     inventory: { fingerManager: panels + switches, duct: 6, ring: 6, velcro: Math.ceil(cables / 3) },
     preinstalled: [],
     seed,
+  };
+}
+
+/** cords of a zen cabinet */
+export const ZEN_CORDS = 36;
+
+/**
+ * Zen: a big cabinet of free play with nothing pressing. No link in
+ * production (no downtime budget), and material to spare, cords of every
+ * length included.
+ */
+export function zenLevel(seed: number): ZenLevel {
+  const free = freeLevel(ZEN_CORDS, seed);
+  const { downtime, bypass, ...rest } = free;
+  return {
+    ...rest,
+    id: `zen-${seed}`,
+    kind: 'zen',
+    cords: [[0.5, 12], [0.75, 12], [1, 12], [1.5, 12], [2, 8]],
+    inventory: { fingerManager: 6, duct: 8, ring: 8, velcro: 20 },
   };
 }

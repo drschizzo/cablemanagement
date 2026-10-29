@@ -75,6 +75,11 @@ export interface FreeLevel extends LevelBase {
   kind: 'free';
 }
 
+/** zen: a big cabinet at random, no clock, no downtime budget, plenty of material */
+export interface ZenLevel extends LevelBase {
+  kind: 'zen';
+}
+
 /** the cabinet of the day: the same for every player on a given date */
 export interface DailyLevel extends LevelBase {
   kind: 'daily';
@@ -98,4 +103,4 @@ export interface BenchLevel extends LevelBase {
   kind: 'bench';
 }
 
-export type LevelDef = CampaignLevel | TutorialLevel | FreeLevel | DailyLevel | ShowcaseLevel | BenchLevel;
+export type LevelDef = CampaignLevel | TutorialLevel | FreeLevel | ZenLevel | DailyLevel | ShowcaseLevel | BenchLevel;

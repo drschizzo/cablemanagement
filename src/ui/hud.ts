@@ -12,6 +12,7 @@ import type { Evaluation } from '../game/evaluation';
 import type { LevelDef } from '../game/levels/levelDef';
 import type { QualityChoice } from '../render/quality';
 import { isMuted, setMuted, sfx } from '../audio/sfx';
+import { ambient } from '../audio/ambient';
 import { load, save } from './storage';
 import { formatTime } from './format';
 import { hide, isDialogOpen, show } from './dom';
@@ -65,7 +66,10 @@ export class Hud {
     this.toolbar = new Toolbar((tool) => this.selectTool(tool), () => this.toggleStock());
     this.stockMenu = new StockMenu((message) => this.toast(message));
     this.brief = new LevelBrief((tool) => this.selectTool(tool));
-    this.settings = new SettingsPanel(quality, { isOn: () => !isMuted(), toggle: () => this.toggleSound() });
+    this.settings = new SettingsPanel(quality, { isOn: () => !isMuted(), toggle: () => this.toggleSound() }, {
+      isOn: () => !load('musicOff'),
+      toggle: () => { save('musicOff', !load('musicOff')); this.followMusic(); },
+    });
     this.pause = new PauseMenu({
       help: () => this.level && this.showBrief(this.level),
       restart: (back) => this.leaveLevel(tr({ fr: 'Recommencer le niveau ?', en: 'Restart the level?' }), tr({ fr: 'Recommencer', en: 'Restart' }), () => this.level && actions.start(this.level), back),
@@ -102,12 +106,28 @@ export class Hud {
     this.ctl = ctl;
     this.level = level;
     this.hoverNotes = null;
+    document.body.dataset.level = level.kind;
+    this.followMusic();
     $('#level-title').textContent = levelTitle(level);
     hide('#result');
     this.schedule.build(ctl, level);
     this.refreshInventory();
     this.selectTool('hand');
     this.onEval(ctl.lastEval);
+  }
+
+  /** the level is left: the panels let go of it */
+  detach(): void {
+    this.ctl = null;
+    this.level = null;
+    delete document.body.dataset.level;
+    this.followMusic();
+  }
+
+  /** the ambient music plays in a zen level, unless the player turned it (or the sound) off */
+  private followMusic(): void {
+    if (this.level?.kind === 'zen' && !load('musicOff') && !isMuted()) ambient.start();
+    else ambient.stop();
   }
 
   /** the levels menu, out of a level or of the title screen; `back`: where its Back button returns */
@@ -224,6 +244,8 @@ export class Hud {
 
   /** keeps the result where its kind of level keeps it; what the result screen shows of it */
   private record(level: LevelDef, ev: Evaluation, time: number): Outcome {
+    // zen keeps no score
+    if (level.kind === 'zen') return { result: { stars: ev.stars, time, note: ev.readability.note, previousStars: 0, previousNote: undefined, challengeWon: false }, challengeWonBefore: false, share: null };
     if (level.kind === 'daily') {
       const days = load('daily');
       const result = recordDaily(days, level, ev, time);
@@ -255,6 +277,7 @@ export class Hud {
     setMuted(!isMuted());
     save('muted', isMuted());
     this.showSound();
+    this.followMusic();
   }
 
   private showSound(): void {

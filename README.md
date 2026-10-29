@@ -47,7 +47,7 @@ Dans un niveau, **☰ Menu** (ou **Échap**) met le jeu en pause : consignes,
 recommencer, choisir un autre niveau, paramètres, retour à l'accueil. Quitter
 une baie déjà entamée demande confirmation.
 
-Les **Paramètres** règlent la langue (français ou anglais), la qualité de l'image et le son. En **Auto**, la
+Les **Paramètres** règlent la langue (français ou anglais), la qualité de l'image, le son et la musique. En **Auto**, la
 qualité s'abaisse d'elle-même quand la carte graphique ne suit plus (le jeu le
 signale) ; on peut aussi la fixer (Maximale, Élevée, Moyenne, Basse) ou régler
 chaque effet : définition, ombres, occlusion ambiante, reflets au sol. Le choix
@@ -143,6 +143,9 @@ cordon, et dans quel ordre, fait partie du plan.
 | 8 | Le plat de spaghettis | 28 · cordons sans marque, à tracer |
 
 La **partie libre** génère une baie au hasard, de 4 à 48 câbles.
+
+Le **mode zen** (menu des niveaux) : une grande baie de 36 câbles, rien en production, pas de chrono,
+du matériel en abondance, et une musique d'ambiance générée à la volée (coupable dans les Paramètres).
 
 La **baie du jour** est la même pour tout le monde à une date donnée : petite le lundi, plus grosse le
 week-end. Le jeu garde le meilleur résultat de chaque jour et compte les jours de suite ; l'écran de

@@ -502,6 +502,9 @@ body.demo #prep { display: none; }
 @media (max-width: 1150px) { #prep { right: 314px; } }
 @media (max-width: 760px) { #prep { left: 12px; right: 12px; top: auto; bottom: 12px; } }
 
+/* ---- zen: no clock */
+body[data-level="zen"] #timer { display: none; }
+
 /* ---- the cabinet signed off: the panels step aside while the camera flies round it (sizes kept: the framing holds) */
 #toolbar, #side, #hint, #topbar { transition: opacity 0.4s; }
 body.touring #toolbar, body.touring #side, body.touring #hint, body.touring #topbar, body.touring #tooltip { opacity: 0; pointer-events: none; }

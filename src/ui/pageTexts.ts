@@ -47,6 +47,8 @@ export const PAGE_TEXTS: Record<string, Words> = {
   'menu.sub': { fr: 'Deux étoiles à un niveau ouvrent le suivant.', en: 'Two stars on a level open the next one.' },
   'menu.free': { fr: 'Partie libre :', en: 'Free play:' },
   'menu.freeGo': { fr: 'Générer une baie', en: 'Generate a cabinet' },
+  'menu.zen': { fr: 'Mode zen', en: 'Zen mode' },
+  'menu.zenTip': { fr: 'Une grande baie, sans chrono ni budget, en musique', en: 'A big cabinet, no clock, no budget, with music' },
   'brief.go': { fr: 'Commencer', en: 'Start' },
   'result.title': { fr: 'Baie validée', en: 'Cabinet signed off' },
   'result.beforeAlt': { fr: 'La baie au départ', en: 'The cabinet at the start' },
@@ -76,6 +78,7 @@ export const PAGE_TEXTS: Record<string, Words> = {
   'settings.ssr': { fr: 'Reflets au sol', en: 'Floor reflections' },
   'settings.sound': { fr: 'Son', en: 'Sound' },
   'settings.effects': { fr: 'Effets sonores', en: 'Sound effects' },
+  'settings.music': { fr: 'Musique d\'ambiance (mode zen)', en: 'Ambient music (zen mode)' },
   loading: { fr: 'Emmêlage des câbles…', en: 'Tangling the cords…' },
 };
 

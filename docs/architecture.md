@@ -35,8 +35,8 @@ src/
     physics/        le solveur tel que le jeu le mène (rackCableSim : mains, ports, creux des guides), et son Worker
     mess/           le désordre de départ : les chemins emmêlés des cordons (tangle), leur chute dans un Worker,
                     sa version précalculée pour l'écran titre (baked, showcase.bin)
-    levels/         ce qu'est un niveau (levelDef : une union par sorte, campagne, tutoriel, partie libre, baie du jour,
-                    vitrine, banc), les équipements nommés, la campagne et le tutoriel, la partie libre, la baie du jour
+    levels/         ce qu'est un niveau (levelDef : une union par sorte, campagne, tutoriel, partie libre, zen, baie du
+                    jour, vitrine, banc), les équipements nommés, la campagne et le tutoriel, la partie libre et le zen, la baie du jour
                     (tirée de la date : la même pour tous), les baies de la vitrine
   play/         UNE PARTIE EN COURS : relie game, render et l'interface
     controller.ts   Controller : la boucle à pas fixe, ce que la baie montre de son état, les actions du HUD
@@ -100,7 +100,8 @@ src/
     format.ts       nombres, longueurs et durées tels que le joueur les lit
     storage.ts      données gardées dans le navigateur (clés, valeurs par défaut, validation)
     dom.ts, icons.ts petites aides DOM (dialogue ouvert, étoiles), icônes de la barre d'outils
-  audio/        les effets sonores, synthétisés
+  audio/        les sons, synthétisés : effets (sfx.ts), musique d'ambiance du mode zen (ambient.ts), le contexte
+                audio qu'ils partagent (context.ts)
   lib/          DES OUTILS SANS RAPPORT AVEC LE JEU, que toutes les couches peuvent importer et qui n'importent rien
     assertNever.ts  le défaut d'un switch qui a traité tous les cas
     vec3.ts         les points (V3) et la géométrie de base : distance, interpolation, longueur d'un chemin
@@ -204,7 +205,7 @@ sur le fil principal.
 ## Données dans le navigateur
 
 `ui/storage.ts` déclare chaque entrée (clé, valeur par défaut, validation) : progression (étoiles et meilleurs temps
-par niveau), tutoriel terminé, baies du jour (le meilleur résultat de chaque date), langue (celle du navigateur tant que le joueur n'en a pas choisi), qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu) et son
+par niveau), tutoriel terminé, baies du jour (le meilleur résultat de chaque date), langue (celle du navigateur tant que le joueur n'en a pas choisi), musique coupée, qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu) et son
 coupé. Les clés sont celles des versions précédentes.
 
 ## Ajouter…

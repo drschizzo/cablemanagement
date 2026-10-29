@@ -152,7 +152,7 @@ export class App {
     this.showcase = null;
     this.ctl?.dispose();
     this.ctl = null;
-    this.hud.ctl = null;
+    this.hud.detach();
   }
 
   /** the aisle set aside for a level, the one made ready behind the last one (still falling: its progress shows), or a new one */
