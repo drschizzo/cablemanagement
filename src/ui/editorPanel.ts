@@ -5,7 +5,7 @@
 // for next time.
 
 import {
-  MAX_UNITS, PALETTE, checkSpec, customLevel, decodeSpec, encodeSpec, mostCords,
+  DIFFICULTIES, MAX_UNITS, PALETTE, checkSpec, customLevel, decodeSpec, encodeSpec, mostCords,
   type CustomSpec, type Difficulty, type PaletteItem,
 } from '../game/levels/customLevel';
 import type { LevelDef } from '../game/levels/levelDef';
@@ -76,9 +76,9 @@ export class EditorPanel {
     cables.max = String(Math.max(1, most));
     cables.value = String(spec.cables);
     $('#ed-cables-val').textContent = tr({ fr: `${spec.cables} / ${most} au plus`, en: `${spec.cables} / ${most} at most` });
-    this.renderChoices('#ed-services', [1, 2, 3, 4, 5, 6].map((n) => ({ label: String(n), on: n === spec.services, pick: () => this.change({ services: n }) })));
+    this.renderChoices('#ed-services', SERVICES.map((_, k) => k + 1).map((n) => ({ label: String(n), on: n === spec.services, pick: () => this.change({ services: n }) })));
     $('#ed-services-dots').innerHTML = SERVICES.slice(0, spec.services).map((sv, i) => `<i style="background:${sv.color}" title="${serviceName(i)}"></i>`).join('');
-    this.renderChoices('#ed-difficulty', (['easy', 'normal', 'hard'] as Difficulty[]).map((d) => ({ label: difficultyName(d), on: d === spec.difficulty, pick: () => this.change({ difficulty: d }) })));
+    this.renderChoices('#ed-difficulty', DIFFICULTIES.map((d) => ({ label: difficultyName(d), on: d === spec.difficulty, pick: () => this.change({ difficulty: d }) })));
     $<HTMLInputElement>('#ed-maintenance').checked = spec.maintenance;
     const error = checkSpec(spec);
     $('#ed-error').textContent = error ? customErrorText(error) : '';

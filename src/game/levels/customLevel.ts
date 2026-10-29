@@ -8,6 +8,7 @@
 
 import type { CustomLevel } from './levelDef';
 import type { UnitSpec } from '../rack';
+import { SERVICES } from '../services';
 import { BLANK, FIREWALL, ROUTER, SERVER, UPS, copperPanel, ethernetSwitch, opticalPanel, pdu, poweredServer, server } from './equipment';
 
 /** what the editor offers, one letter each in the code */
@@ -18,18 +19,20 @@ export type PaletteLetter = keyof typeof PALETTE;
 export type PaletteItem = (typeof PALETTE)[PaletteLetter];
 
 export type Difficulty = 'easy' | 'normal' | 'hard';
-const DIFFICULTIES: Record<Difficulty, { letter: string; wrong: number; loose: number; mess: number; slack: [number, number] }> = {
+const DIFFICULTY_RULES: Record<Difficulty, { letter: string; wrong: number; loose: number; mess: number; slack: [number, number] }> = {
   easy: { letter: 'e', wrong: 0.05, loose: 0.05, mess: 1, slack: [0.15, 0.35] },
   normal: { letter: 'n', wrong: 0.15, loose: 0.1, mess: 3, slack: [0.25, 0.6] },
   hard: { letter: 'h', wrong: 0.3, loose: 0.2, mess: 5, slack: [0.4, 1.0] },
 };
+/** the difficulties, the lightest first */
+export const DIFFICULTIES = Object.keys(DIFFICULTY_RULES) as Difficulty[];
 
 /** what the editor sets */
 export interface CustomSpec {
   units: PaletteItem[];
   cables: number;
   difficulty: Difficulty;
-  /** services the links carry: the first ones of SERVICES (1..6) */
+  /** services the links carry: the first ones of SERVICES (1..SERVICES.length) */
   services: number;
   /** a maintenance window: the links working at the start are in production */
   maintenance: boolean;
@@ -93,7 +96,7 @@ function unitsOf(items: readonly PaletteItem[]): UnitSpec[] {
 
 /** the cabinet of a spec (check it first: checkSpec) */
 export function customLevel(spec: CustomSpec): CustomLevel {
-  const d = DIFFICULTIES[spec.difficulty];
+  const d = DIFFICULTY_RULES[spec.difficulty];
   const n = spec.cables;
   const units = unitsOf(spec.units);
   return {
@@ -125,20 +128,25 @@ const LETTER_OF = Object.fromEntries(Object.entries(PALETTE).map(([letter, item]
 
 /** the code of a spec: the units as letters, then the rules, apart with dots */
 export function encodeSpec(spec: CustomSpec): string {
-  return [spec.units.map((u) => LETTER_OF[u]).join(''), spec.cables, DIFFICULTIES[spec.difficulty].letter, spec.services, spec.maintenance ? 1 : 0, spec.seed.toString(36)].join('.');
+  return [spec.units.map((u) => LETTER_OF[u]).join(''), spec.cables, DIFFICULTY_RULES[spec.difficulty].letter, spec.services, spec.maintenance ? 1 : 0, spec.seed.toString(36)].join('.');
 }
+
+const isPaletteLetter = (l: string): l is PaletteLetter => Object.hasOwn(PALETTE, l);
 
 /** the spec a code stands for, or what is wrong with it */
 export function decodeSpec(code: string): CustomSpec | CustomError {
   const parts = code.trim().split('.');
   if (parts.length !== 6) return { kind: 'badCode' };
   const [letters, cables, difficulty, services, maintenance, seed] = parts;
-  if (!/^[bposfrxud]+$/.test(letters) || !/^\d+$/.test(cables) || !/^[1-6]$/.test(services) || !/^[01]$/.test(maintenance) || !/^[0-9a-z]+$/.test(seed)) return { kind: 'badCode' };
-  const level = (Object.keys(DIFFICULTIES) as Difficulty[]).find((k) => DIFFICULTIES[k].letter === difficulty);
+  const units = [...letters];
+  const serviceCount = Number(services);
+  if (!units.length || !units.every(isPaletteLetter) || !/^\d+$/.test(cables) || !/^\d$/.test(services) || serviceCount < 1 || serviceCount > SERVICES.length
+    || !/^[01]$/.test(maintenance) || !/^[0-9a-z]+$/.test(seed)) return { kind: 'badCode' };
+  const level = DIFFICULTIES.find((k) => DIFFICULTY_RULES[k].letter === difficulty);
   if (!level) return { kind: 'badCode' };
   const spec: CustomSpec = {
-    units: [...letters].map((l) => PALETTE[l as PaletteLetter]),
-    cables: Number(cables), difficulty: level, services: Number(services), maintenance: maintenance === '1', seed: parseInt(seed, 36),
+    units: units.map((l) => PALETTE[l]),
+    cables: Number(cables), difficulty: level, services: serviceCount, maintenance: maintenance === '1', seed: parseInt(seed, 36),
   };
   return checkSpec(spec) ?? spec;
 }

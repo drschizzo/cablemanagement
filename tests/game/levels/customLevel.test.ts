@@ -1,7 +1,8 @@
 // A cabinet of the editor: checked, and carried by its code.
 import { describe, expect, it } from 'vitest';
-import { checkSpec, customLevel, decodeSpec, encodeSpec, mostCords, type CustomSpec } from '../../../src/game/levels/customLevel';
+import { DIFFICULTIES, PALETTE, checkSpec, customLevel, decodeSpec, encodeSpec, mostCords, type CustomSpec } from '../../../src/game/levels/customLevel';
 import { World } from '../../../src/game/world';
+import { SERVICES } from '../../../src/game/services';
 
 const spec: CustomSpec = {
   units: ['blank', 'copperPanel', 'blank', 'switch', 'blank', 'firewall', 'blank', 'router', 'server', 'ups'],
@@ -13,6 +14,14 @@ describe('a cabinet of the editor', () => {
     const code = encodeSpec(spec);
     expect(code).toBe('bpbsbfbrxu.12.n.3.1.2n9c');
     expect(decodeSpec(code)).toEqual(spec);
+  });
+
+  it('carries every piece of the palette, every difficulty and every count of services', () => {
+    const every: CustomSpec = { ...spec, units: Object.values(PALETTE) };
+    expect(decodeSpec(encodeSpec(every))).toEqual(every);
+    for (const difficulty of DIFFICULTIES) expect(decodeSpec(encodeSpec({ ...spec, difficulty }))).toEqual({ ...spec, difficulty });
+    expect(decodeSpec(encodeSpec({ ...spec, services: SERVICES.length }))).toEqual({ ...spec, services: SERVICES.length });
+    expect(decodeSpec(encodeSpec({ ...spec, services: SERVICES.length + 1 }))).toEqual({ kind: 'badCode' });
   });
 
   it('turns down a code that is not one, or a cabinet that cannot be played', () => {
