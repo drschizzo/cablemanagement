@@ -42,6 +42,8 @@ Deux comportements de `WebGPURenderer` sont pris en compte :
 | `SSRNode` | `tsl/display/SSRNode.js` | `REFLECTIONS` : résolution, opacité, distance, épaisseur, rugosité |
 | `GTAONode`, `DenoiseNode` | `tsl/display/GTAONode.js`, `DenoiseNode.js` | `AO_SETTINGS`, `AO_DENOISE` |
 | `GaussianBlurNode` | `tsl/display/GaussianBlurNode.js` | les cinq tailles du halo, chacune à la moitié de la résolution de la précédente |
+| `SMAANode` | `tsl/display/SMAANode.js` | l'antialiasing de l'image affichée |
+| `convertToTexture` | TSL | une image intermédiaire ; `frameTexture` (`tsl.ts`) la fait dessiner une fois par frame (`updateBeforeType`), et non avant chaque rendu qui la lit |
 
 La sortie de `SSRNode` est déjà pondérée par son opacité : elle s'ajoute à l'image.
 

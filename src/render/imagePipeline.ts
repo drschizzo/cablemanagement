@@ -1,8 +1,8 @@
 // The image, from the scene to the screen: the scene drawn once into its
-// buffers (multisampled, linear HDR: its colour, the normals, the depth, what
-// reflects), then the passes that work on them: reflections on the floor,
-// ambient occlusion, the depth of field, the glow of the lights, the tone
-// curve (past white on an HDR screen), the cinema pass.
+// buffers (linear HDR: its colour, the normals, the depth, what reflects),
+// then the passes that work on them: reflections on the floor, ambient
+// occlusion, the depth of field, the glow of the lights, the tone curve (past
+// white on an HDR screen), the antialiasing, the cinema pass.
 
 import * as THREE from 'three/webgpu';
 import { ssr } from 'three/examples/jsm/tsl/display/SSRNode.js';
@@ -11,22 +11,22 @@ import { denoise } from 'three/examples/jsm/tsl/display/DenoiseNode.js';
 import { Bloom } from './bloom';
 import { Cinema } from './cinema';
 import { DepthOfField } from './depthOfField';
+import { smaa } from 'three/examples/jsm/tsl/display/SMAANode.js';
 import { toneCurve } from './toneCurve';
-import { tsl, type ShaderNode } from './tsl';
+import { frameTexture, tsl, type ShaderNode } from './tsl';
 import type { ScreenMargins } from './stage';
 import type { QualitySettings } from './quality';
 
-const { convertToTexture, float, mix, mrt, normalView, output, pass, renderOutput, uniform, vec4 } = tsl;
-
-/** samples a pixel when the scene is drawn: the antialiasing of the whole image */
-const SAMPLES = 4;
+const { float, mix, mrt, normalView, output, pass, renderOutput, uniform, vec4 } = tsl;
 
 /**
  * The reflections of the floor: a polished vinyl, faint and a little blurred.
  * `thickness` (m): at 2 cm, every ray passing under a cord took its colour and
- * the reflection smeared into a ribbon.
+ * the reflection smeared into a ribbon. `quality`: the steps of a ray, a
+ * quarter of the most; faint and blurred, the reflections look no different
+ * with more, which cost twice as much of the frame.
  */
-export const REFLECTIONS = { resolutionScale: 0.5, opacity: 0.2, maxDistance: 0.5, thickness: 0.003, roughness: 0.3 };
+export const REFLECTIONS = { resolutionScale: 0.5, quality: 0.25, opacity: 0.2, maxDistance: 0.5, thickness: 0.003, roughness: 0.3 };
 
 /**
  * Ambient occlusion. `radius` (m): a short reach darkens the corners, the
@@ -35,6 +35,11 @@ export const REFLECTIONS = { resolutionScale: 0.5, opacity: 0.2, maxDistance: 0.
  * (tests/render/threeNodes.test.ts checks that three.js still reads each.)
  */
 export const AO_SETTINGS = { radius: 0.03, distanceExponent: 1.5, thickness: 0.3, scale: 1, samples: 8 };
+/**
+ * The occlusion worked out at half the resolution (a quarter of the pixels),
+ * then denoised at full resolution: the same shading, for a third of its cost.
+ */
+export const AO_RESOLUTION = 0.5;
 export const AO_DENOISE = { lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6 };
 /** how much of the occlusion darkens the image */
 const AO_BLEND = 0.6;
@@ -90,7 +95,7 @@ export class ImagePipeline {
     this.pipeline = new THREE.RenderPipeline(renderer);
     // tone mapping and the colour space are applied by the chain itself (see compose)
     this.pipeline.outputColorTransform = false;
-    this.scenePass = pass(scene, camera, { samples: SAMPLES });
+    this.scenePass = pass(scene, camera);
     this.scenePass.setMRT(mrt({ output, normal: normalView, reflect: float(0) }));
     const color = this.scenePass.getTextureNode('output');
     const normal = this.scenePass.getTextureNode('normal');
@@ -99,11 +104,13 @@ export class ImagePipeline {
     const r = REFLECTIONS;
     this.reflections = ssr(color, depth, normal, reflect.r, float(r.roughness), camera);
     this.reflections.resolutionScale = r.resolutionScale;
+    this.reflections.quality.value = r.quality;
     this.reflections.opacity.value = r.opacity;
     this.reflections.maxDistance.value = r.maxDistance;
     this.reflections.thickness.value = r.thickness;
     const gtao: ShaderNode = ao(depth, normal, camera);
     for (const [k, v] of Object.entries(AO_SETTINGS)) gtao[k].value = v;
+    gtao.resolutionScale = AO_RESOLUTION;
     const smooth: ShaderNode = denoise(gtao.getTextureNode(), depth, normal, camera);
     for (const [k, v] of Object.entries(AO_DENOISE)) smooth[k].value = v;
     this.occlusion = smooth;
@@ -130,15 +137,20 @@ export class ImagePipeline {
       image = vec4(image.rgb.add(this.reflections.rgb.mul(reflect)), 1);
     }
     if (this.quality.ao) image = vec4(image.rgb.mul(mix(1, this.occlusion.r, AO_BLEND)), 1);
+    // drawn once, read by the depth of field or by the glow and the image (the denoising of the
+    // occlusion is worked out wherever the composite is read)
+    if (this.quality.ao || this.quality.ssr) image = own(frameTexture(image));
     this.dof = null;
     if (this.focused) {
-      this.dof = new DepthOfField(own(convertToTexture(image)), this.scenePass.getTextureNode('depth'), this.camera);
-      // drawn once, read by the glow and by the image
-      image = own(convertToTexture(this.dof.node));
+      this.dof = new DepthOfField(image, this.scenePass.getTextureNode('depth'), this.camera);
+      image = own(frameTexture(this.dof.node));
     }
     this.bloom = own(new Bloom(image));
     const shown = toneCurve(image.rgb.add(this.bloom.node), this.headroom);
-    this.cinema = new Cinema(own(convertToTexture(renderOutput(vec4(shown, 1), THREE.NoToneMapping, this.renderer.outputColorSpace))));
+    const display = own(frameTexture(renderOutput(vec4(shown, 1), THREE.NoToneMapping, this.renderer.outputColorSpace)));
+    // the antialiasing, on the image as shown: SMAA smooths the edges of the cords as multisampling the
+    // scene did, which cost a third of the frame (every pass then read its images multisampled)
+    this.cinema = new Cinema(own(frameTexture(smaa(display))));
     this.pipeline.outputNode = this.cinema.node;
     this.pipeline.needsUpdate = true;
   }

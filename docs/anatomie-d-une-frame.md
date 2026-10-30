@@ -569,7 +569,7 @@ L'image intermédiaire stocke des nombres à virgule sur 16 bits par canal (*hal
 
 La scène écrit plusieurs images à la fois (*multiple render targets*, MRT) : la couleur, les normales, la profondeur, et un canal qui dit ce qui reflète (le sol l'écrit, `reflective()`). Les reflets et l'occlusion lisent ces images : la scène n'est dessinée qu'une fois. Une lumière ajoutée à l'image sans être un solide, comme un rai de lumière, n'écrit rien dans les normales ni dans les reflets (`keepOutOfDepth()`).
 
-La scène est aussi multi-échantillonnée (4 échantillons par pixel, **MSAA**) : le GPU calcule la couverture de chaque triangle en 4 points par pixel, ce qui lisse les bords en escalier des câbles fins. Seul le dessin de la scène en a besoin : les passes suivantes ne dessinent qu'un rectangle.
+Une passe lit ses images à chaque pixel, souvent plusieurs fois : la profondeur, des dizaines de fois par pixel pour l'occlusion et le flou. Chaque image intermédiaire est donc dessinée une seule fois par frame (`frameTexture`, `tsl.ts`), quel que soit le nombre de passes qui la lisent.
 
 ### 9.2 Les passes, dans l'ordre
 
@@ -593,7 +593,9 @@ La scène est aussi multi-échantillonnée (4 échantillons par pixel, **MSAA**)
 
 Sur un écran HDR, la page dessine dans un canvas de plage étendue (16 bits à virgule par canal, `toneMapping: 'extended'`), où une valeur au-dessus de 1 s'affiche plus lumineuse que le blanc de l'interface. La courbe garde alors ACES jusqu'au blanc, et laisse ce qui dépasse toute surface éclairée (les voyants, leur halo) monter jusqu'à 4 fois le blanc, en pâlissant comme une lampe vive. Sur un écran ordinaire, ou quand le joueur coupe le HDR dans les réglages, la même courbe s'arrête au blanc (`hdrScreen.ts` décide lequel des deux).
 
-**6. Les finitions** (`cinema.ts`), sur les valeurs d'affichage, en une seule passe : un **vignettage** centré sur la zone libre entre les panneaux, un **grain** différent à chaque frame, plus fort dans les sombres, qui casse aussi les bandes des dégradés du fond, une légère **teinte** (ombres vers le bleu-vert, hautes lumières vers le chaud) et une **aberration chromatique** vers les coins.
+**6. L'antialiasing** (`SMAANode`). Les bords des triangles tombent en escalier sur les pixels, ce qui se voit surtout le long des câbles fins. Le SMAA repère ces escaliers dans l'image affichée et les lisse en mélangeant les pixels de part et d'autre du bord. La scène n'est pas multi-échantillonnée : chaque passe aurait alors lu ses images multi-échantillonnées, pour un tiers de la frame.
+
+**7. Les finitions** (`cinema.ts`), sur les valeurs d'affichage, en une seule passe : un **vignettage** centré sur la zone libre entre les panneaux, un **grain** différent à chaque frame, plus fort dans les sombres, qui casse aussi les bandes des dégradés du fond, une légère **teinte** (ombres vers le bleu-vert, hautes lumières vers le chaud) et une **aberration chromatique** vers les coins.
 
 ![Les passes appliquées une à une](frame/passes.jpg)
 
@@ -632,7 +634,7 @@ Le tableau suit une frame d'un niveau, dans l'ordre d'exécution.
 | 13 | Carte d'ombre | GPU | three.js | chaque frame |
 | 14 | Scène et images auxiliaires | GPU | `imagePipeline.ts` | chaque frame |
 | 15 | Reflets du sol, occlusion ambiante | GPU | `SSRNode`, `GTAONode` | chaque frame |
-| 16 | Profondeur de champ, halo, tone mapping, finitions | GPU | `depthOfField.ts`, `bloom.ts`, `cinema.ts` | chaque frame |
+| 16 | Profondeur de champ, halo, tone mapping, antialiasing, finitions | GPU | `depthOfField.ts`, `bloom.ts`, `toneCurve.ts`, `SMAANode`, `cinema.ts` | chaque frame |
 | 17 | Composition avec le HTML et affichage | navigateur | — | chaque rafraîchissement |
 | — | Panneaux HTML, chronomètre | principal | `app/app.ts`, `setInterval` | toutes les 250 ms |
 
@@ -676,7 +678,7 @@ Le jeu s'ouvre sur une allée de baies géantes en désordre, que l'interrupteur
 | HDR | Image dont les valeurs peuvent dépasser le blanc (1), stockée en nombres à virgule. |
 | Instanciation | Dessin d'une même géométrie plusieurs fois en un seul appel, chaque copie ayant ses propres données. |
 | Matrices M, V, P | Tableaux de 4 × 4 nombres qui placent un objet dans le monde, le monde devant la caméra, puis appliquent la perspective. |
-| MSAA | Couverture des triangles calculée en plusieurs points par pixel, pour lisser les bords en escalier. |
+| SMAA | Antialiasing appliqué à l'image finie : les bords en escalier sont repérés et lissés. |
 | Multiplicateur λ | Nombre associé à une contrainte, qui mémorise la force qu'elle fournit et la rend exacte. |
 | Niveau de détail | Version simplifiée d'un objet, utilisée quand il est trop petit à l'écran pour que ses détails se voient. |
 | Nœud | Point pesant du modèle physique. Un câble est une chaîne de nœuds espacés de 2,5 cm. |

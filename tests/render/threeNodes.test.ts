@@ -19,6 +19,7 @@ describe('the nodes of the image (render/imagePipeline.ts, render/bloom.ts)', ()
 
   it('GTAONode and DenoiseNode: read each setting of the occlusion', () => {
     for (const key of Object.keys(AO_SETTINGS)) expect(source(GTAONode), key).toContain(`this.${key} = uniform(`);
+    expect(source(GTAONode)).toContain('this.resolutionScale =');
     for (const key of Object.keys(AO_DENOISE)) expect(source(DenoiseNode), key).toContain(`this.${key} = uniform(`);
   });
 

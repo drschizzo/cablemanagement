@@ -6,7 +6,7 @@
 
 import * as THREE from 'three/webgpu';
 import { gaussianBlur } from 'three/examples/jsm/tsl/display/GaussianBlurNode.js';
-import { tsl, type ShaderNode } from './tsl';
+import { frameTexture, tsl, type ShaderNode } from './tsl';
 
 const { Fn, float, luminance, min, mix, select, smoothstep, uniform, vec3, vec4 } = tsl;
 
@@ -61,7 +61,7 @@ export class Bloom {
       const glow = select(finite, min(c, vec3(MAX_GLOW)), vec3(0));
       return vec4(glow.mul(smoothstep(THRESHOLD, THRESHOLD + SMOOTH_WIDTH, luma)), 1);
     })();
-    let level: ShaderNode = bright;
+    let level: ShaderNode = frameTexture(bright);
     let sum: ShaderNode = vec3(0);
     SIGMAS.forEach((sigma, k) => {
       const blur = gaussianBlur(level, null, sigma, { resolutionScale: 0.5 });
