@@ -6,6 +6,8 @@ import * as THREE from 'three/webgpu';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { ImagePipeline } from './imagePipeline';
+import { isHdrShown, onScreenRangeChange, screenIsHdr, type HdrChoice, type HdrSupport } from './hdrScreen';
+import { HDR_HEADROOM } from './toneCurve';
 import { LED_CLOCK_WRAP, ledClock, ledViewHeight } from './leds';
 import { ledGlows } from './ledGlow';
 import { gpuAdvice, gpuInfo, type GpuAdvice, type GpuInfo } from './gpu';
@@ -94,10 +96,16 @@ export class Stage {
    * with WebGL 2 even where WebGPU is there.
    */
   static async create(host: HTMLElement, onGpuAdvice: (advice: GpuAdvice) => void = () => {}, forceWebGL = false): Promise<Stage> {
-    return new Stage(await createRenderer(forceWebGL), host, onGpuAdvice);
+    // a canvas of extended range only where it shows: WebGPU, on an HDR screen
+    const hdrCanvas = !forceWebGL && 'gpu' in navigator && screenIsHdr();
+    const renderer = await createRenderer(forceWebGL, hdrCanvas);
+    // (WebGPU may still fail to start: the renderer then falls back on WebGL 2)
+    const webgpu = (renderer.backend as { isWebGPUBackend?: boolean }).isWebGPUBackend === true;
+    return new Stage(renderer, host, onGpuAdvice, !webgpu ? 'noWebGPU' : hdrCanvas ? 'available' : 'sdrScreen');
   }
 
-  private constructor(readonly renderer: THREE.WebGPURenderer, host: HTMLElement, private onGpuAdvice: (advice: GpuAdvice) => void) {
+  /** `hdrSupport`: whether the canvas can show the image past white */
+  private constructor(readonly renderer: THREE.WebGPURenderer, host: HTMLElement, private onGpuAdvice: (advice: GpuAdvice) => void, readonly hdrSupport: HdrSupport) {
     this.gpu = gpuInfo(this.renderer);
     // (the GPU's own clock, EXT_disjoint_timer_query, would measure the GPU alone; but through ANGLE on
     // Metal it read 33 ms a frame for frames that came at 60 a second)
@@ -124,6 +132,8 @@ export class Stage {
     ({ key: this.key, fill: this.fill } = addLights(this.scene));
 
     this.image = new ImagePipeline(this.renderer, this.scene, this.camera);
+    this.applyHdr();
+    onScreenRangeChange(() => this.applyHdr());
 
     window.addEventListener('resize', () => this.resize());
     for (const e of ['pointermove', 'pointerdown', 'wheel', 'keydown']) {
@@ -187,6 +197,27 @@ export class Stage {
     this.onQualityLowered(this.qualityChoice);
     const advice = gpuAdvice(this.gpu, true);
     if (advice) this.onGpuAdvice(advice);
+  }
+
+  /** what the player chose for HDR */
+  get hdrChoice(): HdrChoice {
+    return this.hdrChosen;
+  }
+
+  /** the image goes past white, on this screen, as the player chose */
+  get hdrShown(): boolean {
+    return isHdrShown(this.hdrChosen, this.hdrSupport, screenIsHdr());
+  }
+
+  setHdr(choice: HdrChoice): void {
+    this.hdrChosen = choice;
+    this.applyHdr();
+  }
+
+  private hdrChosen: HdrChoice = 'auto';
+
+  private applyHdr(): void {
+    this.image.setHeadroom(this.hdrShown ? HDR_HEADROOM : 1);
   }
 
   /** what the player chose (or what auto has stepped down to) */

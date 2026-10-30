@@ -7,20 +7,21 @@ import { DEFAULT_LOOK } from './look';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 /**
- * The renderer, ready to draw: WebGPU, or WebGL 2 where the browser has no
- * WebGPU (or `forceWebGL`); shadows, filmic tone mapping. The canvas itself is
+ * The renderer, ready to draw, with shadows: WebGPU, or WebGL 2 where the
+ * browser has no WebGPU (or `forceWebGL`). `hdr`: a canvas of extended range
+ * (half floats past 1, WebGPU only), for an HDR screen. The canvas itself is
  * not multisampled: it only takes the last pass (the scene is, see
- * imagePipeline.ts).
+ * imagePipeline.ts), and the tone curve is the image's own (toneCurve.ts).
  */
-export async function createRenderer(forceWebGL = false): Promise<THREE.WebGPURenderer> {
+export async function createRenderer(forceWebGL: boolean, hdr: boolean): Promise<THREE.WebGPURenderer> {
   // only a hint: on Windows the GPU is chosen for the whole browser (see gpu.ts)
-  const renderer = new THREE.WebGPURenderer({ antialias: false, powerPreference: 'high-performance', forceWebGL });
+  const renderer = new THREE.WebGPURenderer({
+    antialias: false, powerPreference: 'high-performance', forceWebGL, outputType: hdr ? THREE.HalfFloatType : undefined,
+  });
   await renderer.init();
   renderer.shadowMap.enabled = true;
   // PCF in three r183 samples a rotated Vogel disk of `shadow.radius` (PCFSoft is deprecated into it)
   renderer.shadowMap.type = THREE.PCFShadowMap;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.15;
   return renderer;
 }
 

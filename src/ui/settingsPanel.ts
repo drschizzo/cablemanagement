@@ -1,9 +1,11 @@
 // The settings, from the title screen or the pause menu: the language, the
 // quality of the image (adapted to the GPU, or held at a preset or as set in
-// detail), the sound and the music. The choices are kept in the browser
-// (storage.ts).
+// detail), HDR (as the screen allows, or as chosen), the sound and the music.
+// The choices are kept in the browser (storage.ts).
 
 import { AUTO_QUALITY, QUALITY, drawAlike, type QualityChoice, type QualitySettings } from '../render/quality';
+import type { HdrChoice, HdrSupport } from '../render/hdrScreen';
+import { assertNever } from '../lib/assertNever';
 import { save } from './storage';
 import { hide, show } from './dom';
 import { LANGUAGES, language, onLanguageChange, setLanguage, tr, type Words } from './language';
@@ -15,6 +17,16 @@ export interface QualityControl {
   /** the image as it is drawn now */
   readonly qualitySettings: QualitySettings;
   setQuality(choice: QualityChoice): void;
+}
+
+/** what the panel sees of the stage, for HDR */
+export interface HdrControl {
+  /** whether the image can go past white here, or why not */
+  readonly hdrSupport: HdrSupport;
+  readonly hdrChoice: HdrChoice;
+  /** the image goes past white now */
+  readonly hdrShown: boolean;
+  setHdr(choice: HdrChoice): void;
 }
 
 export interface SoundControl {
@@ -47,8 +59,9 @@ export class SettingsPanel {
   private ssr = $<HTMLInputElement>('#q-ssr');
   private soundBox = $<HTMLInputElement>('#set-sound');
   private musicBox = $<HTMLInputElement>('#set-music');
+  private hdrBox = $<HTMLInputElement>('#set-hdr');
 
-  constructor(private quality: QualityControl, private sound: SoundControl, private music: SoundControl) {
+  constructor(private quality: QualityControl, private hdr: HdrControl, private sound: SoundControl, private music: SoundControl) {
     this.buildLanguages();
     this.buildPresets();
     this.writeOptions();
@@ -58,6 +71,8 @@ export class SettingsPanel {
       input.onchange = () => this.choose({ kind: 'fixed', settings: this.detailSettings() });
     }
     $('#q-reset').onclick = () => this.choose(AUTO_QUALITY);
+    this.hdrBox.onchange = () => this.chooseHdr(this.hdrBox.checked ? 'on' : 'off');
+    $('#hdr-auto').onclick = () => this.chooseHdr('auto');
     this.soundBox.onchange = () => { sound.toggle(); this.render(); };
     this.musicBox.onchange = () => { music.toggle(); this.render(); };
     $('#settings-back').onclick = () => { hide('#settings'); this.back(); };
@@ -112,6 +127,12 @@ export class SettingsPanel {
     this.render();
   }
 
+  private chooseHdr(choice: HdrChoice): void {
+    this.hdr.setHdr(choice);
+    save('hdr', choice);
+    this.render();
+  }
+
   private detailSettings(): QualitySettings {
     return { ratio: Number(this.ratio.value), shadow: Number(this.shadow.value), ao: this.ao.checked, ssr: this.ssr.checked };
   }
@@ -136,6 +157,11 @@ export class SettingsPanel {
     this.shadow.value = String(settings.shadow);
     this.ao.checked = settings.ao;
     this.ssr.checked = settings.ssr;
+    const hdr = this.hdr;
+    this.hdrBox.checked = hdr.hdrShown;
+    this.hdrBox.disabled = hdr.hdrSupport !== 'available';
+    $('#hdr-status').textContent = hdrStatus(hdr.hdrSupport, hdr.hdrChoice, hdr.hdrShown);
+    $('#hdr-auto').style.display = hdr.hdrSupport === 'available' && hdr.hdrChoice !== 'auto' ? '' : 'none';
     this.soundBox.checked = this.sound.isOn();
     this.musicBox.checked = this.music.isOn();
   }
@@ -150,6 +176,24 @@ function presetOf(choice: QualityChoice): (typeof PRESETS)[number] | undefined {
 function ratioText(ratio: number): string {
   const text = `×${tr({ fr: String(ratio).replace('.', ','), en: String(ratio) })}`;
   return ratio > window.devicePixelRatio ? tr({ fr: `${text} (cet écran : ${ratioText(window.devicePixelRatio)})`, en: `${text} (this screen: ${ratioText(window.devicePixelRatio)})` }) : text;
+}
+
+/** whether the image goes past white, and why */
+function hdrStatus(support: HdrSupport, choice: HdrChoice, shown: boolean): string {
+  switch (support) {
+    case 'noWebGPU': return tr({ fr: 'Ce navigateur dessine sans WebGPU : pas d\'image HDR.', en: 'This browser draws without WebGPU: no HDR image.' });
+    case 'sdrScreen': return tr({ fr: 'L\'écran n\'affichait pas le HDR à l\'ouverture de la page. Sur un écran HDR, rechargez la page.', en: 'The screen showed no HDR when the page opened. On an HDR screen, reload the page.' });
+    case 'available': break;
+    default: return assertNever(support);
+  }
+  switch (choice) {
+    case 'auto': return shown
+      ? tr({ fr: 'Automatique : l\'écran affiche le HDR.', en: 'Automatic: the screen shows HDR.' })
+      : tr({ fr: 'Automatique : l\'écran n\'affiche pas le HDR en ce moment.', en: 'Automatic: the screen shows no HDR at the moment.' });
+    case 'on': return tr({ fr: 'Activée dans les réglages.', en: 'Turned on in the settings.' });
+    case 'off': return tr({ fr: 'Désactivée dans les réglages.', en: 'Turned off in the settings.' });
+    default: return assertNever(choice);
+  }
 }
 
 /** what the image is, and who chose it */

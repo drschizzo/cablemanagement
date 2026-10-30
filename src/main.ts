@@ -27,6 +27,8 @@ const aisles = aisleSettings(options);
 const stage = await Stage.create($('#view'), showGpuNotice, options.forceWebGL);
 // ?quality=N holds a level for this visit only; otherwise, the one chosen (or reached by auto) last time
 stage.setQuality(options.quality !== null ? { kind: 'fixed', settings: QUALITY[options.quality] } : load('quality'));
+// ?hdr=0|1 likewise, for this visit only
+stage.setHdr(options.hdr !== null ? (options.hdr ? 'on' : 'off') : load('hdr'));
 // the fallen mess of the default aisle, fetched while the rest starts
 const baked = aisles.isDefault && aisles.firstSeed === SHOWCASE_DEFAULT.seed ? loadBaked(bakedUrl) : Promise.resolve(null);
 const app = new App(stage, aisles, !options.syncPhysics, baked);

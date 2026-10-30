@@ -6,6 +6,7 @@
 //   ?quality=N   the image held at that level of quality (0: full, see QUALITY), never adapted nor saved
 //   ?rack=CODE   a cabinet of the editor, opened at once (its code: game/levels/customLevel.ts)
 //   ?webgl       drawn with WebGL 2 even where WebGPU is there (as browsers without it draw)
+//   ?hdr=0|1     the image past white on an HDR screen, or not, for this visit only (never saved)
 
 import { SHOWCASE_DEFAULT } from '../game/levels/showcaseRack';
 import { QUALITY } from '../render/quality';
@@ -23,6 +24,8 @@ export interface UrlOptions {
   rack: string | null;
   /** drawn with WebGL 2, WebGPU's fallback */
   forceWebGL: boolean;
+  /** the image past white (true) or not (false), for this visit; null: not given */
+  hdr: boolean | null;
 }
 
 export function readUrlOptions(search: string): UrlOptions {
@@ -37,6 +40,7 @@ export function readUrlOptions(search: string): UrlOptions {
     quality: params.has('quality') ? Math.max(0, Math.min(QUALITY.length - 1, int('quality'))) : null,
     rack: params.get('rack'),
     forceWebGL: params.has('webgl'),
+    hdr: params.has('hdr') ? params.get('hdr') !== '0' : null,
   };
 }
 

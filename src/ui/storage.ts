@@ -4,6 +4,7 @@
 // browsing, storage full or blocked): the game then simply forgets.
 
 import { AUTO_QUALITY, QUALITY, type QualityChoice } from '../render/quality';
+import type { HdrChoice } from '../render/hdrScreen';
 import { LANGUAGES, preferredLanguage, type Language } from './language';
 import type { CabinetState } from '../game/cabinetState';
 import type { FindId } from '../game/finds';
@@ -144,6 +145,14 @@ const ENTRIES = {
     format: (v: QualityChoice) => JSON.stringify(v),
     valid: isQualityChoice,
   } satisfies Entry<QualityChoice>,
+  /** the image past white on an HDR screen: as the screen allows (auto), or as chosen in the settings */
+  hdr: {
+    key: 'cable.hdr',
+    fallback: (): HdrChoice => 'auto',
+    parse: (raw: string) => raw as HdrChoice,
+    format: (v: HdrChoice) => v,
+    valid: (v: HdrChoice) => v === 'auto' || v === 'on' || v === 'off',
+  } satisfies Entry<HdrChoice>,
   /** the language chosen in the settings; the browser's, until then */
   language: {
     key: 'cable.language',

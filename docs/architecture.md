@@ -14,7 +14,7 @@ src/
   app/          QUELLE SCÈNE est à l'écran, et comment passer de l'une à l'autre
     app.ts          App : un niveau (Controller, avec ou sans tutoriel) ou l'écran titre (Showcase)
     sceneLoader.ts  une scène à la fois : voile de chargement, chargement dépassé par un autre
-    urlOptions.ts   ?sync, ?bays, ?pairs, ?seed, ?quality, ?rack, ?webgl : lus depuis une chaîne, donc testables
+    urlOptions.ts   ?sync, ?bays, ?pairs, ?seed, ?quality, ?rack, ?webgl, ?hdr : lus depuis une chaîne, donc testables
   game/         LES RÈGLES et la physique de la baie                       sans three.js ni DOM : tourne sous Node
     world.ts        World, l'état d'une partie : cordons et leurs bouts (et ceux coupés à l'intérieur), branchement,
                     velcros, bac, stock ; montré en lecture seule, changé par ses méthodes
@@ -84,6 +84,8 @@ src/
                     niveau, ou des réglages fixes (QualityChoice)
     stageSetup.ts   la construction du renderer (WebGPURenderer : WebGPU, ou WebGL 2 à défaut), des contrôles et des
                     lumières
+    toneCurve.ts    la courbe de tons : ACES jusqu'au blanc ; sur un écran HDR, les lumières au-delà
+    hdrScreen.ts    l'écran affiche-t-il le HDR, et l'image va-t-elle au-delà du blanc (choix du joueur : auto, oui, non)
     tsl.ts          TSL, le langage de nœuds de three.js dans lequel s'écrivent les matériaux et les passes, typé
                     une fois ; glowTerms.ts, les lueurs que plusieurs effets ajoutent à un même matériau
     gpu.ts          la carte graphique utilisée, et le conseil à donner quand elle dessine trop lentement
@@ -257,7 +259,7 @@ sur le fil principal.
 ## Données dans le navigateur
 
 `ui/storage.ts` déclare chaque entrée (clé, valeur par défaut, validation) : progression (étoiles et meilleurs temps
-par niveau), tutoriel terminé, règles et gestes déjà rencontrés, carrière (tickets faits, la baie du client telle que laissée), dernière baie de l'éditeur, carnet (teintes portées, trouvailles), baies du jour (le meilleur résultat de chaque date), langue (celle du navigateur tant que le joueur n'en a pas choisi), musique coupée, qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu) et son
+par niveau), tutoriel terminé, règles et gestes déjà rencontrés, carrière (tickets faits, la baie du client telle que laissée), dernière baie de l'éditeur, carnet (teintes portées, trouvailles), baies du jour (le meilleur résultat de chaque date), langue (celle du navigateur tant que le joueur n'en a pas choisi), musique coupée, qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu), image HDR (automatique, activée ou désactivée) et son
 coupé. Une valeur illisible ou d'une autre forme se lit comme la valeur par défaut.
 
 ## Ajouter…

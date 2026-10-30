@@ -74,6 +74,14 @@ describe('browser storage', () => {
     }
   });
 
+  it('HDR: auto until chosen, then on or off; anything else reads as auto', () => {
+    expect(load('hdr')).toBe('auto');
+    save('hdr', 'off');
+    expect(load('hdr')).toBe('off');
+    mem.set('cable.hdr', 'bright');
+    expect(load('hdr')).toBe('auto');
+  });
+
   it('the tutorial done, then forgotten', () => {
     save('tutorialDone', true);
     expect(mem.get('cable.tutorial')).toBe('done');

@@ -565,7 +565,7 @@ La scène n'est pas dessinée directement à l'écran. Elle est rendue une fois 
 
 Une passe de post-traitement lit une ou plusieurs images et en écrit une nouvelle. Le plus souvent, elle dessine un seul rectangle qui couvre l'écran, avec un fragment shader qui calcule chaque pixel à partir des pixels de l'image d'entrée : l'équivalent sur le GPU d'un filtre CSS, mais programmable et exécuté à chaque frame. La sortie d'une passe devient l'entrée de la suivante ; la dernière écrit dans le canvas.
 
-L'image intermédiaire stocke des nombres à virgule sur 16 bits par canal (*half float*), et non des octets de 0 à 255. Une couleur peut donc dépasser 1, le blanc : les voyants brillent à 4, quand aucune surface éclairée ne dépasse 1. On parle d'image **HDR** (*high dynamic range*). Cette marge sert au halo des lumières ; la conversion finale ramène tout entre 0 et 1.
+L'image intermédiaire stocke des nombres à virgule sur 16 bits par canal (*half float*), et non des octets de 0 à 255. Une couleur peut donc dépasser 1, le blanc : les voyants brillent à 4, quand aucune surface éclairée ne dépasse 1. On parle d'image **HDR** (*high dynamic range*). Cette marge sert au halo des lumières ; la conversion finale ramène tout entre 0 et 1, ou laisse les lumières la dépasser sur un écran HDR.
 
 La scène écrit plusieurs images à la fois (*multiple render targets*, MRT) : la couleur, les normales, la profondeur, et un canal qui dit ce qui reflète (le sol l'écrit, `reflective()`). Les reflets et l'occlusion lisent ces images : la scène n'est dessinée qu'une fois. Une lumière ajoutée à l'image sans être un solide, comme un rai de lumière, n'écrit rien dans les normales ni dans les reflets (`keepOutOfDepth()`).
 
@@ -589,7 +589,9 @@ La scène est aussi multi-échantillonnée (4 échantillons par pixel, **MSAA**)
 
 *Seuls les voyants brillent ; les façades blanches restent nettes.*
 
-**5. De l'image HDR à l'écran** (`renderOutput`). Le *tone mapping* (courbe ACES Filmic) ramène les valeurs HDR entre 0 et 1 en compressant les hautes lumières au lieu de les couper. Puis la conversion vers l'espace de couleur sRGB adapte les valeurs à la façon dont un écran affiche les couleurs. Jusqu'ici, tous les calculs se font en valeurs linéaires, proportionnelles à la quantité de lumière.
+**5. De l'image HDR à l'écran** (`toneCurve.ts`, puis `renderOutput`). Le *tone mapping* (courbe ACES Filmic) ramène les valeurs HDR entre 0 et 1 en compressant les hautes lumières au lieu de les couper. Puis la conversion vers l'espace de couleur sRGB adapte les valeurs à la façon dont un écran affiche les couleurs. Jusqu'ici, tous les calculs se font en valeurs linéaires, proportionnelles à la quantité de lumière.
+
+Sur un écran HDR, la page dessine dans un canvas de plage étendue (16 bits à virgule par canal, `toneMapping: 'extended'`), où une valeur au-dessus de 1 s'affiche plus lumineuse que le blanc de l'interface. La courbe garde alors ACES jusqu'au blanc, et laisse ce qui dépasse toute surface éclairée (les voyants, leur halo) monter jusqu'à 4 fois le blanc, en pâlissant comme une lampe vive. Sur un écran ordinaire, ou quand le joueur coupe le HDR dans les réglages, la même courbe s'arrête au blanc (`hdrScreen.ts` décide lequel des deux).
 
 **6. Les finitions** (`cinema.ts`), sur les valeurs d'affichage, en une seule passe : un **vignettage** centré sur la zone libre entre les panneaux, un **grain** différent à chaque frame, plus fort dans les sombres, qui casse aussi les bandes des dégradés du fond, une légère **teinte** (ombres vers le bleu-vert, hautes lumières vers le chaud) et une **aberration chromatique** vers les coins.
 
@@ -690,7 +692,7 @@ Le jeu s'ouvre sur une allée de baies géantes en désordre, que l'interrupteur
 | Sommeil | État d'un câble immobile : ses nœuds sont figés et ne sont plus calculés jusqu'à ce qu'on le touche. |
 | sRGB | Espace de couleur des écrans. Les calculs se font en valeurs linéaires, converties en sRGB à la fin. |
 | Texture | Tableau de valeurs dans la mémoire du GPU, qu'un shader peut lire : des couleurs, ou n'importe quels nombres. |
-| Tone mapping | Conversion des valeurs HDR en valeurs affichables entre 0 et 1. |
+| Tone mapping | Conversion des valeurs HDR en valeurs affichables : entre 0 et 1, ou au-delà sur un écran HDR. |
 | Web Worker | Fil d'exécution JavaScript séparé de la page, sans accès au DOM, qui communique par messages. |
 
 ### 12.3 Lectures

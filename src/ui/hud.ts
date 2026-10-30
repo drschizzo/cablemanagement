@@ -38,7 +38,7 @@ import { FINDS, type FindId } from '../game/finds';
 import { findName, findStory } from './names';
 import { LevelMenu } from './levelMenu';
 import { PauseMenu } from './pauseMenu';
-import { SettingsPanel, type QualityControl } from './settingsPanel';
+import { SettingsPanel, type HdrControl, type QualityControl } from './settingsPanel';
 import { confirmLeaving } from './confirmDialog';
 import { levelTitle } from './levelTexts';
 import { onLanguageChange, tr } from './language';
@@ -77,7 +77,8 @@ export class Hud {
   private liveHint: Hint | null = null;
   private hoverNotes: HoverNote[] | null = null;
 
-  constructor(private actions: HudActions, quality: QualityControl) {
+  /** `image`: the stage, whose quality and HDR the settings choose */
+  constructor(private actions: HudActions, image: QualityControl & HdrControl) {
     this.toolbar = new Toolbar((tool) => this.selectTool(tool), () => this.toggleStock());
     this.stockMenu = new StockMenu((message) => this.toast(message));
     this.brief = new LevelBrief((tool) => this.selectTool(tool));
@@ -86,7 +87,7 @@ export class Hud {
       career: (start, back) => this.career.show(start, back),
       editor: (start, back) => this.editor.show(start, back),
     }, () => this.progress);
-    this.settings = new SettingsPanel(quality, { isOn: () => !isMuted(), toggle: () => this.toggleSound() }, {
+    this.settings = new SettingsPanel(image, image, { isOn: () => !isMuted(), toggle: () => this.toggleSound() }, {
       isOn: () => !load('musicOff'),
       toggle: () => { save('musicOff', !load('musicOff')); this.followMusic(); },
     });

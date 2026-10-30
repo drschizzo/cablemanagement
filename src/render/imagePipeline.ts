@@ -1,8 +1,8 @@
 // The image, from the scene to the screen: the scene drawn once into its
 // buffers (multisampled, linear HDR: its colour, the normals, the depth, what
 // reflects), then the passes that work on them: reflections on the floor,
-// ambient occlusion, the depth of field, the glow of the lights, tone
-// mapping, the cinema pass.
+// ambient occlusion, the depth of field, the glow of the lights, the tone
+// curve (past white on an HDR screen), the cinema pass.
 
 import * as THREE from 'three/webgpu';
 import { ssr } from 'three/examples/jsm/tsl/display/SSRNode.js';
@@ -11,11 +11,12 @@ import { denoise } from 'three/examples/jsm/tsl/display/DenoiseNode.js';
 import { Bloom } from './bloom';
 import { Cinema } from './cinema';
 import { DepthOfField } from './depthOfField';
+import { toneCurve } from './toneCurve';
 import { tsl, type ShaderNode } from './tsl';
 import type { ScreenMargins } from './stage';
 import type { QualitySettings } from './quality';
 
-const { convertToTexture, float, mix, mrt, normalView, output, pass, renderOutput, vec4 } = tsl;
+const { convertToTexture, float, mix, mrt, normalView, output, pass, renderOutput, uniform, vec4 } = tsl;
 
 /** samples a pixel when the scene is drawn: the antialiasing of the whole image */
 const SAMPLES = 4;
@@ -81,6 +82,8 @@ export class ImagePipeline {
   private owned: { dispose(): void }[] = [];
   private quality: Pick<QualitySettings, 'ao' | 'ssr'> = { ao: true, ssr: true };
   private focused = false;
+  /** how far past white the image goes (× white): 1 on a screen of standard range */
+  private headroom = uniform(1);
   private size = new THREE.Vector2();
 
   constructor(private renderer: THREE.WebGPURenderer, scene: THREE.Scene, private camera: THREE.PerspectiveCamera) {
@@ -134,9 +137,15 @@ export class ImagePipeline {
       image = own(convertToTexture(this.dof.node));
     }
     this.bloom = own(new Bloom(image));
-    this.cinema = new Cinema(own(convertToTexture(renderOutput(vec4(image.rgb.add(this.bloom.node), 1)))));
+    const shown = toneCurve(image.rgb.add(this.bloom.node), this.headroom);
+    this.cinema = new Cinema(own(convertToTexture(renderOutput(vec4(shown, 1), THREE.NoToneMapping, this.renderer.outputColorSpace))));
     this.pipeline.outputNode = this.cinema.node;
     this.pipeline.needsUpdate = true;
+  }
+
+  /** how far past white the image goes (× white; 1: up to white) */
+  setHeadroom(headroom: number): void {
+    this.headroom.value = headroom;
   }
 
   render(frame: ImageFrame): void {
