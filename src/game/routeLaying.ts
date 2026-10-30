@@ -240,7 +240,9 @@ function throughRing(g: Guide, lane: number, r: number): GuidePass {
 function throughDuct(g: Guide, lane: number, prev: V3 | null, next: V3 | null, r: number): GuidePass {
   const s = Math.sign(g.room.min[0] + g.room.max[0]);
   const cols = 6;
-  const dx = s * (SIDE_OUT - 0.012 - (lane % cols) * ((SIDE_OUT - SIDE_IN - 0.024) / (cols - 1)));
+  // the first cords by the slotted wall they come in by: across to the outer
+  // wall and back, a cord took 10 to 15 cm more than it needed
+  const dx = s * (SIDE_IN + 0.012 + (lane % cols) * ((SIDE_OUT - SIDE_IN - 0.024) / (cols - 1)));
   const dz = clamp(0.055 - Math.floor(lane / cols) * 0.016, g.room.min[2] + r, g.room.max[2] - r);
   const yb = g.room.min[1] + 0.006, yt = g.room.max[1] - 0.006;
   const slotY = (y: number) => { const k = Math.round((y - g.room.min[1]) / DUCT_PITCH - 0.5); return clamp(g.room.min[1] + (k + 0.5) * DUCT_PITCH, yb, yt); };

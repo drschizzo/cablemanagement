@@ -6,10 +6,11 @@
 // the solver's targets (springs on a leash): this sets them at the start of
 // every step, from where the hands, the strokes and the goals are (`aim`).
 //
-// One gameplay aid, outside the physics: the trough of a finger manager is a
-// keeper — a cord the player has handled or laid along a route stays in it
-// once in it, until the hand pulls it out or a route leads it elsewhere. It
-// never draws a cord in: laying a cord in the guides is the route's job.
+// One gameplay aid, outside the physics: the trough of a finger manager and
+// the channel of a duct are keepers — a cord the player has handled or laid
+// along a route stays in it once in it, until the hand pulls it out or a
+// route leads it elsewhere. It never draws a cord in: laying a cord in the
+// guides is the route's job.
 
 import { CableSim, defaultSimParams, type CableInit, type NodeSystem, type Pinch, type SimParams, type SimSnapshot, type StaticShape } from '@drschizzo/avbd-cables';
 import type { NodeIndex } from '../cables';
@@ -19,11 +20,15 @@ import type { NodeIndex } from '../cables';
  * no collision, but a node of a cord let go inside stays within its height
  * and depth — free to slide along its length and out of its ends — until the
  * hand pulls it out. A gameplay aid: a cord laid in a manager stays laid.
+ * An upright one (`upright`, the channel of a duct) keeps a node within its
+ * width and depth, and no lower than where it took it, as on the fingers:
+ * the slack laid in it in folds does not slide down out of its open bottom.
  */
 export interface StaticKeeper {
   kind: 'keeper';
   min: [number, number, number];
   max: [number, number, number];
+  upright?: boolean;
   owner?: number;
 }
 
@@ -89,6 +94,7 @@ interface RackSnapshot extends SimSnapshot {
   lastHand: Int32Array;
   goal: Float64Array;
   goalW: Float64Array;
+  keptAt: Float64Array;
   plugs: { i0: number; i1: number; a: number[]; b: number[] }[];
 }
 
@@ -131,7 +137,9 @@ export class RackCableSim extends CableSim {
   /** connectors on their way into a port (see `pinEnd`) */
   protected plugs: { i0: number; i1: number; s0: number[]; s1: number[]; a: number[]; b: number[]; t: number; T: number }[] = [];
 
-  /** the keeper holding each node, or −1 */
+  /** the height each node was taken at by an upright keeper (see `StaticKeeper`) */
+  keptAt = new Float64Array(0);
+
   constructor(params: Partial<RackParams> = {}) {
     super(defaultRackParams(params));
   }
@@ -154,6 +162,7 @@ export class RackCableSim extends CableSim {
     this.handled = new Uint8Array(defs.length);
     this.lastHand = new Int32Array(defs.length).fill(-1);
     this.drawn = new Uint8Array(N);
+    this.keptAt = new Float64Array(N);
     this.aimed = [];
     return starts;
   }
@@ -361,7 +370,7 @@ export class RackCableSim extends CableSim {
     // (the hands and the plugs set their targets again in the worker, at every step)
     this.unaim();
     return {
-      ...super.snapshot(), statics: this.shapes, handled: this.handled, lastHand: this.lastHand, goal: this.goal, goalW: this.goalW,
+      ...super.snapshot(), statics: this.shapes, handled: this.handled, lastHand: this.lastHand, goal: this.goal, goalW: this.goalW, keptAt: this.keptAt,
       plugs: this.plugs.map((q) => ({ i0: q.i0, i1: q.i1, a: q.a, b: q.b })),
     };
   }
@@ -373,6 +382,7 @@ export class RackCableSim extends CableSim {
     this.lastHand.set(snapshot.lastHand);
     this.goal.set(snapshot.goal);
     this.goalW.set(snapshot.goalW);
+    this.keptAt.set(snapshot.keptAt);
     // connectors on their way into a port go on from where they are
     for (const q of snapshot.plugs) this.pinEnd(q.i0, q.i1, q.a, q.b);
   }
@@ -427,6 +437,7 @@ export class RackCableSim extends CableSim {
    * already holds: the kept stretch grows along the cord from the hand, and
    * a loop further down the cord that lies across the channel or swings into
    * it is not taken there, as if the channel had folded the cord in two.
+   * An upright keeper takes a node where it is, and keeps it no lower.
    * They let go of nodes that slid out of an end, of the few nodes around
    * the hand, and of the nodes a route is leading.
    */
@@ -442,7 +453,7 @@ export class RackCableSim extends CableSim {
       const k = this.keepOf[i];
       if (k >= 0) {
         const b = this.keepers[k];
-        if (px < b.min[0] || px > b.max[0]) this.keepOf[i] = -1;
+        if (b.upright ? py < b.min[1] || py > b.max[1] : px < b.min[0] || px > b.max[0]) this.keepOf[i] = -1;
         continue;
       }
       const r = this.radius[i] - P.keepTol;
@@ -451,9 +462,10 @@ export class RackCableSim extends CableSim {
       const nearHand = (lh >= 0 && Math.abs(i - lh) <= P.keepZip) || this.ghost[i] > 0;
       for (let j = 0; j < this.keepers.length; j++) {
         const b = this.keepers[j];
-        if (px < b.min[0] || px > b.max[0]) continue;
+        if (b.upright ? py < b.min[1] || py > b.max[1] : px < b.min[0] || px > b.max[0]) continue;
         if (!nearHand && (i <= cb.start || this.keepOf[i - 1] !== j) && (i >= cb.start + cb.count - 1 || this.keepOf[i + 1] !== j)) continue;
-        if (py >= b.min[1] + r && py <= b.max[1] - r && pz >= b.min[2] + r && pz <= b.max[2] - r) { this.keepOf[i] = j; break; }
+        const across = b.upright ? px >= b.min[0] + r && px <= b.max[0] - r : py >= b.min[1] + r && py <= b.max[1] - r;
+        if (across && pz >= b.min[2] + r && pz <= b.max[2] - r) { this.keepOf[i] = j; this.keptAt[i] = py; break; }
       }
     }
   }
@@ -467,8 +479,20 @@ export class RackCableSim extends CableSim {
   protected nodeTerm(i: number, holder: number, mh: number, s: NodeSystem): void {
     const b = this.keepers[holder], r = this.radius[i];
     const kk = this.P.keepK * mh;
-    const yi = this.x[3 * i + 1], zi = this.x[3 * i + 2];
-    const ylo = b.min[1] + r, yhi = b.max[1] - r, zlo = b.min[2] + r, zhi = b.max[2] - r;
+    const xi = this.x[3 * i], yi = this.x[3 * i + 1], zi = this.x[3 * i + 2];
+    const zlo = b.min[2] + r, zhi = b.max[2] - r;
+    if (b.upright) {
+      // held up where it was taken; within the width and depth unless the hand draws it
+      const ey = yi < this.keptAt[i] ? yi - this.keptAt[i] : 0;
+      const xlo = b.min[0] + r, xhi = b.max[0] - r;
+      const ex = this.drawn[i] ? 0 : xi < xlo ? xi - xlo : xi > xhi ? xi - xhi : 0;
+      const ez = this.drawn[i] ? 0 : zi < zlo ? zi - zlo : zi > zhi ? zi - zhi : 0;
+      if (ex !== 0) { s.gx += kk * ex; s.h00 += kk; }
+      if (ey !== 0) { s.gy += kk * ey; s.h11 += kk; }
+      if (ez !== 0) { s.gz += kk * ez; s.h22 += kk; }
+      return;
+    }
+    const ylo = b.min[1] + r, yhi = b.max[1] - r;
     let ey = 0, ez = 0;
     if (!this.drawn[i]) {
       // in it: a stiff one-sided pull back within its height and depth
@@ -499,13 +523,14 @@ export class RackCableSim extends CableSim {
         const k = this.keepOf[i];
         if (k < 0 || this.fixed[i]) continue;
         const b = this.keepers[k], r = this.radius[i];
-        const y = x[3 * i + 1], z = x[3 * i + 2];
-        const cy = Math.min(Math.max(y, b.min[1] + r), b.max[1] - r);
+        const px = x[3 * i], y = x[3 * i + 1], z = x[3 * i + 2];
+        const cx = b.upright ? Math.min(Math.max(px, b.min[0] + r), b.max[0] - r) : px;
+        const cy = b.upright ? Math.max(y, this.keptAt[i]) : Math.min(Math.max(y, b.min[1] + r), b.max[1] - r);
         const cz = Math.min(Math.max(z, b.min[2] + r), b.max[2] - r);
-        if (cy === y && cz === z) continue;
-        const d = Math.hypot(cy - y, cz - z);
+        if (cx === px && cy === y && cz === z) continue;
+        const d = Math.hypot(cx - px, cy - y, cz - z);
         if (this.drawn[i] && d > peel) { this.keepOf[i] = -1; continue; }
-        x[3 * i + 1] = cy; x[3 * i + 2] = cz;
+        x[3 * i] = cx; x[3 * i + 1] = cy; x[3 * i + 2] = cz;
       }
     }
   }

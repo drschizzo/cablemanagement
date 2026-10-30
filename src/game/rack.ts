@@ -328,6 +328,10 @@ export class Rack {
       S.push(cap(xm + s * DUCT_SLIT, y, DUCT_FRONT, s * SIDE_OUT, y, DUCT_FRONT, r, it.id));
     }
     S.push(box(s, SIDE_OUT, SIDE_OUT + 0.006, yBot, yTop, SIDE_BACK, DUCT_FRONT, it.id));
+    // its channel keeps a cord laid in it, slack folds included: it no longer
+    // slides down out of the open bottom
+    const [x0, x1] = sideSpan(s, SIDE_IN + r, SIDE_OUT);
+    S.push({ kind: 'keeper', min: [x0, yBot, SIDE_BACK], max: [x1, yTop, DUCT_FRONT - r], upright: true, owner: it.id });
   }
 
   /** every guide of the cabinet */
