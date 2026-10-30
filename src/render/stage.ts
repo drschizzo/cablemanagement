@@ -11,7 +11,7 @@ import { HDR_HEADROOM } from './toneCurve';
 import { LED_CLOCK_WRAP, ledClock, ledViewHeight } from './leds';
 import { ledGlows } from './ledGlow';
 import { gpuAdvice, gpuInfo, type GpuAdvice, type GpuInfo } from './gpu';
-import { addLights, createControls, createRenderer, MAX_POLAR } from './stageSetup';
+import { addLights, createControls, createRenderer, keyLight, MAX_POLAR } from './stageSetup';
 import { AUTO_QUALITY, QUALITY, drawAlike, settingsOf, type QualityChoice, type QualitySettings } from './quality';
 import { CameraTour, type TourPose } from './cameraTour';
 
@@ -254,12 +254,7 @@ export class Stage {
     const q = this.qualitySettings;
     this.renderer.setPixelRatio(Math.min(q.ratio, window.devicePixelRatio));
     this.image.setQuality(q);
-    if (this.key.shadow.mapSize.x !== q.shadow) {
-      this.key.shadow.mapSize.set(q.shadow, q.shadow);
-      // rebuilt at the new size on the next frame
-      this.key.shadow.map?.dispose();
-      this.key.shadow.map = null;
-    }
+    if (this.key.shadow.mapSize.x !== q.shadow) this.replaceKeyLight(q.shadow);
     this.resize();
   }
 
@@ -304,6 +299,24 @@ export class Stage {
     this.key.target.position.set(0, cy, 0);
     // straight above the cabinets, in front: their shadows fall under them, as from the lamp under their roof
     this.key.position.set(0, cy + 2.0, 2.0);
+  }
+
+  /**
+   * A new key light, its shadow map `mapSize` px on a side, where the old one
+   * stood. (A map resized in place is made again by three, but the shaders
+   * reading it kept the one destroyed: every frame was refused by the GPU, and
+   * the screen froze on the last one drawn.)
+   */
+  private replaceKeyLight(mapSize: number): void {
+    const old = this.key, key = keyLight(mapSize);
+    key.position.copy(old.position);
+    key.target.position.copy(old.target.position);
+    key.shadow.camera.copy(old.shadow.camera);
+    key.shadow.camera.updateProjectionMatrix();
+    this.scene.remove(old, old.target);
+    old.dispose();
+    this.scene.add(key, key.target);
+    this.key = key;
   }
 
   resetView(): void {

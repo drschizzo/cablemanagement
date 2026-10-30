@@ -25,6 +25,17 @@ export async function createRenderer(forceWebGL: boolean, hdr: boolean): Promise
   return renderer;
 }
 
+/** the key light, the only one casting shadows, into a map `mapSize` px on a side */
+export function keyLight(mapSize: number): THREE.DirectionalLight {
+  const key = new THREE.DirectionalLight('#f3f4f5', 2.6);
+  key.castShadow = true;
+  key.shadow.mapSize.set(mapSize, mapSize);
+  key.shadow.bias = -0.0004;
+  key.shadow.normalBias = 0.01;
+  key.shadow.radius = 3;
+  return key;
+}
+
 /** the camera turns with the right button, pans with the middle one or the arrows, never quite behind the cabinet */
 /** the lowest the camera may orbit to (rad from straight above); lower still where the floor stops it */
 export const MAX_POLAR = 2.1;
@@ -52,13 +63,8 @@ export function createControls(camera: THREE.PerspectiveCamera, canvas: HTMLCanv
 export function addLights(scene: THREE.Scene): { key: THREE.DirectionalLight; fill: THREE.DirectionalLight } {
   // neutral key, cool fill: the cords carry the only strong colours
   scene.add(new THREE.HemisphereLight('#dde4ea', '#16191b', 0.75));
-  const key = new THREE.DirectionalLight('#f3f4f5', 2.6);
+  const key = keyLight(2048);
   key.position.set(0, 2.2, 2.0);
-  key.castShadow = true;
-  key.shadow.mapSize.set(2048, 2048);
-  key.shadow.bias = -0.0004;
-  key.shadow.normalBias = 0.01;
-  key.shadow.radius = 3;
   scene.add(key, key.target);
   const fill = new THREE.DirectionalLight(DEFAULT_LOOK.accent, 0.4);
   fill.position.set(-1.5, 0.5, 1.5);
