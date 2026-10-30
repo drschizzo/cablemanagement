@@ -10,7 +10,8 @@ import { ledMesh } from '../leds';
 import type { InstancedParts } from '../instancedParts';
 import { RoomParts, mergedMesh } from './roomParts';
 import { ROOM_RACK_DEPTH, roomRack, type RoomRackSpec } from './roomRack';
-import { boxStack, cableTray, cordCoil, crashCart, extinguisher, battenLamp, floorCord } from './roomProps';
+import { boxStack, cableTray, cordCoil, crashCart, extinguisher, battenLamp, floorCord, velcroRoll, cableTies, tileStack, grommetSlack } from './roomProps';
+import { GROMMETS, GROMMET_SIZE } from '../room';
 import { LAMP_LENGTH, LAMP_Y, roomHaze } from './roomHaze';
 
 /**
@@ -30,6 +31,18 @@ const TRAY_Y = 2.45;
 const ASTRAY_CLEARANCE = 0.12;
 /** how far from the cabinet the things left in the aisle lie, at least (m) */
 const CLEAR_OF_CABINET = 2.0;
+/**
+ * Where what is left on the floor of the aisle lies (m): beside the cabinet
+ * and behind it, but only where the cabinet hides none of it from the player
+ * (straight behind it, nothing is seen), each spot a zone to draw in.
+ */
+const LOOSE_ZONES = {
+  left: { x: [-1.15, -0.8], z: [-1.75, -1.3] },
+  leftNear: { x: [-0.78, -0.65], z: [-0.45, -0.2] },
+  right: { x: [0.7, 0.95], z: [-1.05, -0.75] },
+  rightNear: { x: [0.62, 0.72], z: [-0.4, -0.15] },
+  back: { x: [-1.35, -1.1], z: [-2.45, -2.3] },
+};
 /** where the battens hang, along the aisle behind the cabinet, in two lines end to end (m) */
 const LAMPS = [{ x: -0.85, z: -1.35 }, { x: -0.85, z: -2.6 }, { x: 0.85, z: -1.35 }, { x: 0.85, z: -2.6 }];
 
@@ -53,6 +66,13 @@ const ROWS: Row[] = [
   { x: -1.8, z: 0.4, yaw: Math.PI / 2 - 0.2, length: 2.6 },
   { x: 1.8 - 2.6 * Math.sin(0.2), z: 0.4 - 2.6 * Math.cos(0.2), yaw: -(Math.PI / 2 - 0.2), length: 2.6 },
 ];
+
+/** a footprint on the floor (m): what is left there keeps clear of what already is */
+interface Taken {
+  x: number;
+  z: number;
+  r: number;
+}
 
 /** a rack as it stands in its row: along the row and out of line (m), turned (rad), and what it is */
 interface Slot {
@@ -81,8 +101,9 @@ function roomRim(): THREE.DirectionalLight {
 export function buildServerRoom(floorY: number, seed: number): THREE.Group {
   const random = rng(seed);
   const room = new RoomParts();
-  ROWS.forEach((row, k) => buildRow(row, k === 0, random, room));
-  placeLoose(random, room);
+  const taken: Taken[] = [];
+  ROWS.forEach((row, k) => buildRow(row, k === 0, random, room, taken));
+  placeLoose(random, room, taken);
   for (const l of LAMPS) battenLamp(LAMP_Y, LAMP_LENGTH).placeInto(room, new THREE.Matrix4().makeTranslation(l.x, 0, l.z));
   const shade = new THREE.Color(ROOM_SHADE, ROOM_SHADE, ROOM_SHADE);
   const g = new THREE.Group();
@@ -107,11 +128,16 @@ function rowFrame(row: Row): THREE.Matrix4 {
 }
 
 /** a row's racks, the tray over it, and what was left in its gaps and at its feet */
-function buildRow(row: Row, isEnd: boolean, random: () => number, room: RoomParts): void {
+function buildRow(row: Row, isEnd: boolean, random: () => number, room: RoomParts, taken: Taken[]): void {
   const frame = rowFrame(row);
   const slots = drawSlots(row.length, random);
   const local = (along: number, out: number, yaw: number) =>
     new THREE.Matrix4().makeRotationY(yaw).setPosition(along, 0, out).premultiply(frame);
+  /** marks the floor round (along, out) as taken, `r` round it */
+  const take = (along: number, out: number, r: number) => {
+    const p = new THREE.Vector3(along, 0, out).applyMatrix4(frame);
+    taken.push({ x: p.x, z: p.z, r });
+  };
   for (const s of slots) roomRack(s.spec, random).placeInto(room, local(s.along, s.out, s.yaw));
   // over the racks' middle: bundles drop into some of them
   const drops = slots.filter(() => random() < 0.45).map((s) => ({ x: s.along, top: s.spec.height }));
@@ -123,7 +149,9 @@ function buildRow(row: Row, isEnd: boolean, random: () => number, room: RoomPart
     end = s.along + s.spec.width / 2;
   }
   if (isEnd) {
-    extinguisher().placeInto(room, local(row.length * (0.15 + random() * 0.7), 0.15, 0));
+    const at = row.length * (0.15 + random() * 0.7);
+    extinguisher().placeInto(room, local(at, 0.15, 0));
+    take(at, 0.15, 0.12);
     return;
   }
   // at the feet of a side row, out in the aisle: a cart pulled up to a rack, a cord left on the floor, boxes;
@@ -131,11 +159,17 @@ function buildRow(row: Row, isEnd: boolean, random: () => number, room: RoomPart
   const far = slots.filter((s) => new THREE.Vector3(s.along, 0, 0.5).applyMatrix4(frame).setY(0).length() > CLEAR_OF_CABINET);
   const anySlot = (): Slot | undefined => far[Math.floor(random() * far.length)];
   const cart = anySlot();
-  if (cart) crashCart(random).placeInto(room, local(cart.along, 0.6, Math.PI + (random() - 0.5) * 0.4));
+  if (cart) {
+    crashCart(random).placeInto(room, local(cart.along, 0.6, Math.PI + (random() - 0.5) * 0.4));
+    take(cart.along, 0.6, 0.4);
+  }
   const cord = anySlot();
   if (cord) floorCord(0.8 + random() * 0.8, random).placeInto(room, local(cord.along, 0.05, -Math.PI / 2 + (random() - 0.5) * 0.8));
   const boxes = anySlot();
-  if (boxes && random() < 0.6) boxStack(random).placeInto(room, local(boxes.along + 0.3, 0.45, random()));
+  if (boxes && random() < 0.6) {
+    boxStack(random).placeInto(room, local(boxes.along + 0.3, 0.45, random()));
+    take(boxes.along + 0.3, 0.45, 0.35);
+  }
 }
 
 /**
@@ -167,13 +201,37 @@ function drawSlots(length: number, random: () => number): Slot[] {
   return slots;
 }
 
-/** coils of cord dropped on the floor of the aisle, behind the cabinet */
-function placeLoose(random: () => number, room: RoomParts): void {
-  const coils = 1 + Math.floor(random() * 2);
-  for (let k = 0; k < coils; k++) {
-    const m = new THREE.Matrix4().makeRotationY(random() * 6.3).setPosition(-1.2 + random() * 2.4, 0, -2.2 + random() * 1.1);
-    cordCoil(random).placeInto(room, m);
+/**
+ * What was left on the floor of the aisle, where the player sees it beside
+ * the cabinet: a coil of cord, cords out of the grommets, velcro,
+ * cable ties, spare tiles; each kept clear of what the rows left.
+ */
+function placeLoose(random: () => number, room: RoomParts, taken: Taken[]): void {
+  const put = (parts: RoomParts, zone: { x: number[]; z: number[] }, r: number, yaw = random() * 6.3) => {
+    for (let tries = 0; tries < 8; tries++) {
+      const x = zone.x[0] + random() * (zone.x[1] - zone.x[0]), z = zone.z[0] + random() * (zone.z[1] - zone.z[0]);
+      if (taken.some((t) => Math.hypot(t.x - x, t.z - z) < t.r + r)) continue;
+      taken.push({ x, z, r });
+      parts.placeInto(room, new THREE.Matrix4().makeRotationY(yaw).setPosition(x, 0, z));
+      return;
+    }
+  };
+  // the slack out of the grommets (cut in the floor's texture), falling towards the aisle
+  for (const g of GROMMETS) {
+    const m = new THREE.Matrix4().makeRotationY(g.x < 0 ? -0.4 : 0.4).setPosition(g.x, 0, g.z + GROMMET_SIZE[1] / 2);
+    grommetSlack(GROMMET_SIZE[0], random).placeInto(room, m);
+    taken.push({ x: g.x, z: g.z + 0.2, r: 0.2 });
   }
+  // a coil each side, or a cord on one of them
+  put(cordCoil(random), LOOSE_ZONES.left, 0.35);
+  if (random() < 0.6) put(cordCoil(random), LOOSE_ZONES.right, 0.25);
+  else put(floorCord(0.5 + random() * 0.4, random), LOOSE_ZONES.right, 0.25, -Math.PI / 2 + (random() - 0.5) * 0.6);
+  // the tools of the job, put down by the cabinet
+  if (random() < 0.5) put(velcroRoll(random), LOOSE_ZONES.leftNear, 0.1);
+  else put(cableTies(random), LOOSE_ZONES.leftNear, 0.1);
+  if (random() < 0.6) put(cableTies(random), LOOSE_ZONES.rightNear, 0.08);
+  else put(velcroRoll(random), LOOSE_ZONES.rightNear, 0.08);
+  if (random() < 0.7) put(tileStack(random), LOOSE_ZONES.back, 0.45, (random() - 0.5) * 0.3);
 }
 
 /** the lights of the room, dimmer than those of the cabinet */
