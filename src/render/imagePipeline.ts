@@ -25,15 +25,16 @@ const SAMPLES = 4;
  * `thickness` (m): at 2 cm, every ray passing under a cord took its colour and
  * the reflection smeared into a ribbon.
  */
-const REFLECTIONS = { resolutionScale: 0.5, opacity: 0.2, maxDistance: 0.5, thickness: 0.003, roughness: 0.3 };
+export const REFLECTIONS = { resolutionScale: 0.5, opacity: 0.2, maxDistance: 0.5, thickness: 0.003, roughness: 0.3 };
 
 /**
  * Ambient occlusion. `radius` (m): a short reach darkens the corners, the
  * ports and under the cords; longer, a tangle of cords goes muddy and loses its
  * colours. 8 samples look the same as 16 once denoised, for less of the frame.
+ * (tests/render/threeNodes.test.ts checks that three.js still reads each.)
  */
-const AO_SETTINGS = { radius: 0.03, distanceExponent: 1.5, thickness: 0.3, scale: 1, samples: 8 };
-const AO_DENOISE = { lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6 };
+export const AO_SETTINGS = { radius: 0.03, distanceExponent: 1.5, thickness: 0.3, scale: 1, samples: 8 };
+export const AO_DENOISE = { lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6 };
 /** how much of the occlusion darkens the image */
 const AO_BLEND = 0.6;
 

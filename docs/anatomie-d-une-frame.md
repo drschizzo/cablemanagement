@@ -48,7 +48,7 @@ Le moteur de câbles et le dessin des tubes sont deux paquets génériques, qui 
 | Partie | Fichiers | Rôle |
 | --- | --- | --- |
 | Moteur physique | `vendor/cable-kit/packages/avbd-cables` (`cableSim.ts`, `threaded.ts`) | le solveur de câbles et son Worker |
-| Tubes | `vendor/cable-kit/packages/three-cable-tubes` (`tube.ts`, `shared.ts`) | les câbles dessinés par le GPU à partir de leurs nœuds |
+| Tubes | `vendor/cable-kit/packages/three-cable-tubes` (`webgpu.ts`, `shared.ts`) | les câbles dessinés par le GPU à partir de leurs nœuds |
 | Le jeu et ses câbles | `src/play` (`controller.ts`, `tools/`), `src/game` (`physics/rackCableSim.ts`, `routeLaying.ts`, `world.ts`) | la boucle, les gestes, ce qui mène les câbles, les règles |
 | Le rendu | `src/render` (`stage.ts`, `cableView.ts`, `rackView.ts`…) | la scène three.js, ses matériaux et ses passes |
 
@@ -416,7 +416,7 @@ Un **appel de dessin** (*draw call*) est l'ordre que le CPU envoie au GPU pour d
 
 ### 7.2 Les câbles : un tube calculé par le GPU
 
-Tous les câbles d'un niveau sont dessinés par **un seul mesh**, en *instanciation* : chaque segment de chaque câble est une instance du même bout de tube, 9 anneaux de 16 sommets. Un sommet ne porte pas sa position : il sait seulement à quel anneau du bout de tube il appartient et à quelle place autour de lui ; son instance lui dit sur quel segment de quel câble il se trouve. C'est le *vertex shader* (`three-cable-tubes/src/tube.ts`) qui calcule où se trouve chaque sommet, à partir des nœuds.
+Tous les câbles d'un niveau sont dessinés par **un seul mesh**, en *instanciation* : chaque segment de chaque câble est une instance du même bout de tube, 9 anneaux de 16 sommets. Un sommet ne porte pas sa position : il sait seulement à quel anneau du bout de tube il appartient et à quelle place autour de lui ; son instance lui dit sur quel segment de quel câble il se trouve. C'est le *vertex shader* (`three-cable-tubes/src/webgpu.ts`) qui calcule où se trouve chaque sommet, à partir des nœuds.
 
 ![Des nœuds au tube de triangles](frame/schema-tube.png)
 
@@ -435,9 +435,9 @@ Les nœuds vivent en double : une copie en JavaScript et une copie dans la mémo
 
 ### 7.4 Ne dessiner que les sommets utiles
 
-Les sommets ne coûtent presque rien au CPU, mais le GPU exécute le vertex shader pour chacun d'eux, dans chaque passe qui dessine les câbles : l'image, l'ombre, les normales des reflets et de l'occlusion ambiante, le masque des reflets. Or un câble lointain ne fait que quelques pixels de large. Trois mécanismes évitent de dépenser ce travail là où il ne se voit pas.
+Les sommets ne coûtent presque rien au CPU, mais le GPU exécute le vertex shader pour chacun d'eux, dans chaque passe qui dessine les câbles : l'image (avec ses images auxiliaires, section 9) et l'ombre. Or un câble lointain ne fait que quelques pixels de large. Trois mécanismes évitent de dépenser ce travail là où il ne se voit pas.
 
-- **Un tube allégé hors de l'image.** Seule l'image montre le contour et l'éclairage des câbles. Les autres passes dessinent un sommet sur deux autour du câble et un anneau sur deux, par une seconde liste de triangles qui reprend les mêmes sommets. `TubeMesh` choisit la liste avant chaque dessin.
+- **Un tube allégé dans l'ombre.** Seule l'image montre le contour et l'éclairage des câbles. L'ombre dessine un sommet sur deux autour du câble et un anneau sur deux, par une seconde liste de triangles qui reprend les mêmes sommets. `TubeMesh` choisit la liste avant chaque dessin.
 - **Un niveau de détail par tronçon.** Le vertex shader calcule le rayon du câble à l'écran, en pixels. Sous 6 pixels, un sommet sur deux se replie sur son voisin, autour du câble et le long de lui ; sous 1,5 pixel, trois sur quatre, et l'anneau restant se tourne vers la caméra, pour qu'un câble vu par la tranche ne disparaisse pas. Les triangles repliés deviennent plats et le GPU les élimine avant d'avoir un seul pixel à calculer. La liste des triangles ne change pas, donc le tube reste fermé.
 - **Un niveau de détail par mesh.** Un sommet replié passe quand même par le vertex shader. Quand même le nœud le plus proche de la caméra est assez loin pour être replié, `TubeMesh` dessine directement la liste qui ne référence que les sommets qui ne se replient pas. C'est le cas de chaque baie de l'écran d'accueil. Au même seuil, `CableView` ôte la transparence des connecteurs RJ45, qui coûterait une passe de plus pour des connecteurs de deux pixels.
 
@@ -465,7 +465,7 @@ p_{\text{écran}} = P \cdot V \cdot M \cdot p_{\text{objet}}
 
 - **M** (*model*) place l'objet dans le monde.
 - **V** (*view*) exprime le monde vu depuis la caméra. C'est l'inverse de la matrice qui place la caméra.
-- **P** (*projection*) applique la perspective. Après elle, le GPU divise x, y et z par la quatrième coordonnée w, ce qui ramène tout ce qui est visible dans un cube de −1 à 1.
+- **P** (*projection*) applique la perspective. Après elle, le GPU divise x, y et z par la quatrième coordonnée w : ce qui est visible a alors x et y entre −1 et 1, et sa profondeur entre 0 et 1.
 
 ![Les repères successifs d'un sommet](frame/schema-matrices.png)
 
@@ -490,36 +490,27 @@ Une fois les données à jour, `stage.render()` (`src/render/stage.ts`) lance le
 
 ![Un triangle à travers les quatre étapes](frame/schema-gpu.png)
 
-### 8.2 Les matériaux, et le code qu'on y injecte
+### 8.2 Les matériaux, des nœuds qu'on assemble
 
-Presque tout est dessiné avec `MeshStandardMaterial`, le matériau « physique » de three.js : une couleur, une rugosité (`roughness`, de 0 pour un miroir à 1 pour une surface mate) et un caractère métallique (`metalness`). three.js en génère les shaders, en GLSL, un langage proche du C.
+Presque tout est dessiné avec le matériau « physique » de three.js (`MeshStandardMaterial`, ou sa version à nœuds `MeshStandardNodeMaterial`) : une couleur, une rugosité (`roughness`, de 0 pour un miroir à 1 pour une surface mate) et un caractère métallique (`metalness`). Le jeu dessine avec `WebGPURenderer`, qui en génère les shaders : en WGSL sur WebGPU, en GLSL sur WebGL 2, son repli pour les navigateurs sans WebGPU.
 
-Pour ajouter un comportement sans réécrire ces shaders, le projet utilise `onBeforeCompile` : juste avant la compilation, three.js passe le code source à une fonction, qui le modifie par des remplacements de texte. Le shader de three.js est découpé en blocs nommés (`#include <emissivemap_fragment>`…), qui donnent des points d'insertion stables. Voici l'essentiel de `tintable`, qui ajoute une lueur par sommet :
+Ces shaders sont décrits en **TSL**, le langage de nœuds de three.js : un graphe d'opérations écrit en TypeScript (`attribute('emissiveTint').mul(…)`), que three.js traduit dans le langage du GPU. Un matériau à nœuds laisse remplacer chacune de ses étapes par un nœud : sa couleur (`colorNode`), sa rugosité (`roughnessNode`), sa normale (`normalNode`), sa lueur (`emissiveNode`), la position de ses sommets (`positionNode`). Voici l'essentiel de `tintable`, qui ajoute une lueur par sommet ou par instance :
 
 ```ts
-material.onBeforeCompile = (shader) => {
-  shader.fragmentShader = shader.fragmentShader.replace(
-    '#include <emissivemap_fragment>',
-    '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vEmissiveTint;',
-  );
-};
+material.emissiveNode = materialEmissive.add(attribute('emissiveTint', 'vec3'));
 ```
 
-Mettre `vEmissiveTint` à zéro ou à une teinte vive allume ou éteint la surbrillance d'un câble, sans changer de matériau. Cinq extensions sont empilées ainsi :
+Mettre `emissiveTint` à zéro ou à une teinte vive allume ou éteint la surbrillance d'un connecteur, sans changer de matériau. Plusieurs effets ajoutent chacun leur terme à la lueur d'un même matériau (`addGlow`, `glowTerms.ts`) :
 
-| Fonction | Fichier | Code ajouté |
+| Fonction | Fichier | Ce qu'elle donne au matériau |
 | --- | --- | --- |
 | `tintable` | `batch.ts` | une lueur par sommet ou par instance (surbrillance d'un câble, d'un manchon) |
-| `blinkable` | `leds.ts` | le clignotement des voyants ; une taille minimale de 3 pixels à l'écran |
-| `jacketed` | `jacket.ts` | la gaine des câbles vue de près (section 8.3) |
+| `ledMaterial` | `leds.ts` | le clignotement des voyants ; une taille minimale de 3 pixels à l'écran |
+| `jacketMaterial` | `jacket.ts` | la gaine des câbles vue de près (section 8.3) |
 | `ledLit` | `ledGlow.ts` | la lumière des voyants sur les câbles et la baie (section 8.5) |
-| `swept` | `three-cable-tubes` | la position et la normale de chaque sommet des câbles, tirées de la texture des nœuds |
+| `TubeMesh` | `three-cable-tubes` | la position et la normale de chaque sommet des câbles, tirées de la texture des nœuds (`positionNode`) |
 
-`swept` procède un peu autrement. Il insère son calcul au début du vertex shader, suivi de `#define position tubePos` et `#define normal tubeNormal` : tout le code qui suit, celui de three.js comme celui des autres extensions, lit la position et la normale calculées sans savoir qu'elles ne viennent pas de la géométrie. Le même ajout fonctionne donc pour n'importe quel matériau. Il laisse aussi deux valeurs aux autres extensions : `tubeCoord` (où est le sommet le long du câble et autour de lui) et `tubeTint` (la lueur du nœud le plus proche).
-
-C'est indispensable parce que les câbles ne sont pas toujours dessinés avec leur propre matériau : l'ombre utilise un matériau de profondeur, les reflets et l'occlusion ambiante redessinent la scène avec un matériau de normales. `TubeMesh` fournit de chacun une copie passée par `swept`, créée une fois, et `customProgramCacheKey` donne à chaque variante un nom distinct pour que three.js ne réutilise pas le programme d'un matériau ordinaire.
-
-Le jeu dessine avec `WebGLRenderer`. Le paquet des tubes a aussi une version pour `WebGPURenderer` (`three-cable-tubes/webgpu`), écrite en TSL, le langage de nœuds de three.js : le calcul est le même, donné au matériau par son `positionNode`.
+`TubeMesh` donne aussi deux valeurs aux autres nœuds du matériau : `tubeCoord` (où est le sommet le long du câble et autour de lui) et `tubeTint` (la lueur du nœud le plus proche). L'ombre et les images auxiliaires dessinent les câbles avec ce même matériau.
 
 ### 8.3 La gaine des câbles
 
@@ -529,7 +520,7 @@ Il s'appuie sur `tubeCoord` : la longueur le long du câble, mesurée au repos p
 
 ![La gaine de près et de plus loin](frame/gaine.jpg)
 
-Le détail s'efface avec la distance. La fonction GLSL `fwidth` donne la variation d'une valeur d'un pixel au suivant : appliquée à la longueur le long du câble, elle dit combien de câble couvre un pixel. Quand un caractère du marquage devient plus petit qu'un pixel, le shader l'estompe. Sans cela, ces détails scintilleraient d'une frame à l'autre.
+Le détail s'efface avec la distance. La fonction `fwidth` donne la variation d'une valeur d'un pixel au suivant : appliquée à la longueur le long du câble, elle dit combien de câble couvre un pixel. Quand un caractère du marquage devient plus petit qu'un pixel, le shader l'estompe. Sans cela, ces détails scintilleraient d'une frame à l'autre.
 
 ### 8.4 Les lumières et les ombres
 
@@ -552,7 +543,7 @@ Le GPU ne sait pas, pour un pixel, si un objet le sépare de la lumière. La tec
 
 ### 8.5 La lumière des voyants
 
-Calculer la lumière de centaines de voyants comme de vraies sources serait trop coûteux. `ledGlow.ts` utilise un raccourci. Avant chaque frame, les voyants d'une baie sont dessinés comme des taches de couleur floues dans une petite texture de la façade vue de face, à raison d'un pixel pour 2,5 mm (240 × 320 pixels pour une baie). Cette texture est un *render target* : une image que le GPU dessine au lieu de l'écran, et qu'un autre shader peut lire ensuite.
+Calculer la lumière de centaines de voyants comme de vraies sources serait trop coûteux. `ledGlow.ts` utilise un raccourci. Avant chaque frame, les voyants d'une baie sont dessinés comme des taches de couleur floues dans une petite texture de la façade vue de face, à raison d'un pixel pour 2,5 mm (240 × 320 pixels pour une baie). Cette texture est un *render target* : une image que le GPU dessine au lieu de l'écran, et qu'un autre shader peut lire ensuite. WebGPU range ses lignes depuis le haut : la carte se lit lignes inversées.
 
 ![Carte de lumière des voyants](frame/carte-leds.jpg)
 
@@ -563,12 +554,12 @@ Après chaque dessin, le GPU calcule les *mipmaps* de la carte, des copies de pl
 ### À retenir
 
 - Pour chaque objet, un vertex shader place les sommets et un fragment shader colore les pixels.
-- Le projet modifie les shaders de three.js par remplacement de texte (`onBeforeCompile`) plutôt que de les réécrire.
+- Les effets d'un matériau sont des nœuds TSL branchés sur ses étapes (couleur, lueur, position).
 - Les ombres et la lumière des voyants sont précalculées dans des textures avant le rendu principal.
 
 ## 9. Le post-traitement
 
-La scène n'est pas dessinée directement à l'écran. Elle est rendue dans une image intermédiaire, que cinq passes modifient tour à tour. Cette chaîne est gérée par l'`EffectComposer` de three.js, configuré dans le constructeur de `Stage`.
+La scène n'est pas dessinée directement à l'écran. Elle est rendue une fois dans des images intermédiaires, que des passes transforment tour à tour. Cette chaîne est un graphe de nœuds, assemblé par `ImagePipeline` (`imagePipeline.ts`) et exécuté par le `RenderPipeline` de three.js.
 
 ### 9.1 Le principe
 
@@ -576,33 +567,37 @@ Une passe de post-traitement lit une ou plusieurs images et en écrit une nouvel
 
 L'image intermédiaire stocke des nombres à virgule sur 16 bits par canal (*half float*), et non des octets de 0 à 255. Une couleur peut donc dépasser 1, le blanc : les voyants brillent à 4, quand aucune surface éclairée ne dépasse 1. On parle d'image **HDR** (*high dynamic range*). Cette marge sert au halo des lumières ; la conversion finale ramène tout entre 0 et 1.
 
-La scène est aussi multi-échantillonnée (4 échantillons par pixel, **MSAA**) : le GPU calcule la couverture de chaque triangle en 4 points par pixel, ce qui lisse les bords en escalier des câbles fins. Seule la première passe en a besoin : les suivantes ne dessinent qu'un rectangle.
+La scène écrit plusieurs images à la fois (*multiple render targets*, MRT) : la couleur, les normales, la profondeur, et un canal qui dit ce qui reflète (le sol l'écrit, `reflective()`). Les reflets et l'occlusion lisent ces images : la scène n'est dessinée qu'une fois. Une lumière ajoutée à l'image sans être un solide, comme un rai de lumière, n'écrit rien dans les normales ni dans les reflets (`keepOutOfDepth()`).
+
+La scène est aussi multi-échantillonnée (4 échantillons par pixel, **MSAA**) : le GPU calcule la couverture de chaque triangle en 4 points par pixel, ce qui lisse les bords en escalier des câbles fins. Seul le dessin de la scène en a besoin : les passes suivantes ne dessinent qu'un rectangle.
 
 ### 9.2 Les passes, dans l'ordre
 
-![EffectComposer · 5 passes](frame/schema-passes.png)
+**1. Les reflets du sol** (`SSRNode`). Pour chaque pixel du sol, la passe suit le rayon réfléchi dans l'image de profondeur jusqu'à ce qu'il touche quelque chose : ce sont des reflets *en espace écran*, qui ne peuvent refléter que ce qui est visible. Calculés à demi-résolution, peu opaques et floutés, ils donnent l'aspect d'un vinyle ciré plutôt que d'un miroir. Ils s'ajoutent à l'image, découpés à pleine résolution selon le canal des reflets pour ne pas déborder sur les câbles.
 
-**1. SSRPass : la scène et les reflets du sol.** Cette passe dessine la scène complète dans l'image HDR, avec ses images auxiliaires : profondeur, normales et masque des surfaces réfléchissantes (seul le sol l'est). Pour chacun de ses pixels, elle suit le rayon réfléchi dans l'image de profondeur jusqu'à ce qu'il touche quelque chose : ce sont des reflets *en espace écran*, qui ne peuvent refléter que ce qui est visible. Calculés à demi-résolution, peu opaques et floutés, ils donnent l'aspect d'un vinyle ciré plutôt que d'un miroir, découpés à pleine résolution selon le masque pour ne pas déborder sur les câbles.
-
-**2. GTAOPass : l'occlusion ambiante.** Dans un coin, sous un câble ou au fond d'un port, une partie de la lumière ambiante ne peut pas arriver, ce que les lumières de la scène ne calculent pas. Cette passe l'estime à partir de la profondeur et des normales : pour chaque pixel, elle regarde si ses voisins, dans un rayon de 3 cm, forment un creux autour de lui. Le résultat est débruité, puis mélangé à l'image à 60 %. Un rayon plus grand assombrirait tout l'enchevêtrement et lui ferait perdre ses couleurs.
+**2. L'occlusion ambiante** (`GTAONode`, puis `DenoiseNode`). Dans un coin, sous un câble ou au fond d'un port, une partie de la lumière ambiante ne peut pas arriver, ce que les lumières de la scène ne calculent pas. Cette passe l'estime à partir de la profondeur et des normales : pour chaque pixel, elle regarde si ses voisins, dans un rayon de 3 cm, forment un creux autour de lui. Le résultat est débruité, puis mélangé à l'image à 60 %. Un rayon plus grand assombrirait tout l'enchevêtrement et lui ferait perdre ses couleurs.
 
 ![Tampons des normales et de l'occlusion ambiante](frame/tampons.jpg)
 
 *À gauche, les normales, encodées en couleur. À droite, l'occlusion : blanc pour un pixel dégagé, sombre pour un pixel dans un creux, ici le long des câbles et entre eux.*
 
-**3. UnrealBloomPass : le halo des lumières.** Un objet très lumineux produit un halo dans un œil ou un objectif. La passe garde les pixels au-dessus d'un seuil placé entre les surfaces éclairées (au plus 1) et les voyants (4), les floute à plusieurs échelles en réduisant l'image de moitié à chaque fois, et ajoute le résultat à l'image. Le halo se resserre quand la caméra recule : un voyant vu de loin ne fait que quelques pixels, et le même halo le noierait.
+**3. La profondeur de champ** (`depthOfField.ts`), dans un niveau seulement. La salle autour de la baie se floute d'autant plus qu'elle s'en éloigne ; ses voyants s'ouvrent en disques.
+
+**4. Le halo des lumières** (`bloom.ts`). Un objet très lumineux produit un halo dans un œil ou un objectif. La passe garde les pixels au-dessus d'un seuil placé entre les surfaces éclairées (au plus 1) et les voyants (4), les floute à cinq échelles en réduisant l'image de moitié à chaque fois, et ajoute le résultat à l'image. Le poids de chaque échelle suit la distance de la caméra : un voyant vu de loin ne fait que quelques pixels, et le halo d'un voyant vu de près le noierait.
 
 ![Sans et avec le halo des lumières](frame/bloom.jpg)
 
 *Seuls les voyants brillent ; les façades blanches restent nettes.*
 
-**4. OutputPass : de l'image HDR à l'écran.** Le *tone mapping* (courbe ACES Filmic) ramène les valeurs HDR entre 0 et 1 en compressant les hautes lumières au lieu de les couper. Puis la conversion vers l'espace de couleur sRGB adapte les valeurs à la façon dont un écran affiche les couleurs. Jusqu'ici, tous les calculs se faisaient en valeurs linéaires, proportionnelles à la quantité de lumière.
+**5. De l'image HDR à l'écran** (`renderOutput`). Le *tone mapping* (courbe ACES Filmic) ramène les valeurs HDR entre 0 et 1 en compressant les hautes lumières au lieu de les couper. Puis la conversion vers l'espace de couleur sRGB adapte les valeurs à la façon dont un écran affiche les couleurs. Jusqu'ici, tous les calculs se font en valeurs linéaires, proportionnelles à la quantité de lumière.
 
-**5. CinemaPass : les finitions** (`cinema.ts`), sur les valeurs d'affichage, en une seule passe : un **vignettage** centré sur la zone libre entre les panneaux, un **grain** différent à chaque frame, plus fort dans les sombres, qui casse aussi les bandes des dégradés du fond, une légère **teinte** (ombres vers le bleu-vert, hautes lumières vers le chaud) et une **aberration chromatique** vers les coins.
+**6. Les finitions** (`cinema.ts`), sur les valeurs d'affichage, en une seule passe : un **vignettage** centré sur la zone libre entre les panneaux, un **grain** différent à chaque frame, plus fort dans les sombres, qui casse aussi les bandes des dégradés du fond, une légère **teinte** (ombres vers le bleu-vert, hautes lumières vers le chaud) et une **aberration chromatique** vers les coins.
 
 ![Les passes appliquées une à une](frame/passes.jpg)
 
 *La même image, en ajoutant les passes une à une. Les finitions donnent l'image finale, en tête du document.*
+
+Une passe que la qualité de l'image coupe (reflets, occlusion) est retirée du graphe et ne coûte rien.
 
 ### 9.3 Une valeur invalide touche toute l'image
 
@@ -610,7 +605,7 @@ Les passes s'enchaînent : une valeur invalide produite au début se propage. Un
 
 ### À retenir
 
-- La scène est rendue dans une image HDR, puis transformée par cinq passes successives.
+- La scène est rendue une fois dans des images HDR (couleur, normales, profondeur, reflets), puis transformée par des passes successives.
 - Une passe dessine un rectangle plein écran avec un shader qui lit l'image précédente.
 - Le tone mapping ramène l'image HDR aux valeurs que l'écran sait afficher.
 
@@ -633,9 +628,9 @@ Le tableau suit une frame d'un niveau, dans l'ordre d'exécution.
 | 11 | Caméra, horloges des voyants et du grain | principal | `stage.ts`, `render` | chaque frame |
 | 12 | Carte de lumière des voyants | GPU | `ledGlow.ts` | chaque frame, par baie |
 | 13 | Carte d'ombre | GPU | three.js | chaque frame |
-| 14 | Scène, images auxiliaires, reflets du sol | GPU | `SSRPass` | chaque frame |
-| 15 | Occlusion ambiante | GPU | `GTAOPass` | chaque frame |
-| 16 | Halo, tone mapping, finitions | GPU | `UnrealBloomPass`, `OutputPass`, `cinema.ts` | chaque frame |
+| 14 | Scène et images auxiliaires | GPU | `imagePipeline.ts` | chaque frame |
+| 15 | Reflets du sol, occlusion ambiante | GPU | `SSRNode`, `GTAONode` | chaque frame |
+| 16 | Profondeur de champ, halo, tone mapping, finitions | GPU | `depthOfField.ts`, `bloom.ts`, `cinema.ts` | chaque frame |
 | 17 | Composition avec le HTML et affichage | navigateur | — | chaque rafraîchissement |
 | — | Panneaux HTML, chronomètre | principal | `app/app.ts`, `setInterval` | toutes les 250 ms |
 
@@ -643,7 +638,7 @@ Trois idées en ressortent.
 
 - **La physique et le rendu se chevauchent.** Pendant que le Worker calcule le pas suivant, le fil principal prépare et lance le dessin des positions précédentes.
 - **Le CPU n'envoie au GPU que ce qui change** : les nœuds des câbles éveillés, les matrices des connecteurs qui ont bougé, quelques nombres pour les horloges. Le reste de la scène reste en mémoire GPU d'une frame à l'autre.
-- **Le post-traitement multiplie le travail du GPU.** Dans le niveau capturé, un rendu simple de la scène, ombre comprise, fait 86 appels de dessin ; la frame complète en fait 270, parce que les reflets et l'occlusion redessinent la scène pour leurs propres images.
+- **Le post-traitement multiplie le travail du GPU, pas les appels de dessin de la scène** : elle est dessinée une fois pour l'image et ses images auxiliaires, une fois pour l'ombre. Chaque passe suivante ne dessine qu'un rectangle.
 
 ## 11. L'écran d'accueil
 
@@ -662,9 +657,9 @@ Le jeu s'ouvre sur une allée de baies géantes en désordre, que l'interrupteur
 
 - `npm run dev`, puis la touche **F3** dans un niveau : nœuds, contacts, câbles éveillés, temps de physique et pas perdus.
 - `?sync` dans l'URL : la physique tourne sur le fil principal, ce qui permet de la suivre au débogueur.
-- La console expose `game.ctl` : `game.ctl.world.sim.x` contient les positions des nœuds, `game.ctl.stage.composer.passes` les passes, dont chacune a une propriété `enabled`. Les captures de ce document ont été faites ainsi.
+- La console expose `game.ctl` : `game.ctl.world.sim.x` contient les positions des nœuds. `?webgl` dans l'URL dessine avec le repli WebGL 2, comme un navigateur sans WebGPU.
 - Les bancs sans navigateur : `npm run bench` pour le moteur, `npm run free` pour une partie libre de 48 câbles, `npm run route` pour l'outil Chemin ; `docs/architecture.md` les liste tous.
-- [Spector.js](https://spector.babylonjs.com/), une extension de navigateur, enregistre une frame WebGL et liste chaque appel de dessin avec ses shaders et ses textures.
+- [WebGPU Inspector](https://github.com/brendan-duncan/webgpu_inspector), une extension de navigateur, enregistre une frame et liste chaque appel de dessin avec ses shaders et ses textures ; [Spector.js](https://spector.babylonjs.com/) fait de même sur le repli WebGL 2.
 
 ### 12.2 Glossaire
 
@@ -690,6 +685,7 @@ Le jeu s'ouvre sur une allée de baies géantes en désordre, que l'interrupteur
 | Rastérisation | Étape où le GPU détermine quels pixels chaque triangle recouvre. |
 | Render target | Image dans laquelle le GPU dessine au lieu de l'écran, et qu'un shader peut lire ensuite. |
 | Shader | Programme exécuté par le GPU : le vertex shader par sommet, le fragment shader par pixel. |
+| TSL | Le langage de nœuds de three.js : un shader écrit en TypeScript, traduit en WGSL (WebGPU) ou en GLSL (WebGL 2). |
 | Shadow map | Texture de profondeur vue depuis une lumière, qui dit quels pixels sont à l'ombre. |
 | Sommeil | État d'un câble immobile : ses nœuds sont figés et ne sont plus calculés jusqu'à ce qu'on le touche. |
 | sRGB | Espace de couleur des écrans. Les calculs se font en valeurs linéaires, converties en sRGB à la fin. |
@@ -701,5 +697,5 @@ Le jeu s'ouvre sur une allée de baies géantes en désordre, que l'interrupteur
 
 - `docs/architecture.md` : l'organisation du code, et où intervenir pour ajouter un niveau, un outil ou un critère de score.
 - La documentation de cable-kit (`vendor/cable-kit`) : les deux paquets, leurs exemples et leurs réglages.
-- La documentation de [three.js](https://threejs.org/docs/), en particulier `WebGLRenderer`, `InstancedBufferGeometry`, `InstancedMesh` et `EffectComposer`.
+- La documentation de [three.js](https://threejs.org/docs/), en particulier `WebGPURenderer`, `InstancedBufferGeometry`, `InstancedMesh`, `RenderPipeline`, et le [manuel de TSL](https://github.com/mrdoob/three.js/wiki/Three.js-Shading-Language).
 - L'article d'origine de la méthode : *Augmented Vertex Block Descent*, C. Giles, E. Diaz, C. Yuksel, ACM Transactions on Graphics (SIGGRAPH 2025).

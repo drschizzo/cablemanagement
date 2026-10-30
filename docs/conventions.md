@@ -159,14 +159,14 @@ pas de sens.
 par ses méthodes (`plug`, `labelCord`…) : ses invariants (un port et le bout qui y est branché se correspondent) ne
 dépendent pas de la discipline de chaque appelant : le compilateur refuse toute écriture venue d'ailleurs.
 
-**Une dépendance fragile a une frontière.** Ce qui s'appuie sur les internes de three.js (le texte de ses
-shaders, des champs privés de ses passes) vit dans `render/threeCompat/` et nulle part ailleurs (ESLint le
-vérifie), et `tests/render/threeCompat/` le confronte à la version installée. Une mise à jour ne regarde qu'un
-dossier, et un test dit ce qui a bougé (`docs/mise-a-jour-three.md`).
+**Une dépendance fragile se vérifie.** Le jeu ne s'appuie que sur l'API publique de three.js ; ce qu'il donne par
+son nom à un nœud de three.js (un réglage des reflets, de l'occlusion) est confronté à la version installée par
+`tests/render/threeNodes.test.ts`, et ESLint refuse ce que `WebGPURenderer` ignorerait sans erreur (du GLSL, une
+passe de l'`EffectComposer`). Une mise à jour dit ce qui a bougé (`docs/mise-a-jour-three.md`).
 
 **Échouer tôt et bruyamment.** Un élément absent de `index.html` lève une erreur qui le nomme (`$` dans
-`lib/page.ts`), et un test vérifie qu'il ne manque aucun id ; une retouche de shader qui ne trouve plus son motif lève une
-erreur (`render/threeCompat/shaderPatch.ts`) au lieu de ne rien faire.
+`lib/page.ts`), et un test vérifie qu'il ne manque aucun id ; un réglage qu'un nœud de three.js ne lit plus fait
+échouer un test au lieu de rester sans effet.
 
 ## Tester
 

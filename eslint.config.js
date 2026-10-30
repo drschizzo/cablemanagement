@@ -17,17 +17,18 @@ const forbid = (layer, banned, message, extra = []) => ({
   },
 });
 
-// three.js au-delà de son API stable (retouches de shaders, membres privés, passes retouchées) : seulement dans
-// render/threeCompat/, que tests/render/threeCompat/ vérifie contre la version installée (docs/mise-a-jour-three.md)
-const THREE_COMPAT = 'Ce qui dépend des internes de three.js vit dans render/threeCompat/ (voir docs/mise-a-jour-three.md).';
-const RETOUCHED_PASSES = ['three/examples/jsm/postprocessing/SSRPass.js', 'three/examples/jsm/postprocessing/UnrealBloomPass.js', 'three/examples/jsm/postprocessing/GTAOPass.js'];
-const threeInternals = {
+// Le jeu dessine avec WebGPURenderer : ses matériaux et ses passes sont des nœuds TSL. Ce qui ne parle qu'à
+// WebGLRenderer (GLSL, onBeforeCompile, passes de l'EffectComposer) ne lui parvient pas, souvent sans erreur ;
+// un membre privé de three.js peut changer à chaque version (docs/mise-a-jour-three.md)
+const WEBGPU = 'Le jeu dessine avec WebGPURenderer : un matériau ou une passe s\'écrit en nœuds TSL (render/tsl.ts), le GLSL ne lui parvient pas.';
+const threeUsage = {
   files: ['src/**/*.ts'],
-  ignores: ['src/render/threeCompat/**'],
   rules: {
     'no-restricted-syntax': ['error',
-      { selector: 'AssignmentExpression > MemberExpression.left[property.name=/^(onBeforeCompile|customProgramCacheKey)$/]', message: THREE_COMPAT },
-      { selector: 'MemberExpression[property.name=/^_[a-zA-Z]/]', message: `Un membre privé. ${THREE_COMPAT}` },
+      { selector: 'AssignmentExpression > MemberExpression.left[property.name=/^(onBeforeCompile|customProgramCacheKey)$/]', message: WEBGPU },
+      { selector: 'NewExpression[callee.property.name=/^(ShaderMaterial|RawShaderMaterial|WebGLRenderer|WebGLRenderTarget)$/]', message: WEBGPU },
+      { selector: 'ImportDeclaration[source.value=/^three\\/examples\\/jsm\\/postprocessing\\//]', message: WEBGPU },
+      { selector: 'MemberExpression[property.name=/^_[a-zA-Z]/]', message: 'Un membre privé de three.js : rien ne promet qu\'il reste (docs/mise-a-jour-three.md).' },
     ],
   },
 };
@@ -37,10 +38,6 @@ const layers = [
     'game/ est le cœur : les règles et la physique, sans affichage ni interface. Les autres couches dépendent de lui, pas l\'inverse.',
     [{ group: ['three', 'three/*'], message: 'game/ ne dessine rien : three.js appartient à render/.' }]),
   forbid('render', ['play', 'showcase', 'ui', 'app', 'audio'],
-    'render/ dessine ce que game/ décrit ; il ne connaît ni les gestes ni l\'interface.',
-    [{ group: RETOUCHED_PASSES, message: THREE_COMPAT }]),
-  // render/threeCompat/ seul construit les passes dont il connaît les internes
-  forbid('render/threeCompat', ['play', 'showcase', 'ui', 'app', 'audio'],
     'render/ dessine ce que game/ décrit ; il ne connaît ni les gestes ni l\'interface.'),
   forbid('play', ['showcase', 'ui', 'app'],
     'play/ mène une partie ; il prévient l\'interface par ControllerEvents au lieu de l\'importer.'),
@@ -76,5 +73,5 @@ export default tseslint.config(
   { files: ['src/**/*.worker.ts'], languageOptions: { globals: globals.worker } },
   { files: ['tools/**/*.ts', 'tests/**/*.ts', '*.config.{js,ts}'], languageOptions: { globals: globals.node } },
   ...layers,
-  threeInternals,
+  threeUsage,
 );

@@ -12,7 +12,7 @@ de rangement. La difficulté tient à l'organisation de la baie : par quels
 guides faire passer chaque câble, avec quelle longueur, dans quel ordre.
 
 **[Jouer en ligne](https://drschizzo.github.io/cablemanagement/)**, sans rien
-installer (un navigateur récent avec WebGL 2 suffit).
+installer (un navigateur récent avec WebGPU, ou à défaut WebGL 2, suffit).
 
 ![L'écran titre : une salle de baies en désordre, avec le bouton avant / après](docs/accueil.jpg)
 

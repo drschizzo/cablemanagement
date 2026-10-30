@@ -14,7 +14,7 @@ src/
   app/          QUELLE SCÈNE est à l'écran, et comment passer de l'une à l'autre
     app.ts          App : un niveau (Controller, avec ou sans tutoriel) ou l'écran titre (Showcase)
     sceneLoader.ts  une scène à la fois : voile de chargement, chargement dépassé par un autre
-    urlOptions.ts   ?sync, ?bays, ?pairs, ?seed, ?quality, ?rack : lus depuis une chaîne, donc testables
+    urlOptions.ts   ?sync, ?bays, ?pairs, ?seed, ?quality, ?rack, ?webgl : lus depuis une chaîne, donc testables
   game/         LES RÈGLES et la physique de la baie                       sans three.js ni DOM : tourne sous Node
     world.ts        World, l'état d'une partie : cordons et leurs bouts (et ceux coupés à l'intérieur), branchement,
                     velcros, bac, stock ; montré en lecture seule, changé par ses méthodes
@@ -77,14 +77,15 @@ src/
     cableRain.ts    le décor : des câbles qui tombent et s'entassent au milieu de la salle
   render/       LE DESSIN (three.js) de ce que game décrit
     stage.ts        Stage : la scène, la caméra, le cadrage, le rendu et sa qualité, choisie ou adaptée au GPU
+    imagePipeline.ts la chaîne de l'image : la scène dessinée une fois (couleur, normales, profondeur, ce qui reflète),
+                    puis reflets du sol, occlusion ambiante, profondeur de champ, halo, tone mapping, finitions ;
+                    reflective() et keepOutOfDepth() disent aux passes ce qu'est un matériau (le sol, un rai de lumière)
     quality.ts      les niveaux de qualité de l'image (QUALITY), et ce que le joueur a choisi : auto à partir d'un
                     niveau, ou des réglages fixes (QualityChoice)
-    stageSetup.ts   la construction du renderer, des contrôles et des lumières
-    threeCompat/    TOUT CE QUI DÉPEND DES INTERNES DE THREE.JS, et nulle part ailleurs (règle ESLint) : les retouches
-                    de shaders (materialPatch, shaderPatch), les passes de post-traitement retouchées (passes :
-                    ReflectionPass, BloomPass, l'occlusion, et keepOutOfDepth : une lumière ajoutée à l'image, comme
-                    un rai de lumière, que l'occlusion et les reflets ne prennent pas pour un solide) ; vérifié contre
-                    la version installée par tests/render/threeCompat/ (voir docs/mise-a-jour-three.md)
+    stageSetup.ts   la construction du renderer (WebGPURenderer : WebGPU, ou WebGL 2 à défaut), des contrôles et des
+                    lumières
+    tsl.ts          TSL, le langage de nœuds de three.js dans lequel s'écrivent les matériaux et les passes, typé
+                    une fois ; glowTerms.ts, les lueurs que plusieurs effets ajoutent à un même matériau
     gpu.ts          la carte graphique utilisée, et le conseil à donner quand elle dessine trop lentement
     frontImage.ts   l'image de face de la baie (avant / après de l'écran de résultat)
     frameGrab.ts    une copie de l'image qui vient d'être dessinée, sans les panneaux (une image du timelapse)
@@ -105,7 +106,8 @@ src/
     rackMaterials.ts, rackTextures.ts, shapes.ts, room.ts   matériaux, textures, formes, sol de la salle
     cableView.ts    les câbles (tubes de three-cable-tubes), leurs connecteurs et étiquettes
     jacket.ts, straps.ts, leds.ts, ledGlow.ts   gaine vue de près, velcros, voyants et leur lumière
-    bevel.ts, batch.ts, dispose.ts, cinema.ts   pièces légères, moins d'appels de dessin, mémoire GPU, dernière passe
+    bevel.ts, batch.ts, dispose.ts   pièces légères, moins d'appels de dessin, mémoire GPU
+    bloom.ts, cinema.ts   le halo des lumières ; les finitions (vignette, grain, virage, aberration)
     depthOfField.ts la profondeur de champ d'un niveau : la baie nette, la salle autour floutée selon sa distance à la
                     baie (derrière comme sur les côtés), ses voyants ouverts en disques
                     (Stage.focusOnSubject, que le contrôleur allume ; l'écran titre reste net partout)
@@ -280,8 +282,8 @@ coupé. Une valeur illisible ou d'une autre forme se lit comme la valeur par dé
 | une donnée gardée | une entrée dans `ui/storage.ts` |
 | une ressource three.js partagée par tous les niveaux | l'envelopper dans `shared()` (`render/dispose.ts`) |
 | un voyant qui clignote | une `LedSpec` (`render/leds.ts`), posée dans `render/rackView.ts` ; `ledGlow.ts` la reprend sur les câbles et la baie |
-| une passe de post-traitement | le `composer` de `Stage` (`render/stage.ts`) ; si elle touche aux internes de three.js, dans `render/threeCompat/passes.ts` |
-| un effet dans le shader d'un matériau | un `MaterialPatch` avec ses `uses` (`render/threeCompat/materialPatch.ts`), ajouté à la liste du test `tests/render/threeCompat/` |
+| une passe de post-traitement | un nœud dans la chaîne d'`ImagePipeline` (`render/imagePipeline.ts`) ; un réglage donné par son nom à un nœud de three.js, vérifié par `tests/render/threeNodes.test.ts` |
+| un effet dans le shader d'un matériau | des nœuds TSL (`render/tsl.ts`) branchés sur les étapes d'un matériau à nœuds (`colorNode`, `normalNode`…) ; une lueur qui s'ajoute aux autres : `addGlow` (`render/glowTerms.ts`) |
 | une nouvelle version de three.js | la procédure de `docs/mise-a-jour-three.md` |
 | une sorte de câble pour le moteur | une entrée dans `CABLES`, dans cable-kit (`packages/avbd-cables/src/presets.ts`) ; voir son README |
 | un réglage du moteur | `SimParams` et `defaultSimParams` (`cableSim.ts`) ; un réglage du jeu (main, chemin, creux des guides) : `RackParams` (`game/physics/rackCableSim.ts`) |
@@ -292,7 +294,7 @@ coupé. Une valeur illisible ou d'une autre forme se lit comme la valeur par dé
 |---|---|
 | `npm run lint` | erreurs probables, et le sens des dépendances entre couches (ESLint) |
 | `npm run typecheck` | types (TypeScript strict) |
-| `npm test` | géométrie, baie, stockage, options de la page, formats, historique d'annulation, fenêtre de maintenance, règles d'une partie (branchement, fenêtre de maintenance, étiquettes, velcro, longueurs, bac), niveaux (plan, emmêlage stable, 3 étoiles possibles), salle d'accueil précalculée à jour |
+| `npm test` | géométrie, baie, stockage, options de la page, formats, historique d'annulation, fenêtre de maintenance, règles d'une partie (branchement, fenêtre de maintenance, étiquettes, velcro, longueurs, bac), niveaux (plan, emmêlage stable, 3 étoiles possibles), salle d'accueil précalculée à jour, réglages donnés aux nœuds de three.js |
 | `npm run check` | les trois à la suite |
 | `npm run bake` | précalcule le désordre de la salle d'accueil par défaut (à relancer quand le test `baked` le demande) |
 | `npm run bench` · `precision` · `levels` · `solvable` · `showcase` · `free` · `pinch` · `release` · `fold` · `route` · `plug` · `plugin` | bancs du moteur, des gestes et des niveaux, sans navigateur : ce que mesure chacun et ses réglages dans `tools/README.md` |

@@ -24,7 +24,7 @@ import type { Pause } from './bay';
 import type { UnitLabeller } from '../render/rackView';
 
 /** where a closet is drawn out of sight once, before it shows (see Showcase.warm) */
-const warmTarget = new THREE.WebGLRenderTarget(1, 1);
+const warmTarget = new THREE.RenderTarget(1, 1);
 
 /** delay between two racks of the aisle, when they are tidied up or messed up (ms) */
 const WAVE = 700;
