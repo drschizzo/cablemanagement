@@ -73,6 +73,67 @@ export function keepOutOfDepth<T extends THREE.NodeMaterial>(m: T): T {
   return m;
 }
 
+/** the passes after the scene's, as one quality and focus draw them */
+interface Chain {
+  /** the nodes that hold targets of their own */
+  owned: Owned[];
+  bloom: Bloom;
+  dof: DepthOfField | null;
+  cinema: Cinema;
+  /** how deep in the renderer's calls it draws the scene's pass (see compile); null: not drawn yet */
+  sceneDepth: number | null;
+}
+
+/** how ImagePipeline.compile sets the scene out */
+export interface CompileOptions {
+  /** without what the scene shows besides (the stage's lights stay) */
+  alone?: boolean;
+  /** what lights it besides, on screen: their lights alone count */
+  litBy?: THREE.Object3D[];
+  /** for the chain that blurs the room round the subject, or the other (default: the one drawn) */
+  focused?: boolean;
+}
+
+/** a pass that holds targets of its own: an image drawn once a frame (frameTexture), or the glow */
+type Owned = { dispose(): void; renderTarget?: THREE.RenderTarget };
+
+/**
+ * Frees the targets of a pass put aside, and only them: a node disposed of
+ * is no longer drawn by three, and a chain taken up again showed the last
+ * image it drew. (The glow frees only its targets.)
+ */
+function freeTargets(n: Owned): void {
+  if (n.renderTarget) n.renderTarget.dispose();
+  else n.dispose();
+}
+
+type Calls = { _callDepth: number };
+
+/**
+ * How deep the renderer is in its calls: three keys a shader by it (one
+ * render calls the next, each pass of the chain the one it reads).
+ */
+function callDepth(renderer: THREE.WebGPURenderer): number {
+  // eslint-disable-next-line no-restricted-syntax -- no public way to it; checked by tests/render/threeNodes.test.ts
+  return (renderer as unknown as Calls)._callDepth;
+}
+
+function setCallDepth(renderer: THREE.WebGPURenderer, depth: number): void {
+  // eslint-disable-next-line no-restricted-syntax -- (see callDepth)
+  (renderer as unknown as Calls)._callDepth = depth;
+}
+
+/** hides (into `hidden`) what is visible under `root`, but its lights, `keep`, and what holds them */
+function hideAllButLights(root: THREE.Object3D, hidden: THREE.Object3D[], keep: THREE.Object3D): void {
+  for (const c of root.children) {
+    if (!c.visible || (c as THREE.Light).isLight || c === keep) continue;
+    let held = false;
+    c.traverse((x) => { held ||= (x as THREE.Light).isLight === true || x === keep; });
+    if (held) hideAllButLights(c, hidden, keep);
+    else hidden.push(c);
+  }
+}
+
 /** The passes of the image, and what they follow from frame to frame. */
 export class ImagePipeline {
   private pipeline: THREE.RenderPipeline;
@@ -83,8 +144,14 @@ export class ImagePipeline {
   /** the room round the subject blurred; null: everything sharp */
   private dof: DepthOfField | null = null;
   private cinema: Cinema | null = null;
-  /** the nodes of the chain that hold targets of their own, freed when it is built again */
-  private owned: { dispose(): void }[] = [];
+  /**
+   * The chains built, by what they draw (see chainKey): one left and taken
+   * up again finds its shaders built (three keys them by the identity of
+   * their nodes: a chain built anew built them all again, a level's first
+   * image every time). Left, its targets are freed.
+   */
+  private chains = new Map<string, Chain>();
+  private chain: Chain | null = null;
   private quality: Pick<QualitySettings, 'ao' | 'ssr'> = { ao: true, ssr: true };
   private focused = false;
   /** how far past white the image goes (× white): 1 on a screen of standard range */
@@ -97,6 +164,12 @@ export class ImagePipeline {
     this.pipeline.outputColorTransform = false;
     this.scenePass = pass(scene, camera);
     this.scenePass.setMRT(mrt({ output, normal: normalView, reflect: float(0) }));
+    // how deep in the renderer's calls the chain drawn draws the scene (see compile)
+    const update = this.scenePass.updateBefore.bind(this.scenePass);
+    this.scenePass.updateBefore = (frame: unknown) => {
+      if (this.chain) this.chain.sceneDepth = callDepth(renderer);
+      return update(frame);
+    };
     const color = this.scenePass.getTextureNode('output');
     const normal = this.scenePass.getTextureNode('normal');
     const depth = this.scenePass.getTextureNode('depth');
@@ -123,11 +196,28 @@ export class ImagePipeline {
     this.compose();
   }
 
-  /** (re)builds the chain, as the quality and the focus ask: a pass left out costs nothing */
+  /** puts on the chain the quality and the focus ask, built once: a pass left out costs nothing */
   private compose(): void {
-    for (const n of this.owned) n.dispose();
-    const own = <T extends { dispose(): void }>(n: T): T => { this.owned.push(n); return n; };
-    this.owned = [];
+    const key = this.chainKey(this.focused);
+    // (its targets come back as it draws again)
+    if (this.chain) for (const n of this.chain.owned) freeTargets(n);
+    let chain = this.chains.get(key);
+    if (!chain) this.chains.set(key, chain = this.build());
+    this.chain = chain;
+    ({ bloom: this.bloom, dof: this.dof, cinema: this.cinema } = chain);
+    this.pipeline.outputNode = chain.cinema.node;
+    this.pipeline.needsUpdate = true;
+  }
+
+  /** the chain drawn with this quality, in focus or not */
+  private chainKey(focused: boolean): string {
+    return `${+this.quality.ao}${+this.quality.ssr}${+focused}`;
+  }
+
+  /** a chain for the quality and the focus asked */
+  private build(): Chain {
+    const owned: Owned[] = [];
+    const own = <T extends Owned>(n: T): T => { owned.push(n); return n; };
     let image: ShaderNode = this.scenePass.getTextureNode('output');
     if (this.quality.ssr) {
       // added (the reflections come already weighed by their opacity), masked by what reflects at full
@@ -140,36 +230,66 @@ export class ImagePipeline {
     // drawn once, read by the depth of field or by the glow and the image (the denoising of the
     // occlusion is worked out wherever the composite is read)
     if (this.quality.ao || this.quality.ssr) image = own(frameTexture(image));
-    this.dof = null;
+    let dof: DepthOfField | null = null;
     if (this.focused) {
-      this.dof = new DepthOfField(image, this.scenePass.getTextureNode('depth'), this.camera);
-      image = own(frameTexture(this.dof.node));
+      dof = new DepthOfField(image, this.scenePass.getTextureNode('depth'), this.camera);
+      image = own(frameTexture(dof.node));
     }
-    this.bloom = own(new Bloom(image));
-    const shown = toneCurve(image.rgb.add(this.bloom.node), this.headroom);
+    const bloom = own(new Bloom(image));
+    const shown = toneCurve(image.rgb.add(bloom.node), this.headroom);
     const display = own(frameTexture(renderOutput(vec4(shown, 1), THREE.NoToneMapping, this.renderer.outputColorSpace)));
     // the antialiasing, on the image as shown: SMAA smooths the edges of the cords as multisampling the
     // scene did, which cost a third of the frame (every pass then read its images multisampled)
-    this.cinema = new Cinema(own(frameTexture(smaa(display))));
-    this.pipeline.outputNode = this.cinema.node;
-    this.pipeline.needsUpdate = true;
+    const cinema = new Cinema(own(frameTexture(smaa(display))));
+    return { owned, bloom, dof, cinema, sceneDepth: null };
   }
 
   /**
-   * Compiles, in the background, what `object` needs to be drawn into the
-   * scene's images, and resolves once it is ready. Drawn for the first time
-   * instead, it stalls the frames while the GPU compiles: three gives each
-   * instanced mesh a shader of its own, and a cabinet has dozens.
+   * Builds the shaders `object` needs to be drawn into the scene's images.
+   * Left to its first image on screen, it stalls the frames while three
+   * builds them. three keys a shader by the scene's environment, its fog and
+   * its lights (by identity), and by the context it is drawn in: `object` is
+   * drawn into the scene's pass, as deep in the renderer's calls as the chain
+   * draws it (compileAsync prepares it at the top, for another context, and
+   * the image found nothing of it), and, wherever the camera looks, not
+   * culled; what
+   * it drew is drawn over by the next image. `o.alone`: without what else
+   * the scene shows (its own lights stay); `o.litBy`: lit by these too, as
+   * it will be on screen (their lights alone are drawn; it may be one of
+   * their pieces); `o.focused`: for the chain in focus or not (default: the
+   * one drawn), which must have drawn once. The GPU compiles its programs
+   * meanwhile, apart.
    */
-  compile(object: THREE.Object3D, scene: THREE.Scene): Promise<void> {
+  compile(object: THREE.Object3D, scene: THREE.Scene, o: CompileOptions = {}): void {
     const r = this.renderer, target = r.getRenderTarget(), mrt = r.getMRT();
+    // (a chain never drawn: drawn once, the image as it is)
+    const chain = this.chains.get(this.chainKey(o.focused ?? this.focused));
+    if (chain === this.chain && chain.sceneDepth === null) this.pipeline.render();
+    const sceneDepth = chain?.sceneDepth;
+    if (sceneDepth == null) return;
+    // (`object` may be one piece of what lights it)
+    const added = [object, ...(o.litBy ?? [])].filter((x) => !x.parent);
+    if (added.length) scene.add(...added);
+    const hidden = o.alone ? scene.children.filter((x) => x !== object && x.visible && !(x as THREE.Light).isLight && !o.litBy?.includes(x)) : [];
+    // (one put aside, hidden, lights all the same)
+    const shown = (o.litBy ?? []).filter((x) => !x.visible);
+    for (const x of shown) x.visible = true;
+    for (const x of o.litBy ?? []) hideAllButLights(x, hidden, object);
+    for (const x of hidden) x.visible = false;
+    const culled: THREE.Object3D[] = [];
+    object.traverse((x) => { if (x.frustumCulled) { x.frustumCulled = false; culled.push(x); } });
     r.setRenderTarget(this.scenePass.renderTarget);
     r.setMRT(this.scenePass.getMRT());
-    // (the work is set out at once, only its end is awaited: the renderer goes back to its state now)
-    const ready = r.compileAsync(object, this.camera, scene);
+    const depth = callDepth(r);
+    setCallDepth(r, sceneDepth);
+    r.render(scene, this.camera);
+    setCallDepth(r, depth);
     r.setRenderTarget(target);
     r.setMRT(mrt);
-    return ready;
+    for (const x of culled) x.frustumCulled = true;
+    for (const x of hidden) x.visible = true;
+    for (const x of shown) x.visible = false;
+    for (const x of added) scene.remove(x);
   }
 
   /** how far past white the image goes (× white; 1: up to white) */
@@ -191,7 +311,7 @@ export class ImagePipeline {
   }
 
   dispose(): void {
-    for (const n of this.owned) n.dispose();
+    for (const c of this.chains.values()) for (const n of c.owned) n.dispose();
     this.pipeline.dispose();
   }
 }

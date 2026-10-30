@@ -5,7 +5,7 @@
 import * as THREE from 'three/webgpu';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { ImagePipeline } from './imagePipeline';
+import { ImagePipeline, type CompileOptions } from './imagePipeline';
 import { isHdrShown, onScreenRangeChange, screenIsHdr, type HdrChoice, type HdrSupport } from './hdrScreen';
 import { HDR_HEADROOM } from './toneCurve';
 import { LED_CLOCK_WRAP, ledClock, ledViewHeight } from './leds';
@@ -199,9 +199,9 @@ export class Stage {
     if (advice) this.onGpuAdvice(advice);
   }
 
-  /** compiles in the background what `object` (in the scene) needs to be drawn; see ImagePipeline.compile */
-  compile(object: THREE.Object3D): Promise<void> {
-    return this.image.compile(object, this.scene);
+  /** builds the shaders `object` needs to be drawn in the scene; see ImagePipeline.compile */
+  compile(object: THREE.Object3D, o?: CompileOptions): void {
+    this.image.compile(object, this.scene, o);
   }
 
   /** what the player chose for HDR */
@@ -366,6 +366,18 @@ export class Stage {
 
   private focused = false;
 
+  /**
+   * The next image is drawn first with the subject in focus, then as it is:
+   * the chain that blurs the room round it is built (see
+   * ImagePipeline.compose), and a level's first image does not stall on it.
+   * (The first drawn in its frame: the scene's pass is drawn once a frame.)
+   */
+  warmFocus(): void {
+    this.focusWarm = !this.focused;
+  }
+
+  private focusWarm = false;
+
   /** a left drag in the scene pans the view (the demo, where it grabs nothing) */
   dragPans(on: boolean): void {
     this.controls.mouseButtons.LEFT = on ? THREE.MOUSE.PAN : (null as unknown as THREE.MOUSE);
@@ -469,13 +481,14 @@ export class Stage {
     }
     this.lastRender = now;
     const f = this.framed;
-    this.image.render({
-      dt,
-      viewDistance: this.camera.position.distanceTo(this.controls.target),
-      // on the subject itself, wherever the view was panned
-      focus: this.focused ? { at: this.home.target, reach: Math.max(f.height, 2 * f.halfWidth) * SHARP_REACH } : null,
-      margins: this.panelMargins,
-    });
+    // on the subject itself, wherever the view was panned
+    const focus = { at: this.home.target, reach: Math.max(f.height, 2 * f.halfWidth) * SHARP_REACH };
+    const frame = { dt, viewDistance: this.camera.position.distanceTo(this.controls.target), focus: this.focused ? focus : null, margins: this.panelMargins };
+    if (this.focusWarm) {
+      this.focusWarm = false;
+      if (!this.focused) this.image.render({ ...frame, focus });
+    }
+    this.image.render(frame);
   }
 }
 

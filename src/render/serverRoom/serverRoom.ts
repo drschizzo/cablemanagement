@@ -58,6 +58,21 @@ interface Slot {
   spec: RoomRackSpec;
 }
 
+let rim: THREE.DirectionalLight | null = null;
+
+/**
+ * The light from behind the room, the same object for every room (there is
+ * one at a time): three keys every lit shader by the identity of its lights.
+ */
+function roomRim(): THREE.DirectionalLight {
+  if (!rim) {
+    rim = new THREE.DirectionalLight(RIM_COLOR, RIM_INTENSITY);
+    rim.position.set(0.4, 2.5, -2.5);
+    rim.target.position.set(0, 0.6, 0);
+  }
+  return rim;
+}
+
 /** the scenery round a cabinet whose room floor is at `floorY`; the same room for the same `seed` */
 export function buildServerRoom(floorY: number, seed: number): THREE.Group {
   const random = rng(seed);
@@ -74,9 +89,7 @@ export function buildServerRoom(floorY: number, seed: number): THREE.Group {
     roomHaze(SHAFTS, random),
   );
   g.position.y = floorY;
-  const rim = new THREE.DirectionalLight(RIM_COLOR, RIM_INTENSITY);
-  rim.position.set(0.4, 2.5, -2.5);
-  rim.target.position.set(0, 0.6, 0);
+  const rim = roomRim();
   g.add(rim, rim.target);
   // scenery: the pointer goes through it
   g.traverse((o) => { o.raycast = () => {}; });

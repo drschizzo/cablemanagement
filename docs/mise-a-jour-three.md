@@ -11,7 +11,9 @@ dépend, ce qui le vérifie, et comment monter de version sans casse silencieuse
 - **Le jeu n'utilise que l'API publique de three.js** : `WebGPURenderer`, les matériaux à nœuds, TSL, et les
   nœuds de post-traitement de `examples/jsm/tsl/display`. ESLint refuse ce qui ne s'adresse qu'à
   `WebGLRenderer` (`ShaderMaterial`, `onBeforeCompile`, les passes de `examples/jsm/postprocessing`), que
-  `WebGPURenderer` ignore souvent sans erreur, ainsi que la lecture d'un membre privé (`_xxx`).
+  `WebGPURenderer` ignore souvent sans erreur, ainsi que la lecture d'un membre privé (`_xxx`). Une exception,
+  faute d'API publique, vérifiée par `tests/render/threeNodes.test.ts` : `_callDepth` (voir « Des shaders
+  construits avant leur première image »).
 - **`tests/render/threeNodes.test.ts` vérifie, contre la version installée, chaque réglage que le jeu donne par
   son nom aux nœuds de three.js.** Un réglage renommé fait échouer le test au lieu de rester sans effet.
 
@@ -53,6 +55,29 @@ Trois comportements de `WebGPURenderer` sont contournés ; à revérifier à cha
 - **Une carte d'ombre redimensionnée en place** est refaite par three, mais les shaders qui la lisent gardent
   l'ancienne, détruite : le GPU refuse chaque image et l'écran se fige. Quand la qualité change la taille des ombres,
   `Stage` remplace la lumière principale (`replaceKeyLight`).
+
+### Des shaders construits avant leur première image
+
+three construit le shader d'un objet (son graphe de nœuds traduit en WGSL, de quelques millisecondes à cinquante,
+sur le fil principal) à son premier dessin. Sa clé tient compte de l'environnement et du brouillard de la scène,
+de ses lumières **par identité**, et du contexte de rendu, lui-même fonction de la **profondeur d'appel** du
+moteur (la passe de la scène est dessinée depuis la chaîne de l'image, cinq ou six appels plus bas). Le jeu en
+tient compte :
+
+- **Les lumières d'un niveau sont les mêmes objets d'un niveau à l'autre** : la lampe de la baie (`levelLamp`,
+  `rackView.ts`) et la lumière de la salle (`roomRim`, `serverRoom.ts`). Neuves à chaque niveau, elles faisaient
+  reconstruire tous les shaders éclairés.
+- **three jette un shader quand le dernier objet dessiné avec lui est libéré**, et avec lui les tampons qu'il
+  partage : le garder au-delà (en retenant son état dans `nodeBuilderCache`) fait dessiner les objets suivants
+  avec des tampons détruits, et le GPU refuse chaque image. Ce qui garde les shaders d'un niveau, c'est donc un
+  niveau construit et gardé hors de la scène (`Controller.warm`, gardé par `App` pour la visite).
+- **Une chaîne de l'image reste construite** (`ImagePipeline.chains`, par qualité et mise au point) : reconstruite,
+  ses nœuds neufs donnaient des shaders neufs, à chaque entrée dans un niveau. Mise de côté, elle ne libère que
+  ses cibles de rendu : un nœud libéré (`dispose`) n'est plus jamais redessiné par three.
+- **Préparer un objet, c'est le dessiner dans la passe de la scène, à la profondeur où la chaîne la dessine**
+  (`ImagePipeline.compile`). `compileAsync` le prépare au premier niveau d'appel, pour un autre contexte : l'image
+  n'en retrouvait rien. Membre privé : `renderer._callDepth`, relevé pendant les vrais rendus.
+  `Showcase.warm` prépare ainsi chaque baie de l'allée, `Controller.warm` le prochain niveau pendant l'écran titre.
 
 ### La chaîne de l'image (`render/imagePipeline.ts`, `bloom.ts`, `depthOfField.ts`, `cinema.ts`)
 

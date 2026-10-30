@@ -27,6 +27,23 @@ export type LedState = 'off' | 'ok' | 'wrong' | 'down' | 'bypass';
 
 export type UnitLabeller = (unit: UnitSpec) => string;
 
+/** the lamp under a cabinet's roof */
+function cabinetLamp(): THREE.SpotLight {
+  return new THREE.SpotLight('#ffd2a1', 1.4, 0, 1.15, 1, 2);
+}
+
+let sharedLamp: THREE.SpotLight | null = null;
+
+/**
+ * The lamp of a level's cabinet, the same object from one level to the
+ * next (there is one at a time). three keys every lit shader by the
+ * identity of the lights it is drawn with: a lamp of its own made each
+ * level build all of them again.
+ */
+function levelLamp(): THREE.SpotLight {
+  return (sharedLamp ??= cabinetLamp());
+}
+
 export interface RackViewOptions {
   /** the room round the cabinet: its floor, and the racks of the room (default: drawn) */
   roomFloor?: boolean;
@@ -202,7 +219,8 @@ export class RackView {
     lens.scale.y = 0.4;
     // the bulb behind it, peeking out of its middle: the only part that glows, a little
     this.add(new THREE.SphereGeometry(0.011, 24, 6, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), rackMat.core, 0, lampY, lampZ, false);
-    const lamp = new THREE.SpotLight('#ffd2a1', 1.4, 0, 1.15, 1, 2);
+    // (a level's cabinet, the one in its room, hangs the same lamp as the last: see levelLamp)
+    const lamp = this.opts.roomFloor !== false ? levelLamp() : cabinetLamp();
     lamp.position.set(0, lampY - 0.006, lampZ);
     lamp.target.position.set(0, bot, 0.02);
     this.group.add(lamp, lamp.target);

@@ -15,6 +15,7 @@ import { load } from '../ui/storage';
 import { nextInStory } from '../ui/progress';
 import type { LevelDef } from '../game/levels/levelDef';
 import { SHOWCASE_DEFAULT } from '../game/levels/showcaseRack';
+import { TUTORIAL } from '../game/levels/campaign';
 import { dailyLevel, dayKey } from '../game/levels/dailyLevel';
 import { customLevel, decodeSpec } from '../game/levels/customLevel';
 import type { BakedBay } from '../game/mess/baked';
@@ -51,6 +52,8 @@ export class App {
   private nextAisle: NextAisle | null = null;
   /** the title screen's aisle, set aside while a level is played: back home, it shows again as it was */
   private keptAisle: Showcase | null = null;
+  /** the shaders of a level built under the title screen, under way or done: what keeps them (see warmLevel) */
+  private levelWarm: Promise<{ dispose(): void } | null> | null = null;
   /** the seed of the next aisle to show, only for the first one */
   private pendingSeed: number | undefined;
 
@@ -124,6 +127,7 @@ export class App {
       showcase.start();
       this.reframe();
       this.prepareNextAisle();
+      this.warmLevel();
     });
   }
 
@@ -206,6 +210,22 @@ export class App {
     // (given up: nothing to be ready)
     next.aisle.then(() => { next.ready = true; }, () => {});
     this.nextAisle = next;
+  }
+
+  /**
+   * While the title screen shows, the shaders of the next level are built
+   * (Controller.warm): the first level opened does not stall on them. What
+   * was built for it stays for the visit, so that three keeps them for every
+   * level after. Again on the next title screen if a level opened first.
+   */
+  private warmLevel(): void {
+    if (this.levelWarm) return;
+    const showcase = this.showcase;
+    const level = nextInStory(this.hud.progress, load('career')) ?? TUTORIAL;
+    this.levelWarm = Controller.warm(this.stage, level, unitLabel, () => this.showcase !== showcase).then((kept) => {
+      if (!kept) this.levelWarm = null;
+      return kept;
+    });
   }
 
   /** a level leaves the title screen: the aisle made ready for it goes, given up if it is still built */

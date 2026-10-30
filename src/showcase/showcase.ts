@@ -141,7 +141,7 @@ export class Showcase {
     for (const c of this.closets) {
       await pause();
       given();
-      await this.warm(c);
+      this.warm(c);
     }
     // the cords fall on the mess spilt on the floor
     const p = new THREE.Vector3();
@@ -165,23 +165,20 @@ export class Showcase {
   }
 
   /**
-   * Compiles a closet's shaders in the background before it shows, and
-   * sends its buffers and textures to the GPU. Left to its first image on
-   * screen, that stalled the title screen for half a second at a time.
+   * Builds a closet's shaders before it shows (see Stage.compile), and sends
+   * its buffers and textures to the GPU. Left to its first image on screen,
+   * that stalled the title screen for half a second at a time.
    */
-  private async warm(c: Closet): Promise<void> {
-    // all of it, its managers too (hidden until it is tidied), wherever the camera looks
+  private warm(c: Closet): void {
+    // all of it, its managers too (hidden until it is tidied)
     const items = c.tidy.rackView!.itemsGroup;
     c.visible = items.visible = true;
-    const culled: THREE.Object3D[] = [];
-    for (const g of c.groups) g.traverse((o) => { if (o.frustumCulled) { o.frustumCulled = false; culled.push(o); } });
-    // (the closet is looked through at once: it may go back as it was before the compiling ends)
-    const ready = Promise.all(c.groups.map((g) => this.stage.compile(g)));
-    for (const o of culled) o.frustumCulled = true;
+    // lit as on screen, by the lamps of the whole aisle and nothing else (three keys its shaders by them)
+    const aisle = this.closets.flatMap((k) => k.groups);
+    for (const g of c.groups) this.stage.compile(g, { alone: true, litBy: aisle.filter((x) => x !== g) });
     c.visible = items.visible = false;
     // and the light of its LEDs on the cords (its map, drawn before each image)
     c.tidy.rackView!.glow.render(this.stage.renderer);
-    await ready;
   }
 
   /** what the aisle puts in the scene */

@@ -4,7 +4,7 @@
 // mouse and keys in inputRouter.ts, the overlays in feedback/.
 
 import { Stage } from '../render/stage';
-import { RackView } from '../render/rackView';
+import { RackView, type UnitLabeller } from '../render/rackView';
 import { CableView } from '../render/cableView';
 import { DEFAULT_LOOK, type Look } from '../render/look';
 import { disposeTree } from '../render/dispose';
@@ -139,16 +139,7 @@ export class Controller implements PlayContext, InputCommands {
     this.world = new World(level);
     this.world.preroll(30);
     if (threaded) this.world.sim.startWorker();
-    const types = new Map<number, CordType>();
-    this.world.circuits.forEach((c) => types.set(this.world.rack.port(c.a).unit, c.type));
-    // a link carries its service's traffic: the switch shows it in the colour of its cords and labels
-    const traffic = new Map<string, string>();
-    for (const ci of this.world.circuits) for (const id of [ci.a, ci.b]) traffic.set(id, SERVICES[ci.service].color);
-    this.rackView = new RackView(this.world.rack, types, {
-      labelOf: (u) => events.unitLabel(u),
-      trafficColorOf: (p) => traffic.get(p.id) ?? null,
-      roomSeed: seedOf(levelSite(level)),
-    });
+    this.rackView = rackViewOf(this.world, level, events.unitLabel);
     this.pointer = new Pointer(stage);
     this.picker = new CordPicker(stage, this.world, this.pointer);
     this.history = new UndoHistory(this.world);
@@ -188,6 +179,59 @@ export class Controller implements PlayContext, InputCommands {
     }, this);
     this.setTool('hand');
     requestAnimationFrame(this.frame);
+  }
+
+  /**
+   * Builds what `level` shows, out of sight, and builds its shaders a piece
+   * at a time between frames: the first level opened then does not stall on
+   * them. three keeps a shader while an object drawn with it lives: what
+   * was built (the cabinet, its room, its cords) is kept, out of the scene,
+   * until the caller frees it, and every level meanwhile finds the shaders of
+   * the same materials. Given up once `stop()` (a level opens): null.
+   */
+  static async warm(stage: Stage, level: LevelDef, unitLabel: UnitLabeller, stop: () => boolean): Promise<{ dispose(): void } | null> {
+    const world = new World(level);
+    const rackView = rackViewOf(world, level, unitLabel);
+    const cableView = new CableView(world);
+    cableView.lightBy(rackView.glow);
+    rackView.syncItems(world.itemsVersion);
+    cableView.update(true);
+    const roots = [rackView.group, cableView.group];
+    const pieces: THREE.Object3D[] = [];
+    for (const r of roots) r.traverse((o) => { if ((o as THREE.Mesh).isMesh || (o as THREE.Points).isPoints || (o as THREE.Line).isLine || (o as THREE.Sprite).isSprite) pieces.push(o); });
+    let done = false;
+    try {
+      // the room round the subject blurred, as in a level (drawn by the next image)
+      stage.warmFocus();
+      await nextFrame();
+      await nextFrame();
+      if (stop()) return null;
+      let since = performance.now();
+      for (const piece of pieces) {
+        if (stop()) return null;
+        // lit by the cabinet's lamp and the room's light, as on screen
+        stage.compile(piece, { alone: true, litBy: roots, focused: true });
+        // a few at a time, between two frames
+        if (performance.now() - since > WARM_SLICE_MS) {
+          await nextFrame();
+          since = performance.now();
+        }
+      }
+      done = true;
+      return {
+        dispose: () => {
+          rackView.dispose();
+          disposeTree(cableView.group);
+        },
+      };
+    } finally {
+      // (what the cords are drawn from, not the cords)
+      world.dispose();
+      if (!done) {
+        rackView.dispose();
+        disposeTree(cableView.group);
+      }
+    }
   }
 
   dispose(): void {
@@ -663,4 +707,29 @@ function tidyCablesOf(ev: Evaluation): Set<number> {
   const out = new Set<number>();
   for (const s of ev.circuits) if (s.connected && s.routed && s.clear) out.add(s.cable);
   return out;
+}
+
+/** how long Controller.warm compiles before it lets a frame go (ms) */
+const WARM_SLICE_MS = 12;
+
+/** the next frame, or a moment if the page draws none */
+const nextFrame = () => new Promise<void>((r) => {
+  let gone = false;
+  const go = () => { if (!gone) { gone = true; r(); } };
+  requestAnimationFrame(go);
+  setTimeout(go, 100);
+});
+
+/** the cabinet of a level, its room round it */
+function rackViewOf(world: World, level: LevelDef, unitLabel: UnitLabeller): RackView {
+  const types = new Map<number, CordType>();
+  world.circuits.forEach((c) => types.set(world.rack.port(c.a).unit, c.type));
+  // a link carries its service's traffic: the switch shows it in the colour of its cords and labels
+  const traffic = new Map<string, string>();
+  for (const ci of world.circuits) for (const id of [ci.a, ci.b]) traffic.set(id, SERVICES[ci.service].color);
+  return new RackView(world.rack, types, {
+    labelOf: (u) => unitLabel(u),
+    trafficColorOf: (p) => traffic.get(p.id) ?? null,
+    roomSeed: seedOf(levelSite(level)),
+  });
 }

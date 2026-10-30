@@ -7,6 +7,7 @@ import SSRNode from 'three/examples/jsm/tsl/display/SSRNode.js';
 import GTAONode from 'three/examples/jsm/tsl/display/GTAONode.js';
 import DenoiseNode from 'three/examples/jsm/tsl/display/DenoiseNode.js';
 import GaussianBlurNode from 'three/examples/jsm/tsl/display/GaussianBlurNode.js';
+import Renderer from 'three/src/renderers/common/Renderer.js';
 import { AO_DENOISE, AO_SETTINGS, REFLECTIONS } from '../../src/render/imagePipeline';
 
 const source = (node: { toString(): string }) => node.toString();
@@ -25,5 +26,12 @@ describe('the nodes of the image (render/imagePipeline.ts, render/bloom.ts)', ()
 
   it('GaussianBlurNode: blurs at a share of the resolution of its input', () => {
     expect(source(GaussianBlurNode)).toContain('this.resolutionScale = options.resolutionScale');
+  });
+});
+
+describe('the depth of the renderer\'s calls (render/imagePipeline.ts, compile)', () => {
+  it('keys the context a scene is drawn in by _callDepth, which render() counts', () => {
+    expect(source(Renderer)).toContain('this._callDepth ++;');
+    expect(source(Renderer)).toContain('this._renderContexts.get( renderTarget, this._mrt, this._callDepth )');
   });
 });
