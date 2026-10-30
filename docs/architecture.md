@@ -110,7 +110,9 @@ src/
     rackItems.ts    les éléments de rangement, construits à partir de leurs formes de collision (buildItem)
     rackMaterials.ts, rackTextures.ts, shapes.ts   matériaux, textures, formes de la baie ; rackWear.ts, l'usure des
                     années sur son métal peint et son plastique, dessinée dans le shader
-    floor.ts        le sol en dalles sur lequel se tient chaque scène (niveau et écran titre), ses passe-câbles
+    floor.ts        le sol en dalles sur lequel se tient chaque scène (niveau et écran titre), ses passe-câbles ;
+                    floorTextures.ts, ses textures dessinées une fois (la flaque de lumière, les dalles pleines ou
+                    perforées, l'usure des années)
     cableView.ts    les câbles (tubes de three-cable-tubes), leurs connecteurs et étiquettes
     jacket.ts, straps.ts, leds.ts, ledGlow.ts   gaine vue de près, velcros, voyants et leur lumière
     bevel.ts, batch.ts, dispose.ts   pièces légères, moins d'appels de dessin, mémoire GPU
@@ -165,6 +167,8 @@ src/
     vec3.ts         les points (V3) et la géométrie de base : distance, différence, produit scalaire, interpolation,
                     longueur d'un chemin
     random.ts       tirages reproductibles : rng(seed), shuffle, pick, et seedOf (une graine tirée d'un texte)
+    noise.ts        un bruit doux en deux dimensions, le même partout (valueNoise, fbm)
+    scalar.ts       les petites fonctions d'un nombre (smoothstep)
     page.ts         $ : un élément de index.html, ou une erreur claire s'il manque (game/ ne s'en sert pas)
   dev/          poignées de test, chargées en développement seulement
 tests/        tests unitaires (Vitest), rangés comme src/
