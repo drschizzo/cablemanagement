@@ -94,6 +94,7 @@ export const PAGE_TEXTS: Record<string, Words> = {
   'settings.ao': { fr: 'Occlusion ambiante', en: 'Ambient occlusion' },
   'settings.ssr': { fr: 'Reflets au sol', en: 'Floor reflections' },
   'settings.hdr': { fr: 'Image HDR : les lumières plus vives que le blanc', en: 'HDR image: lights brighter than white' },
+  'settings.hdrLevel': { fr: 'Intensité des lumières', en: 'Brightness of the lights' },
   'settings.hdrAuto': { fr: 'Revenir à l\'automatique', en: 'Back to automatic' },
   'settings.sound': { fr: 'Son', en: 'Sound' },
   'settings.effects': { fr: 'Effets sonores', en: 'Sound effects' },

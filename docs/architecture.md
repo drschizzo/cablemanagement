@@ -259,7 +259,7 @@ sur le fil principal.
 ## Données dans le navigateur
 
 `ui/storage.ts` déclare chaque entrée (clé, valeur par défaut, validation) : progression (étoiles et meilleurs temps
-par niveau), tutoriel terminé, règles et gestes déjà rencontrés, carrière (tickets faits, la baie du client telle que laissée), dernière baie de l'éditeur, carnet (teintes portées, trouvailles), baies du jour (le meilleur résultat de chaque date), langue (celle du navigateur tant que le joueur n'en a pas choisi), musique coupée, qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu), image HDR (automatique, activée ou désactivée) et son
+par niveau), tutoriel terminé, règles et gestes déjà rencontrés, carrière (tickets faits, la baie du client telle que laissée), dernière baie de l'éditeur, carnet (teintes portées, trouvailles), baies du jour (le meilleur résultat de chaque date), langue (celle du navigateur tant que le joueur n'en a pas choisi), musique coupée, qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu), image HDR (automatique, activée ou désactivée, et l'intensité de ses lumières) et son
 coupé. Une valeur illisible ou d'une autre forme se lit comme la valeur par défaut.
 
 ## Ajouter…

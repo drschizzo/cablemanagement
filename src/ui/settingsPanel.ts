@@ -5,6 +5,7 @@
 
 import { AUTO_QUALITY, QUALITY, drawAlike, type QualityChoice, type QualitySettings } from '../render/quality';
 import type { HdrChoice, HdrSupport } from '../render/hdrScreen';
+import { HDR_HEADROOM } from '../render/toneCurve';
 import { assertNever } from '../lib/assertNever';
 import { save } from './storage';
 import { hide, show } from './dom';
@@ -27,6 +28,9 @@ export interface HdrControl {
   /** the image goes past white now */
   readonly hdrShown: boolean;
   setHdr(choice: HdrChoice): void;
+  /** how far past white it goes (× white) */
+  readonly hdrHeadroom: number;
+  setHdrHeadroom(headroom: number): void;
 }
 
 export interface SoundControl {
@@ -60,6 +64,7 @@ export class SettingsPanel {
   private soundBox = $<HTMLInputElement>('#set-sound');
   private musicBox = $<HTMLInputElement>('#set-music');
   private hdrBox = $<HTMLInputElement>('#set-hdr');
+  private hdrLevel = $<HTMLInputElement>('#hdr-level');
 
   constructor(private quality: QualityControl, private hdr: HdrControl, private sound: SoundControl, private music: SoundControl) {
     this.buildLanguages();
@@ -73,6 +78,10 @@ export class SettingsPanel {
     $('#q-reset').onclick = () => this.choose(AUTO_QUALITY);
     this.hdrBox.onchange = () => this.chooseHdr(this.hdrBox.checked ? 'on' : 'off');
     $('#hdr-auto').onclick = () => this.chooseHdr('auto');
+    Object.assign(this.hdrLevel, { min: String(HDR_HEADROOM.min), max: String(HDR_HEADROOM.max), step: '0.5' });
+    // seen at once on the image while the thumb moves; kept once let go
+    this.hdrLevel.oninput = () => { hdr.setHdrHeadroom(Number(this.hdrLevel.value)); this.render(); };
+    this.hdrLevel.onchange = () => save('hdrHeadroom', hdr.hdrHeadroom);
     this.soundBox.onchange = () => { sound.toggle(); this.render(); };
     this.musicBox.onchange = () => { music.toggle(); this.render(); };
     $('#settings-back').onclick = () => { hide('#settings'); this.back(); };
@@ -160,6 +169,9 @@ export class SettingsPanel {
     const hdr = this.hdr;
     this.hdrBox.checked = hdr.hdrShown;
     this.hdrBox.disabled = hdr.hdrSupport !== 'available';
+    this.hdrLevel.value = String(hdr.hdrHeadroom);
+    this.hdrLevel.disabled = !hdr.hdrShown;
+    $('#hdr-level-value').textContent = `×${tr({ fr: String(hdr.hdrHeadroom).replace('.', ','), en: String(hdr.hdrHeadroom) })}`;
     $('#hdr-status').textContent = hdrStatus(hdr.hdrSupport, hdr.hdrChoice, hdr.hdrShown);
     $('#hdr-auto').style.display = hdr.hdrSupport === 'available' && hdr.hdrChoice !== 'auto' ? '' : 'none';
     this.soundBox.checked = this.sound.isOn();

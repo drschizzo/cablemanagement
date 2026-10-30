@@ -5,6 +5,7 @@
 
 import { AUTO_QUALITY, QUALITY, type QualityChoice } from '../render/quality';
 import type { HdrChoice } from '../render/hdrScreen';
+import { HDR_HEADROOM } from '../render/toneCurve';
 import { LANGUAGES, preferredLanguage, type Language } from './language';
 import type { CabinetState } from '../game/cabinetState';
 import type { FindId } from '../game/finds';
@@ -153,6 +154,14 @@ const ENTRIES = {
     format: (v: HdrChoice) => v,
     valid: (v: HdrChoice) => v === 'auto' || v === 'on' || v === 'off',
   } satisfies Entry<HdrChoice>,
+  /** how far past white the lights go on an HDR screen (× white), as set in the settings */
+  hdrHeadroom: {
+    key: 'cable.hdr-headroom',
+    fallback: (): number => HDR_HEADROOM.default,
+    parse: (raw: string) => Number(raw),
+    format: (v: number) => String(v),
+    valid: (v: number) => v >= HDR_HEADROOM.min && v <= HDR_HEADROOM.max,
+  } satisfies Entry<number>,
   /** the language chosen in the settings; the browser's, until then */
   language: {
     key: 'cable.language',

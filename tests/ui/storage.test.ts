@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { load, save } from '../../src/ui/storage';
+import { HDR_HEADROOM } from '../../src/render/toneCurve';
 import { AUTO_QUALITY, QUALITY } from '../../src/render/quality';
 
 const mem = new Map<string, string>();
@@ -80,6 +81,16 @@ describe('browser storage', () => {
     expect(load('hdr')).toBe('off');
     mem.set('cable.hdr', 'bright');
     expect(load('hdr')).toBe('auto');
+  });
+
+  it('HDR brightness: kept within its range, the default otherwise', () => {
+    expect(load('hdrHeadroom')).toBe(HDR_HEADROOM.default);
+    save('hdrHeadroom', 6.5);
+    expect(load('hdrHeadroom')).toBe(6.5);
+    for (const bad of ['99', '0.5', 'bright']) {
+      mem.set('cable.hdr-headroom', bad);
+      expect(load('hdrHeadroom')).toBe(HDR_HEADROOM.default);
+    }
   });
 
   it('the tutorial done, then forgotten', () => {

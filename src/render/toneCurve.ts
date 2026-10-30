@@ -10,8 +10,8 @@ const { acesFilmicToneMapping, exp, float, luminance, max, min, mix, vec3 } = ts
 /** the exposure of the image: ×1.15 on the light of the scene */
 const EXPOSURE = 1.15;
 
-/** the brightest the image goes on an HDR screen (linear, × white) */
-export const HDR_HEADROOM = 4;
+/** the brightest the image goes on an HDR screen (linear, × white): as the player sets it, within these */
+export const HDR_HEADROOM = { min: 2, max: 8, default: 4 };
 
 /**
  * Luminance (linear, × white, after the exposure) from which the highlights

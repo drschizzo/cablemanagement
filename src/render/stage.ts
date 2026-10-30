@@ -214,10 +214,21 @@ export class Stage {
     this.applyHdr();
   }
 
+  /** how far past white the image goes when it does (× white, within HDR_HEADROOM) */
+  get hdrHeadroom(): number {
+    return this.headroom;
+  }
+
+  setHdrHeadroom(headroom: number): void {
+    this.headroom = THREE.MathUtils.clamp(headroom, HDR_HEADROOM.min, HDR_HEADROOM.max);
+    this.applyHdr();
+  }
+
   private hdrChosen: HdrChoice = 'auto';
+  private headroom = HDR_HEADROOM.default;
 
   private applyHdr(): void {
-    this.image.setHeadroom(this.hdrShown ? HDR_HEADROOM : 1);
+    this.image.setHeadroom(this.hdrShown ? this.headroom : 1);
   }
 
   /** what the player chose (or what auto has stepped down to) */
