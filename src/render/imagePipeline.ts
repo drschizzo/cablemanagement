@@ -1,18 +1,21 @@
 // The image, from the scene to the screen: the scene drawn once into its
 // buffers (multisampled, linear HDR: its colour, the normals, the depth, what
 // reflects), then the passes that work on them: reflections on the floor,
-// ambient occlusion, the glow of the lights, tone mapping.
+// ambient occlusion, the depth of field, the glow of the lights, tone
+// mapping, the cinema pass.
 
 import * as THREE from 'three/webgpu';
 import { ssr } from 'three/examples/jsm/tsl/display/SSRNode.js';
 import { ao } from 'three/examples/jsm/tsl/display/GTAONode.js';
 import { denoise } from 'three/examples/jsm/tsl/display/DenoiseNode.js';
 import { Bloom } from './bloom';
+import { Cinema } from './cinema';
+import { DepthOfField } from './depthOfField';
 import { tsl, type ShaderNode } from './tsl';
 import type { ScreenMargins } from './stage';
 import type { QualitySettings } from './quality';
 
-const { float, mix, mrt, normalView, output, pass, renderOutput, vec4 } = tsl;
+const { convertToTexture, float, mix, mrt, normalView, output, pass, renderOutput, vec4 } = tsl;
 
 /** samples a pixel when the scene is drawn: the antialiasing of the whole image */
 const SAMPLES = 4;
@@ -70,9 +73,16 @@ export class ImagePipeline {
   private reflections: ShaderNode;
   private occlusion: ShaderNode;
   private bloom: Bloom | null = null;
-  private quality: Pick<QualitySettings, 'ao' | 'ssr'> | null = null;
+  /** the room round the subject blurred; null: everything sharp */
+  private dof: DepthOfField | null = null;
+  private cinema: Cinema | null = null;
+  /** the nodes of the chain that hold targets of their own, freed when it is built again */
+  private owned: { dispose(): void }[] = [];
+  private quality: Pick<QualitySettings, 'ao' | 'ssr'> = { ao: true, ssr: true };
+  private focused = false;
+  private size = new THREE.Vector2();
 
-  constructor(private renderer: THREE.WebGPURenderer, scene: THREE.Scene, camera: THREE.PerspectiveCamera) {
+  constructor(private renderer: THREE.WebGPURenderer, scene: THREE.Scene, private camera: THREE.PerspectiveCamera) {
     this.pipeline = new THREE.RenderPipeline(renderer);
     // tone mapping and the colour space are applied by the chain itself (see compose)
     this.pipeline.outputColorTransform = false;
@@ -97,35 +107,52 @@ export class ImagePipeline {
 
   /** what the image draws: reflections and occlusion, or not */
   setQuality(q: Pick<QualitySettings, 'ao' | 'ssr'>): void {
-    if (this.quality && this.quality.ao === q.ao && this.quality.ssr === q.ssr) return;
+    if (this.bloom && this.quality.ao === q.ao && this.quality.ssr === q.ssr) return;
     this.quality = { ao: q.ao, ssr: q.ssr };
-    this.pipeline.outputNode = this.compose();
-    this.pipeline.needsUpdate = true;
+    this.compose();
   }
 
-  /** the chain, as the quality asks: a pass left out costs nothing */
-  private compose(): ShaderNode {
+  /** (re)builds the chain, as the quality and the focus ask: a pass left out costs nothing */
+  private compose(): void {
+    for (const n of this.owned) n.dispose();
+    const own = <T extends { dispose(): void }>(n: T): T => { this.owned.push(n); return n; };
+    this.owned = [];
     let image: ShaderNode = this.scenePass.getTextureNode('output');
-    if (this.quality!.ssr) {
+    if (this.quality.ssr) {
       // added (the reflections come already weighed by their opacity), masked by what reflects at full
       // resolution: drawn at half of it and blurred, they bled over the edges of the cords and of the
       // equipment standing on the floor
       const reflect = this.scenePass.getTextureNode('reflect').r;
       image = vec4(image.rgb.add(this.reflections.rgb.mul(reflect)), 1);
     }
-    if (this.quality!.ao) image = vec4(image.rgb.mul(mix(1, this.occlusion.r, AO_BLEND)), 1);
-    this.bloom?.dispose();
-    this.bloom = new Bloom(image);
-    return renderOutput(vec4(image.rgb.add(this.bloom.node), 1));
+    if (this.quality.ao) image = vec4(image.rgb.mul(mix(1, this.occlusion.r, AO_BLEND)), 1);
+    this.dof = null;
+    if (this.focused) {
+      this.dof = new DepthOfField(own(convertToTexture(image)), this.scenePass.getTextureNode('depth'), this.camera);
+      // drawn once, read by the glow and by the image
+      image = own(convertToTexture(this.dof.node));
+    }
+    this.bloom = own(new Bloom(image));
+    this.cinema = new Cinema(own(convertToTexture(renderOutput(vec4(image.rgb.add(this.bloom.node), 1)))));
+    this.pipeline.outputNode = this.cinema.node;
+    this.pipeline.needsUpdate = true;
   }
 
   render(frame: ImageFrame): void {
-    this.bloom!.fit(frame.viewDistance, this.renderer.getPixelRatio());
+    if (!!frame.focus !== this.focused) {
+      this.focused = !!frame.focus;
+      this.compose();
+    }
+    const ratio = this.renderer.getPixelRatio();
+    this.renderer.getDrawingBufferSize(this.size);
+    this.bloom!.fit(frame.viewDistance, ratio);
+    if (frame.focus) this.dof!.frame(frame.focus.at, frame.focus.reach, this.size.x, this.size.y, ratio);
+    this.cinema!.frame(frame.dt, window.innerWidth, window.innerHeight, frame.margins);
     this.pipeline.render();
   }
 
   dispose(): void {
-    this.bloom?.dispose();
+    for (const n of this.owned) n.dispose();
     this.pipeline.dispose();
   }
 }
