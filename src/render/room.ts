@@ -1,23 +1,23 @@
 // An abstract stage around the rack: a floor of raised tiles lit in a pool
 // under it, fading into the backdrop.
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import { shared } from './dispose';
+import { reflective } from './imagePipeline';
 
 export function buildRoom(floorY: number): THREE.Group {
   const g = new THREE.Group();
   const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(9, 9),
-    new THREE.MeshStandardMaterial({
+    // picked up by the screen-space reflections of the stage
+    reflective(new THREE.MeshStandardNodeMaterial({
       color: STAGE_FLOOR, map: poolTexture(), transparent: true, roughness: 0.8, metalness: 0,
       normalMap: tileNormals(), normalScale: new THREE.Vector2(1, 1),
-    }),
+    })),
   );
   floor.rotation.x = -Math.PI / 2;
   floor.position.set(0, floorY, 0.3);
   floor.receiveShadow = true;
-  // picked up by the screen-space reflections of the stage
-  floor.userData.reflective = true;
   g.add(floor);
   return g;
 }

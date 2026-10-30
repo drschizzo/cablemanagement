@@ -211,6 +211,7 @@ export class Stage {
   private applyQuality(): void {
     const q = this.qualitySettings;
     this.renderer.setPixelRatio(Math.min(q.ratio, window.devicePixelRatio));
+    this.image.setQuality(q);
     if (this.key.shadow.mapSize.x !== q.shadow) {
       this.key.shadow.mapSize.set(q.shadow, q.shadow);
       // rebuilt at the new size on the next frame

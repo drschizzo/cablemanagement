@@ -6,6 +6,7 @@
 import * as THREE from 'three/webgpu';
 import { LED_CLOCK_WRAP, ledClock, ledViewHeight } from '../leds';
 import { tsl, type ShaderNode } from '../tsl';
+import { keepOutOfDepth } from '../imagePipeline';
 
 const {
   PI2, abs, atan, cameraProjectionMatrix, cos, dot, exp, fract, instancedBufferAttribute, length, max, mix, modelViewMatrix,
@@ -48,7 +49,7 @@ export function roomHaze(shafts: { x: number; z: number }[], random: () => numbe
 function glowMaterial(glow: ShaderNode): THREE.MeshBasicNodeMaterial {
   const m = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false });
   m.colorNode = vec4(vec3(HAZE_COLOR.r, HAZE_COLOR.g, HAZE_COLOR.b).mul(glow), 1);
-  return m;
+  return keepOutOfDepth(m);
 }
 
 /** whole turns while the clock goes round (see ledClock): the motion never jumps when it wraps */
@@ -99,7 +100,7 @@ function dust(shafts: { x: number; z: number }[], random: () => number): THREE.S
   const a = angle.add(turns(3));
   const u = share.add(sin(turns(7).add(angle.mul(5))).mul(0.12));
   const mote = at.add(vec3(cos(a).mul(u).mul(r), h.mul(ROOM_CEILING), sin(a).mul(u).mul(r)));
-  const m = new THREE.PointsNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: false, fog: false });
+  const m = keepOutOfDepth(new THREE.PointsNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: false, fog: false }));
   m.positionNode = mote;
   // a few mm, to pixels; never below a pixel and a half, where a mote would flicker in and out
   const depth = modelViewMatrix.mul(vec4(mote, 1)).z.negate();

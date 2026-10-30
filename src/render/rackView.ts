@@ -72,7 +72,7 @@ export class RackView {
     rack.units.forEach((u, k) => this.buildUnit(k, panelTypes.get(k) ?? 'OS2'));
     this.buildLabels();
     // the cabinet and its equipment never move: one mesh per material
-    mergeStatic(this.group, (m) => m.parent === this.group && !m.userData.reflective);
+    mergeStatic(this.group, (m) => m.parent === this.group);
     this.layParts();
     const ports = rack.ports.filter((p) => this.ledOf.has(p.id));
     const count = ports.length + this.trafficOf.size;
