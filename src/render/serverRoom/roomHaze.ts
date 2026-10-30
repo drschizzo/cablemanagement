@@ -7,11 +7,14 @@ import * as THREE from 'three/webgpu';
 import { LED_CLOCK_WRAP, ledClock, ledViewHeight } from '../leds';
 import { tsl, type ShaderNode } from '../tsl';
 import { keepOutOfDepth } from '../imagePipeline';
+import { shared } from '../dispose';
 
 const {
-  PI2, abs, atan, cameraProjectionMatrix, cos, dot, exp, fract, instancedBufferAttribute, length, max, mix, modelViewMatrix,
+  abs, atan, cameraProjectionMatrix, cos, dot, exp, fract, instancedBufferAttribute, length, max, mix, modelViewMatrix,
   normalView, normalize, positionLocal, positionView, pow, screenDPR, sin, smoothstep, uv, varying, vec3, vec4,
 } = tsl;
+
+const TWO_PI = Math.PI * 2;
 
 /** the ceiling the shafts fall from, above the floor (m) */
 export const ROOM_CEILING = 2.7;
@@ -53,7 +56,7 @@ function glowMaterial(glow: ShaderNode): THREE.MeshBasicNodeMaterial {
 }
 
 /** whole turns while the clock goes round (see ledClock): the motion never jumps when it wraps */
-const turns = (n: number) => ledClock.mul(PI2 * n / LED_CLOCK_WRAP);
+const turns = (n: number) => ledClock.mul(TWO_PI * n / LED_CLOCK_WRAP);
 
 function shaftMaterial(seed: number): THREE.MeshBasicNodeMaterial {
   const local = positionLocal;
@@ -95,7 +98,7 @@ function dust(shafts: { x: number; z: number }[], random: () => number): THREE.S
   const at = instancedBufferAttribute(new THREE.InstancedBufferAttribute(new Float32Array(base), 3));
   const sp = instancedBufferAttribute(new THREE.InstancedBufferAttribute(new Float32Array(spot), 4));
   const angle = sp.x, share = sp.y, start = sp.z, fall = sp.w;
-  const h = fract(start.sub(turns(1).mul(fall).div(PI2)));
+  const h = fract(start.sub(turns(1).mul(fall).div(TWO_PI)));
   const r = mix(SHAFT_FLOOR_R, SHAFT_TOP_R, h);
   const a = angle.add(turns(3));
   const u = share.add(sin(turns(7).add(angle.mul(5))).mul(0.12));
@@ -111,9 +114,9 @@ function dust(shafts: { x: number; z: number }[], random: () => number): THREE.S
   const d = length(uv().sub(0.5)).mul(2);
   m.colorNode = vec4(vec3(HAZE_COLOR.r, HAZE_COLOR.g, HAZE_COLOR.b).mul(glow).mul(max(0, d.oneMinus())), 1);
   const motes = new THREE.Sprite(m);
+  // three gives every sprite the same quad: freeing it with a room would pull it from under the others
+  shared(motes.geometry);
   motes.count = shafts.length * DUST_MOTES;
   motes.frustumCulled = false;
   return motes;
 }
-
-const TWO_PI = Math.PI * 2;
