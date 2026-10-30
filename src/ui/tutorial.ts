@@ -13,7 +13,8 @@ import { levelRules } from '../game/levels/levelRules';
 import { withMet } from './progress';
 import { $ } from '../lib/page';
 import { onLanguageChange, tr, type Words } from './language';
-import { toolKey } from './toolbar';
+import { STOCK_KEY, toolKey } from './toolbar';
+import { DELETE_KEY } from './keyHints';
 
 type Box = { min: [number, number, number]; max: [number, number, number] };
 
@@ -177,6 +178,16 @@ const ADVANCED: Step[] = [
     task: { fr: 'Survolez un coude pincé', en: 'Hover a pinched bend' },
     tool: 'hand',
     done: (ctl) => ctl.cableView.pinchHover >= 0,
+  },
+  {
+    title: { fr: 'Jeter un câble', en: 'Throw a cord away' },
+    text: {
+      fr: `Un câble qui ne sert plus, trop long ou abîmé va au <b>bac</b>, au sol devant la baie. Survolez-le (ou tenez-le en main) et appuyez sur <b>${DELETE_KEY.fr}</b> : il se débranche, s'enroule et tombe dans le bac. Le <b>Stock</b> (${STOCK_KEY}) fournit des câbles neufs, qui arrivent eux aussi dans le bac. Essayez, puis <b>Ctrl+Z</b> le remet en place.`,
+      en: `A cord no longer used, too long or damaged goes to the <b>crate</b>, on the floor in front of the cabinet. Hover it (or hold it in hand) and press <b>${DELETE_KEY.en}</b>: it is unplugged, coiled and dropped in the crate. The <b>Stock</b> (${STOCK_KEY}) provides new cords, which also arrive in the crate. Try it, then <b>Ctrl+Z</b> puts it back.`,
+    },
+    task: { fr: 'Jetez un câble au bac', en: 'Throw a cord into the crate' },
+    tool: 'hand',
+    done: (ctl) => ctl.counters.deposited >= 1,
   },
   {
     title: { fr: 'La goulotte', en: 'The duct' },

@@ -9,6 +9,7 @@ import { formatLength } from './format';
 import { $ } from '../lib/page';
 import { cordTypeName, serviceName } from './names';
 import { tr } from './language';
+import { DELETE_KEY } from './keyHints';
 
 export class StockMenu {
   private menu = $('#stock-menu');
@@ -30,8 +31,8 @@ export class StockMenu {
       const stock = ctl.world.cordStock;
       const bypasses = ctl.world.maintenance.bypassesLeft;
       const head = tr({
-        fr: 'Stock de câbles neufs<span>Ils arrivent enroulés dans le bac, au sol. Remplacer un câble branché coupe sa liaison le temps de changer.</span>',
-        en: 'Stock of new cords<span>They arrive coiled in the crate, on the floor. Swapping a plugged cord cuts its link while it is changed.</span>',
+        fr: `Stock de câbles neufs<span>Ils arrivent enroulés dans le bac, au sol. Remplacer un câble branché coupe sa liaison le temps de changer. Pour jeter un câble au bac : <b>${DELETE_KEY.fr}</b> dessus.</span>`,
+        en: `Stock of new cords<span>They arrive coiled in the crate, on the floor. Swapping a plugged cord cuts its link while it is changed. To throw a cord in the crate: <b>${DELETE_KEY.en}</b> over it.</span>`,
       });
       const foot = tr({ fr: `Dérivations : <b>${bypasses}</b><span>Cliquez le ⚡ d'une liaison du plan.</span>`, en: `Bypasses: <b>${bypasses}</b><span>Click the ⚡ of a link on the schedule.</span>` });
       this.menu.innerHTML = `<div class="h">${head}</div>

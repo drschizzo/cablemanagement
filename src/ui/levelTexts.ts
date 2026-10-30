@@ -6,6 +6,7 @@
 import type { LevelDef } from '../game/levels/levelDef';
 import { assertNever } from '../lib/assertNever';
 import { tr, type Words } from './language';
+import { DELETE_KEY } from './keyHints';
 
 interface LevelText {
   title: string;
@@ -14,8 +15,8 @@ interface LevelText {
 }
 
 const LENGTH_TIP: Words = {
-  fr: 'Un câble trop long se remplace par un câble neuf du Stock (0), qui arrive dans le bac : il faut couper la liaison le temps de changer. Le stock est compté : choisissez bien qui reçoit quel câble.',
-  en: 'A cord too long is swapped for a new one from the Stock (0), which arrives in the crate: the link is cut while it is changed. The stock is counted: choose well which link gets which cord.',
+  fr: `Un câble trop long se remplace par un câble neuf du Stock (0), qui arrive dans le bac ; l'ancien y part avec ${DELETE_KEY.fr} (survolé ou en main). Il faut couper la liaison le temps de changer. Le stock est compté : choisissez bien qui reçoit quel câble.`,
+  en: `A cord too long is swapped for a new one from the Stock (0), which arrives in the crate; the old one goes there with ${DELETE_KEY.en} (hovered or in hand). The link is cut while it is changed. The stock is counted: choose well which link gets which cord.`,
 };
 
 /** the campaign's levels, by id */
@@ -101,7 +102,7 @@ const CAMPAIGN: Record<string, Words<LevelText>> = {
       title: 'Salle serveurs',
       brief: 'Deux panneaux, deux switchs, le cœur de réseau et les serveurs : 25 liaisons. Déposez ce qui gêne dans le bac, rebrassez proprement, et serrez les câbles en faisceaux.',
       tips: [
-        'Suppr sur un câble : il est débranché et jeté dans le bac. Le Stock (0) fournit des câbles neufs, en nombre limité.',
+        `${DELETE_KEY.fr} sur un câble : il est débranché et jeté dans le bac. Le Stock (0) fournit des câbles neufs, en nombre limité.`,
         'Seulement 4 goulottes : choisissez les couloirs où elles servent le plus.',
       ],
     },
@@ -109,7 +110,7 @@ const CAMPAIGN: Record<string, Words<LevelText>> = {
       title: 'Server room',
       brief: 'Two panels, two switches, the network core and the servers: 25 links. Drop what is in the way into the crate, repatch cleanly, and strap the cords in bundles.',
       tips: [
-        'Delete over a cord: it is unplugged and thrown into the crate. The Stock (0) provides new cords, in limited numbers.',
+        `${DELETE_KEY.en} over a cord: it is unplugged and thrown into the crate. The Stock (0) provides new cords, in limited numbers.`,
         'Only 4 ducts: choose the channels where they help most.',
       ],
     },
@@ -205,12 +206,12 @@ const TICKETS: Words<LevelText>[] = [
     en: { title: 'The sound engineer', brief: 'Two new desks for the sound control room, and Gérard, the sound engineer, who comes to “just grab a cable” from the cabinet while you are at it. He unplugs what he should not, and the switchboard calls: plug it back before the countdown ends.' },
   },
   {
-    fr: { title: 'L\'émission de nuit déménage', brief: 'L\'émission de nuit change de studio : quatre liaisons ne servent plus (leurs câbles sont encore branchés : au bac), quatre nouvelles les remplacent. L\'animateur, lui, est déjà à l\'antenne : ne coupez pas ce qui sert encore.' },
-    en: { title: 'The night show moves', brief: 'The night show changes studios: four links are out of service (their cords are still plugged: into the crate), four new ones replace them. The host, for his part, is already on air: do not cut what is still in use.' },
+    fr: { title: 'L\'émission de nuit déménage', brief: `L'émission de nuit change de studio : quatre liaisons ne servent plus (leurs câbles sont encore branchés : au bac, touche ${DELETE_KEY.fr} sur chacun), quatre nouvelles les remplacent. L'animateur, lui, est déjà à l'antenne : ne coupez pas ce qui sert encore.` },
+    en: { title: 'The night show moves', brief: `The night show changes studios: four links are out of service (their cords are still plugged: into the crate, ${DELETE_KEY.en} over each), four new ones replace them. The host, for his part, is already on air: do not cut what is still in use.` },
   },
   {
-    fr: { title: 'Un câble fatigué', brief: 'Deux postes de plus à la rédaction, et une liaison qui reste rouge alors qu\'elle est branchée comme prévu : un vieux câble, coupé à l\'intérieur. Le Testeur (4) dit lequel ; jetez-le au bac et remplacez-le par un neuf du Stock.' },
-    en: { title: 'A tired cord', brief: 'Two more desks in the newsroom, and a link that stays red though it is plugged as planned: an old cord, broken inside. The Tester (4) tells which one; throw it in the crate and replace it with a new one from the Stock.' },
+    fr: { title: 'Un câble fatigué', brief: `Deux postes de plus à la rédaction, et une liaison qui reste rouge alors qu'elle est branchée comme prévu : un vieux câble, coupé à l'intérieur. Le Testeur (4) dit lequel ; jetez-le au bac (${DELETE_KEY.fr} dessus) et remplacez-le par un neuf du Stock.` },
+    en: { title: 'A tired cord', brief: `Two more desks in the newsroom, and a link that stays red though it is plugged as planned: an old cord, broken inside. The Tester (4) tells which one; throw it in the crate (${DELETE_KEY.en} over it) and replace it with a new one from the Stock.` },
   },
   {
     fr: { title: 'Le festival de la pinède', brief: 'Trois jours de concerts sous les pins, retransmis en direct. Un deuxième panneau et son switch sont installés sous le premier pour la régie mobile : huit liaisons à créer, et le switch T à relier au pare-feu. Les techniciens son passeront derrière vous ; laissez-leur une baie lisible.' },

@@ -8,6 +8,7 @@ import { $ } from '../lib/page';
 import { countOf } from './names';
 import { iconComb, iconFingerManager, iconHand, iconRoute, iconStock, iconTester, iconVelcro } from './icons';
 import { tr, type Words } from './language';
+import { DELETE_KEY } from './keyHints';
 
 interface ToolButton {
   /** its keyboard shortcut */
@@ -25,8 +26,8 @@ export const TOOL_BUTTONS: Record<Tool, ToolButton> = {
   hand: {
     key: '1', name: { fr: 'Main', en: 'Hand' }, icon: iconHand(), showsStock: false,
     help: {
-      fr: 'Saisir, tirer, débrancher et brancher ; un connecteur lâché en l\'air y reste accroché (Alt en lâchant : il pend). Survol d\'un câble : <b>T</b> le trace, <b>Suppr</b> le jette au bac. Maj : profondeur ; Espace : pincer un coude ; E : l\'autre main. Glisser dans le vide : déplacer la vue.',
-      en: 'Grab, pull, unplug and plug; a connector let go in the air stays hooked there (Alt while letting go: it hangs). Over a cord: <b>T</b> traces it, <b>Delete</b> throws it into the crate. Shift: depth; Space: pinch a bend; E: the other hand. Drag in empty space: move the view.',
+      fr: `Saisir, tirer, débrancher et brancher ; un connecteur lâché en l'air y reste accroché (Alt en lâchant : il pend). Survol d'un câble : <b>T</b> le trace, <b>${DELETE_KEY.fr}</b> le jette au bac (en main aussi). Maj : profondeur ; Espace : pincer un coude ; E : l'autre main. Glisser dans le vide : déplacer la vue.`,
+      en: `Grab, pull, unplug and plug; a connector let go in the air stays hooked there (Alt while letting go: it hangs). Over a cord: <b>T</b> traces it, <b>${DELETE_KEY.en}</b> throws it into the crate (in hand too). Shift: depth; Space: pinch a bend; E: the other hand. Drag in empty space: move the view.`,
     },
   },
   route: {

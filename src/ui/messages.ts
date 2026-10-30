@@ -11,6 +11,7 @@ import { assertNever } from '../lib/assertNever';
 import { formatCost, formatDecimal } from './format';
 import { cordTypeName, serviceName, supplyName } from './names';
 import { tr } from './language';
+import { DELETE_KEY } from './keyHints';
 
 export function strainLabel(strain: Strain): string {
   switch (strain) {
@@ -125,7 +126,7 @@ function hoverNoteText(n: HoverNote): string {
   switch (n.kind) {
     case 'connectorPlugged': return tr({ fr: 'connecteur : saisir et tirer pour débrancher', en: 'connector: grab and pull to unplug' });
     case 'connectorLoose': return tr({ fr: 'connecteur : relâchez-le devant un port pour le brancher', en: 'connector: let go of it in front of a port to plug it' });
-    case 'traceOrCrate': return tr({ fr: 'T : tracer · Suppr : au bac', en: 'T: trace · Delete: to the crate' });
+    case 'traceOrCrate': return tr({ fr: `T : tracer · ${DELETE_KEY.fr} : au bac`, en: `T: trace · ${DELETE_KEY.en}: to the crate` });
     case 'pinched': return tr({ fr: 'Coude pincé — Espace : le relâcher', en: 'Pinched bend — Space: release it' });
     case 'heldByOtherHand': return tr({ fr: 'Tenu par l\'autre main — E : la lâcher', en: 'Held by the other hand — E: let go' });
     case 'stacked': return tr({ fr: `${n.count} câbles sous le curseur — Tab : suivant`, en: `${n.count} cords under the pointer — Tab: next` });

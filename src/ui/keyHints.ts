@@ -20,6 +20,10 @@ export interface KeyCap {
 }
 
 const CLICK: Words = { fr: 'Clic', en: 'Click' };
+/** the key that throws a cord into the crate: ⌫ on a Mac, whose keyboard has no Suppr (Backspace works too elsewhere) */
+export const DELETE_KEY: Words = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent)
+  ? { fr: '⌫', en: '⌫' }
+  : { fr: 'Suppr', en: 'Delete' };
 const ESCAPE: KeyCap = { keys: { fr: 'Échap', en: 'Esc' }, action: { fr: 'revenir à la main', en: 'back to the hand' } };
 
 /** the keys that matter in this context, the most useful first */
@@ -29,6 +33,7 @@ export function keysFor(ctx: KeyContext): KeyCap[] {
       { keys: CLICK, action: { fr: 'saisir un câble', en: 'grab a cord' } },
       { keys: { fr: 'Clic droit + glisser', en: 'Right-drag' }, action: { fr: 'tourner la vue', en: 'turn the view' } },
       { keys: { fr: 'C', en: 'C' }, action: { fr: 'tracer un chemin', en: 'draw a route' } },
+      { keys: { fr: `${DELETE_KEY.fr} sur un câble`, en: `${DELETE_KEY.en} over a cord` }, action: { fr: 'le jeter au bac', en: 'throw it in the crate' } },
       { keys: { fr: 'Ctrl+Z', en: 'Ctrl+Z' }, action: { fr: 'annuler', en: 'undo' } },
     ];
     case 'route': return [
@@ -66,7 +71,7 @@ function cordKeys(notes: readonly HoverNote[]): KeyCap[] {
       case 'connectorLoose': caps[0] = { keys: { fr: 'Glisser vers un port', en: 'Drag to a port' }, action: { fr: 'brancher', en: 'plug' } }; break;
       case 'traceOrCrate':
         caps.push({ keys: { fr: 'T', en: 'T' }, action: { fr: 'tracer', en: 'trace' } });
-        caps.push({ keys: { fr: 'Suppr', en: 'Delete' }, action: { fr: 'au bac', en: 'to the crate' } });
+        caps.push({ keys: DELETE_KEY, action: { fr: 'au bac', en: 'to the crate' } });
         break;
       case 'pinched': caps.push({ keys: { fr: 'Espace', en: 'Space' }, action: { fr: 'défaire le coude', en: 'undo the bend' } }); break;
       case 'heldByOtherHand': caps.push({ keys: { fr: 'E', en: 'E' }, action: { fr: 'lâcher l\'autre main', en: 'let go of the other hand' } }); break;

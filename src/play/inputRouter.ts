@@ -141,14 +141,16 @@ export class InputRouter {
     key('keyup', (e) => { if (e.key === 'Shift') hand.shiftChanged(false); });
     key('keydown', (e) => supports.setShift(e.shiftKey));
     key('keyup', (e) => supports.setShift(e.shiftKey));
-    // T over a cord: the tracer; Delete: into the crate
+    // T over a cord: the tracer; Delete: into the crate, the cord under the pointer or the one in hand
     key('keydown', (e) => {
       if (!plain(e)) return;
-      const p = hand.carried ? null : level.hoveredCord();
+      const carried = hand.carried;
+      const p = carried ? null : level.hoveredCord();
       if (e.code === 'KeyT' && p) level.trace(p.cable);
-      else if ((e.key === 'Delete' || e.key === 'Backspace') && p) {
+      else if ((e.key === 'Delete' || e.key === 'Backspace') && (p || carried)) {
         e.preventDefault();
-        level.deposit(p.cable);
+        hand.drop();
+        level.deposit(carried ? carried.cable : p!.cable);
       }
     });
     // Space: pinch the cord carried, or let go of the pinch under the pointer

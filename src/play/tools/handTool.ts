@@ -379,6 +379,13 @@ export class HandTool implements ToolHandler {
     sfx.grab();
   }
 
+  /** the hand lets go where it is, plugging nothing (Delete with a cord in hand: it goes to the crate) */
+  drop(): void {
+    if (!this.carry) return;
+    this.ctx.portHint.set(null);
+    this.letGo(false);
+  }
+
   /** E with the hand free: the other hand lets go */
   letGoOtherHand(): void {
     const sim = this.ctx.world.sim;
