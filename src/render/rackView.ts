@@ -1,7 +1,7 @@
 // The cabinet as the player sees it: its frame, its equipment and their
 // ports, the name plates, the LEDs, and the cable management items.
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { COLUMN_X, FRONT_Z, ROOM_FLOOR, Rack, SIDE_BACK, U, WALL_X, type Port, type UnitSpec } from '../game/rack';
 import type { CordType } from '../game/cordTypes';

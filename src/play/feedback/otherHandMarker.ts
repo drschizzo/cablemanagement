@@ -1,7 +1,7 @@
 // The other hand: a soft glow round the point where it holds a cord still,
 // seen through the cords.
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import type { RackCableSim } from '../../game/physics/rackCableSim';
 
 export class OtherHandMarker {

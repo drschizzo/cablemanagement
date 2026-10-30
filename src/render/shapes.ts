@@ -1,7 +1,7 @@
 // Geometry helpers for the equipment: rounded boxes and rectangles, and the
 // walls of the crate.
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 
 /** a box with rounded edges (r: bevel radius); made once per size, then copied (the faces of the units repeat) */

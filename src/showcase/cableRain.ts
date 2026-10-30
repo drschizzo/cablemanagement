@@ -10,9 +10,8 @@
 // rest. A cord at rest is frozen, and costs nothing but its triangles: the
 // physics and the nodes sent each frame are those of the few in the air.
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import { TubeMesh, TubeNodes } from '@drschizzo/three-cable-tubes/webgpu';
-import { MeshStandardNodeMaterial } from 'three/webgpu';
 import { InstancedParts } from '../render/instancedParts';
 import { CABLE_R } from '../game/rack';
 import { SERVICES } from '../game/services';
@@ -134,12 +133,12 @@ export class CableRain {
     // two plugs per cord: a clear RJ45 on copper, an LC on fibre (opaque: a transmissive
     // material would cost the whole scene drawn once more)
     const kinds = [
-      { copper: false, housing: new MeshStandardNodeMaterial({ roughness: 0.4 }) },
-      { copper: true, housing: new MeshStandardNodeMaterial({ color: '#cfd8dc', roughness: 0.18 }) },
+      { copper: false, housing: new THREE.MeshStandardNodeMaterial({ roughness: 0.4 }) },
+      { copper: true, housing: new THREE.MeshStandardNodeMaterial({ color: '#cfd8dc', roughness: 0.18 }) },
     ];
     this.plugs = kinds.map(({ copper, housing }) => {
       const g = connectorGeos(R, copper ? 'rj45' : 'lc');
-      const inst = (geo: THREE.BufferGeometry, m: MeshStandardNodeMaterial) => {
+      const inst = (geo: THREE.BufferGeometry, m: THREE.MeshStandardNodeMaterial) => {
         const im = new InstancedParts(geo, m, 2 * POOL);
         im.castShadow = true;
         im.matrices.setUsage(THREE.DynamicDrawUsage);
@@ -147,7 +146,7 @@ export class CableRain {
         this.group.add(im);
         return im;
       };
-      return { boot: inst(g.boot, new MeshStandardNodeMaterial({ roughness: 0.42 })), housing: inst(g.housing, housing) };
+      return { boot: inst(g.boot, new THREE.MeshStandardNodeMaterial({ roughness: 0.42 })), housing: inst(g.housing, housing) };
     });
   }
 

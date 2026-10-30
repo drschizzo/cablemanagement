@@ -5,7 +5,7 @@
 // cable ties, slack out of a grommet).
 // Each is built in its own frame (on the floor, at the origin), then placed.
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import { CORD_R, RoomParts, randomCordColor } from './roomParts';
 
 /** the tray: its width (m), the pitch of its rungs */

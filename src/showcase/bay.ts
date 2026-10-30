@@ -2,7 +2,7 @@
 // cabinet): its world, its view, and the flight that carries its cords from
 // one shape to the other.
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import type { Stage } from '../render/stage';
 import { RackView, type UnitLabeller } from '../render/rackView';
 import { CableView } from '../render/cableView';

@@ -1,7 +1,7 @@
 // The free port a carried connector (or the end of a drawn way) would plug
 // into: its marker lit yellow.
 
-import type * as THREE from 'three';
+import type * as THREE from 'three/webgpu';
 import type { RackView } from '../../render/rackView';
 import type { Port } from '../../game/rack';
 

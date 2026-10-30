@@ -2,7 +2,7 @@
 // pointer in pixels and in normalised device coordinates, the ray through it,
 // and the conversions between the screen and the cabinet.
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import type { Stage } from '../render/stage';
 
 /** a position on the canvas, in CSS pixels from its top left corner */

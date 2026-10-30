@@ -4,7 +4,7 @@
 // a light from behind that outlines the cabinet, and LED battens hung over
 // the aisle, their light in the haze. Nothing here is played: it never moves, and is never picked.
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import { rng } from '../../lib/random';
 import { once } from '../../lib/once';
 import { ledMesh } from '../leds';

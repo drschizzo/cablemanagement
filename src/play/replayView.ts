@@ -3,7 +3,7 @@
 // LEDs of the cabinet's view set as they were. It stands in for the cabinet's
 // cords while it plays; disposed, the cabinet shows as it is again.
 
-import type * as THREE from 'three';
+import type * as THREE from 'three/webgpu';
 import { CableView, type CordsSource } from '../render/cableView';
 import { disposeTree } from '../render/dispose';
 import type { RackView } from '../render/rackView';

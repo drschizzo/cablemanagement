@@ -3,7 +3,7 @@
 // tool takes nothing; the keys are the shortcuts of the hand (pinch, other
 // hand, tracer, crate) and of the level (undo, next cord under the pointer).
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import type { Stage } from '../render/stage';
 import type { ControllerEvents, GestureCounters, Tool, ToolHandler } from './context';
 import type { CordPick } from './picking';

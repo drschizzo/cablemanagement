@@ -25,7 +25,7 @@ import { cordInfo } from './cordInfo';
 import type { HoverNote } from './messages';
 import { captureFront } from '../render/frontImage';
 import { buildFind } from '../render/findView';
-import type * as THREE from 'three';
+import type * as THREE from 'three/webgpu';
 import { Timelapse } from './timelapse';
 import { ReplayRecorder, type ReplayKey } from './replay';
 import { ReplayView } from './replayView';

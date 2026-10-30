@@ -1,6 +1,6 @@
 // A light bevelled box, for the thousands of small parts of the equipment.
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 
 /**
  * A box with its edges and corners cut off by `r` (at most a little under half

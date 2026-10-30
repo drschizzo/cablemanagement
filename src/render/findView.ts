@@ -2,7 +2,7 @@
 // a mug, a rubber duck…), small and ordinary enough to be missed under the
 // cords.
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import type { Find, FindId } from '../game/finds';
 import { assertNever } from '../lib/assertNever';
 import { roundedBox } from './shapes';

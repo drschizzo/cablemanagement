@@ -4,7 +4,7 @@
 // (E); pulls a plugged connector out, and plugs or hooks a loose one where it
 // is let go.
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import { sfx } from '../../audio/sfx';
 import { disposeTree } from '../../render/dispose';
 import { COLUMN_X, FRONT_Z, ROOM_FLOOR, WALL_X, type Port } from '../../game/rack';

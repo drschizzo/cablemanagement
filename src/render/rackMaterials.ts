@@ -1,14 +1,13 @@
 // The materials of the cabinet and its equipment, made once and shared by
 // every level; and the ghosts of the supports tool.
 
-import * as THREE from 'three';
-import { MeshStandardNodeMaterial } from 'three/webgpu';
+import * as THREE from 'three/webgpu';
 import { shared } from './dispose';
 import { worn, type Wear } from './rackWear';
 
 /** a painted or plastic part, worn by years in the room */
-function used(params: THREE.MeshStandardMaterialParameters, wear: Wear): THREE.MeshStandardMaterial {
-  return worn(new MeshStandardNodeMaterial(params), wear) as unknown as THREE.MeshStandardMaterial;
+function used(params: THREE.MeshStandardMaterialParameters, wear: Wear): THREE.MeshStandardNodeMaterial {
+  return worn(new THREE.MeshStandardNodeMaterial(params), wear);
 }
 
 // warm graphite powder-coat rather than blue-grey steel

@@ -3,7 +3,7 @@
 // materials, cached textures) is marked with shared() and never freed: freeing
 // it would only force three.js to upload or compile it again on its next use.
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import type { TubeMesh } from '@drschizzo/three-cable-tubes/webgpu';
 import type { InstancedParts } from './instancedParts';
 

@@ -2,7 +2,7 @@
 // guides, in the order it must take them, and ends it on a free port; let go,
 // the cord is laid along the way (a RouteRun, a few physics steps at a time).
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import { sfx } from '../../audio/sfx';
 import { disposeTree } from '../../render/dispose';
 import { RouteRun, planRoute } from '../../game/routeLaying';

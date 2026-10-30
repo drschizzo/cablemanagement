@@ -1,6 +1,6 @@
 // A pulsing frame around a region of the cabinet (the tutorial points with it).
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import { disposeTree } from '../../render/dispose';
 
 export interface Box3Like {

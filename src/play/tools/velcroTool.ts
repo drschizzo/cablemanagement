@@ -2,7 +2,7 @@
 // side; let go, a strap closes round the cords it crossed. A click on a strap
 // takes it off.
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import { sfx } from '../../audio/sfx';
 import { disposeTree } from '../../render/dispose';
 import type { Strap } from '../../game/cables';

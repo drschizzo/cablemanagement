@@ -1,7 +1,7 @@
 // One closet of the aisle: the mess and the tidy cabinet, two worlds on the
 // same rack, and the choreography from one to the other.
 
-import type * as THREE from 'three';
+import type * as THREE from 'three/webgpu';
 import type { Stage } from '../render/stage';
 import { SHOWCASE_SETTLE } from '../game/levels/showcaseRack';
 import { U } from '../game/rack';

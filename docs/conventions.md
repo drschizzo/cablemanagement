@@ -164,7 +164,8 @@ dépendent pas de la discipline de chaque appelant : le compilateur refuse toute
 **Une dépendance fragile se vérifie.** Le jeu ne s'appuie que sur l'API publique de three.js ; ce qu'il donne par
 son nom à un nœud de three.js (un réglage des reflets, de l'occlusion) est confronté à la version installée par
 `tests/render/threeNodes.test.ts`, et ESLint refuse ce que `WebGPURenderer` ignorerait sans erreur (du GLSL, une
-passe de l'`EffectComposer`). Une mise à jour dit ce qui a bougé (`docs/mise-a-jour-three.md`).
+passe de l'`EffectComposer`). three.js s'importe d'un seul chemin, `three/webgpu`, qui donne aussi les matériaux à
+nœuds : un matériau du jeu a son vrai type, sans `as unknown as`. Une mise à jour dit ce qui a bougé (`docs/mise-a-jour-three.md`).
 
 **Échouer tôt et bruyamment.** Un élément absent de `index.html` lève une erreur qui le nomme (`$` dans
 `lib/page.ts`), et un test vérifie qu'il ne manque aucun id ; un réglage qu'un nœud de three.js ne lit plus fait

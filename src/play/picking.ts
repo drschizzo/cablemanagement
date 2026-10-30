@@ -1,7 +1,7 @@
 // What is under the pointer: the cords (in screen space, one pick per cord,
 // Tab walking down the list), the guides, the free ports.
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import type { Stage } from '../render/stage';
 import type { World } from '../game/world';
 import type { Guide, Port } from '../game/rack';

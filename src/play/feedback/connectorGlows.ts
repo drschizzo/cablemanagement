@@ -1,7 +1,7 @@
 // A glow on every free connector, so that none is lost in the heap: cyan when
 // lying loose, amber when hooked in the air.
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import type { World } from '../../game/world';
 
 const LOOSE_COLOR = '#5cd8ff';

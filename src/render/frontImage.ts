@@ -1,7 +1,7 @@
 // An image of the cabinet from the front, framed in the space the panels
 // leave free (the before/after of the result screen).
 
-import type * as THREE from 'three';
+import type * as THREE from 'three/webgpu';
 import type { Stage } from './stage';
 
 /** `hidden`: overlays left out of the image (their visibility is restored after) */

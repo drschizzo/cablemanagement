@@ -6,7 +6,7 @@
 // front from port to port, a few hanging to the floor. Every cord stays in
 // front of the faces it crosses.
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import { U } from '../../game/rack';
 import { pick } from '../../lib/random';
 import { activity, pulse } from '../leds';

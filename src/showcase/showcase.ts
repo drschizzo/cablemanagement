@@ -10,7 +10,7 @@
 // the other (or slumps back to the floor), and is swapped for the short cord
 // of the other world where the two shapes coincide.
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import type { Stage } from '../render/stage';
 import { buildFloor } from '../render/floor';
 import { disposeTree } from '../render/dispose';

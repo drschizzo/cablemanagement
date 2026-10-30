@@ -1,7 +1,7 @@
 // Textures drawn on a canvas for the cabinet: the perforated grille of the
 // doors, the holes of the rails, and the soft contact shadow on the floor.
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import { U } from '../game/rack';
 import { shared } from './dispose';
 import { once } from '../lib/once';

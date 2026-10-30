@@ -2,7 +2,7 @@
 // few meshes: solids and cords coloured per vertex, dimly lit screens, and
 // blinking lights. A rack or a prop is built in its own frame, then placed.
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { STEADY, type Blink, type LedSpec } from '../leds';
 import { bevelBox } from '../bevel';

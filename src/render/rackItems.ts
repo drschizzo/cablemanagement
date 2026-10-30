@@ -1,7 +1,7 @@
 // The cable management items of a cabinet (finger managers, ducts, rings),
 // built from their own collision shapes so that what you see is what holds.
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import { COLUMN_X, Rack, SIDE_BACK, SIDE_IN, SIDE_OUT, U, type Item } from '../game/rack';
 import type { RackShape } from '../game/physics/rackCableSim';
 import type { ItemKind } from '../game/supplies';

@@ -1,6 +1,6 @@
 // Dev-only helpers to drive the game from the console or automated checks
 // (the game loop can be pumped by hand when the page is hidden).
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import { insideBox, type SupportBox } from '../game/rack';
 import { ledClock, ledViewHeight } from '../render/leds';
 import { ledGlows, ledLight, ledLightRack } from '../render/ledGlow';

@@ -4,8 +4,7 @@
 // move are merged by material; parts repeated by the hundred (connectors, port
 // LEDs) are instanced, with a colour and a glow of their own per instance.
 
-import * as THREE from 'three';
-import type { MeshStandardNodeMaterial } from 'three/webgpu';
+import * as THREE from 'three/webgpu';
 import { addGlow } from './glowTerms';
 import { tsl } from './tsl';
 
@@ -13,7 +12,7 @@ import { tsl } from './tsl';
 const TINT = tsl.attribute('emissiveTint', 'vec3');
 
 /** a standard material whose parts light up one at a time, from their `emissiveTint` (linear RGB) */
-export function tintable<T extends MeshStandardNodeMaterial>(m: T): T {
+export function tintable<T extends THREE.MeshStandardNodeMaterial>(m: T): T {
   return addGlow(m, TINT);
 }
 

@@ -2,7 +2,7 @@
 // (a ring with Shift, or when no duct is left); on an item already there, take
 // it off. A ghost shows what a click would do.
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import { sfx } from '../../audio/sfx';
 import { buildItem } from '../../render/rackItems';
 import { ghostBadMat, ghostMat } from '../../render/rackMaterials';

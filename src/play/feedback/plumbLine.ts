@@ -1,7 +1,7 @@
 // The depth cue while carrying a cord: a plumb line from the held point to the
 // floor, a ring where it lands, and a tick on the equipment face.
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import { FRONT_Z, ROOM_FLOOR, type Rack } from '../../game/rack';
 
 const COLOR_PLANE = '#5cc8ff';

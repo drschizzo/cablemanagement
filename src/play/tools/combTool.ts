@@ -2,7 +2,7 @@
 // teeth held at it; let go, they are laid side by side in their order along
 // the way it took, and the crossings come undone (game/comb.ts).
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import { sfx } from '../../audio/sfx';
 import { CombStroke } from '../../game/comb';
 import type { V3 } from '../../lib/vec3';

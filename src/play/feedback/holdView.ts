@@ -2,7 +2,7 @@
 // hanging too long (orange), on the floor (red). While carried, and a moment
 // after it is let go or laid.
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import { HOLD } from '../../game/evaluation';
 import type { PlayContext } from '../context';
 
