@@ -9,6 +9,7 @@ import { CableView } from '../render/cableView';
 import { DEFAULT_LOOK, type Look } from '../render/look';
 import { disposeTree } from '../render/dispose';
 import { levelScenery } from '../render/levelScenery';
+import { warmShaders } from '../render/shaderWarmup';
 import { World } from '../game/world';
 import type { Evaluation } from '../game/evaluation';
 import { ROOM_FLOOR, type Port } from '../game/rack';
@@ -186,9 +187,8 @@ export class Controller implements PlayContext, InputCommands {
   }
 
   /**
-   * Builds what `level` shows, out of sight, and builds its shaders a piece
-   * at a time between frames: the first level opened then does not stall on
-   * them. three keeps a shader while an object drawn with it lives: what
+   * Builds what `level` shows, out of sight, and its shaders between frames
+   * (warmShaders): the first level opened then does not stall on them. What
    * was built (the cabinet, its room, its cords) is kept, out of the scene,
    * until the caller frees it, and every level meanwhile finds the shaders of
    * the same materials. Given up once `stop()` (a level opens): null.
@@ -201,44 +201,20 @@ export class Controller implements PlayContext, InputCommands {
     cableView.lightBy(rackView.glow);
     rackView.syncItems(world.itemsVersion);
     cableView.update(true);
-    const roots = [rackView.group, scenery, cableView.group];
-    const pieces: THREE.Object3D[] = [];
-    for (const r of roots) r.traverse((o) => { if ((o as THREE.Mesh).isMesh || (o as THREE.Points).isPoints || (o as THREE.Line).isLine || (o as THREE.Sprite).isSprite) pieces.push(o); });
-    let done = false;
+    const free = () => {
+      rackView.dispose();
+      disposeTree(scenery);
+      disposeTree(cableView.group);
+    };
+    let warmed = false;
     try {
-      // the room round the subject blurred, as in a level (drawn by the next image)
-      stage.warmFocus();
-      await nextFrame();
-      await nextFrame();
-      if (stop()) return null;
-      let since = performance.now();
-      for (const piece of pieces) {
-        if (stop()) return null;
-        // lit by the cabinet's lamp and the room's light, as on screen
-        stage.compile(piece, { alone: true, litBy: roots, focused: true });
-        // a few at a time, between two frames
-        if (performance.now() - since > WARM_SLICE_MS) {
-          await nextFrame();
-          since = performance.now();
-        }
-      }
-      done = true;
-      return {
-        dispose: () => {
-          rackView.dispose();
-          disposeTree(scenery);
-          disposeTree(cableView.group);
-        },
-      };
+      warmed = await warmShaders(stage, [rackView.group, scenery, cableView.group], stop);
     } finally {
       // (what the cords are drawn from, not the cords)
       world.dispose();
-      if (!done) {
-        rackView.dispose();
-        disposeTree(scenery);
-        disposeTree(cableView.group);
-      }
+      if (!warmed) free();
     }
+    return warmed ? { dispose: free } : null;
   }
 
   dispose(): void {
@@ -715,17 +691,6 @@ function tidyCablesOf(ev: Evaluation): Set<number> {
   for (const s of ev.circuits) if (s.connected && s.routed && s.clear) out.add(s.cable);
   return out;
 }
-
-/** how long Controller.warm compiles before it lets a frame go (ms) */
-const WARM_SLICE_MS = 12;
-
-/** the next frame, or a moment if the page draws none */
-const nextFrame = () => new Promise<void>((r) => {
-  let gone = false;
-  const go = () => { if (!gone) { gone = true; r(); } };
-  requestAnimationFrame(go);
-  setTimeout(go, 100);
-});
 
 /** the cabinet of a level */
 function rackViewOf(world: World, unitLabel: UnitLabeller): RackView {
