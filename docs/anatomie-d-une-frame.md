@@ -110,7 +110,7 @@ En général, une frame fait un pas. Une frame en retard en fait deux. Au-delà,
 
 ### 2.3 L'ordre des opérations dans `tick`
 
-1. Les animations d'interface : clignotement d'un câble tracé (touche T), pulsation du repère qui montre où poser un élément. Le budget d'interruption avance aussi : chaque seconde où une liaison en production est coupée coûte le poids de son service (`World.tickDowntime`).
+1. Les animations d'interface : clignotement d'un câble tracé (touche T), pulsation du repère qui montre où poser un élément. Le budget d'interruption avance aussi : chaque seconde où une liaison en production est coupée coûte le poids de son service (`World.workGoesOn`).
 2. L'accumulateur et `sim.advance(steps)`, décrits plus haut. `advance` envoie la demande au Worker et rend la main aussitôt.
 3. `cableView.update()` : les nœuds des câbles qui ont bougé partent vers le GPU (partie 7).
 4. `rackView.syncItems(...)` : si le joueur a posé ou retiré un élément de rangement, la baie est reconstruite.
@@ -132,9 +132,9 @@ Les événements de la souris ne déplacent rien directement : ils enregistrent 
 
 ### 3.1 Événements et caméra
 
-`Controller.bindInput()` installe les écouteurs sur le `<canvas>` : `pointermove`, `pointerdown`, `pointerup` (sur `window`, pour ne pas perdre un relâchement hors du canvas) et le clavier. Ils tiennent à jour la position du pointeur (`Pointer`, `play/pointer.ts`), en pixels et normalisée entre −1 et 1, le format qu'attend three.js, puis passent le geste à l'outil choisi (`play/tools/`), qui le prend ou non : sans rien sous la souris, la vue se déplace.
+`InputRouter` (`play/inputRouter.ts`) installe les écouteurs sur le `<canvas>` : `pointermove`, `pointerdown`, `pointerup` (sur `window`, pour ne pas perdre un relâchement hors du canvas) et le clavier. Ils tiennent à jour la position du pointeur (`Pointer`, `play/pointer.ts`), en pixels et normalisée entre −1 et 1, le format qu'attend three.js, puis passent le geste à l'outil choisi (`play/tools/`), qui le prend ou non : sans rien sous la souris, la vue se déplace.
 
-La caméra est pilotée par `OrbitControls`, un module de three.js : bouton droit pour tourner autour de la baie, bouton du milieu ou flèches pour déplacer la vue, molette pour zoomer. Le mouvement est amorti : la caméra glisse encore un peu après le geste.
+La caméra est pilotée par `OrbitControls`, un module de three.js : bouton droit pour tourner autour de la baie, bouton du milieu ou flèches pour déplacer la vue, molette pour zoomer. Le mouvement est amorti : la caméra glisse encore un peu après le geste. `CameraRig` (`render/cameraRig.ts`) borne ce mouvement à chaque frame : ce que la caméra regarde reste près de la baie, et la caméra reste au-dessus du sol.
 
 ### 3.2 Savoir quel câble est sous la souris
 
@@ -605,7 +605,7 @@ Une passe que la qualité de l'image coupe (reflets, occlusion) est retirée du 
 
 ### 9.3 Une valeur invalide touche toute l'image
 
-Les passes s'enchaînent : une valeur invalide produite au début se propage. Un triangle sans surface, par exemple, a une normale nulle ; en la normalisant, le shader d'éclairage produit une valeur NaN (*not a number*). Le flou du halo, qui mélange chaque pixel à ses voisins sur plusieurs niveaux, étendrait ce NaN à tout l'écran, qui deviendrait noir. Deux protections : les triangles sans surface sont retirés des pièces de la baie à la construction (`dropDegenerate`, dans `rackView.ts`), et le filtre d'entrée du halo lit un pixel invalide comme noir.
+Les passes s'enchaînent : une valeur invalide produite au début se propage. Un triangle sans surface, par exemple, a une normale nulle ; en la normalisant, le shader d'éclairage produit une valeur NaN (*not a number*). Le flou du halo, qui mélange chaque pixel à ses voisins sur plusieurs niveaux, étendrait ce NaN à tout l'écran, qui deviendrait noir. Deux protections : les triangles sans surface sont retirés des pièces de la baie à la construction (`dropDegenerate`, dans `shapes.ts`), et le filtre d'entrée du halo lit un pixel invalide comme noir.
 
 ### À retenir
 
@@ -629,7 +629,7 @@ Le tableau suit une frame d'un niveau, dans l'ordre d'exécution.
 | 8 | Matrices des connecteurs, velcros | principal | `cableView.ts`, `updateEnds` | chaque frame, ce qui a changé |
 | 9 | Mise à jour de la baie | principal | `rackView.ts`, `syncItems` | si un élément a changé |
 | 10 | Score, voyants des ports, plan | principal | `world.ts`, `evaluate` | toutes les 0,4 s |
-| 11 | Caméra, horloges des voyants et du grain | principal | `stage.ts`, `render` | chaque frame |
+| 11 | Caméra, horloges des voyants et du grain | principal | `stage.ts`, `render` (la caméra : `cameraRig.ts`, `update`) | chaque frame |
 | 12 | Carte de lumière des voyants | GPU | `ledGlow.ts` | chaque frame, par baie |
 | 13 | Carte d'ombre | GPU | three.js | chaque frame |
 | 14 | Scène et images auxiliaires | GPU | `imagePipeline.ts` | chaque frame |

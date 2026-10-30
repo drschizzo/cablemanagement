@@ -73,6 +73,8 @@ src/
     showcase.ts     Showcase : l'allée, sa bascule d'un état à l'autre, sa pluie de câbles
     closet.ts       une baie et ses deux états (le désordre et la baie rangée), la chorégraphie de l'un à l'autre
     bay.ts          un état d'une baie : son World, sa vue, le vol de ses cordons
+    dressing.ts     le chemin d'un cordon du désordre à sa route rangée, et retour : jamais à travers un guide (les
+                    cordons s'écartent, passent devant les guides, y rentrent par leur ouverture)
     aisleLayout.ts  où se tiennent les baies : un demi-cercle autour du spectateur
     cableRain.ts    le décor : des câbles qui tombent et s'entassent au milieu de la salle
   render/       LE DESSIN (three.js) de ce que game décrit
@@ -99,7 +101,7 @@ src/
     frameGrab.ts    une copie de l'image qui vient d'être dessinée, sans les panneaux (une image du timelapse)
     findView.ts     une trouvaille dessinée là où elle est posée (un post-it, un canard en plastique…)
     look.ts         ce que le joueur a choisi pour l'image (couleur des velcros, teinte de la lumière) : rien des règles
-    cameraTour.ts   le vol de la caméra autour d'une baie validée, puis retour de face (Stage.tour)
+    cameraTour.ts   le vol de la caméra autour d'une baie validée, puis retour de face (CameraRig.tour)
     rackView.ts     la baie, ses équipements, ports, plaques et voyants (sur un équipement actif, un second voyant par
                     port : le trafic d'une liaison, à la couleur de son service, que le contrôleur lui donne)
     levelScenery.ts ce qui entoure la baie d'un niveau sans être la baie : le sol, les ombres de contact, la salle
@@ -285,8 +287,8 @@ coupé. Une valeur illisible ou d'une autre forme se lit comme la valeur par dé
 | un niveau | une entrée dans `LEVELS` (la formation) ou `BIG_BAYS` (`game/levels/campaign.ts`), bâtie avec les équipements de `game/levels/equipment.ts`, et ses mots dans `ui/levelTexts.ts` (un test vérifie qu'aucun ne manque) ; un puzzle, de même dans `PUZZLES` (`game/levels/puzzles.ts`) ; `tests/game/levels/levels.test.ts` vérifie son plan, qu'il ne se gagne pas sans rien faire et qu'il peut atteindre 3 étoiles avec son seul inventaire (`tidyKit`) |
 | un équipement de baie | `UnitSpec` et le constructeur de `Rack` (`game/rack.ts`), sa face dans `faceOf` et son rendu dans `render/rackView.ts`, son nom dans `unitLabel` (`ui/names.ts`) |
 | une sorte de cordon | une entrée dans `CORD_KINDS` (`game/cordTypes.ts`) ; le compilateur demande son nom (`ui/names.ts`), son marquage (`JACKET_KIND`, `render/jacket.ts`) et, s'il en a un nouveau, son connecteur (`plugShape`, `render/cableView.ts`) |
-| un élément de rangement | `ItemKind`, `canPlace`, `statics` et `supports` dans `game/rack.ts`, `buildItem` dans `render/rackItems.ts`, un outil dans `TOOLS` (`ui/toolbar.ts`) |
-| un outil | un `ToolHandler` dans `play/tools/`, son nom dans `Tool` (`play/context.ts`) et dans `Controller.tools`, son bouton dans `TOOLS` (`ui/toolbar.ts`) |
+| un élément de rangement | `ItemKind`, `canPlace`, `statics` et `supports` dans `game/rack.ts`, `buildItem` dans `render/rackItems.ts`, un outil dans `TOOL_BUTTONS` (`ui/toolbar.ts`) |
+| un outil | un `ToolHandler` dans `play/tools/`, son nom dans `Tool` (`play/context.ts`) et dans `Controller.tools`, son bouton dans `TOOL_BUTTONS` (`ui/toolbar.ts`) |
 | un repère visuel pendant un geste | une classe dans `play/feedback/`, mise à jour par l'outil ou par `Controller.tick` |
 | un critère de score | `evaluate()` (`game/evaluation.ts`), sa colonne dans le plan (`ui/schedulePanel.ts`) |
 | un panneau de l'interface | un fichier dans `ui/`, créé et appelé par `Hud` (`ui/hud.ts`) |

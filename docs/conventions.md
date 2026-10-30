@@ -105,8 +105,8 @@ nœud, le trajet de chaque nœud), et chaque étape a son nom et sa documentatio
 
 **Ne pas recopier.** Une petite fonction utile partout a une seule maison : `dist`, `minus`, `dot`, `lerp` et `polyLength` sont
 dans `lib/vec3.ts`, `rng`, `shuffle` et `pick` dans `lib/random.ts`, `smoothstep` et `fractionalPart` dans
-`lib/scalar.ts`, et nulle part ailleurs. Une ressource faite une fois et gardée (une texture dessinée, la lampe
-partagée) passe par `once()` (`lib/once.ts`), plutôt qu'une variable `let x = null` et son `if (x) return x`.
+`lib/scalar.ts`, et nulle part ailleurs. Une ressource faite au premier usage et gardée (une texture dessinée, la
+lampe partagée) passe par `once()` (`lib/once.ts`).
 
 **Ne pas masquer un nom que tout le monde connaît.** Ce que vise la souris s'appelle `CordPick`, et non `Pick`, qui
 cacherait le `Pick<>` de TypeScript.
@@ -165,7 +165,7 @@ dépendent pas de la discipline de chaque appelant : le compilateur refuse toute
 son nom à un nœud de three.js (un réglage des reflets, de l'occlusion) est confronté à la version installée par
 `tests/render/threeNodes.test.ts`, et ESLint refuse ce que `WebGPURenderer` ignorerait sans erreur (du GLSL, une
 passe de l'`EffectComposer`). three.js s'importe d'un seul chemin, `three/webgpu`, qui donne aussi les matériaux à
-nœuds : un matériau du jeu a son vrai type, sans `as unknown as`. Une mise à jour dit ce qui a bougé (`docs/mise-a-jour-three.md`).
+nœuds : chaque matériau a son vrai type. Une mise à jour dit ce qui a bougé (`docs/mise-a-jour-three.md`).
 
 **Échouer tôt et bruyamment.** Un élément absent de `index.html` lève une erreur qui le nomme (`$` dans
 `lib/page.ts`), et un test vérifie qu'il ne manque aucun id ; un réglage qu'un nœud de three.js ne lit plus fait

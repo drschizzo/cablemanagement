@@ -11,9 +11,9 @@ dépend, ce qui le vérifie, et comment monter de version sans casse silencieuse
 - **Le jeu n'utilise que l'API publique de three.js** : `WebGPURenderer`, les matériaux à nœuds, TSL, et les
   nœuds de post-traitement de `examples/jsm/tsl/display`. ESLint refuse ce qui ne s'adresse qu'à
   `WebGLRenderer` (`ShaderMaterial`, `onBeforeCompile`, les passes de `examples/jsm/postprocessing`), que
-  `WebGPURenderer` ignore souvent sans erreur, ainsi que la lecture d'un membre privé (`_xxx`). Une exception,
+  `WebGPURenderer` ignore souvent sans erreur, ainsi que l'accès à un membre privé (`_xxx`). Une exception,
   faute d'API publique, vérifiée par `tests/render/threeNodes.test.ts` : `_callDepth` (voir « Des shaders
-  construits avant leur première image »).
+  construits avant leur première image »). three.js s'importe d'un seul chemin, `three/webgpu`.
 - **`tests/render/threeNodes.test.ts` vérifie, contre la version installée, chaque réglage que le jeu donne par
   son nom aux nœuds de three.js.** Un réglage renommé fait échouer le test au lieu de rester sans effet.
 
@@ -65,19 +65,21 @@ moteur (la passe de la scène est dessinée depuis la chaîne de l'image, cinq o
 tient compte :
 
 - **Les lumières d'un niveau sont les mêmes objets d'un niveau à l'autre** : la lampe de la baie (`levelLamp`,
-  `rackView.ts`) et la lumière de la salle (`roomRim`, `serverRoom.ts`). Neuves à chaque niveau, elles faisaient
-  reconstruire tous les shaders éclairés.
+  `rackView.ts`) et la lumière de la salle (`roomRim`, `serverRoom.ts`) : des lumières neuves à chaque niveau
+  feraient reconstruire tous les shaders éclairés.
 - **three jette un shader quand le dernier objet dessiné avec lui est libéré**, et avec lui les tampons qu'il
   partage : le garder au-delà (en retenant son état dans `nodeBuilderCache`) fait dessiner les objets suivants
   avec des tampons détruits, et le GPU refuse chaque image. Ce qui garde les shaders d'un niveau, c'est donc un
-  niveau construit et gardé hors de la scène (`Controller.warm`, gardé par `App` pour la visite).
-- **Une chaîne de l'image reste construite** (`ImagePipeline.chains`, par qualité et mise au point) : reconstruite,
-  ses nœuds neufs donnaient des shaders neufs, à chaque entrée dans un niveau. Mise de côté, elle ne libère que
-  ses cibles de rendu : un nœud libéré (`dispose`) n'est plus jamais redessiné par three.
+  niveau construit et gardé hors de la scène (`Controller.warm`, que `App` garde pour la visite).
+- **Une chaîne de l'image reste construite** (`ImagePipeline.chains`, par qualité et mise au point) : des nœuds
+  neufs donneraient des shaders neufs à chaque entrée dans un niveau. Mise de côté, elle ne libère que ses cibles
+  de rendu, car three ne redessine jamais un nœud libéré (`dispose`).
 - **Préparer un objet, c'est le dessiner dans la passe de la scène, à la profondeur où la chaîne la dessine**
-  (`ImagePipeline.compile`). `compileAsync` le prépare au premier niveau d'appel, pour un autre contexte : l'image
-  n'en retrouvait rien. Membre privé : `renderer._callDepth`, relevé pendant les vrais rendus.
-  `Showcase.warm` prépare ainsi chaque baie de l'allée, `Controller.warm` le prochain niveau pendant l'écran titre.
+  (`ImagePipeline.compile`). `compileAsync` le prépare au premier niveau d'appel, pour un autre contexte, que
+  l'image ne retrouve pas. La profondeur est un membre privé, `renderer._callDepth` : `ImagePipeline` la relève
+  pendant un vrai rendu et la règle le temps de préparer un objet. `Showcase.warm` prépare ainsi chaque baie de
+  l'allée ; `Controller.warm` construit le prochain niveau pendant l'écran titre, et `warmShaders`
+  (`render/shaderWarmup.ts`) en prépare les pièces, quelques-unes entre deux images.
 
 ### La chaîne de l'image (`render/imagePipeline.ts`, `bloom.ts`, `depthOfField.ts`, `cinema.ts`)
 
@@ -97,11 +99,9 @@ La sortie de `SSRNode` est déjà pondérée par son opacité : elle s'ajoute à
 Le jeu utilise la version TSL du paquet (`@drschizzo/three-cable-tubes/webgpu`) : `TubeMesh` règle le
 `positionNode` du matériau des câbles et lui donne `tubeCoord` et `tubeTint`.
 
-**Reste à faire dans le dépôt cable-kit** (le jeu ne modifie pas son sous-module) :
-
-- borner sa dépendance : `"three": ">=0.183.0 <0.184.0"` au lieu de `">=0.183.0"`, élargie après vérification ;
-- donner un attribut `position` à la géométrie de `TubeMesh` : three.js avertit à chaque matériau compilé
-  (`Vertex attribute "position" not found on geometry`), sans effet sur l'image.
+Sa dépendance à three.js est ouverte vers le haut (`"three": ">=0.183.0"`, dans `packages/three-cable-tubes/package.json`
+du dépôt cable-kit) : c'est la version épinglée par le jeu qui fait foi. À chaque montée de version, vérifier les
+câbles avec elle.
 
 ## Procédure
 
