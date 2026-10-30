@@ -181,10 +181,12 @@ export class RackView {
       // front posts of the cabinet
       this.add(roundedBox(0.034, h, 0.032, 0.006), rackMat.frame, s * (WALL_X + 0.006), cy, FRONT_Z - 0.014);
     }
-    // the cabinet floor is lighter, so that fallen cords stand out on it
-    this.add(roundedBox(0.84, 0.03, 0.5 + FRONT_Z, 0.004), rackMat.floor, 0, bot - 0.015, (FRONT_Z - 0.5) / 2);
+    // the cabinet floor is lighter, so that fallen cords stand out on it; it stops against the kick plate
+    // (running under it, their tops in one plane would fight for the same pixels, in stripes along the front)
+    const kickZ = FRONT_Z - 0.008, kickDepth = 0.02, floorFront = kickZ - kickDepth / 2;
+    this.add(roundedBox(0.84, 0.03, 0.5 + floorFront, 0.004), rackMat.floor, 0, bot - 0.015, (floorFront - 0.5) / 2);
     // kick plate in front of the floor
-    this.add(roundedBox(0.866, 0.03, 0.02, 0.005), rackMat.frame, 0, bot - 0.015, FRONT_Z - 0.008);
+    this.add(roundedBox(0.866, 0.03, kickDepth, 0.005), rackMat.frame, 0, bot - 0.015, kickZ);
     // (the body casts no shadow: it would darken the inside, where the play is)
     this.add(roundedBox(0.86, 0.035, 0.5 + FRONT_Z + 0.006, 0.008), rackMat.wall, 0, roofY + 0.0175, (FRONT_Z + 0.006 - 0.5) / 2);
     // front cross bar under the roof, carrying the name plate
