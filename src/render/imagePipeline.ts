@@ -66,12 +66,22 @@ export function reflective<T extends THREE.NodeMaterial>(m: T): T {
  * A material added to the image without standing in the scene (a shaft of
  * light): it adds nothing to the normals and what reflects, which it would
  * have stood in as a solid, shading and reflecting what lies behind it. (It
- * must blend additively and write no depth.)
+ * must blend additively and write no depth: its zeros are added to those
+ * buffers, see the scene's pass.)
  */
 export function keepOutOfDepth<T extends THREE.NodeMaterial>(m: T): T {
   m.mrtNode = mrt({ normal: vec4(0), reflect: float(0) });
   return m;
 }
+
+/**
+ * An output of the scene blended as each material blends its colour. three
+ * blends only the colour unless told to, and only by the pass (what a
+ * material's own outputs ask is dropped): a light added to the image wrote its
+ * zeros over the normals of what lay behind it, which the occlusion then
+ * darkened (the box of the room's haze on the cabinet's roof).
+ */
+const ASBLENDED = new THREE.BlendMode(THREE.MaterialBlending);
 
 /** the passes after the scene's, as one quality and focus draw them */
 interface Chain {
@@ -163,7 +173,7 @@ export class ImagePipeline {
     // tone mapping and the colour space are applied by the chain itself (see compose)
     this.pipeline.outputColorTransform = false;
     this.scenePass = pass(scene, camera);
-    this.scenePass.setMRT(mrt({ output, normal: normalView, reflect: float(0) }));
+    this.scenePass.setMRT(mrt({ output, normal: normalView, reflect: float(0) }).setBlendMode('normal', ASBLENDED).setBlendMode('reflect', ASBLENDED));
     // how deep in the renderer's calls the chain drawn draws the scene (see compile)
     const update = this.scenePass.updateBefore.bind(this.scenePass);
     this.scenePass.updateBefore = (frame: unknown) => {

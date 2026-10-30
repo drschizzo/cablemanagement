@@ -1,8 +1,8 @@
 // The server room round the cabinet of a level, as scenery: rows of racks in
 // the dim, put up over the years (not quite in line, of every height, some
 // kept tidy and others not), cable trays over them, things left lying about,
-// a light from behind that outlines the cabinet, and shafts of light in the
-// haze. Nothing here is played: it never moves, and is never picked.
+// a light from behind that outlines the cabinet, and LED battens hung over
+// the aisle, their light in the haze. Nothing here is played: it never moves, and is never picked.
 
 import * as THREE from 'three';
 import { rng } from '../../lib/random';
@@ -10,13 +10,17 @@ import { ledMesh } from '../leds';
 import type { InstancedParts } from '../instancedParts';
 import { RoomParts, mergedMesh } from './roomParts';
 import { ROOM_RACK_DEPTH, roomRack, type RoomRackSpec } from './roomRack';
-import { boxStack, cableTray, cordCoil, crashCart, extinguisher, floorCord } from './roomProps';
-import { roomHaze } from './roomHaze';
+import { boxStack, cableTray, cordCoil, crashCart, extinguisher, battenLamp, floorCord } from './roomProps';
+import { LAMP_LENGTH, LAMP_Y, roomHaze } from './roomHaze';
 
-/** how lit the lights of the room are, against those of the cabinet: they stay behind it */
-const LED_DIM = 0.4;
+/**
+ * How lit the lights of the room are, against those of the cabinet: past
+ * white on an HDR screen, but under the bloom threshold, so that they stay
+ * behind it and never halo.
+ */
+const LED_DIM = 0.7;
 /** how much of the lamps' light the room takes: it stands in the dim, the cabinet in the light */
-const ROOM_SHADE = 0.12;
+const ROOM_SHADE = 0.16;
 /** the light from behind the cabinet: its tint and strength */
 const RIM_COLOR = '#7fb2ff';
 const RIM_INTENSITY = 1.1;
@@ -26,8 +30,8 @@ const TRAY_Y = 2.45;
 const ASTRAY_CLEARANCE = 0.12;
 /** how far from the cabinet the things left in the aisle lie, at least (m) */
 const CLEAR_OF_CABINET = 2.0;
-/** where the shafts of light fall, round the cabinet (m) */
-const SHAFTS = [{ x: -1.1, z: -1.4 }, { x: 1.2, z: -1.8 }, { x: -0.2, z: -2.5 }];
+/** where the battens hang, along the aisle behind the cabinet, in two lines end to end (m) */
+const LAMPS = [{ x: -0.85, z: -1.35 }, { x: -0.85, z: -2.6 }, { x: 0.85, z: -1.35 }, { x: 0.85, z: -2.6 }];
 
 /**
  * A row of racks: where it starts (its first rack's front corner), the way it
@@ -79,6 +83,7 @@ export function buildServerRoom(floorY: number, seed: number): THREE.Group {
   const room = new RoomParts();
   ROWS.forEach((row, k) => buildRow(row, k === 0, random, room));
   placeLoose(random, room);
+  for (const l of LAMPS) battenLamp(LAMP_Y, LAMP_LENGTH).placeInto(room, new THREE.Matrix4().makeTranslation(l.x, 0, l.z));
   const shade = new THREE.Color(ROOM_SHADE, ROOM_SHADE, ROOM_SHADE);
   const g = new THREE.Group();
   g.add(
@@ -86,7 +91,7 @@ export function buildServerRoom(floorY: number, seed: number): THREE.Group {
     mergedMesh(room.cords, new THREE.MeshStandardMaterial({ vertexColors: true, color: shade, roughness: 0.45, metalness: 0 })),
     mergedMesh(room.screens, new THREE.MeshBasicMaterial({ vertexColors: true })),
     dimmed(ledMesh(room.lights)),
-    roomHaze(SHAFTS, random),
+    roomHaze(LAMPS, random),
   );
   g.position.y = floorY;
   const rim = roomRim();

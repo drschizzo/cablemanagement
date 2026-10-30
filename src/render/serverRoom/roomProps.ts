@@ -120,6 +120,21 @@ export function floorCord(length: number, random: () => number): RoomParts {
   return parts;
 }
 
+/**
+ * An LED batten hung over the aisle, `length` long along +z: a slim body of
+ * aluminium, its opal diffuser under it at `y` (the light: see roomHaze), its
+ * end caps, and two wires rising out of sight into the dark.
+ */
+export function battenLamp(y: number, length: number): RoomParts {
+  const parts = new RoomParts();
+  parts.box(0.07, 0.04, length, 0, y + 0.022, 0, '#8d9096');
+  for (const s of [-1, 1]) {
+    parts.box(0.074, 0.044, 0.012, 0, y + 0.022, s * length / 2, '#2a2b2e');
+    parts.solid(new THREE.CylinderGeometry(0.0015, 0.0015, 1.2, 6).translate(0, y + 0.042 + 0.6, s * length * 0.35), '#2a2b2e');
+  }
+  return parts;
+}
+
 /** a fire extinguisher standing on the floor */
 export function extinguisher(): RoomParts {
   const parts = new RoomParts();
