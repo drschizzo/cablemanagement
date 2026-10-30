@@ -12,6 +12,8 @@
 
 import * as THREE from 'three';
 import { TubeMesh, TubeNodes } from '@drschizzo/three-cable-tubes/webgpu';
+import { MeshStandardNodeMaterial } from 'three/webgpu';
+import { InstancedParts } from '../render/instancedParts';
 import { CABLE_R } from '../game/rack';
 import { SERVICES } from '../game/services';
 import { rng } from '../lib/random';
@@ -104,7 +106,7 @@ export class CableRain {
   private tube: TubeMesh;
   private nodes = new TubeNodes(POOL * NODES);
   private moved = new Uint8Array(POOL);
-  private plugs: { boot: THREE.InstancedMesh; housing: THREE.InstancedMesh }[];
+  private plugs: { boot: InstancedParts; housing: InstancedParts }[];
   private m4 = new THREE.Matrix4();
   private q = new THREE.Quaternion();
   private v = new THREE.Vector3();
@@ -132,21 +134,20 @@ export class CableRain {
     // two plugs per cord: a clear RJ45 on copper, an LC on fibre (opaque: a transmissive
     // material would cost the whole scene drawn once more)
     const kinds = [
-      { copper: false, housing: new THREE.MeshStandardMaterial({ roughness: 0.4 }) },
-      { copper: true, housing: new THREE.MeshStandardMaterial({ color: '#cfd8dc', roughness: 0.18 }) },
+      { copper: false, housing: new MeshStandardNodeMaterial({ roughness: 0.4 }) },
+      { copper: true, housing: new MeshStandardNodeMaterial({ color: '#cfd8dc', roughness: 0.18 }) },
     ];
     this.plugs = kinds.map(({ copper, housing }) => {
       const g = connectorGeos(R, copper ? 'rj45' : 'lc');
-      const inst = (geo: THREE.BufferGeometry, m: THREE.Material) => {
-        const im = new THREE.InstancedMesh(geo, m, 2 * POOL);
+      const inst = (geo: THREE.BufferGeometry, m: MeshStandardNodeMaterial) => {
+        const im = new InstancedParts(geo, m, 2 * POOL);
         im.castShadow = true;
-        im.frustumCulled = false;
-        im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        im.matrices.setUsage(THREE.DynamicDrawUsage);
         for (let i = 0; i < 2 * POOL; i++) { im.setMatrixAt(i, ZERO); im.setColorAt(i, this.col.set('#ffffff')); }
         this.group.add(im);
         return im;
       };
-      return { boot: inst(g.boot, new THREE.MeshStandardMaterial({ roughness: 0.42 })), housing: inst(g.housing, housing) };
+      return { boot: inst(g.boot, new MeshStandardNodeMaterial({ roughness: 0.42 })), housing: inst(g.housing, housing) };
     });
   }
 
@@ -286,7 +287,7 @@ export class CableRain {
       if (!copper) p.housing.setColorAt(2 * c + e, this.col.set(type === 'OS2' ? '#2d6fd8' : '#d9cfa3'));
       this.col.set(color);
     }
-    for (const p of this.plugs) { p.boot.instanceColor!.needsUpdate = true; p.housing.instanceColor!.needsUpdate = true; }
+    for (const p of this.plugs) { p.boot.colors.needsUpdate = true; p.housing.colors.needsUpdate = true; }
   }
 
   /** one step of a falling cord; it is frozen into the heap once it has come to rest */
@@ -463,7 +464,7 @@ export class CableRain {
       any = true;
     }
     if (!any) return;
-    for (const p of this.plugs) p.boot.instanceMatrix.needsUpdate = p.housing.instanceMatrix.needsUpdate = true;
+    for (const p of this.plugs) p.boot.matrices.needsUpdate = p.housing.matrices.needsUpdate = true;
   }
 
   private ends(c: number): void {

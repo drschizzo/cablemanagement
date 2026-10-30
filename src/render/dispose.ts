@@ -4,7 +4,8 @@
 // it would only force three.js to upload or compile it again on its next use.
 
 import * as THREE from 'three';
-import type { TubeMesh } from '@drschizzo/three-cable-tubes';
+import type { TubeMesh } from '@drschizzo/three-cable-tubes/webgpu';
+import type { InstancedParts } from './instancedParts';
 
 type Resource = THREE.BufferGeometry | THREE.Material | THREE.Texture;
 
@@ -27,9 +28,9 @@ export function disposeTree(root: THREE.Object3D): void {
   const done = new Set<Resource>();
   root.traverse((o) => {
     const m = o as THREE.Mesh;
-    // the per-instance buffers of an instanced mesh
-    if ((o as THREE.InstancedMesh).isInstancedMesh) (o as THREE.InstancedMesh).dispose();
-    // the swept copies of its materials, and its nodes (tube.ts)
+    // the per-copy buffers of instanced parts (instancedParts.ts)
+    if ((o as InstancedParts).isInstancedParts) (o as InstancedParts).dispose();
+    // the copy it made of its material, and its nodes (three-cable-tubes)
     if ((o as TubeMesh).isTubeMesh) (o as TubeMesh).dispose();
     if (m.geometry) free(m.geometry, done);
     if (!m.material) return;

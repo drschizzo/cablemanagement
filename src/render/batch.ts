@@ -9,9 +9,12 @@ import type { MeshStandardNodeMaterial } from 'three/webgpu';
 import { addGlow } from './glowTerms';
 import { tsl } from './tsl';
 
-/** a standard material whose parts light up one at a time, from their `emissiveTint` (linear RGB, per vertex or per instance) */
+/** the glow of a part, per vertex or per instance (one node for all: see glowTerms.ts) */
+const TINT = tsl.attribute('emissiveTint', 'vec3');
+
+/** a standard material whose parts light up one at a time, from their `emissiveTint` (linear RGB) */
 export function tintable<T extends MeshStandardNodeMaterial>(m: T): T {
-  return addGlow(m, tsl.attribute('emissiveTint', 'vec3'));
+  return addGlow(m, TINT);
 }
 
 const KEEP = ['position', 'normal', 'uv'];
@@ -27,7 +30,7 @@ export function mergeStatic(root: THREE.Object3D, ok: (m: THREE.Mesh) => boolean
   const buckets = new Map<string, { mat: THREE.Material; cast: boolean; receive: boolean; order: number; meshes: THREE.Mesh[] }>();
   root.traverse((o) => {
     const m = o as THREE.Mesh;
-    if (!m.isMesh || (m as THREE.InstancedMesh).isInstancedMesh || Array.isArray(m.material) || m.children.length || !m.visible || !ok(m)) return;
+    if (!m.isMesh || (m as THREE.Mesh & { isInstancedParts?: boolean }).isInstancedParts || Array.isArray(m.material) || m.children.length || !m.visible || !ok(m)) return;
     const key = `${m.material.uuid}|${m.castShadow}|${m.receiveShadow}|${m.renderOrder}`;
     let b = buckets.get(key);
     if (!b) buckets.set(key, (b = { mat: m.material, cast: m.castShadow, receive: m.receiveShadow, order: m.renderOrder, meshes: [] }));

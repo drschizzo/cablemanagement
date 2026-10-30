@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { rng } from '../../lib/random';
 import { ledMesh } from '../leds';
+import type { InstancedParts } from '../instancedParts';
 import { RoomParts, mergedMesh } from './roomParts';
 import { ROOM_RACK_DEPTH, roomRack, type RoomRackSpec } from './roomRack';
 import { boxStack, cableTray, cordCoil, crashCart, extinguisher, floorCord } from './roomProps';
@@ -158,7 +159,7 @@ function placeLoose(random: () => number, room: RoomParts): void {
 }
 
 /** the lights of the room, dimmer than those of the cabinet */
-function dimmed(leds: THREE.InstancedMesh): THREE.InstancedMesh {
+function dimmed(leds: InstancedParts): InstancedParts {
   const tint = leds.geometry.attributes.emissiveTint as THREE.InstancedBufferAttribute;
   for (let i = 0; i < tint.array.length; i++) tint.array[i] *= LED_DIM;
   return leds;

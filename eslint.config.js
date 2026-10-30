@@ -28,6 +28,7 @@ const threeUsage = {
       { selector: 'AssignmentExpression > MemberExpression.left[property.name=/^(onBeforeCompile|customProgramCacheKey)$/]', message: WEBGPU },
       { selector: 'NewExpression[callee.property.name=/^(ShaderMaterial|RawShaderMaterial|WebGLRenderer|WebGLRenderTarget)$/]', message: WEBGPU },
       { selector: 'ImportDeclaration[source.value=/^three\\/examples\\/jsm\\/postprocessing\\//]', message: WEBGPU },
+      { selector: 'NewExpression[callee.property.name="InstancedMesh"]', message: 'Un InstancedMesh a son propre shader, construit à son premier dessin : des parties répétées passent par InstancedParts (render/instancedParts.ts), qui partagent le leur.' },
       { selector: 'MemberExpression[property.name=/^_[a-zA-Z]/]', message: 'Un membre privé de three.js : rien ne promet qu\'il reste (docs/mise-a-jour-three.md).' },
     ],
   },

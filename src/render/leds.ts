@@ -6,10 +6,11 @@
 
 import * as THREE from 'three/webgpu';
 import { tsl, type ShaderNode } from './tsl';
+import { InstancedParts, partMatrix } from './instancedParts';
 
 const {
-  Fn, attribute, cameraProjectionMatrix, float, floor, fract, instancedBufferAttribute, length, max, mix, modelViewMatrix,
-  positionLocal, select, sin, step, uniform, varying, vec2, vec3, vec4,
+  Fn, attribute, cameraProjectionMatrix, float, floor, fract, length, max, mix, modelViewMatrix, positionLocal, select, sin,
+  step, uniform, varying, vec2, vec3, vec4,
 } = tsl;
 
 /** seconds, advanced by the stage every frame; shared by every blinking material */
@@ -83,49 +84,37 @@ export const ledOn = Fn(([blink]: [ShaderNode]) => {
   return select(rate.greaterThan(0), flicker, select(rate.lessThan(0), regular, float(1)));
 });
 
-/** the instance matrices of a mesh, as the columns of each: read by the lights' own shader, besides three's */
-const columns = new WeakMap<THREE.InstancedBufferAttribute, ShaderNode[]>();
-
-function instanceColumns(matrices: THREE.InstancedBufferAttribute): ShaderNode[] {
-  let cols = columns.get(matrices);
-  if (!cols) {
-    // (the lights never move once laid: the copy is sent once)
-    const buffer = new THREE.InstancedInterleavedBuffer(matrices.array, 16, 1);
-    cols = [0, 4, 8, 12].map((k) => instancedBufferAttribute(buffer, 'vec4', 16, k));
-    columns.set(matrices, cols);
-  }
-  return cols;
-}
-
 /**
- * The lens of an instanced light, grown on screen up to LED_MIN_PX from its
- * centre (it is a unit square scaled by its instance): the position, after
- * the instance has placed it.
+ * Where a vertex of a light's lens lies: placed by its copy, and grown on
+ * screen up to LED_MIN_PX from its centre (the lens is a unit square scaled by
+ * its copy).
  */
-const grownLens = Fn((builder: { object: THREE.Object3D }) => {
-  const im = builder.object as THREE.InstancedMesh;
-  if (!im.isInstancedMesh) return positionLocal;
-  const [c0, c1, , c3] = instanceColumns(im.instanceMatrix);
-  const centre = c3.xyz;
-  const size = vec2(length(c0.xyz), length(c1.xyz));
+const GROWN_LENS = Fn(() => {
+  const centre = partMatrix.element(3).xyz;
+  const size = vec2(length(partMatrix.element(0).xyz), length(partMatrix.element(1).xyz));
+  const placed = partMatrix.mul(vec4(positionLocal, 1)).xyz;
   const view = modelViewMatrix.mul(vec4(centre, 1));
   const projection = cameraProjectionMatrix;
   // the size of a pixel (m) at the depth of the light; a perspective projection has no 1 in its corner
   const depth = select(projection.element(3).w.equal(0), view.z.negate(), float(1));
   const pixel = depth.mul(2).div(projection.element(1).y.mul(ledViewHeight));
   const grow = max(vec2(1), pixel.mul(LED_MIN_PX).div(size));
-  return vec3(positionLocal.xy.sub(centre.xy).mul(grow).add(centre.xy), positionLocal.z);
-});
+  return vec3(placed.xy.sub(centre.xy).mul(grow).add(centre.xy), placed.z);
+})();
+
+/** the glow of a light, as it blinks (one node for all) */
+const LED_GLOW = varying(attribute('emissiveTint', 'vec3').mul(ledOn(attribute('blink', 'vec3'))));
 
 /**
  * The material of the lights: their glow comes from two attributes, per
  * vertex or per instance, `emissiveTint` (linear RGB) and `blink` (rate,
- * duty, phase); an instanced lens grows on screen up to LED_MIN_PX.
+ * duty, phase); the lens of each copy grows on screen up to LED_MIN_PX
+ * (drawn by InstancedParts).
  */
 export function ledMaterial(): THREE.MeshStandardNodeMaterial {
   const m = new THREE.MeshStandardNodeMaterial({ roughness: 0.3 });
-  m.emissiveNode = varying(attribute('emissiveTint', 'vec3').mul(ledOn(attribute('blink', 'vec3'))));
-  m.positionNode = grownLens();
+  m.emissiveNode = LED_GLOW;
+  m.positionNode = GROWN_LENS;
   return m;
 }
 
@@ -141,15 +130,15 @@ export interface LedSpec {
 }
 
 /** every light of a list in one instanced mesh (one draw call), blinking on its own */
-export function ledMesh(specs: LedSpec[]): THREE.InstancedMesh {
+export function ledMesh(specs: LedSpec[]): InstancedParts {
   const n = Math.max(1, specs.length);
   const geo = new THREE.BoxGeometry(1, 1, 0.001);
   const tint = new THREE.InstancedBufferAttribute(new Float32Array(3 * n), 3);
   const blink = new THREE.InstancedBufferAttribute(new Float32Array(3 * n), 3);
   geo.setAttribute('emissiveTint', tint);
   geo.setAttribute('blink', blink);
-  const im = new THREE.InstancedMesh(geo, ledMaterial(), n);
-  im.count = specs.length;
+  const im = new InstancedParts(geo, ledMaterial(), n);
+  im.drawn = specs.length;
   const m4 = new THREE.Matrix4(), col = new THREE.Color();
   specs.forEach((s, i) => {
     im.setMatrixAt(i, m4.makeScale(s.w, s.h, 1).setPosition(s.x, s.y, s.z));

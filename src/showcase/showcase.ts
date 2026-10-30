@@ -23,9 +23,6 @@ import { aisleLayout } from './aisleLayout';
 import type { Pause } from './bay';
 import type { UnitLabeller } from '../render/rackView';
 
-/** where a closet is drawn out of sight once, before it shows (see Showcase.warm) */
-const warmTarget = new THREE.RenderTarget(1, 1);
-
 /** delay between two racks of the aisle, when they are tidied up or messed up (ms) */
 const WAVE = 700;
 
@@ -144,7 +141,7 @@ export class Showcase {
     for (const c of this.closets) {
       await pause();
       given();
-      this.warm(c);
+      await this.warm(c);
     }
     // the cords fall on the mess spilt on the floor
     const p = new THREE.Vector3();
@@ -168,28 +165,23 @@ export class Showcase {
   }
 
   /**
-   * Draws a closet once, alone, into a pixel: its shaders, buffers and
-   * textures go to the GPU then. Left to its first image on screen, that took
-   * a tenth of a second or more, and the title screen stalled as it appeared.
+   * Compiles a closet's shaders in the background before it shows, and
+   * sends its buffers and textures to the GPU. Left to its first image on
+   * screen, that stalled the title screen for half a second at a time.
    */
-  private warm(c: Closet): void {
-    const scene = this.stage.scene, r = this.stage.renderer;
-    const shown = scene.children.filter((o) => o.visible && !(o as THREE.Light).isLight);
-    for (const o of shown) o.visible = false;
+  private async warm(c: Closet): Promise<void> {
     // all of it, its managers too (hidden until it is tidied), wherever the camera looks
     const items = c.tidy.rackView!.itemsGroup;
     c.visible = items.visible = true;
     const culled: THREE.Object3D[] = [];
-    for (const g of [c.mess.group, c.tidy.group]) g.traverse((o) => { if (o.frustumCulled) { o.frustumCulled = false; culled.push(o); } });
-    const prev = r.getRenderTarget();
-    r.setRenderTarget(warmTarget);
-    r.render(scene, this.stage.camera);
-    r.setRenderTarget(prev);
-    // and the light of its LEDs on the cords (its map, drawn before each image)
-    c.tidy.rackView!.glow.render(r);
+    for (const g of c.groups) g.traverse((o) => { if (o.frustumCulled) { o.frustumCulled = false; culled.push(o); } });
+    // (the closet is looked through at once: it may go back as it was before the compiling ends)
+    const ready = Promise.all(c.groups.map((g) => this.stage.compile(g)));
     for (const o of culled) o.frustumCulled = true;
     c.visible = items.visible = false;
-    for (const o of shown) o.visible = true;
+    // and the light of its LEDs on the cords (its map, drawn before each image)
+    c.tidy.rackView!.glow.render(this.stage.renderer);
+    await ready;
   }
 
   /** what the aisle puts in the scene */

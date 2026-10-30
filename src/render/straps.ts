@@ -6,8 +6,9 @@
 // in. Cords lying against the bundle may still go through it a little: hugging
 // them exactly cost too much while the cords move.
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import type { CordsSource } from './cableView';
+import { InstancedParts } from './instancedParts';
 
 /** points round a band */
 const N = 32;
@@ -45,20 +46,20 @@ const d = new THREE.Vector3(), u = new THREE.Vector3(), v = new THREE.Vector3();
 const e1 = new THREE.Vector3(), e2 = new THREE.Vector3(), m4 = new THREE.Matrix4();
 
 export class Straps {
-  mesh: THREE.InstancedMesh;
+  mesh: InstancedParts;
   private geo = bandGeometry();
   /** the direction of each cord a band holds, where it holds it */
   private tx: number[] = [];
   private ty: number[] = [];
   private tz: number[] = [];
 
-  constructor(private material: THREE.Material) {
+  constructor(private material: THREE.NodeMaterial) {
     this.mesh = this.make(16);
   }
 
   update(world: CordsSource): void {
     const list = world.straps;
-    if (list.length > this.mesh.instanceMatrix.count) {
+    if (list.length > this.mesh.capacity) {
       const old = this.mesh;
       this.mesh = this.make(2 * list.length);
       old.parent?.add(this.mesh);
@@ -66,21 +67,20 @@ export class Straps {
       old.dispose();
     }
     const im = this.mesh;
-    im.count = list.length;
+    im.drawn = list.length;
     let moved = false;
     list.forEach((s, k) => {
       const m = this.band(world, s.nodes) ?? ZERO;
-      const a = im.instanceMatrix.array, e = m.elements, o = 16 * k;
+      const a = im.matrices.array, e = m.elements, o = 16 * k;
       for (let q = 0; q < 16; q++) if (a[o + q] !== Math.fround(e[q])) { im.setMatrixAt(k, m); moved = true; break; }
     });
-    if (moved) im.instanceMatrix.needsUpdate = true;
+    if (moved) im.matrices.needsUpdate = true;
   }
 
-  private make(cap: number): THREE.InstancedMesh {
-    const im = new THREE.InstancedMesh(this.geo, this.material, cap);
+  private make(cap: number): InstancedParts {
+    const im = new InstancedParts(this.geo, this.material, cap);
     im.castShadow = true;
-    im.frustumCulled = false;
-    im.count = 0;
+    im.drawn = 0;
     return im;
   }
 

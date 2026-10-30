@@ -13,6 +13,7 @@ import { ledLit, type LedGlow } from './ledGlow';
 import { JACKET_KIND, jacketMaterial } from './jacket';
 import { addGlow } from './glowTerms';
 import { Straps } from './straps';
+import { InstancedParts } from './instancedParts';
 import { DEFAULT_LOOK } from './look';
 import type { CableIndex, EndIndex, NodeIndex, ReadonlyCable } from '../game/cables';
 import { CORD_KINDS, type CordPlug, type CordType } from '../game/cordTypes';
@@ -76,10 +77,10 @@ function plugShape(plug: CordPlug): { housing: THREE.BufferGeometry; latch: THRE
 
 /** the parts of one kind of connector, each instanced over every end of the cords (2c + e) */
 interface Plugs {
-  housing: THREE.InstancedMesh;
-  latch: THREE.InstancedMesh;
-  boot: THREE.InstancedMesh;
-  label: THREE.InstancedMesh;
+  housing: InstancedParts;
+  latch: InstancedParts;
+  boot: InstancedParts;
+  label: InstancedParts;
   /** glow of the boots, with their cord */
   tint: THREE.InstancedBufferAttribute;
 }
@@ -107,8 +108,8 @@ export class CableView {
   private plugs: Record<CordPlug, Plugs>;
   private straps: Straps;
   /** a ring round every pinched node */
-  private pinchMarks: THREE.InstancedMesh | null = null;
-  private pinchMat = new THREE.MeshBasicMaterial({ color: '#ffffff' });
+  private pinchMarks: InstancedParts | null = null;
+  private pinchMat = new THREE.MeshBasicNodeMaterial({ color: '#ffffff' });
   /** the pinch under the pointer, or −1 */
   pinchHover = -1;
   /** the cord whose pinches are shown (under the pointer, or in hand), or −1: none */
@@ -122,12 +123,12 @@ export class CableView {
   private col = new THREE.Color();
   private scale = new THREE.Vector3();
   /** instanced meshes whose matrices or colours changed this frame: only those are sent to the GPU */
-  private moved = new Set<THREE.InstancedMesh>();
-  private recoloured = new Set<THREE.InstancedMesh>();
+  private moved = new Set<InstancedParts>();
+  private recoloured = new Set<InstancedParts>();
 
   /** `velcro`: the colour of the straps (the look's) */
   constructor(private world: CordsSource, velcro = DEFAULT_LOOK.velcro) {
-    this.straps = new Straps(new THREE.MeshStandardMaterial({ color: velcro, roughness: 0.9 }));
+    this.straps = new Straps(new THREE.MeshStandardNodeMaterial({ color: velcro, roughness: 0.9 }));
     let segments = 0, nodes = 0;
     world.cables.forEach((cb) => {
       this.cables.push({ visible: true, color: new THREE.Color(cb.color ?? CORD_KINDS[cb.type].color) });
@@ -150,15 +151,14 @@ export class CableView {
     this.group.add(this.tube, this.straps.mesh);
 
     const n = 2 * world.cables.length;
-    const make = (plug: CordPlug, housingMat: THREE.Material): Plugs => {
+    const make = (plug: CordPlug, housingMat: THREE.MeshStandardNodeMaterial): Plugs => {
       const g = connectorGeos(world.radius, plug);
       const tint = new THREE.InstancedBufferAttribute(new Float32Array(3 * n), 3).setUsage(THREE.DynamicDrawUsage);
       g.boot.setAttribute('emissiveTint', tint);
-      const inst = (geo: THREE.BufferGeometry, m: THREE.Material) => {
-        const im = new THREE.InstancedMesh(geo, m, n);
+      const inst = (geo: THREE.BufferGeometry, m: THREE.MeshStandardNodeMaterial) => {
+        const im = new InstancedParts(geo, m, n);
         im.castShadow = true;
-        im.frustumCulled = false;
-        im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        im.matrices.setUsage(THREE.DynamicDrawUsage);
         for (let i = 0; i < n; i++) { im.setMatrixAt(i, ZERO); im.setColorAt(i, this.col.set('#ffffff')); }
         this.moved.add(im);
         this.recoloured.add(im);
@@ -225,17 +225,14 @@ export class CableView {
     const sim = this.world.sim, x = sim.x;
     let total = 0;
     for (const p of sim.pinches) total += p.n;
-    if (total > (this.pinchMarks?.instanceMatrix.count ?? 0)) {
+    if (total > (this.pinchMarks?.capacity ?? 0)) {
       if (this.pinchMarks) { this.group.remove(this.pinchMarks); this.pinchMarks.dispose(); }
-      const cap = Math.max(32, 2 * total);
-      this.pinchMarks = new THREE.InstancedMesh(pinchGeo, this.pinchMat, cap);
-      this.pinchMarks.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(3 * cap), 3);
-      this.pinchMarks.frustumCulled = false;
+      this.pinchMarks = new InstancedParts(pinchGeo, this.pinchMat, Math.max(32, 2 * total));
       this.group.add(this.pinchMarks);
     }
     const im = this.pinchMarks;
     if (!im) return;
-    im.count = total;
+    im.drawn = total;
     let k = 0;
     sim.pinches.forEach((p, j) => {
       const c = sim.cableOf[p.a];
@@ -253,20 +250,20 @@ export class CableView {
         this.putColor(im, k, this.col);
       }
     });
-    if (this.moved.delete(im)) im.instanceMatrix.needsUpdate = true;
-    if (this.recoloured.delete(im)) im.instanceColor!.needsUpdate = true;
+    if (this.moved.delete(im)) im.matrices.needsUpdate = true;
+    if (this.recoloured.delete(im)) im.colors.needsUpdate = true;
   }
 
   /** sets one instance's matrix, and remembers its mesh for the upload if it changed */
-  private putMatrix(im: THREE.InstancedMesh, i: number, m: THREE.Matrix4): void {
-    const a = im.instanceMatrix.array, e = m.elements, o = 16 * i;
+  private putMatrix(im: InstancedParts, i: number, m: THREE.Matrix4): void {
+    const a = im.matrices.array, e = m.elements, o = 16 * i;
     for (let k = 0; k < 16; k++) {
       if (a[o + k] !== Math.fround(e[k])) { im.setMatrixAt(i, m); this.moved.add(im); return; }
     }
   }
 
-  private putColor(im: THREE.InstancedMesh, i: number, c: THREE.Color): void {
-    const a = im.instanceColor!.array, o = 3 * i;
+  private putColor(im: InstancedParts, i: number, c: THREE.Color): void {
+    const a = im.colors.array, o = 3 * i;
     if (a[o] === Math.fround(c.r) && a[o + 1] === Math.fround(c.g) && a[o + 2] === Math.fround(c.b)) return;
     im.setColorAt(i, c);
     this.recoloured.add(im);
@@ -312,8 +309,8 @@ export class CableView {
 
   /** sends what changed this frame to the GPU */
   private flush(): void {
-    for (const im of this.moved) im.instanceMatrix.needsUpdate = true;
-    for (const im of this.recoloured) im.instanceColor!.needsUpdate = true;
+    for (const im of this.moved) im.matrices.needsUpdate = true;
+    for (const im of this.recoloured) im.colors.needsUpdate = true;
     this.moved.clear();
     this.recoloured.clear();
   }

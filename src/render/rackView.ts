@@ -12,6 +12,7 @@ import { bevelBox, bevelTemplate } from './bevel';
 import { LedGlow, ledGlows } from './ledGlow';
 import { STEADY, activity, ledGlow, ledMaterial, ledMesh, pulse, type Blink, type LedSpec } from './leds';
 import { rackMat } from './rackMaterials';
+import { InstancedParts } from './instancedParts';
 import { buildItem } from './rackItems';
 import { crateWall, roundedBox } from './shapes';
 import { buildRoom } from './room';
@@ -50,7 +51,7 @@ export class RackView {
   /** the rings that highlight ports, made the first time each is asked for (see marker()) */
   portMarkers = new Map<string, THREE.Mesh>();
   /** every port LED, one instance each, then the traffic lights of the ports that have one */
-  private leds: THREE.InstancedMesh;
+  private leds: InstancedParts;
   private ledOf = new Map<string, number>();
   /** the ports of active equipment, which show their traffic on a second light: its rank among them */
   private trafficOf = new Map<string, number>();
@@ -82,7 +83,7 @@ export class RackView {
     this.ledBlink = new THREE.InstancedBufferAttribute(new Float32Array(3 * count), 3);
     geo.setAttribute('emissiveTint', this.ledTint);
     geo.setAttribute('blink', this.ledBlink);
-    this.leds = new THREE.InstancedMesh(geo, ledMaterial(), count);
+    this.leds = new InstancedParts(geo, ledMaterial(), count);
     this.leds.receiveShadow = true;
     const m4 = new THREE.Matrix4();
     for (const p of ports) {
@@ -460,7 +461,7 @@ export class RackView {
     this.ledBlink.setXYZ(i, b.rate, b.duty, b.phase);
     this.ledBlink.needsUpdate = true;
     this.leds.setColorAt(i, color === null ? col.set('#202020') : col.set(color));
-    this.leds.instanceColor!.needsUpdate = true;
+    this.leds.colors.needsUpdate = true;
   }
 
   /**

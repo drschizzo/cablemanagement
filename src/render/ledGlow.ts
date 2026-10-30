@@ -11,13 +11,14 @@
 
 import * as THREE from 'three/webgpu';
 import { shared } from './dispose';
+import { InstancedParts } from './instancedParts';
 import { ledOn } from './leds';
 import { addGlow } from './glowTerms';
 import { tsl, type ShaderNode } from './tsl';
 
 const {
-  abs, attribute, diffuseColor, dot, exp, exp2, length, log2, max, min, normalWorldGeometry, normalize, positionGeometry,
-  positionWorld, select, texture, uniform, varying, vec2, vec3, vec4,
+  abs, attribute, diffuseColor, dot, exp, exp2, length, log2, materialReference, max, min, normalWorldGeometry, normalize,
+  positionGeometry, positionWorld, select, uniform, varying, vec2, vec3, vec4,
 } = tsl;
 
 /** the weights of red, green and blue in the luminance */
@@ -46,12 +47,17 @@ const PEAK = 4;
 /** how far a spot is drawn, in spreads */
 const SPOT_REACH = 3;
 
+/** the colour of a soft spot, in spreads from its light (one node for all: see glowTerms.ts) */
+const SPOT_COLOR = (() => {
+  const r = varying(positionGeometry.xy.div(SPREAD));
+  const tint = varying(attribute('emissiveTint', 'vec3').mul(ledOn(attribute('blink', 'vec3'))));
+  return vec4(tint.mul(exp(dot(r, r).mul(-0.5)).mul(PEAK)), 1);
+})();
+
 /** the soft spot of a light, drawn into the map */
 function spotMaterial(): THREE.MeshBasicNodeMaterial {
   const m = new THREE.MeshBasicNodeMaterial({ blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false });
-  const r = varying(positionGeometry.xy.div(SPREAD));
-  const tint = varying(attribute('emissiveTint', 'vec3').mul(ledOn(attribute('blink', 'vec3'))));
-  m.colorNode = vec4(tint.mul(exp(dot(r, r).mul(-0.5)).mul(PEAK)), 1);
+  m.colorNode = SPOT_COLOR;
   return m;
 }
 
@@ -70,7 +76,7 @@ export class LedGlow {
    * `sources`: the instanced lights of the cabinet, laid already (their tints
    * and blinks are shared, not copied; they never move).
    */
-  constructor(readonly root: THREE.Object3D, sources: THREE.InstancedMesh[], box: [number, number, number, number]) {
+  constructor(readonly root: THREE.Object3D, sources: InstancedParts[], box: [number, number, number, number]) {
     const [x0, y0, x1, y1] = box;
     this.box = new THREE.Vector4(x0, y0, x1, y1);
     this.map = new THREE.RenderTarget(Math.ceil((x1 - x0) * DENSITY), Math.ceil((y1 - y0) * DENSITY), {
@@ -90,12 +96,12 @@ export class LedGlow {
       g.setAttribute('position', quad.getAttribute('position'));
       g.setAttribute('emissiveTint', src.geometry.getAttribute('emissiveTint'));
       g.setAttribute('blink', src.geometry.getAttribute('blink'));
-      const spots = new THREE.InstancedMesh(g, spotMaterial(), src.count);
-      for (let i = 0; i < src.count; i++) {
+      const spots = new InstancedParts(g, spotMaterial(), src.capacity);
+      spots.drawn = src.drawn;
+      for (let i = 0; i < src.capacity; i++) {
         src.getMatrixAt(i, lens);
         spots.setMatrixAt(i, lens.makeTranslation(centre.setFromMatrixPosition(lens)));
       }
-      spots.frustumCulled = false;
       this.scene.add(spots);
     }
   }
@@ -141,11 +147,11 @@ export class LedGlow {
   dispose(): void {
     this.map.dispose();
     this.scene.traverse((o) => {
-      const m = o as THREE.InstancedMesh;
-      if (!m.isInstancedMesh) return;
-      // its quad (its tint and blink are the cabinet's lights', freed with them)
-      m.geometry.dispose();
-      (m.material as THREE.Material).dispose();
+      const m = o as InstancedParts;
+      if (!m.isInstancedParts) return;
+      // its buffers (its quad's shape, tint and blink are the cabinet's lights', freed with them)
+      m.dispose();
+      m.material.dispose();
     });
     for (const m of this.copies.values()) {
       // their textures were the cabinet's own (the rails', the labels'), unless made once for all
@@ -177,7 +183,16 @@ function nodeCopy(src: THREE.MeshStandardMaterial): THREE.MeshStandardNodeMateri
  * where the surface stands, blurred by the distance to the lenses, and taken
  * by the side turned to the light.
  */
-function glowLight(map: THREE.Texture, frame: ShaderNode, box: ShaderNode, gain: ShaderNode): ShaderNode {
+/**
+ * The light a cabinet's glow gives a surface: the map of its façade, read
+ * where the surface stands, blurred by the distance to the lenses, and taken
+ * by the side turned to the light. Built once for every material lit with
+ * `gain`: the cabinet's own map, frame and box are read on the material drawn
+ * (its userData, see ledLit), so that its shader is shared.
+ */
+function glowLight(gain: ShaderNode): ShaderNode {
+  const frame = materialReference('userData.ledGlowFrame', 'mat4');
+  const box = materialReference('userData.ledGlowBox', 'vec4');
   const p = frame.mul(vec4(positionWorld, 1)).xyz;
   const n = normalize(frame.mul(vec4(normalWorldGeometry, 0)).xyz);
   const size = box.zw.sub(box.xy);
@@ -192,7 +207,8 @@ function glowLight(map: THREE.Texture, frame: ShaderNode, box: ShaderNode, gain:
   const du = vec2(texel.div(size.x), 0), dv = vec2(0, texel.div(size.y));
   const Y = vec3(...LUMA);
   // (the rows of a render target run from its top, as WebGPU stores textures; the face's y, from its bottom)
-  const read = (at: ShaderNode) => texture(map, vec2(at.x, at.y.oneMinus()), lod).rgb;
+  const read = (at: ShaderNode) => materialReference('userData.ledGlowMap', 'texture')
+    .context({ getUV: () => vec2(at.x, at.y.oneMinus()), getTextureLevel: () => lod }).rgb;
   const c = read(uv);
   const slope = vec2(dot(read(uv.add(du)).sub(read(uv.sub(du))), Y), dot(read(uv.add(dv)).sub(read(uv.sub(dv))), Y)).div(texel.mul(2));
   // where the light comes from: across the face, towards the brighter side, as far as a spot of that
@@ -208,10 +224,16 @@ function glowLight(map: THREE.Texture, frame: ShaderNode, box: ShaderNode, gain:
   return select(inside, diffuseColor.rgb.mul(light.div(dot(light, Y).add(1))), vec3(0));
 }
 
+/** the light of the LEDs, by its gain (built once each) */
+const glowLights = new Map<ShaderNode, ShaderNode>();
+
 /**
  * Lights a material with a cabinet's glow, added to its own glow; `gain`: how
  * much of it, a uniform shared by the materials of a kind.
  */
 export function ledLit<T extends THREE.MeshStandardNodeMaterial>(m: T, glow: LedGlow, gain: ShaderNode = ledLight): T {
-  return addGlow(m, glowLight(glow.map.texture, uniform(glow.frame), uniform(glow.box), gain));
+  Object.assign(m.userData, { ledGlowFrame: glow.frame, ledGlowBox: glow.box, ledGlowMap: glow.map.texture });
+  let term = glowLights.get(gain);
+  if (!term) glowLights.set(gain, (term = glowLight(gain)));
+  return addGlow(m, term);
 }

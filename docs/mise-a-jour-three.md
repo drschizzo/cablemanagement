@@ -34,6 +34,26 @@ Deux comportements de `WebGPURenderer` sont pris en compte :
   (`ledMaterial`) part de la position déjà placée par l'instance ;
 - une cible de rendu se lit lignes inversées (la carte des voyants, `ledGlow.ts`).
 
+### Un shader partagé par les matériaux faits de même
+
+three construit un shader par graphe de nœuds, et la clé de ce graphe tient compte de l'identité de chaque nœud :
+deux matériaux construits chacun avec leurs propres nœuds ont chacun leur shader, même identique. Les effets
+partagés le sont donc par les mêmes nœuds : `addGlow` (`glowTerms.ts`) réutilise la même somme pour les mêmes
+termes, et la lumière des voyants (`ledGlow.ts`) lit la carte, le repère et le cadre de chaque baie sur le matériau
+(`materialReference('userData.…')`) au lieu d'en faire des nœuds par baie.
+
+Trois comportements de `WebGPURenderer` sont contournés ; à revérifier à chaque version, car three peut les corriger :
+
+- **Un `InstancedMesh` a toujours son propre shader** : son `uuid` entre dans la clé de son shader
+  (`RenderObject`, un TODO de three). Les pièces répétées passent par `InstancedParts` (`instancedParts.ts`), dont
+  les matrices et les couleurs sont des attributs de la géométrie ; ESLint refuse `new THREE.InstancedMesh`.
+- **`NodeMaterial` lit `instanceColor` sur n'importe quel objet** : un objet qui a cette propriété sans être un
+  `InstancedMesh` est teint d'une couleur jamais écrite (du noir). `InstancedParts` nomme ses tampons `matrices` et
+  `colors`.
+- **Une carte d'ombre redimensionnée en place** est refaite par three, mais les shaders qui la lisent gardent
+  l'ancienne, détruite : le GPU refuse chaque image et l'écran se fige. Quand la qualité change la taille des ombres,
+  `Stage` remplace la lumière principale (`replaceKeyLight`).
+
 ### La chaîne de l'image (`render/imagePipeline.ts`, `bloom.ts`, `depthOfField.ts`, `cinema.ts`)
 
 | Nœud | Fichier de three.js | Ce que le jeu en règle |

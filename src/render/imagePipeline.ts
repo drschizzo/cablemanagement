@@ -155,6 +155,23 @@ export class ImagePipeline {
     this.pipeline.needsUpdate = true;
   }
 
+  /**
+   * Compiles, in the background, what `object` needs to be drawn into the
+   * scene's images, and resolves once it is ready. Drawn for the first time
+   * instead, it stalls the frames while the GPU compiles: three gives each
+   * instanced mesh a shader of its own, and a cabinet has dozens.
+   */
+  compile(object: THREE.Object3D, scene: THREE.Scene): Promise<void> {
+    const r = this.renderer, target = r.getRenderTarget(), mrt = r.getMRT();
+    r.setRenderTarget(this.scenePass.renderTarget);
+    r.setMRT(this.scenePass.getMRT());
+    // (the work is set out at once, only its end is awaited: the renderer goes back to its state now)
+    const ready = r.compileAsync(object, this.camera, scene);
+    r.setRenderTarget(target);
+    r.setMRT(mrt);
+    return ready;
+  }
+
   /** how far past white the image goes (× white; 1: up to white) */
   setHeadroom(headroom: number): void {
     this.headroom.value = headroom;

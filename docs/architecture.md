@@ -87,7 +87,9 @@ src/
     toneCurve.ts    la courbe de tons : ACES jusqu'au blanc ; sur un écran HDR, les lumières au-delà
     hdrScreen.ts    l'écran affiche-t-il le HDR, et l'image va-t-elle au-delà du blanc (choix du joueur : auto, oui, non)
     tsl.ts          TSL, le langage de nœuds de three.js dans lequel s'écrivent les matériaux et les passes, typé
-                    une fois ; glowTerms.ts, les lueurs que plusieurs effets ajoutent à un même matériau
+                    une fois ; glowTerms.ts, les lueurs que plusieurs effets ajoutent à un même matériau ;
+                    instancedParts.ts, les pièces répétées par centaines (connecteurs, voyants, velcros), dessinées
+                    en un appel, qui partagent le shader de leur matériau
     gpu.ts          la carte graphique utilisée, et le conseil à donner quand elle dessine trop lentement
     frontImage.ts   l'image de face de la baie (avant / après de l'écran de résultat)
     frameGrab.ts    une copie de l'image qui vient d'être dessinée, sans les panneaux (une image du timelapse)

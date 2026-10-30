@@ -447,7 +447,7 @@ Les sommets ne coûtent presque rien au CPU, mais le GPU exécute le vertex shad
 
 ### 7.5 Les connecteurs, les velcros et la baie
 
-**Les connecteurs.** Chaque câble a deux connecteurs de quatre pièces : boîtier, loquet, manchon, étiquette. Dessinées séparément, ces pièces coûteraient 8 appels de dessin par câble. Elles utilisent donc l'**instanciation** (`THREE.InstancedMesh`) : une seule géométrie de boîtier, dessinée en un appel autant de fois qu'il y a d'extrémités, chaque copie avec sa matrice et sa couleur. Il faut 8 appels pour tous les connecteurs, un par pièce et par type (fibre ou cuivre). `updateEnds()` calcule la matrice de chaque connecteur à partir des deux derniers nœuds du câble, et seules les matrices qui ont changé sont renvoyées.
+**Les connecteurs.** Chaque câble a deux connecteurs de quatre pièces : boîtier, loquet, manchon, étiquette. Dessinées séparément, ces pièces coûteraient 8 appels de dessin par câble. Elles utilisent donc l'**instanciation** (`InstancedParts`, `instancedParts.ts`) : une seule géométrie de boîtier, dessinée en un appel autant de fois qu'il y a d'extrémités, chaque copie avec sa matrice et sa couleur, rangées dans des attributs de la géométrie. Le `InstancedMesh` de three ferait de même, mais chacun aurait son propre shader, à construire à son premier dessin ; les `InstancedParts` d'un même matériau partagent le leur. Il faut 8 appels pour tous les connecteurs, un par pièce et par type (fibre ou cuivre). `updateEnds()` calcule la matrice de chaque connecteur à partir des deux derniers nœuds du câble, et seules les matrices qui ont changé sont renvoyées.
 
 **Les velcros** (`straps.ts`) sont une instance chacun d'une bande fine, ajustée en ellipse autour des câbles qu'ils serrent.
 
@@ -649,7 +649,7 @@ Trois idées en ressortent.
 Le jeu s'ouvre sur une allée de baies géantes en désordre, que l'interrupteur Avant / Après range sous les yeux du joueur (`src/showcase/`). Elle utilise les mêmes moteur et rendu qu'un niveau, à une autre échelle : des dizaines de milliers de nœuds, que les niveaux de détail de la section 7.4 rendent abordables.
 
 - **Une chute précalculée.** Le désordre de la salle par défaut est tombé une fois pour toutes (`npm run bake`) et rangé dans `src/game/mess/showcase.bin` : la position de chaque nœud, en écarts au nœud précédent au dixième de millimètre, compressés. La salle s'affiche donc sans attendre la physique. Si le code qui dispose le désordre change, l'empreinte d'une baie ne correspond plus : cette baie tombe au chargement, comme une salle tirée au hasard, jusqu'au prochain précalcul.
-- **La salle suivante, en fond.** Pendant qu'une salle est à l'écran, la suivante, tirée au hasard, tombe dans un Worker par baie (`game/mess/fall.worker.ts`). La page construit chaque baie par petits morceaux, une image entre deux, puis la dessine une fois hors écran pour que shaders et textures soient sur le GPU avant sa première vraie image (`Showcase.warm`). « Une autre salle » l'affiche alors aussitôt.
+- **La salle suivante, en fond.** Pendant qu'une salle est à l'écran, la suivante, tirée au hasard, tombe dans un Worker par baie (`game/mess/fall.worker.ts`). La page construit chaque baie par petits morceaux, une image entre deux, puis compile ses shaders en arrière-plan et envoie ses textures au GPU avant sa première vraie image (`Showcase.warm`, `Stage.compile`). « Une autre salle » l'affiche alors aussitôt.
 - **Avant / après.** Les deux états sont deux mondes qui partagent la baie et le plan de brassage : les longs cordons en désordre, et la baie rangée. Le passage de l'un à l'autre est une chorégraphie : chaque cordon est mené le long de son chemin rangé, puis échangé contre le cordon court de l'autre monde là où leurs formes coïncident.
 - **La pluie de câbles** (`showcase/cableRain.ts`) est un décor, pas le moteur : chaque câble qui tombe est une petite chaîne de points (intégration de Verlet, longueurs projetées), qui se pose sur une carte de hauteur du tas puis se fige.
 
@@ -701,5 +701,5 @@ Le jeu s'ouvre sur une allée de baies géantes en désordre, que l'interrupteur
 
 - `docs/architecture.md` : l'organisation du code, et où intervenir pour ajouter un niveau, un outil ou un critère de score.
 - La documentation de cable-kit (`vendor/cable-kit`) : les deux paquets, leurs exemples et leurs réglages.
-- La documentation de [three.js](https://threejs.org/docs/), en particulier `WebGPURenderer`, `InstancedBufferGeometry`, `InstancedMesh`, `RenderPipeline`, et le [manuel de TSL](https://github.com/mrdoob/three.js/wiki/Three.js-Shading-Language).
+- La documentation de [three.js](https://threejs.org/docs/), en particulier `WebGPURenderer`, `InstancedBufferGeometry`, `RenderPipeline`, et le [manuel de TSL](https://github.com/mrdoob/three.js/wiki/Three.js-Shading-Language).
 - L'article d'origine de la méthode : *Augmented Vertex Block Descent*, C. Giles, E. Diaz, C. Yuksel, ACM Transactions on Graphics (SIGGRAPH 2025).

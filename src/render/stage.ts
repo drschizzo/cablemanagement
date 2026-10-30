@@ -199,6 +199,11 @@ export class Stage {
     if (advice) this.onGpuAdvice(advice);
   }
 
+  /** compiles in the background what `object` (in the scene) needs to be drawn; see ImagePipeline.compile */
+  compile(object: THREE.Object3D): Promise<void> {
+    return this.image.compile(object, this.scene);
+  }
+
   /** what the player chose for HDR */
   get hdrChoice(): HdrChoice {
     return this.hdrChosen;
