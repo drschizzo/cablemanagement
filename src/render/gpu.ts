@@ -5,10 +5,10 @@
 // (SwiftShader): the game then crawls. The page cannot pick the GPU; it can tell
 // the player how to.
 
-import * as THREE from 'three';
+import type * as THREE from 'three/webgpu';
 
 export interface GpuInfo {
-  /** as the browser reports it, e.g. "ANGLE (Intel, Intel(R) UHD Graphics 620 Direct3D11 vs_5_0 ps_5_0, D3D11)" */
+  /** as the browser reports it, e.g. "intel gen-12lp" (WebGPU), "ANGLE (Intel, Intel(R) UHD Graphics 620 Direct3D11 vs_5_0 ps_5_0, D3D11)" (WebGL) */
   name: string;
   /** drawn by the processor: hardware acceleration off or unavailable */
   software: boolean;
@@ -16,11 +16,27 @@ export interface GpuInfo {
   integrated: boolean;
 }
 
-export function gpuInfo(renderer: THREE.WebGLRenderer): GpuInfo {
-  const gl = renderer.getContext();
+/** what the backend of a WebGPURenderer shows of its device */
+interface Backend {
+  isWebGPUBackend?: boolean;
+  device?: { adapterInfo?: { vendor: string; architecture: string; device: string; description: string } };
+  gl?: WebGL2RenderingContext;
+}
+
+/** the GPU's name, as WebGPU or (on its fallback) WebGL reports it */
+function gpuName(renderer: THREE.WebGPURenderer): string {
+  const backend = renderer.backend as Backend;
+  const info = backend.device?.adapterInfo;
+  if (backend.isWebGPUBackend) return info ? [info.vendor, info.architecture, info.device, info.description].filter(Boolean).join(' ') : '';
+  const gl = backend.gl;
+  if (!gl) return '';
   // Chrome and Safari give the real name in RENDERER; Firefox only through the extension
   const ext = gl.getExtension('WEBGL_debug_renderer_info');
-  const name = String((ext && gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)) || gl.getParameter(gl.RENDERER) || '');
+  return String((ext && gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)) || gl.getParameter(gl.RENDERER) || '');
+}
+
+export function gpuInfo(renderer: THREE.WebGPURenderer): GpuInfo {
+  const name = gpuName(renderer);
   const software = /swiftshader|llvmpipe|softpipe|basic render|software/i.test(name);
   // Intel Arc cards are dedicated; AMD's numbered Radeons (RX 6600, 780M…) are cards or strong APUs
   const integrated = !software && (

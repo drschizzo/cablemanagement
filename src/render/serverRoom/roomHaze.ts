@@ -3,9 +3,14 @@
 // of air, a pool of light where it meets the floor, and dust glinting as it
 // drifts through.
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import { LED_CLOCK_WRAP, ledClock, ledViewHeight } from '../leds';
-import { keepOutOfDepth } from '../threeCompat/passes';
+import { tsl, type ShaderNode } from '../tsl';
+
+const {
+  PI2, abs, atan, cameraProjectionMatrix, cos, dot, exp, fract, instancedBufferAttribute, length, max, mix, modelViewMatrix,
+  normalView, normalize, positionLocal, positionView, pow, screenDPR, sin, smoothstep, uv, varying, vec3, vec4,
+} = tsl;
 
 /** the ceiling the shafts fall from, above the floor (m) */
 export const ROOM_CEILING = 2.7;
@@ -19,6 +24,8 @@ const SHAFT_TOP_R = 0.06;
 const SHAFT_FLOOR_R = 0.5;
 /** motes of dust in each shaft */
 const DUST_MOTES = 90;
+/** the smallest a mote is drawn (px): smaller, it flickered in and out */
+const MOTE_MIN_PX = 1.5;
 
 /** the shafts of light falling at `shafts`, on the floor at y = 0 of their group */
 export function roomHaze(shafts: { x: number; z: number }[], random: () => number): THREE.Group {
@@ -30,7 +37,6 @@ export function roomHaze(shafts: { x: number; z: number }[], random: () => numbe
     for (const [geo, material] of [[cone, shaftMaterial(seed)], [pool, poolMaterial()]] as const) {
       const m = new THREE.Mesh(geo, material);
       m.position.set(s.x, 0, s.z);
-      keepOutOfDepth(m);
       g.add(m);
     }
   }
@@ -39,77 +45,44 @@ export function roomHaze(shafts: { x: number; z: number }[], random: () => numbe
 }
 
 /** a light added to the image, drawn over what lies behind it and writing no depth */
-function glowMaterial(uniforms: Record<string, THREE.IUniform>, vertexShader: string, fragmentShader: string): THREE.ShaderMaterial {
-  return new THREE.ShaderMaterial({
-    uniforms: { color: { value: HAZE_COLOR }, time: ledClock, ...uniforms },
-    vertexShader, fragmentShader,
-    transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending,
-  });
+function glowMaterial(glow: ShaderNode): THREE.MeshBasicNodeMaterial {
+  const m = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false });
+  m.colorNode = vec4(vec3(HAZE_COLOR.r, HAZE_COLOR.g, HAZE_COLOR.b).mul(glow), 1);
+  return m;
 }
 
 /** whole turns while the clock goes round (see ledClock): the motion never jumps when it wraps */
-const TURNS = `const float TAU = 6.2831853;
-float turns(float n) { return time * TAU * n / ${LED_CLOCK_WRAP.toFixed(1)}; }`;
+const turns = (n: number) => ledClock.mul(PI2 * n / LED_CLOCK_WRAP);
 
-function shaftMaterial(seed: number): THREE.ShaderMaterial {
-  return glowMaterial({ seed: { value: seed } }, `
-varying vec3 vLocal;
-varying vec3 vNormal;
-varying vec3 vView;
-void main() {
-  vLocal = position;
-  vec4 mv = modelViewMatrix * vec4(position, 1.0);
-  vView = -mv.xyz;
-  vNormal = normalMatrix * normal;
-  gl_Position = projectionMatrix * mv;
-}`, `
-uniform vec3 color;
-uniform float time;
-uniform float seed;
-varying vec3 vLocal;
-varying vec3 vNormal;
-varying vec3 vView;
-${TURNS}
-void main() {
-  float h = vLocal.y / ${ROOM_CEILING.toFixed(3)};
+function shaftMaterial(seed: number): THREE.MeshBasicNodeMaterial {
+  const local = positionLocal;
+  const h = local.y.div(ROOM_CEILING);
   // the cone seen through: bright where the eye crosses it most deeply, nothing at its rim
-  float through = abs(dot(normalize(vNormal), normalize(vView)));
-  float soft = through * through * through;
+  const through = abs(dot(normalize(normalView), normalize(positionView.negate())));
+  const soft = through.mul(through).mul(through);
   // fading out into the ceiling and onto the floor; the light spreads as it falls
-  float along = smoothstep(1.0, 0.8, h) * smoothstep(0.0, 0.25, h) * mix(0.45, 1.0, h);
+  const along = smoothstep(1, 0.8, h).mul(smoothstep(0, 0.25, h)).mul(mix(0.45, 1, h));
   // streaks of denser air round the cone, drifting down and round, slowly
-  float a = atan(vLocal.z, vLocal.x);
-  float streaks = 0.65
-    + 0.2 * sin(a * 7.0 + seed + 2.0 * sin(h * 5.0 + turns(23.0)))
-    + 0.15 * sin(a * 13.0 - seed + h * 9.0 + turns(41.0))
-    + 0.12 * sin(h * 17.0 + turns(67.0) + a * 3.0);
-  gl_FragColor = vec4(color * ${SHAFT_GLOW.toFixed(3)} * soft * along * streaks, 1.0);
-}`);
+  const a = atan(local.z, local.x);
+  const streaks = sin(a.mul(7).add(seed).add(sin(h.mul(5).add(turns(23))).mul(2))).mul(0.2)
+    .add(sin(a.mul(13).sub(seed).add(h.mul(9)).add(turns(41))).mul(0.15))
+    .add(sin(h.mul(17).add(turns(67)).add(a.mul(3))).mul(0.12))
+    .add(0.65);
+  return glowMaterial(soft.mul(along).mul(streaks).mul(SHAFT_GLOW));
 }
 
-function poolMaterial(): THREE.ShaderMaterial {
-  return glowMaterial({}, `
-varying vec2 vXZ;
-void main() {
-  vXZ = position.xz;
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-}`, `
-uniform vec3 color;
-uniform float time;
-varying vec2 vXZ;
-void main() {
-  float d = length(vXZ) / ${SHAFT_FLOOR_R.toFixed(3)};
+function poolMaterial(): THREE.MeshBasicNodeMaterial {
+  const d = length(positionLocal.xz).div(SHAFT_FLOOR_R);
   // the bright disc the cone lands on, and a little light spilling past it
-  float pool = smoothstep(1.05, 0.7, d) * 0.7 + exp(-d * d * 1.2) * 0.3;
-  gl_FragColor = vec4(color * ${POOL_GLOW.toFixed(3)} * pool, 1.0);
-}`);
+  const pool = smoothstep(1.05, 0.7, d).mul(0.7).add(exp(d.mul(d).mul(-1.2)).mul(0.3));
+  return glowMaterial(pool.mul(POOL_GLOW));
 }
 
 /**
  * Motes of dust in the shafts, falling slowly round and round them and
- * glinting as they turn. Points, which the passes leave out of their depth.
+ * glinting as they turn: one sprite each, drawn as a soft round point.
  */
-function dust(shafts: { x: number; z: number }[], random: () => number): THREE.Points {
+function dust(shafts: { x: number; z: number }[], random: () => number): THREE.Sprite {
   const base: number[] = [], spot: number[] = [];
   for (const s of shafts) {
     for (let k = 0; k < DUST_MOTES; k++) {
@@ -118,40 +91,28 @@ function dust(shafts: { x: number; z: number }[], random: () => number): THREE.P
       spot.push(random() * TWO_PI, Math.sqrt(random()) * 0.8, random(), 2 + Math.round(random() * 5));
     }
   }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(base, 3));
-  geo.setAttribute('spot', new THREE.Float32BufferAttribute(spot, 4));
-  const points = new THREE.Points(geo, new THREE.ShaderMaterial({
-    uniforms: { color: { value: HAZE_COLOR }, time: ledClock, viewHeight: ledViewHeight },
-    vertexShader: `
-attribute vec4 spot;
-uniform float time;
-uniform float viewHeight;
-varying float vGlow;
-${TURNS}
-void main() {
-  float h = fract(spot.z - turns(spot.w) / TAU);
-  float r = mix(${SHAFT_FLOOR_R.toFixed(3)}, ${SHAFT_TOP_R.toFixed(3)}, h);
-  float a = spot.x + turns(3.0);
-  float u = spot.y + 0.12 * sin(turns(7.0) + spot.x * 5.0);
-  vec4 mv = modelViewMatrix * vec4(position + vec3(cos(a) * u * r, h * ${ROOM_CEILING.toFixed(3)}, sin(a) * u * r), 1.0);
-  gl_Position = projectionMatrix * mv;
-  // a few mm, to pixels; never below one and a half, where a mote would flicker in and out
-  gl_PointSize = max(1.5, (0.004 + 0.004 * fract(spot.x * 7.0)) * projectionMatrix[1][1] * viewHeight * 0.5 / -mv.z);
-  float along = smoothstep(0.0, 0.1, h) * (1.0 - smoothstep(0.85, 1.0, h));
-  vGlow = along * (0.3 + 0.7 * pow(0.5 + 0.5 * sin(turns(220.0) + spot.x * 31.0), 4.0));
-}`,
-    fragmentShader: `
-uniform vec3 color;
-varying float vGlow;
-void main() {
-  float d = length(gl_PointCoord - 0.5) * 2.0;
-  gl_FragColor = vec4(color * vGlow * max(0.0, 1.0 - d), 1.0);
-}`,
-    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
-  }));
-  points.frustumCulled = false;
-  return points;
+  const at = instancedBufferAttribute(new THREE.InstancedBufferAttribute(new Float32Array(base), 3));
+  const sp = instancedBufferAttribute(new THREE.InstancedBufferAttribute(new Float32Array(spot), 4));
+  const angle = sp.x, share = sp.y, start = sp.z, fall = sp.w;
+  const h = fract(start.sub(turns(1).mul(fall).div(PI2)));
+  const r = mix(SHAFT_FLOOR_R, SHAFT_TOP_R, h);
+  const a = angle.add(turns(3));
+  const u = share.add(sin(turns(7).add(angle.mul(5))).mul(0.12));
+  const mote = at.add(vec3(cos(a).mul(u).mul(r), h.mul(ROOM_CEILING), sin(a).mul(u).mul(r)));
+  const m = new THREE.PointsNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: false, fog: false });
+  m.positionNode = mote;
+  // a few mm, to pixels; never below a pixel and a half, where a mote would flicker in and out
+  const depth = modelViewMatrix.mul(vec4(mote, 1)).z.negate();
+  const size = fract(angle.mul(7)).mul(0.004).add(0.004);
+  m.sizeNode = max(MOTE_MIN_PX, size.mul(cameraProjectionMatrix.element(1).y).mul(ledViewHeight).mul(0.5).div(depth)).div(screenDPR);
+  const along = smoothstep(0, 0.1, h).mul(smoothstep(0.85, 1, h).oneMinus());
+  const glow = varying(along.mul(pow(sin(turns(220).add(angle.mul(31))).mul(0.5).add(0.5), 4).mul(0.7).add(0.3)));
+  const d = length(uv().sub(0.5)).mul(2);
+  m.colorNode = vec4(vec3(HAZE_COLOR.r, HAZE_COLOR.g, HAZE_COLOR.b).mul(glow).mul(max(0, d.oneMinus())), 1);
+  const motes = new THREE.Sprite(m);
+  motes.count = shafts.length * DUST_MOTES;
+  motes.frustumCulled = false;
+  return motes;
 }
 
 const TWO_PI = Math.PI * 2;

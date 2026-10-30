@@ -24,7 +24,7 @@ onLanguageChange(() => writePageTexts());
 
 const options = readUrlOptions(location.search);
 const aisles = aisleSettings(options);
-const stage = new Stage($('#view'), showGpuNotice);
+const stage = await Stage.create($('#view'), showGpuNotice, options.forceWebGL);
 // ?quality=N holds a level for this visit only; otherwise, the one chosen (or reached by auto) last time
 stage.setQuality(options.quality !== null ? { kind: 'fixed', settings: QUALITY[options.quality] } : load('quality'));
 // the fallen mess of the default aisle, fetched while the rest starts

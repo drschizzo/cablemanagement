@@ -5,6 +5,7 @@
 //   ?seed=N      the same first aisle every time
 //   ?quality=N   the image held at that level of quality (0: full, see QUALITY), never adapted nor saved
 //   ?rack=CODE   a cabinet of the editor, opened at once (its code: game/levels/customLevel.ts)
+//   ?webgl       drawn with WebGL 2 even where WebGPU is there (as browsers without it draw)
 
 import { SHOWCASE_DEFAULT } from '../game/levels/showcaseRack';
 import { QUALITY } from '../render/quality';
@@ -20,6 +21,8 @@ export interface UrlOptions {
   quality: number | null;
   /** the code of a cabinet of the editor; null: not given */
   rack: string | null;
+  /** drawn with WebGL 2, WebGPU's fallback */
+  forceWebGL: boolean;
 }
 
 export function readUrlOptions(search: string): UrlOptions {
@@ -33,6 +36,7 @@ export function readUrlOptions(search: string): UrlOptions {
     seed: int('seed'),
     quality: params.has('quality') ? Math.max(0, Math.min(QUALITY.length - 1, int('quality'))) : null,
     rack: params.get('rack'),
+    forceWebGL: params.has('webgl'),
   };
 }
 

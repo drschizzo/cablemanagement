@@ -4,17 +4,22 @@
 // GPU: each instance carries how, and a shared clock drives them all, so a
 // cabinet full of flickering lights costs no work on the CPU.
 
-import * as THREE from 'three';
-import { patchMaterial, type MaterialPatch } from './threeCompat/materialPatch';
+import * as THREE from 'three/webgpu';
+import { tsl, type ShaderNode } from './tsl';
+
+const {
+  Fn, attribute, cameraProjectionMatrix, float, floor, fract, instancedBufferAttribute, length, max, mix, modelViewMatrix,
+  positionLocal, select, sin, step, uniform, varying, vec2, vec3, vec4,
+} = tsl;
 
 /** seconds, advanced by the stage every frame; shared by every blinking material */
-export const ledClock = { value: 0 };
+export const ledClock = uniform(0);
 
 /** when the clock wraps (s): kept small, so that the GPU's hash of it keeps its precision */
 export const LED_CLOCK_WRAP = 600;
 
 /** height of the drawing buffer (px), set by the stage: for the smallest size of a light on screen */
-export const ledViewHeight = { value: 1000 };
+export const ledViewHeight = uniform(1000);
 
 /**
  * The smallest a light is drawn (px across). Smaller, a lens of 2 mm seen from
@@ -54,7 +59,7 @@ export const STEADY: Blink = { rate: 0, duty: 1, phase: 0 };
 
 /** activity: busy flicker, a different rhythm for each `seed` */
 export function activity(seed: number, busy = 0.75): Blink {
-  const r = fract(Math.sin(seed * 12.9898) * 43758.5453);
+  const r = fractPart(Math.sin(seed * 12.9898) * 43758.5453);
   return { rate: 7 + r * 9, duty: busy, phase: r * 17 };
 }
 
@@ -63,59 +68,65 @@ export function pulse(hz: number, duty: number, phase = 0): Blink {
   return { rate: -hz, duty, phase };
 }
 
-function fract(x: number): number {
+function fractPart(x: number): number {
   return x - Math.floor(x);
 }
 
-/** `ledOn(blink)`: how lit a light is now (0.06 to 1), for any shader that has the `ledTime` uniform */
-export const LED_ON_GLSL = `
-uniform float ledTime;
-float ledHash(float n) { return fract(sin(n * 12.9898) * 43758.5453); }
-float ledOn(vec3 b) {
-  if (b.x > 0.0) {
-    // random flicker: a new draw every tick, mostly on (lit a little when off, as a real LED seems)
-    float tick = floor(ledTime * b.x + b.z);
-    return mix(0.06, 1.0, step(ledHash(tick + b.z * 7.13), b.y));
+const ledHash = (n: ShaderNode) => fract(sin(n.mul(12.9898)).mul(43758.5453));
+
+/** how lit a light blinking as `blink` (rate, duty, phase: see Blink) is now: 0.06 to 1 */
+export const ledOn = Fn(([blink]: [ShaderNode]) => {
+  const rate = blink.x, duty = blink.y, phase = blink.z;
+  // random flicker: a new draw every tick, mostly on (lit a little when off, as a real LED seems)
+  const flicker = mix(0.06, 1, step(ledHash(floor(ledClock.mul(rate).add(phase)).add(phase.mul(7.13))), duty));
+  const regular = mix(0.06, 1, step(fract(ledClock.mul(rate.negate()).add(phase)), duty));
+  return select(rate.greaterThan(0), flicker, select(rate.lessThan(0), regular, float(1)));
+});
+
+/** the instance matrices of a mesh, as the columns of each: read by the lights' own shader, besides three's */
+const columns = new WeakMap<THREE.InstancedBufferAttribute, ShaderNode[]>();
+
+function instanceColumns(matrices: THREE.InstancedBufferAttribute): ShaderNode[] {
+  let cols = columns.get(matrices);
+  if (!cols) {
+    // (the lights never move once laid: the copy is sent once)
+    const buffer = new THREE.InstancedInterleavedBuffer(matrices.array, 16, 1);
+    cols = [0, 4, 8, 12].map((k) => instancedBufferAttribute(buffer, 'vec4', 16, k));
+    columns.set(matrices, cols);
   }
-  if (b.x < 0.0) return mix(0.06, 1.0, step(fract(ledTime * -b.x + b.z), b.y));
-  return 1.0;
-}`;
+  return cols;
+}
 
 /**
- * The glow comes from two attributes, per vertex or per instance:
- * `emissiveTint` (linear RGB) and `blink` (rate, duty, phase); an instanced
- * lens grows on screen up to LED_MIN_PX.
+ * The lens of an instanced light, grown on screen up to LED_MIN_PX from its
+ * centre (it is a unit square scaled by its instance): the position, after
+ * the instance has placed it.
  */
-export const BLINK_PATCH: MaterialPatch = {
-  key: 'blink',
-  vertex: [
-    { after: '#include <common>', code: `attribute vec3 emissiveTint;
-attribute vec3 blink;
-uniform float ledViewHeight;
-varying vec3 vEmissiveTint;
-${LED_ON_GLSL}` },
-    {
-      after: '#include <begin_vertex>',
-      uses: ['transformed', 'modelViewMatrix', 'instanceMatrix', 'projectionMatrix'],
-      code: `vEmissiveTint = emissiveTint * ledOn(blink);
-#ifdef USE_INSTANCING
-  // grown on screen up to LED_MIN_PX, from its centre (the lens is a unit square scaled by its instance)
-  vec4 ledCentre = modelViewMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
-  float ledPixel = (projectionMatrix[3][3] == 0.0 ? -ledCentre.z : 1.0) * 2.0 / (projectionMatrix[1][1] * ledViewHeight);
-  vec2 ledSize = vec2(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz));
-  transformed.xy *= max(vec2(1.0), ${LED_MIN_PX.toFixed(1)} * ledPixel / ledSize);
-#endif`,
-    },
-  ],
-  fragment: [
-    { after: '#include <common>', code: 'varying vec3 vEmissiveTint;' },
-    { after: '#include <emissivemap_fragment>', code: 'totalEmissiveRadiance += vEmissiveTint;', uses: ['totalEmissiveRadiance'] },
-  ],
-};
+const grownLens = Fn((builder: { object: THREE.Object3D }) => {
+  const im = builder.object as THREE.InstancedMesh;
+  if (!im.isInstancedMesh) return positionLocal;
+  const [c0, c1, , c3] = instanceColumns(im.instanceMatrix);
+  const centre = c3.xyz;
+  const size = vec2(length(c0.xyz), length(c1.xyz));
+  const view = modelViewMatrix.mul(vec4(centre, 1));
+  const projection = cameraProjectionMatrix;
+  // the size of a pixel (m) at the depth of the light; a perspective projection has no 1 in its corner
+  const depth = select(projection.element(3).w.equal(0), view.z.negate(), float(1));
+  const pixel = depth.mul(2).div(projection.element(1).y.mul(ledViewHeight));
+  const grow = max(vec2(1), pixel.mul(LED_MIN_PX).div(size));
+  return vec3(positionLocal.xy.sub(centre.xy).mul(grow).add(centre.xy), positionLocal.z);
+});
 
-/** a standard material whose LEDs blink on the GPU (BLINK_PATCH) */
-export function blinkable<T extends THREE.MeshStandardMaterial>(m: T): T {
-  return patchMaterial(m, BLINK_PATCH, () => ({ ledTime: ledClock, ledViewHeight }));
+/**
+ * The material of the lights: their glow comes from two attributes, per
+ * vertex or per instance, `emissiveTint` (linear RGB) and `blink` (rate,
+ * duty, phase); an instanced lens grows on screen up to LED_MIN_PX.
+ */
+export function ledMaterial(): THREE.MeshStandardNodeMaterial {
+  const m = new THREE.MeshStandardNodeMaterial({ roughness: 0.3 });
+  m.emissiveNode = varying(attribute('emissiveTint', 'vec3').mul(ledOn(attribute('blink', 'vec3'))));
+  m.positionNode = grownLens();
+  return m;
 }
 
 export interface LedSpec {
@@ -137,7 +148,7 @@ export function ledMesh(specs: LedSpec[]): THREE.InstancedMesh {
   const blink = new THREE.InstancedBufferAttribute(new Float32Array(3 * n), 3);
   geo.setAttribute('emissiveTint', tint);
   geo.setAttribute('blink', blink);
-  const im = new THREE.InstancedMesh(geo, blinkable(new THREE.MeshStandardMaterial({ roughness: 0.3 })), n);
+  const im = new THREE.InstancedMesh(geo, ledMaterial(), n);
   im.count = specs.length;
   const m4 = new THREE.Matrix4(), col = new THREE.Color();
   specs.forEach((s, i) => {

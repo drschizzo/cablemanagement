@@ -2,15 +2,16 @@
 // the connectors at their ends (instanced), the labels, the velcros, and the
 // rings of the pinches. It follows the nodes of the physics every frame.
 
-import * as THREE from 'three';
-import { TubeMesh, TubeNodes, TubeSync } from '@drschizzo/three-cable-tubes';
+import * as THREE from 'three/webgpu';
+import { TubeMesh, TubeNodes, TubeSync, tubeTint } from '@drschizzo/three-cable-tubes/webgpu';
 import { CONNECTOR } from '../game/rack';
 import { SERVICES } from '../game/services';
 import { shared } from './dispose';
 import { tintable } from './batch';
 import { bevelBox } from './bevel';
 import { ledLit, type LedGlow } from './ledGlow';
-import { JACKET_KIND, jacketMaterial, jacketed } from './jacket';
+import { JACKET_KIND, jacketMaterial } from './jacket';
+import { addGlow } from './glowTerms';
 import { Straps } from './straps';
 import { DEFAULT_LOOK } from './look';
 import type { CableIndex, EndIndex, NodeIndex, ReadonlyCable } from '../game/cables';
@@ -136,9 +137,8 @@ export class CableView {
     this.nodes = new TubeNodes(nodes);
     this.sync = new TubeSync(this.nodes, world.radius);
     this.shown = this.cables.length;
-    // (tintable reads the glow as `emissiveTint`, as on the plugs)
-    const mat = jacketed(tintable(jacketMaterial()));
-    this.tube = new TubeMesh(segments, mat, this.nodes, { aliases: { emissiveTint: 'tubeTint' } });
+    // the glow of the nodes, as the plugs' (tintable) is of their instances
+    this.tube = new TubeMesh(segments, addGlow(jacketMaterial(), tubeTint), this.nodes);
     let at = 0;
     world.cables.forEach((cb, k) => {
       // each cord's marking from its own place along the print
@@ -168,15 +168,15 @@ export class CableView {
       return {
         housing: inst(g.housing, housingMat),
         latch: inst(g.latch, housingMat),
-        boot: inst(g.boot, tintable(new THREE.MeshStandardMaterial({ roughness: 0.42 }))),
-        label: inst(g.label, new THREE.MeshStandardMaterial({ roughness: 0.6 })),
+        boot: inst(g.boot, tintable(new THREE.MeshStandardNodeMaterial({ roughness: 0.42 }))),
+        label: inst(g.label, new THREE.MeshStandardNodeMaterial({ roughness: 0.6 })),
         tint,
       };
     };
     this.plugs = {
-      lc: make('lc', new THREE.MeshStandardMaterial({ roughness: 0.4 })),
-      rj45: make('rj45', new THREE.MeshPhysicalMaterial({ color: '#e8f0f4', roughness: 0.15, transmission: CLEAR, thickness: 0.004, transparent: true, opacity: 0.85 })),
-      c13: make('c13', new THREE.MeshStandardMaterial({ color: '#141416', roughness: 0.55 })),
+      lc: make('lc', new THREE.MeshStandardNodeMaterial({ roughness: 0.4 })),
+      rj45: make('rj45', new THREE.MeshPhysicalNodeMaterial({ color: '#e8f0f4', roughness: 0.15, transmission: CLEAR, thickness: 0.004, transparent: true, opacity: 0.85 })),
+      c13: make('c13', new THREE.MeshStandardNodeMaterial({ color: '#141416', roughness: 0.55 })),
     };
     world.cables.forEach((cb, c) => {
       const p = this.plugOf(c);
@@ -193,7 +193,7 @@ export class CableView {
     if (this.litBy) return;
     this.litBy = glow;
     const mats = new Set([this.tube.material, ...Object.values(this.plugs).flatMap((p) => [p.housing.material, p.latch.material, p.boot.material, p.label.material])]);
-    for (const m of mats) ledLit(m as THREE.MeshStandardMaterial, glow);
+    for (const m of mats) ledLit(m as THREE.MeshStandardNodeMaterial, glow);
   }
 
   private litBy: LedGlow | null = null;
@@ -215,7 +215,7 @@ export class CableView {
     this.flush();
     // a clear plug costs the frame a pass of its own (the scene behind it, drawn again):
     // not worth it on cords a pixel or two wide
-    (this.plugs.rj45.housing.material as THREE.MeshPhysicalMaterial).transmission = this.tube.level === 2 ? 0 : CLEAR;
+    (this.plugs.rj45.housing.material as THREE.MeshPhysicalNodeMaterial).transmission = this.tube.level === 2 ? 0 : CLEAR;
     this.straps.update(this.world);
     this.updatePinches();
   }

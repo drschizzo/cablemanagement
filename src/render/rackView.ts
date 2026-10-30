@@ -10,7 +10,7 @@ import { assertNever } from '../lib/assertNever';
 import { mergeStatic } from './batch';
 import { bevelBox, bevelTemplate } from './bevel';
 import { LedGlow, ledGlows } from './ledGlow';
-import { STEADY, activity, blinkable, ledGlow, ledMesh, pulse, type Blink, type LedSpec } from './leds';
+import { STEADY, activity, ledGlow, ledMaterial, ledMesh, pulse, type Blink, type LedSpec } from './leds';
 import { rackMat } from './rackMaterials';
 import { buildItem } from './rackItems';
 import { crateWall, roundedBox } from './shapes';
@@ -76,13 +76,13 @@ export class RackView {
     this.layParts();
     const ports = rack.ports.filter((p) => this.ledOf.has(p.id));
     const count = ports.length + this.trafficOf.size;
-    // a unit lens, sized by its instance (blinkable() reads the size there)
+    // a unit lens, sized by its instance (ledMaterial() reads the size there)
     const geo = new THREE.BoxGeometry(1, 1, 0.001);
     this.ledTint = new THREE.InstancedBufferAttribute(new Float32Array(3 * count), 3);
     this.ledBlink = new THREE.InstancedBufferAttribute(new Float32Array(3 * count), 3);
     geo.setAttribute('emissiveTint', this.ledTint);
     geo.setAttribute('blink', this.ledBlink);
-    this.leds = new THREE.InstancedMesh(geo, blinkable(new THREE.MeshStandardMaterial({ roughness: 0.3 })), count);
+    this.leds = new THREE.InstancedMesh(geo, ledMaterial(), count);
     this.leds.receiveShadow = true;
     const m4 = new THREE.Matrix4();
     for (const p of ports) {

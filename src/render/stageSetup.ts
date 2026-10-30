@@ -1,17 +1,21 @@
 // How the stage is put together: the renderer, the camera controls, the
-// lights. The post-processing passes, which reach into three.js's internals,
-// are built in threeCompat/passes.ts. Stage (stage.ts) calls these once.
+// lights. The passes of the image are in imagePipeline.ts. Stage (stage.ts)
+// calls these once.
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import { DEFAULT_LOOK } from './look';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-/** the WebGL renderer: shadows, filmic tone mapping, no multisampling on the canvas itself */
-export function createRenderer(): THREE.WebGLRenderer {
-  // no multisampling on the canvas: it only takes the full-screen quad of the last pass
-  // (the scene is multisampled in the reflection pass, see below)
+/**
+ * The renderer, ready to draw: WebGPU, or WebGL 2 where the browser has no
+ * WebGPU (or `forceWebGL`); shadows, filmic tone mapping. The canvas itself is
+ * not multisampled: it only takes the last pass (the scene is, see
+ * imagePipeline.ts).
+ */
+export async function createRenderer(forceWebGL = false): Promise<THREE.WebGPURenderer> {
   // only a hint: on Windows the GPU is chosen for the whole browser (see gpu.ts)
-  const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+  const renderer = new THREE.WebGPURenderer({ antialias: false, powerPreference: 'high-performance', forceWebGL });
+  await renderer.init();
   renderer.shadowMap.enabled = true;
   // PCF in three r183 samples a rotated Vogel disk of `shadow.radius` (PCFSoft is deprecated into it)
   renderer.shadowMap.type = THREE.PCFShadowMap;

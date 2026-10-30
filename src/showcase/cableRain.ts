@@ -11,13 +11,13 @@
 // physics and the nodes sent each frame are those of the few in the air.
 
 import * as THREE from 'three';
-import { TubeMesh, TubeNodes } from '@drschizzo/three-cable-tubes';
+import { TubeMesh, TubeNodes } from '@drschizzo/three-cable-tubes/webgpu';
 import { CABLE_R } from '../game/rack';
 import { SERVICES } from '../game/services';
 import { rng } from '../lib/random';
 import { connectorGeos } from '../render/cableView';
 import { CORD_KINDS } from '../game/cordTypes';
-import { JACKET_KIND, jacketMaterial, jacketed } from '../render/jacket';
+import { JACKET_KIND, jacketMaterial } from '../render/jacket';
 
 /** cords at most (on screen at once): past it, the oldest, deep in the heap, makes room */
 const POOL = 240;
@@ -124,7 +124,7 @@ export class CableRain {
     this.bumps = [0, 0, 0, 0].map(() => this.r() * 2 * Math.PI);
     this.racks = o.racks.map((p) => ({ x: p.x, z: p.z, c: Math.cos(p.yaw), s: Math.sin(p.yaw) }));
 
-    this.tube = new TubeMesh(POOL * (NODES - 1), jacketed(jacketMaterial()), this.nodes);
+    this.tube = new TubeMesh(POOL * (NODES - 1), jacketMaterial(), this.nodes);
     this.tube.castShadow = this.tube.receiveShadow = true;
     this.tube.setDrawn(0);
     this.group.add(this.tube);

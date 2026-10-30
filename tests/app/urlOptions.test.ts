@@ -6,11 +6,11 @@ import { QUALITY } from '../../src/render/quality';
 
 describe('the options of the page address', () => {
   it('has defaults when the address carries none', () => {
-    expect(readUrlOptions('')).toEqual({ syncPhysics: false, bays: SHOWCASE_DEFAULT.bays, pairs: 0, seed: 0, quality: null, rack: null });
+    expect(readUrlOptions('')).toEqual({ syncPhysics: false, bays: SHOWCASE_DEFAULT.bays, pairs: 0, seed: 0, quality: null, rack: null, forceWebGL: false });
   });
 
   it('reads them, and keeps the numbers within bounds', () => {
-    expect(readUrlOptions('?sync&bays=3&pairs=6&seed=42&quality=2&rack=bpsu.4.e.1.0.a')).toEqual({ syncPhysics: true, bays: 3, pairs: 6, seed: 42, quality: 2, rack: 'bpsu.4.e.1.0.a' });
+    expect(readUrlOptions('?sync&bays=3&pairs=6&seed=42&quality=2&rack=bpsu.4.e.1.0.a&webgl')).toEqual({ syncPhysics: true, bays: 3, pairs: 6, seed: 42, quality: 2, rack: 'bpsu.4.e.1.0.a', forceWebGL: true });
     expect(readUrlOptions('?bays=99&pairs=99&quality=99')).toMatchObject({ bays: 32, pairs: 16, quality: QUALITY.length - 1 });
     expect(readUrlOptions('?bays=abc')).toMatchObject({ bays: SHOWCASE_DEFAULT.bays });
   });

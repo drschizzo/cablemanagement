@@ -9,10 +9,19 @@
 // them. One draw call of a few hundred spots per cabinet, and five texture
 // reads per pixel lit.
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import { shared } from './dispose';
-import { LED_ON_GLSL, ledClock } from './leds';
-import { patchMaterial, type MaterialPatch } from './threeCompat/materialPatch';
+import { ledOn } from './leds';
+import { addGlow } from './glowTerms';
+import { tsl, type ShaderNode } from './tsl';
+
+const {
+  abs, attribute, diffuseColor, dot, exp, exp2, length, log2, max, min, normalWorldGeometry, normalize, positionGeometry,
+  positionWorld, select, texture, uniform, varying, vec2, vec3, vec4,
+} = tsl;
+
+/** the weights of red, green and blue in the luminance */
+const LUMA = [0.2126, 0.7152, 0.0722] as const;
 
 /** texels per metre of the map: finer than the gap between two port LEDs */
 const DENSITY = 400;
@@ -34,36 +43,20 @@ const LENS_Z = 0.002;
  */
 const PEAK = 4;
 
-const spotMaterial = (): THREE.ShaderMaterial =>
-  new THREE.ShaderMaterial({
-    uniforms: { ledTime: ledClock },
-    vertexShader: /* glsl */ `
-      attribute vec3 emissiveTint;
-      attribute vec3 blink;
-      varying vec2 vR;
-      varying vec3 vC;
-      ${LED_ON_GLSL}
-      void main() {
-        // in spreads, out to three of them
-        vR = position.xy * 6.0;
-        vC = emissiveTint * ledOn(blink);
-        // the spot is centred on the light, whatever the size of its lens
-        vec3 c = (instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
-        gl_Position = projectionMatrix * viewMatrix * vec4(c + vec3(position.xy * ${(6 * SPREAD).toFixed(4)}, 0.0), 1.0);
-      }`,
-    fragmentShader: /* glsl */ `
-      varying vec2 vR;
-      varying vec3 vC;
-      void main() {
-        gl_FragColor = vec4(vC * (${PEAK.toFixed(2)} * exp(-0.5 * dot(vR, vR))), 1.0);
-      }`,
-    blending: THREE.AdditiveBlending,
-    depthTest: false,
-    depthWrite: false,
-  });
+/** how far a spot is drawn, in spreads */
+const SPOT_REACH = 3;
+
+/** the soft spot of a light, drawn into the map */
+function spotMaterial(): THREE.MeshBasicNodeMaterial {
+  const m = new THREE.MeshBasicNodeMaterial({ blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false });
+  const r = varying(positionGeometry.xy.div(SPREAD));
+  const tint = varying(attribute('emissiveTint', 'vec3').mul(ledOn(attribute('blink', 'vec3'))));
+  m.colorNode = vec4(tint.mul(exp(dot(r, r).mul(-0.5)).mul(PEAK)), 1);
+  return m;
+}
 
 export class LedGlow {
-  readonly map: THREE.WebGLRenderTarget;
+  readonly map: THREE.RenderTarget;
   /** world → front of the cabinet (where the map lies, z towards the viewer) */
   readonly frame = new THREE.Matrix4();
   /** the face the map covers: x0, y0, x1, y1 (m, in the cabinet's frame) */
@@ -71,13 +64,16 @@ export class LedGlow {
   private scene = new THREE.Scene();
   private camera: THREE.OrthographicCamera;
   /** the lit copy of each material of the cabinet (see light()) */
-  private copies = new Map<THREE.Material, THREE.MeshStandardMaterial>();
+  private copies = new Map<THREE.Material, THREE.MeshStandardNodeMaterial>();
 
-  /** `sources`: the instanced lights of the cabinet (their attributes are shared, not copied) */
+  /**
+   * `sources`: the instanced lights of the cabinet, laid already (their tints
+   * and blinks are shared, not copied; they never move).
+   */
   constructor(readonly root: THREE.Object3D, sources: THREE.InstancedMesh[], box: [number, number, number, number]) {
     const [x0, y0, x1, y1] = box;
     this.box = new THREE.Vector4(x0, y0, x1, y1);
-    this.map = new THREE.WebGLRenderTarget(Math.ceil((x1 - x0) * DENSITY), Math.ceil((y1 - y0) * DENSITY), {
+    this.map = new THREE.RenderTarget(Math.ceil((x1 - x0) * DENSITY), Math.ceil((y1 - y0) * DENSITY), {
       type: THREE.HalfFloatType,
       depthBuffer: false,
       // the blur of the light with the distance (the renderer makes them after each draw)
@@ -85,7 +81,9 @@ export class LedGlow {
       minFilter: THREE.LinearMipmapLinearFilter,
     });
     this.camera = new THREE.OrthographicCamera(x0, x1, y1, y0, -1, 1);
-    const quad = new THREE.PlaneGeometry(1, 1);
+    // a spot is centred on its light, whatever the size of its lens
+    const quad = new THREE.PlaneGeometry(2 * SPOT_REACH * SPREAD, 2 * SPOT_REACH * SPREAD);
+    const lens = new THREE.Matrix4(), centre = new THREE.Vector3();
     for (const src of sources) {
       const g = new THREE.BufferGeometry();
       g.index = quad.index;
@@ -93,14 +91,17 @@ export class LedGlow {
       g.setAttribute('emissiveTint', src.geometry.getAttribute('emissiveTint'));
       g.setAttribute('blink', src.geometry.getAttribute('blink'));
       const spots = new THREE.InstancedMesh(g, spotMaterial(), src.count);
-      spots.instanceMatrix = src.instanceMatrix;
+      for (let i = 0; i < src.count; i++) {
+        src.getMatrixAt(i, lens);
+        spots.setMatrixAt(i, lens.makeTranslation(centre.setFromMatrixPosition(lens)));
+      }
       spots.frustumCulled = false;
       this.scene.add(spots);
     }
   }
 
   /** draws the lights into the map (nothing when the cabinet is off screen) */
-  render(renderer: THREE.WebGLRenderer): void {
+  render(renderer: THREE.WebGPURenderer): void {
     for (let o: THREE.Object3D | null = this.root; o; o = o.parent) if (!o.visible) return;
     this.root.updateWorldMatrix(true, false);
     this.frame.copy(this.root.matrixWorld).invert();
@@ -116,17 +117,18 @@ export class LedGlow {
    * Lights the parts under `root` (the cabinet, its equipment): their opaque
    * standard materials are swapped for copies that take the glow, one per
    * material and cabinet, which live as long as the glow does. Lights,
-   * screens and materials of their own making are left as they are.
+   * screens and node materials (made for an effect of their own) are left as
+   * they are.
    */
   light(root: THREE.Object3D): void {
     root.traverse((o) => {
       const m = o as THREE.Mesh;
       if (!m.isMesh || Array.isArray(m.material)) return;
       const src = m.material as THREE.MeshStandardMaterial;
-      if (!src.isMeshStandardMaterial || src.transparent || src.emissive.getHex() !== 0 || Object.hasOwn(src, 'onBeforeCompile')) return;
+      if (!src.isMeshStandardMaterial || (src as THREE.Material as THREE.NodeMaterial).isNodeMaterial || src.transparent || src.emissive.getHex() !== 0) return;
       let copy = this.copies.get(src);
       if (!copy) {
-        copy = src.clone();
+        copy = nodeCopy(src);
         // freed with the glow, not with the parts (the managers are rebuilt with every change)
         copy.userData = {};
         shared(copy);
@@ -158,78 +160,58 @@ export class LedGlow {
 export const ledGlows = new Set<LedGlow>();
 
 /** how much of the light a cord takes (shared by every cord): a little, as LEDs light little */
-export const ledLight = { value: 4 };
+export const ledLight = uniform(4);
 
 /** how much of it the cabinet and its equipment take */
-export const ledLightRack = { value: 6.5 };
+export const ledLightRack = uniform(6.5);
+
+/** a node material copying a plain standard one: its colour, maps, finish (none of its nodes, which it has not) */
+function nodeCopy(src: THREE.MeshStandardMaterial): THREE.MeshStandardNodeMaterial {
+  const copy = new THREE.MeshStandardNodeMaterial();
+  THREE.MeshStandardMaterial.prototype.copy.call(copy, src);
+  return copy;
+}
 
 /**
- * A cabinet's glow lights the material, added to its own glow: the map of its
- * façade, read where the surface stands, blurred by the distance to the lenses.
+ * The light a cabinet's glow gives a surface: the map of its façade, read
+ * where the surface stands, blurred by the distance to the lenses, and taken
+ * by the side turned to the light.
  */
-export const LED_LIT_PATCH: MaterialPatch = {
-  key: 'ledlit',
-  vertex: [
-    { after: '#include <common>', code: 'uniform mat4 ledGlowFrame;\nvarying vec3 vLedP;\nvarying vec3 vLedN;' },
-    {
-      after: '#include <begin_vertex>',
-      uses: ['transformed', 'objectNormal', 'modelMatrix', 'instanceMatrix'],
-      code: `mat4 ledM = ledGlowFrame * modelMatrix;
-#ifdef USE_INSTANCING
-ledM = ledM * instanceMatrix;
-#endif
-vLedP = (ledM * vec4(transformed, 1.0)).xyz;
-vLedN = mat3(ledM) * objectNormal;`,
-    },
-  ],
-  fragment: [
-    { after: '#include <common>', code: 'uniform sampler2D ledGlowMap;\nuniform vec4 ledGlowBox;\nuniform float ledGlowGain;\nvarying vec3 vLedP;\nvarying vec3 vLedN;' },
-    {
-      after: '#include <emissivemap_fragment>',
-      uses: ['totalEmissiveRadiance', 'diffuseColor'],
-      code: `{
-  vec2 size = ledGlowBox.zw - ledGlowBox.xy;
-  vec2 uv = (vLedP.xy - ledGlowBox.xy) / size;
-  if (uv.x > 0.0 && uv.x < 1.0 && uv.y > 0.0 && uv.y < 1.0) {
-    // height above the lenses; the light has spread by about as much (m)
-    float h = vLedP.z - ${LENS_Z.toFixed(4)};
-    float blur = min(${WIDEN.toFixed(2)} * abs(h), ${MAX_BLUR.toFixed(3)});
-    // the level of the map whose texels are that blurred (one of level n: 2^n texels averaged)
-    float lod = max(0.0, log2(blur * ${(DENSITY * 2.5).toFixed(1)}));
-    float texel = exp2(lod) / ${DENSITY.toFixed(1)};
-    vec2 du = vec2(texel / size.x, 0.0), dv = vec2(0.0, texel / size.y);
-    const vec3 Y = vec3(0.2126, 0.7152, 0.0722);
-    vec3 c = textureLod(ledGlowMap, uv, lod).rgb;
-    vec2 slope = vec2(
-      dot(textureLod(ledGlowMap, uv + du, lod).rgb - textureLod(ledGlowMap, uv - du, lod).rgb, Y),
-      dot(textureLod(ledGlowMap, uv + dv, lod).rgb - textureLod(ledGlowMap, uv - dv, lod).rgb, Y)) / (2.0 * texel);
-    // where the light comes from: across the face, towards the brighter side, as far as a spot
-    // of that spread puts it (its slope over its value, times the square of its spread); and from
-    // the face itself, behind a cord, in front of a part sunk into it
-    vec3 L = vec3((${(SPREAD * SPREAD).toExponential(3)} + blur * blur) * slope, -h * dot(c, Y));
-    float lit = max(0.0, dot(normalize(vLedN), L)) / max(length(L), 1e-8);
-    // squared, so that only the side turned to the light takes it; and fading beyond the widest spread
-    float far = h / 0.04;
-    vec3 light = c * (ledGlowGain * lit * lit / (1.0 + far * far));
-    // saturating at a luminance of 1: a white part right against a light, on top of what the lamp
-    // gives it, stays below the threshold of the bloom (stage.ts), or it shone as a light does
-    light /= 1.0 + dot(light, Y);
-    totalEmissiveRadiance += diffuseColor.rgb * light;
-  }
-}`,
-    },
-  ],
-};
+function glowLight(map: THREE.Texture, frame: ShaderNode, box: ShaderNode, gain: ShaderNode): ShaderNode {
+  const p = frame.mul(vec4(positionWorld, 1)).xyz;
+  const n = normalize(frame.mul(vec4(normalWorldGeometry, 0)).xyz);
+  const size = box.zw.sub(box.xy);
+  const uv = p.xy.sub(box.xy).div(size);
+  const inside = uv.x.greaterThan(0).and(uv.x.lessThan(1)).and(uv.y.greaterThan(0)).and(uv.y.lessThan(1));
+  // height above the lenses; the light has spread by about as much (m)
+  const h = p.z.sub(LENS_Z);
+  const blur = min(abs(h).mul(WIDEN), MAX_BLUR);
+  // the level of the map whose texels are that blurred (one of level n: 2^n texels averaged)
+  const lod = max(0, log2(blur.mul(DENSITY * 2.5)));
+  const texel = exp2(lod).div(DENSITY);
+  const du = vec2(texel.div(size.x), 0), dv = vec2(0, texel.div(size.y));
+  const Y = vec3(...LUMA);
+  // (the rows of a render target run from its top, as WebGPU stores textures; the face's y, from its bottom)
+  const read = (at: ShaderNode) => texture(map, vec2(at.x, at.y.oneMinus()), lod).rgb;
+  const c = read(uv);
+  const slope = vec2(dot(read(uv.add(du)).sub(read(uv.sub(du))), Y), dot(read(uv.add(dv)).sub(read(uv.sub(dv))), Y)).div(texel.mul(2));
+  // where the light comes from: across the face, towards the brighter side, as far as a spot of that
+  // spread puts it (its slope over its value, times the square of its spread); and from the face itself,
+  // behind a cord, in front of a part sunk into it
+  const L = vec3(slope.mul(blur.mul(blur).add(SPREAD * SPREAD)), h.negate().mul(dot(c, Y)));
+  const lit = max(0, dot(n, L)).div(max(length(L), 1e-8));
+  // squared, so that only the side turned to the light takes it; and fading beyond the widest spread
+  const far = h.div(0.04);
+  const light = c.mul(gain.mul(lit).mul(lit).div(far.mul(far).add(1)));
+  // saturating at a luminance of 1: a white part right against a light, on top of what the lamp gives
+  // it, stays below the threshold of the bloom (imagePipeline.ts), or it shone as a light does
+  return select(inside, diffuseColor.rgb.mul(light.div(dot(light, Y).add(1))), vec3(0));
+}
 
 /**
- * Lights a material with a cabinet's glow (LED_LIT_PATCH); `gain`: how much
- * of it, a uniform shared by the materials of a kind.
+ * Lights a material with a cabinet's glow, added to its own glow; `gain`: how
+ * much of it, a uniform shared by the materials of a kind.
  */
-export function ledLit<T extends THREE.MeshStandardMaterial>(m: T, glow: LedGlow, gain: { value: number } = ledLight): T {
-  return patchMaterial(m, LED_LIT_PATCH, () => ({
-    ledGlowMap: { value: glow.map.texture },
-    ledGlowFrame: { value: glow.frame },
-    ledGlowBox: { value: glow.box },
-    ledGlowGain: gain,
-  }));
+export function ledLit<T extends THREE.MeshStandardNodeMaterial>(m: T, glow: LedGlow, gain: ShaderNode = ledLight): T {
+  return addGlow(m, glowLight(glow.map.texture, uniform(glow.frame), uniform(glow.box), gain));
 }

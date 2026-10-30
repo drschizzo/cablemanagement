@@ -5,24 +5,13 @@
 // LEDs) are instanced, with a colour and a glow of their own per instance.
 
 import * as THREE from 'three';
-import { patchMaterial, type MaterialPatch } from './threeCompat/materialPatch';
+import type { MeshStandardNodeMaterial } from 'three/webgpu';
+import { addGlow } from './glowTerms';
+import { tsl } from './tsl';
 
-/** adds the `emissiveTint` attribute (linear RGB, per vertex or per instance) to the glow */
-export const TINT_PATCH: MaterialPatch = {
-  key: 'tint',
-  vertex: [
-    { after: '#include <common>', code: 'attribute vec3 emissiveTint;\nvarying vec3 vEmissiveTint;' },
-    { after: '#include <begin_vertex>', code: 'vEmissiveTint = emissiveTint;' },
-  ],
-  fragment: [
-    { after: '#include <common>', code: 'varying vec3 vEmissiveTint;' },
-    { after: '#include <emissivemap_fragment>', code: 'totalEmissiveRadiance += vEmissiveTint;', uses: ['totalEmissiveRadiance'] },
-  ],
-};
-
-/** a standard material whose parts light up one at a time (TINT_PATCH): one material for them all */
-export function tintable<T extends THREE.MeshStandardMaterial>(m: T): T {
-  return patchMaterial(m, TINT_PATCH);
+/** a standard material whose parts light up one at a time, from their `emissiveTint` (linear RGB, per vertex or per instance) */
+export function tintable<T extends MeshStandardNodeMaterial>(m: T): T {
+  return addGlow(m, tsl.attribute('emissiveTint', 'vec3'));
 }
 
 const KEEP = ['position', 'normal', 'uv'];

@@ -1,16 +1,11 @@
 // The 3D stage every scene draws on: the renderer, the camera and its
-// controls, the lights, and the post-processing passes (reflections, ambient
-// occlusion, bloom, the cinema pass), at the quality chosen or stepped down
-// when the GPU cannot keep up (quality.ts).
+// controls, the lights, and the image (imagePipeline.ts), at the quality
+// chosen or stepped down when the GPU cannot keep up (quality.ts).
 
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { BloomPass, ReflectionPass, createAmbientOcclusionPass, type AmbientOcclusionPass } from './threeCompat/passes';
-import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { CinemaPass } from './cinema';
-import { DepthOfFieldPass } from './depthOfField';
+import { ImagePipeline } from './imagePipeline';
 import { LED_CLOCK_WRAP, ledClock, ledViewHeight } from './leds';
 import { ledGlows } from './ledGlow';
 import { gpuAdvice, gpuInfo, type GpuAdvice, type GpuInfo } from './gpu';
@@ -42,19 +37,8 @@ const HORIZON = '#1a1e21';
 
 /** Renderer, camera, lights and camera controls. */
 export class Stage {
-  renderer: THREE.WebGLRenderer;
-  /** scene → ambient occlusion → tone mapping */
-  private composer: EffectComposer;
-  private ssr: ReflectionPass;
-  /** meshes flagged `userData.reflective`, gathered each frame for the reflections */
-  private mirrors: THREE.Mesh[] = [];
-  private ao: AmbientOcclusionPass;
-  /** glow of what is brighter than white (LEDs, light strips, screens), before tone mapping */
-  private bloom: BloomPass;
-  /** what stands well behind the subject, blurred (see focusOnSubject) */
-  private dof: DepthOfFieldPass;
-  /** vignette, grain, toning, after tone mapping */
-  private cinema: CinemaPass;
+  /** the image, from the scene to the screen */
+  private image: ImagePipeline;
   private lastRender = performance.now();
   scene = new THREE.Scene();
   camera: THREE.PerspectiveCamera;
@@ -104,9 +88,16 @@ export class Stage {
   busy = 0;
   private longTask = false;
 
-  /** `onGpuAdvice`: the GPU draws too slowly, and the player could do something about it */
-  constructor(host: HTMLElement, private onGpuAdvice: (advice: GpuAdvice) => void = () => {}) {
-    this.renderer = createRenderer();
+  /**
+   * The stage, once its renderer is ready. `onGpuAdvice`: the GPU draws too
+   * slowly, and the player could do something about it; `forceWebGL`: drawn
+   * with WebGL 2 even where WebGPU is there.
+   */
+  static async create(host: HTMLElement, onGpuAdvice: (advice: GpuAdvice) => void = () => {}, forceWebGL = false): Promise<Stage> {
+    return new Stage(await createRenderer(forceWebGL), host, onGpuAdvice);
+  }
+
+  private constructor(readonly renderer: THREE.WebGPURenderer, host: HTMLElement, private onGpuAdvice: (advice: GpuAdvice) => void) {
     this.gpu = gpuInfo(this.renderer);
     // (the GPU's own clock, EXT_disjoint_timer_query, would measure the GPU alone; but through ANGLE on
     // Metal it read 33 ms a frame for frames that came at 60 a second)
@@ -132,21 +123,7 @@ export class Stage {
 
     ({ key: this.key, fill: this.fill } = addLights(this.scene));
 
-    // half float, for the bloom; not multisampled: every pass after the first draws a full-screen
-    // quad, and resolving 4 samples a pixel after each of them took a third of the frame for nothing
-    const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType });
-    this.composer = new EffectComposer(this.renderer, target);
-    this.ssr = new ReflectionPass(this.renderer, this.scene, this.camera, this.mirrors);
-    this.composer.addPass(this.ssr);
-    this.ao = createAmbientOcclusionPass(this.scene, this.camera);
-    this.composer.addPass(this.ao);
-    this.dof = new DepthOfFieldPass(this.ssr.sceneDepth);
-    this.composer.addPass(this.dof);
-    this.bloom = new BloomPass(BLOOM.near.strength, BLOOM.near.radius);
-    this.composer.addPass(this.bloom);
-    this.composer.addPass(new OutputPass());
-    this.cinema = new CinemaPass();
-    this.composer.addPass(this.cinema);
+    this.image = new ImagePipeline(this.renderer, this.scene, this.camera);
 
     window.addEventListener('resize', () => this.resize());
     for (const e of ['pointermove', 'pointerdown', 'wheel', 'keydown']) {
@@ -234,8 +211,6 @@ export class Stage {
   private applyQuality(): void {
     const q = this.qualitySettings;
     this.renderer.setPixelRatio(Math.min(q.ratio, window.devicePixelRatio));
-    this.ao.enabled = q.ao;
-    this.ssr.reflecting = q.ssr;
     if (this.key.shadow.mapSize.x !== q.shadow) {
       this.key.shadow.mapSize.set(q.shadow, q.shadow);
       // rebuilt at the new size on the next frame
@@ -297,8 +272,6 @@ export class Stage {
   resize(): void {
     const w = window.innerWidth, h = window.innerHeight;
     this.renderer.setSize(w, h);
-    this.composer.setPixelRatio(this.renderer.getPixelRatio());
-    this.composer.setSize(w, h);
     ledViewHeight.value = h * this.renderer.getPixelRatio();
     this.camera.aspect = w / h;
     // shift the image so that its centre is the centre of the free area
@@ -327,8 +300,10 @@ export class Stage {
    * everything sharp (the aisle of the title screen).
    */
   focusOnSubject(on: boolean): void {
-    this.dof.enabled = on;
+    this.focused = on;
   }
+
+  private focused = false;
 
   /** a left drag in the scene pans the view (the demo, where it grabs nothing) */
   dragPans(on: boolean): void {
@@ -408,23 +383,6 @@ export class Stage {
     p.y = Math.max(p.y, this.floorY + ABOVE_FLOOR);
   }
 
-  private fitBloom(): void {
-    const d = this.camera.position.distanceTo(this.controls.target);
-    const { near, far } = BLOOM;
-    const t = THREE.MathUtils.clamp(Math.log(d / near.at) / Math.log(far.at / near.at), 0, 1);
-    this.bloom.strength = THREE.MathUtils.lerp(near.strength, far.strength, t);
-    this.bloom.radius = THREE.MathUtils.lerp(near.radius, far.radius, t);
-    // the blur of each mip spans a set number of its pixels: at fewer pixels than the 2 a point it was
-    // tuned at (see QUALITY in quality.ts), mip i covers the screen that mip i + shift did, and takes its weight
-    const shift = Math.log2(2 / this.renderer.getPixelRatio());
-    const count = this.bloom.levelCount;
-    const at = (i: number) => (i < count ? THREE.MathUtils.lerp(near.mips[i], far.mips[i], t) : 0);
-    this.bloom.setLevelWeights((i) => {
-      const j = i + shift, k = Math.floor(j);
-      return THREE.MathUtils.lerp(at(k), at(k + 1), j - k);
-    });
-  }
-
   render(): void {
     const now = performance.now();
     const dt = Math.min(0.1, (now - this.lastRender) / 1000);
@@ -440,18 +398,6 @@ export class Stage {
     this.controls.update();
     this.keepNearSubject();
     this.keepAboveFloor();
-    // same array, refilled: the pass keeps a reference to it
-    this.mirrors.length = 0;
-    this.scene.traverseVisible((o) => { if (o.userData.reflective) this.mirrors.push(o as THREE.Mesh); });
-    this.ssr.followProjection(this.camera);
-    this.fitBloom();
-    if (this.dof.enabled) {
-      const ratio = this.renderer.getPixelRatio();
-      const f = this.framed;
-      // on the subject itself, wherever the view was panned
-      this.dof.frame(this.camera, this.home.target, Math.max(f.height, 2 * f.halfWidth) * SHARP_REACH, window.innerWidth * ratio, window.innerHeight * ratio, ratio);
-    }
-    this.cinema.frame(dt, window.innerWidth, window.innerHeight, this.panelMargins);
     // (wrapped, so that the GPU's hash of it keeps its precision)
     ledClock.value = (ledClock.value + dt) % LED_CLOCK_WRAP;
     // the light of the LEDs on the cords; not for a cabinet taken off the scene (an aisle set aside)
@@ -461,22 +407,16 @@ export class Stage {
       if (top === this.scene) g.render(this.renderer);
     }
     this.lastRender = now;
-    this.composer.render();
+    const f = this.framed;
+    this.image.render({
+      dt,
+      viewDistance: this.camera.position.distanceTo(this.controls.target),
+      // on the subject itself, wherever the view was panned
+      focus: this.focused ? { at: this.home.target, reach: Math.max(f.height, 2 * f.halfWidth) * SHARP_REACH } : null,
+      margins: this.panelMargins,
+    });
   }
 }
-
-/**
- * The glow of the lights, close to the cabinet and from afar. The bloom spreads
- * over a set number of pixels, while the lights shrink with the distance: the
- * same halo that suits a light a few pixels wide drowned one seen from across
- * the room. It tightens and dims as the camera backs away (distance to what it
- * looks at, m, on a log scale between the two).
- */
-const BLOOM = {
-  near: { at: 1.2, strength: 0.6, radius: 0.5, mips: [1, 0.8, 0.6, 0.4, 0.2] },
-  // even at radius 0 the wide levels of the blur kept most of their weight: their share falls too
-  far: { at: 5, strength: 0.3, radius: 0, mips: [1, 0.25, 0.05, 0, 0] },
-};
 
 /** vertical gradient, lighter at the horizon behind the rack, with a soft vignette */
 function backdropTexture(): THREE.CanvasTexture {
