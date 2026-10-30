@@ -90,7 +90,7 @@ export class HandTool implements ToolHandler {
 
   pointerUp(e: PointerEvent): boolean {
     if (!this.carry) return false;
-    this.letGo(!e.altKey);
+    this.letGo(e.altKey);
     return true;
   }
 
@@ -184,8 +184,8 @@ export class HandTool implements ToolHandler {
 
   /**
    * The hand lets go. A connector over a free port plugs into it; a loose one
-   * let go in the air stays hooked there when `hook` (not when the other hand
-   * takes the cord, nor with Alt held: it hangs).
+   * let go in the air hangs, or stays hooked there when `hook` (Alt held as
+   * it is let go).
    */
   private letGo(hook: boolean): void {
     const ctx = this.ctx, c = this.carry!;

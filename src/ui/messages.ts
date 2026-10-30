@@ -92,8 +92,8 @@ export function hintHtml(h: Hint): string {
     });
     case 'pullToUnplug': return tr({ fr: '<b>Tirez</b> le connecteur de quelques centimètres pour le débrancher ; sinon vous rangez simplement le câble.', en: '<b>Pull</b> the connector a few centimetres to unplug it; otherwise you simply move the cord.' });
     case 'plugConnector': return tr({
-      fr: 'Relâchez le connecteur devant un port libre (surligné en jaune) pour le brancher. Lâché en l\'air, il y reste accroché ; avec <b>Alt</b>, il pend.',
-      en: 'Let go of the connector in front of a free port (lit in yellow) to plug it. Let go in the air, it stays hooked there; with <b>Alt</b>, it hangs.',
+      fr: 'Relâchez le connecteur devant un port libre (surligné en jaune) pour le brancher. Lâché en l\'air, il pend ; avec <b>Alt</b>, il y reste accroché.',
+      en: 'Let go of the connector in front of a free port (lit in yellow) to plug it. Let go in the air, it hangs; with <b>Alt</b>, it stays hooked there.',
     });
     case 'depth': return h.on
       ? tr({ fr: '<b>Profondeur</b> : souris vers le haut = vers le fond, vers le bas = vers vous. Relâchez Maj pour revenir.', en: '<b>Depth</b>: mouse up = to the back, down = towards you. Let go of Shift to come back.' })
