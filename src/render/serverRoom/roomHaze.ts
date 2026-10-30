@@ -52,7 +52,7 @@ const HAZE_STEPS = 24;
 const DIFFUSER_CORE = 9;
 const DIFFUSER_EDGE = 2.5;
 /** motes of dust under each batten */
-const DUST_MOTES = 60;
+const DUST_MOTES = 150;
 /** the smallest a mote is drawn (px): smaller, it flickered in and out */
 const MOTE_MIN_PX = 1.5;
 
@@ -175,10 +175,10 @@ function dust(lamps: { x: number; z: number }[], random: () => number): THREE.Sp
   m.positionNode = mote;
   // a few mm, to pixels; never below a pixel and a half, where a mote would flicker in and out
   const depth = modelViewMatrix.mul(vec4(mote, 1)).z.negate();
-  const size = fract(alongShare.mul(7)).mul(0.004).add(0.004);
+  const size = fract(alongShare.mul(7)).mul(0.006).add(0.005);
   m.sizeNode = max(MOTE_MIN_PX, size.mul(cameraProjectionMatrix.element(1).y).mul(ledViewHeight).mul(0.5).div(depth)).div(screenDPR);
   const along = smoothstep(0, 0.1, h).mul(smoothstep(0.85, 1, h).oneMinus());
-  const glow = varying(along.mul(pow(sin(turns(220).add(alongShare.mul(31))).mul(0.5).add(0.5), 4).mul(0.6).add(0.2)));
+  const glow = varying(along.mul(pow(sin(turns(220).add(alongShare.mul(31))).mul(0.5).add(0.5), 4).mul(1.1).add(0.35)));
   const d = length(uv().sub(0.5)).mul(2);
   m.colorNode = vec4(vec3(HAZE_COLOR.r, HAZE_COLOR.g, HAZE_COLOR.b).mul(glow).mul(max(0, d.oneMinus())), 1);
   const motes = new THREE.Sprite(m);
