@@ -31,7 +31,8 @@ export const LEVELS: CampaignLevel[] = [
     units: [BLANK, copperPanel('A', 12), BLANK, BLANK, BLANK, BLANK, BLANK, ethernetSwitch('S', 12), BLANK, BLANK],
     // production waits for level 3
     cables: 6, wrong: 1, loose: 0, slack: [0.6, 1.0], mess: 2,
-    cords: [[0.5, 7]],
+    // down the side through a duct the cords take 0.6 to 1.07 m, across the front 0.35 to 0.75 m
+    cords: [[0.75, 2], [1, 5], [1.5, 2]],
     labels: false, services: 2, types: ['CU'], colorByService: true,
     inventory: { fingerManager: 1, duct: 2, ring: 2, velcro: 3 },
     preinstalled: [fingerManager(2)],
