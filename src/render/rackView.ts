@@ -7,6 +7,8 @@ import { COLUMN_X, FRONT_Z, ROOM_FLOOR, Rack, SIDE_BACK, U, WALL_X, type Port, t
 import type { CordType } from '../game/cordTypes';
 import { disposeTree, shared } from './dispose';
 import { assertNever } from '../lib/assertNever';
+import { fractionalPart } from '../lib/scalar';
+import { once } from '../lib/once';
 import { mergeStatic } from './batch';
 import { bevelBox, bevelTemplate } from './bevel';
 import { LedGlow, ledGlows } from './ledGlow';
@@ -32,17 +34,13 @@ function cabinetLamp(): THREE.SpotLight {
   return new THREE.SpotLight('#ffd2a1', 1.4, 0, 1.15, 1, 2);
 }
 
-let sharedLamp: THREE.SpotLight | null = null;
-
 /**
  * The lamp of a level's cabinet, the same object from one level to the
  * next (there is one at a time). three keys every lit shader by the
  * identity of the lights it is drawn with: a lamp of its own made each
  * level build all of them again.
  */
-function levelLamp(): THREE.SpotLight {
-  return (sharedLamp ??= cabinetLamp());
-}
+const levelLamp = once(cabinetLamp);
 
 export interface RackViewOptions {
   /** the room round the cabinet: its floor, and the racks of the room (default: drawn) */
@@ -301,7 +299,7 @@ export class RackView {
     if (u.kind === 'switch') {
       const s = this.seed + y * 1000, x = w / 2 - 0.016;
       this.light(x, y + U * 0.22, '#39ff6a');
-      if (style === 'firewall') this.light(x, y, '#ff3b30', pulse(0.4, 0.5, fractOf(s * 1.7)));
+      if (style === 'firewall') this.light(x, y, '#ff3b30', pulse(0.4, 0.5, fractionalPart(s * 1.7)));
       // a power strip has its power light only
       else if (style !== 'pdu') this.light(x, y, style === 'router' ? '#3aa8ff' : '#ffae1f', activity(s, 0.45));
     }
@@ -527,9 +525,6 @@ function faceOf(style: NonNullable<UnitSpec['style']>): THREE.Material {
   }
 }
 
-function fractOf(x: number): number {
-  return x - Math.floor(x);
-}
 
 /** size of the name plate of a unit on its texture (px) */
 const LABEL_W = 2048, LABEL_H = 200;

@@ -7,6 +7,7 @@
 import * as THREE from 'three/webgpu';
 import { tsl, type ShaderNode } from './tsl';
 import { InstancedParts, partMatrix } from './instancedParts';
+import { fractionalPart } from '../lib/scalar';
 
 const {
   Fn, attribute, cameraProjectionMatrix, float, floor, fract, length, max, mix, modelViewMatrix, positionLocal, select, sin,
@@ -60,7 +61,7 @@ export const STEADY: Blink = { rate: 0, duty: 1, phase: 0 };
 
 /** activity: busy flicker, a different rhythm for each `seed` */
 export function activity(seed: number, busy = 0.75): Blink {
-  const r = fractPart(Math.sin(seed * 12.9898) * 43758.5453);
+  const r = fractionalPart(Math.sin(seed * 12.9898) * 43758.5453);
   return { rate: 7 + r * 9, duty: busy, phase: r * 17 };
 }
 
@@ -69,9 +70,6 @@ export function pulse(hz: number, duty: number, phase = 0): Blink {
   return { rate: -hz, duty, phase };
 }
 
-function fractPart(x: number): number {
-  return x - Math.floor(x);
-}
 
 const ledHash = (n: ShaderNode) => fract(sin(n.mul(12.9898)).mul(43758.5453));
 

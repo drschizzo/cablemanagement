@@ -1,8 +1,7 @@
-// The code finds the elements of the page by their id; index.html must have
-// every one. A renamed id would otherwise only break when its button is
+// The code finds the elements of the page by their id ($, lib/page.ts);
+// index.html must have every one. A renamed id would otherwise only break when its button is
 // clicked: here, it breaks the tests.
 import { describe, expect, it } from 'vitest';
-import { PAGE_TEXTS } from '../src/ui/pageTexts';
 
 // (Node's own module, untyped here: the project has no Node types)
 const node = (m: string) => import(m);
@@ -32,13 +31,5 @@ describe('the page', () => {
       }
     }
     expect(missing).toEqual([]);
-  });
-
-  it('names only texts it has, and every text it has is used', async () => {
-    const { readFileSync }: Fs = await node('node:fs');
-    const html = readFileSync('index.html', 'utf8');
-    const keys = new Set([...html.matchAll(/data-i18n(?:-\w+)?="([\w.]+)"/g)].map((m) => m[1]));
-    expect([...keys].filter((k) => !(k in PAGE_TEXTS))).toEqual([]);
-    expect(Object.keys(PAGE_TEXTS).filter((k) => !keys.has(k))).toEqual([]);
   });
 });

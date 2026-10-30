@@ -10,6 +10,7 @@ import * as THREE from 'three/webgpu';
 import { tubeCoord } from '@drschizzo/three-cable-tubes/webgpu';
 import type { CordType } from '../game/cordTypes';
 import { tsl, type ShaderNode } from './tsl';
+import { once } from '../lib/once';
 
 const {
   Fn, PI, TWO_PI, abs, atan, clamp, dFdx, dFdy, faceDirection, floor, fract, fwidth, luminance, materialColor,
@@ -34,11 +35,8 @@ const PRINT_HALF = 0.62;
 const PRINT_TWIST = 0.45;
 const ROW = 64;
 
-let atlas: THREE.CanvasTexture | null = null;
-
 /** the markings, white on transparent, one row per kind */
-function printAtlas(): THREE.CanvasTexture {
-  if (atlas) return atlas;
+const printAtlas = once((): THREE.CanvasTexture => {
   const cv = document.createElement('canvas');
   cv.width = 2048;
   cv.height = ROW * PRINT.length;
@@ -51,11 +49,11 @@ function printAtlas(): THREE.CanvasTexture {
     const w = g.measureText(text).width;
     for (let x = 0; x < cv.width; x += w) g.fillText(text, x, ROW * (k + 0.5));
   });
-  atlas = new THREE.CanvasTexture(cv);
+  const atlas = new THREE.CanvasTexture(cv);
   atlas.wrapS = THREE.RepeatWrapping;
   atlas.anisotropy = 8;
   return atlas;
-}
+});
 
 const hash = (n: ShaderNode) => fract(sin(n).mul(43758.5453));
 /** smooth value noise along a line */

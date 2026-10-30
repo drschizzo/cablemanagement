@@ -104,7 +104,9 @@ comme son commentaire (quel bout reste, le chemin en points, ajusté à la longu
 nœud, le trajet de chaque nœud), et chaque étape a son nom et sa documentation.
 
 **Ne pas recopier.** Une petite fonction utile partout a une seule maison : `dist`, `minus`, `dot`, `lerp` et `polyLength` sont
-dans `lib/vec3.ts`, `rng`, `shuffle` et `pick` dans `lib/random.ts`, et nulle part ailleurs.
+dans `lib/vec3.ts`, `rng`, `shuffle` et `pick` dans `lib/random.ts`, `smoothstep` et `fractionalPart` dans
+`lib/scalar.ts`, et nulle part ailleurs. Une ressource faite une fois et gardée (une texture dessinée, la lampe
+partagée) passe par `once()` (`lib/once.ts`), plutôt qu'une variable `let x = null` et son `if (x) return x`.
 
 **Ne pas masquer un nom que tout le monde connaît.** Ce que vise la souris s'appelle `CordPick`, et non `Pick`, qui
 cacherait le `Pick<>` de TypeScript.

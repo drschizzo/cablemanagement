@@ -5,6 +5,7 @@
 import * as THREE from 'three/webgpu';
 import { reflective } from './imagePipeline';
 import { tsl, type ShaderNode } from './tsl';
+import { once } from '../lib/once';
 import { ALBEDO_RANGE, floorWear, lightPool, perforatedTile, perforationMask, plainTile } from './floorTextures';
 
 const { texture, uv, vec4, mix, normalMap, materialColor, clamp } = tsl;
@@ -40,25 +41,22 @@ export const GROMMETS: readonly { x: number; z: number }[] = [{ x: -1.08, z: -0.
 /** a grommet's slot (m): along x, along z */
 export const GROMMET_SIZE: readonly [number, number] = [0.22, 0.06];
 
-let nodes: { color: ShaderNode; normal: ShaderNode; roughness: ShaderNode } | null = null;
 /**
  * The floor's colour, relief and roughness, the same nodes for every level
  * (three keys its shaders by them): the tile's surface where it is (plain or
  * perforated), in the pool of light, worn.
  */
-function floorNodes(): NonNullable<typeof nodes> {
-  if (nodes) return nodes;
+const floorNodes = once((): { color: ShaderNode; normal: ShaderNode; roughness: ShaderNode } => {
   const at = uv(), onTile = at.mul(TILES);
   const plain = plainTile(), perforated = perforatedTile();
   const perf = texture(perforationMask(TILES, PERFORATED), at).r;
   const surface = mix(texture(plain.surface, onTile), texture(perforated.surface, onTile), perf);
   const relief = mix(texture(plain.normal, onTile), texture(perforated.normal, onTile), perf);
   const pool = texture(lightPool(TILES, GROMMETS, GROMMET_SIZE), at), wear = texture(floorWear(), at);
-  nodes = {
+  return {
     color: vec4(materialColor.mul(pool.rgb).mul(surface.r.mul(ALBEDO_RANGE)).mul(wear.g), pool.a),
     normal: normalMap(relief.xyz),
     roughness: clamp(surface.g.add(wear.r.sub(0.5)), 0.05, 1),
   };
-  return nodes;
-}
+});
 

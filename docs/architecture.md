@@ -168,7 +168,8 @@ src/
                     longueur d'un chemin
     random.ts       tirages reproductibles : rng(seed), shuffle, pick, et seedOf (une graine tirée d'un texte)
     noise.ts        un bruit doux en deux dimensions, le même partout (valueNoise, fbm)
-    scalar.ts       les petites fonctions d'un nombre (smoothstep)
+    scalar.ts       les petites fonctions d'un nombre (smoothstep, fractionalPart)
+    once.ts         once : une valeur faite au premier appel et gardée (une texture, une lumière, des nœuds)
     page.ts         $ : un élément de index.html, ou une erreur claire s'il manque (game/ ne s'en sert pas)
   dev/          poignées de test, chargées en développement seulement
 tests/        tests unitaires (Vitest), rangés comme src/

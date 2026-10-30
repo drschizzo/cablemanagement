@@ -4,25 +4,23 @@
 import * as THREE from 'three';
 import { U } from '../game/rack';
 import { shared } from './dispose';
+import { once } from '../lib/once';
 
-let grille: THREE.CanvasTexture | null = null;
-let grilleMat: THREE.MeshStandardMaterial | null = null;
-export function grilleMaterial(): THREE.MeshStandardMaterial {
-  return (grilleMat ??= shared(new THREE.MeshStandardMaterial({ map: grilleTexture(), roughness: 0.6, metalness: 0.6, transparent: true })));
-}
+/** the perforated grille of the doors */
+export const grilleMaterial = once((): THREE.MeshStandardMaterial =>
+  shared(new THREE.MeshStandardMaterial({ map: grilleTexture(), roughness: 0.6, metalness: 0.6, transparent: true })));
 
-function grilleTexture(): THREE.CanvasTexture {
-  if (grille) return grille;
+const grilleTexture = once((): THREE.CanvasTexture => {
   const c = document.createElement('canvas');
   c.width = 256; c.height = 64;
   const g = c.getContext('2d')!;
   g.fillStyle = '#2a3038'; g.fillRect(0, 0, 256, 64);
   g.fillStyle = '#07090c';
   for (let y = 6; y < 60; y += 9) for (let x = 6 + ((y / 9) % 2) * 4; x < 252; x += 9) { g.beginPath(); g.arc(x, y, 3, 0, Math.PI * 2); g.fill(); }
-  grille = shared(new THREE.CanvasTexture(c));
+  const grille = shared(new THREE.CanvasTexture(c));
   grille.colorSpace = THREE.SRGBColorSpace;
   return grille;
-}
+});
 
 export function railMaterial(height: number): THREE.MeshStandardMaterial {
   const c = document.createElement('canvas');
@@ -51,9 +49,7 @@ export function softShadow(w: number, d: number, x: number, y: number, z: number
   return m;
 }
 
-let blob: THREE.CanvasTexture | null = null;
-function blobTexture(): THREE.CanvasTexture {
-  if (blob) return blob;
+const blobTexture = once((): THREE.CanvasTexture => {
   const N = 128, c = document.createElement('canvas');
   c.width = c.height = N;
   const g = c.getContext('2d')!;
@@ -66,6 +62,5 @@ function blobTexture(): THREE.CanvasTexture {
     g.fill();
   }
   // only the alpha counts: the material colour is black
-  blob = shared(new THREE.CanvasTexture(c));
-  return blob;
-}
+  return shared(new THREE.CanvasTexture(c));
+});
