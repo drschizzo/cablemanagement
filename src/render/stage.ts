@@ -1,9 +1,9 @@
-// The 3D stage every scene draws on: the renderer, the camera and its
-// controls, the lights, and the image (imagePipeline.ts), at the quality
+// The 3D stage every scene draws on: the renderer, the camera (its moves:
+// cameraRig.ts), the lights, and the image (imagePipeline.ts), at the quality
 // chosen or stepped down when the GPU cannot keep up (quality.ts).
 
 import * as THREE from 'three/webgpu';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { ImagePipeline, type CompileOptions } from './imagePipeline';
 import { isHdrShown, onScreenRangeChange, screenIsHdr, type HdrChoice, type HdrSupport } from './hdrScreen';
@@ -11,60 +11,34 @@ import { HDR_HEADROOM } from './toneCurve';
 import { LED_CLOCK_WRAP, ledClock, ledViewHeight } from './leds';
 import { ledGlows } from './ledGlow';
 import { gpuAdvice, gpuInfo, type GpuAdvice, type GpuInfo } from './gpu';
-import { addLights, createControls, createRenderer, keyLight, MAX_POLAR } from './stageSetup';
+import { addLights, createRenderer, keyLight } from './stageSetup';
 import { AUTO_QUALITY, QUALITY, drawAlike, settingsOf, type QualityChoice, type QualitySettings } from './quality';
-import { CameraTour, type TourPose } from './cameraTour';
+import type { TourPose } from './cameraTour';
+import { CameraRig, type ScreenMargins } from './cameraRig';
 
-/** px from each edge of the screen */
-export interface ScreenMargins {
-  left: number;
-  right: number;
-  top: number;
-  bottom: number;
-}
+export type { ScreenMargins } from './cameraRig';
 
-/** how far the camera may back away, × the distance it frames the subject from */
-const MAX_ZOOM_OUT = 1.6;
 /** how far round the subject everything stays sharp (see focusOnSubject), × the subject's size */
 const SHARP_REACH = 0.8;
-/** how far what the camera looks at may be panned from the middle of the subject, × the subject's size */
-const PAN_REACH = 0.6;
-/** how high above the floor the camera stays (m): its near plane must not cut into it */
-const ABOVE_FLOOR = 0.1;
-/** how high above the floor what the camera looks at stays (m) */
-const TARGET_ABOVE_FLOOR = 0.05;
 
 /** colour of the backdrop where the floor fades out (also the fog) */
 const HORIZON = '#1a1e21';
 
-/** Renderer, camera, lights and camera controls. */
+/** Renderer, camera, lights and the image. */
 export class Stage {
   /** the image, from the scene to the screen */
   private image: ImagePipeline;
   private lastRender = performance.now();
   scene = new THREE.Scene();
-  camera: THREE.PerspectiveCamera;
-  controls: OrbitControls;
+  /** the camera and its moves round the subject */
+  readonly rig: CameraRig;
+  readonly camera: THREE.PerspectiveCamera;
+  readonly controls: OrbitControls;
   key: THREE.DirectionalLight;
   /** the fill light: its tint is the look's accent */
   private fill: THREE.DirectionalLight;
-  private home = { pos: new THREE.Vector3(), target: new THREE.Vector3() };
-  private framed = { cy: 0, height: 1, halfWidth: 0.41, cx: 0.03, shadowWidth: 0.41, near: 0 };
   /** the screen covered by the panels of the interface (px from each edge): the cabinet is framed in the rest */
   panelMargins: ScreenMargins = { left: 0, right: 0, top: 0, bottom: 0 };
-  /**
-   * Where the camera rests, relative to the framing (see frame()): its distance
-   * (× the one that fits), its angle above the horizontal (rad), how far below
-   * the middle of the subject it looks (m). null: the framing as it is.
-   */
-  view: { zoom: number; elevation: number; lower: number } | null = null;
-  /** the height of the room's floor: the camera, and what it looks at, stay above it */
-  floorY = -Infinity;
-  /** slow sway of the camera around the cabinet (demo), stopped by the player */
-  private swaying = false;
-  private swayT = 0;
-  /** a flight round the cabinet under way (see tour()) */
-  private touring: CameraTour | null = null;
   /** a scripted motion on screen (the aisle going from one state to the other): its frames keep their full rate */
   moving = false;
 
@@ -125,9 +99,8 @@ export class Stage {
     room.dispose();
     this.scene.environmentIntensity = 0.5;
 
-    this.camera = new THREE.PerspectiveCamera(32, 1, 0.05, 20);
-    this.controls = createControls(this.camera, this.renderer.domElement);
-    this.controls.addEventListener('start', () => { this.swaying = false; this.touring?.end(); });
+    this.rig = new CameraRig(this.renderer.domElement);
+    ({ camera: this.camera, controls: this.controls } = this.rig);
 
     ({ key: this.key, fill: this.fill } = addLights(this.scene));
 
@@ -155,7 +128,7 @@ export class Stage {
    * the aisle moves.
    */
   due(now: number): boolean {
-    const idle = !document.hasFocus() || (!this.touring && !this.moving && now - this.lastInput > 4000);
+    const idle = !document.hasFocus() || (!this.rig.isTouring && !this.moving && now - this.lastInput > 4000);
     // a few ms of slack: the calls of a 60 Hz screen come a little early or late
     if (now - this.lastFrame < (idle ? 1000 / 30 : 1000 / 60) - 4) return false;
     // only the frames in play: not the 30 a second of an idle page, nor the pauses of a hidden page,
@@ -268,34 +241,11 @@ export class Stage {
    * reach, and how far towards the camera its sides come)
    */
   frame(cy: number, height: number, halfWidth = 0.41, cx = 0.03, shadowWidth = halfWidth, near = 0): void {
-    this.framed = { cy, height, halfWidth, cx, shadowWidth, near };
-    const W = window.innerWidth, H = window.innerHeight;
-    const freeW = Math.max(200, W - this.panelMargins.left - this.panelMargins.right);
-    const freeH = Math.max(200, H - this.panelMargins.top - this.panelMargins.bottom);
-    const tanV = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2));
-    // fit the height in the free height, and the cabinet width (0.82 m) in the free width
-    const dH = (height * 0.55) / (tanV * (freeH / H));
-    const dW = halfWidth / (tanV * (W / H) * (freeW / W)) + near;
-    const d = Math.max(dH, dW);
-    this.home.target.set(cx, cy, 0.02);
-    // slightly from above, so that the floor of the cabinet is in view
-    const dist = Math.max(1.0, d);
-    // a little further than it is framed, no more: past that, the room round the cabinet shows where it ends
-    this.controls.maxDistance = dist * MAX_ZOOM_OUT;
-    this.camera.far = Math.max(20, dist * 3);
-    this.camera.updateProjectionMatrix();
+    const dist = this.rig.frame({ cy, height, halfWidth, cx, shadowWidth, near }, this.panelMargins);
     // the fog starts behind the subject, wherever the camera stands
     const fog = this.scene.fog as THREE.Fog;
     fog.near = dist + 1.5;
     fog.far = dist * 2 + 4;
-    this.home.pos.set(cx, cy + dist * 0.16, dist);
-    const v = this.view;
-    if (v) {
-      this.home.target.y -= v.lower;
-      const len = Math.hypot(dist * 0.16, dist) * v.zoom;
-      this.home.pos.set(cx, this.home.target.y + Math.sin(v.elevation) * len, this.home.target.z + Math.cos(v.elevation) * len);
-    }
-    this.resetView();
     const s = this.key.shadow.camera;
     const half = Math.max(height * 0.75, shadowWidth) + 0.3;
     s.left = -half; s.right = half; s.top = half; s.bottom = -half;
@@ -304,6 +254,24 @@ export class Stage {
     this.key.target.position.set(0, cy, 0);
     // straight above the cabinets, in front: their shadows fall under them, as from the lamp under their roof
     this.key.position.set(0, cy + 2.0, 2.0);
+  }
+
+  /** where the camera rests, relative to the framing: see CameraRig.view */
+  get view(): CameraRig['view'] {
+    return this.rig.view;
+  }
+
+  set view(v: CameraRig['view']) {
+    this.rig.view = v;
+  }
+
+  /** the height of the room's floor: the camera, and what it looks at, stay above it */
+  get floorY(): number {
+    return this.rig.floorY;
+  }
+
+  set floorY(y: number) {
+    this.rig.floorY = y;
   }
 
   /**
@@ -325,28 +293,21 @@ export class Stage {
   }
 
   resetView(): void {
-    this.camera.position.copy(this.home.pos);
-    this.controls.target.copy(this.home.target);
-    this.controls.update();
+    this.rig.resetView();
   }
 
   resize(): void {
     const w = window.innerWidth, h = window.innerHeight;
     this.renderer.setSize(w, h);
     ledViewHeight.value = h * this.renderer.getPixelRatio();
-    this.camera.aspect = w / h;
-    // shift the image so that its centre is the centre of the free area
-    const ox = (this.panelMargins.right - this.panelMargins.left) / 2;
-    const oy = (this.panelMargins.bottom - this.panelMargins.top) / 2;
-    this.camera.setViewOffset(w, h, ox, oy, w, h);
-    this.camera.updateProjectionMatrix();
+    this.rig.resize(w, h, this.panelMargins);
   }
 
   /** panels changed size: refit */
   setPanelMargins(margins: ScreenMargins): void {
     this.panelMargins = margins;
     this.resize();
-    const f = this.framed;
+    const f = this.rig.framed;
     this.frame(f.cy, f.height, f.halfWidth, f.cx, f.shadowWidth, f.near);
   }
 
@@ -380,97 +341,27 @@ export class Stage {
 
   /** a left drag in the scene pans the view (the demo, where it grabs nothing) */
   dragPans(on: boolean): void {
-    this.controls.mouseButtons.LEFT = on ? THREE.MOUSE.PAN : (null as unknown as THREE.MOUSE);
-    this.renderer.domElement.style.cursor = on ? 'grab' : 'default';
+    this.rig.dragPans(on);
   }
 
-  /**
-   * A short flight round the cabinet, back to the front view; it resolves when
-   * it is over, or as soon as the player takes the camera.
-   */
+  /** see CameraRig.tour */
   tour(seconds: number): Promise<void> {
-    this.touring?.end();
-    this.resetView();
-    return new Promise((resolve) => {
-      const tour = new CameraTour(seconds, () => {
-        if (this.touring === tour) this.touring = null;
-        resolve();
-      });
-      this.touring = tour;
-    });
+    return this.rig.tour(seconds);
   }
 
   sway(on: boolean): void {
-    this.swaying = on;
-    this.swayT = 0;
-    if (!on) this.resetView();
+    this.rig.sway(on);
   }
 
   /** the camera at `pose`, relative to its resting place (the replay of the work moves it so) */
   place(pose: TourPose): void {
-    this.fly(pose);
-  }
-
-  /** the camera where the tour puts it, relative to its resting place; home once it is over */
-  private fly(pose: TourPose | null): void {
-    if (!pose) { this.resetView(); return; }
-    const rel = this.home.pos.clone().sub(this.home.target);
-    const side = new THREE.Vector3(0, 1, 0).cross(rel).normalize();
-    rel.applyAxisAngle(side, -pose.pitch).applyAxisAngle(new THREE.Vector3(0, 1, 0), pose.yaw).multiplyScalar(pose.zoom);
-    this.camera.position.copy(this.home.target).add(rel);
-    this.controls.target.copy(this.home.target);
-  }
-
-  /**
-   * Brings what the camera looks at back within reach of the subject, the
-   * camera with it: the zoom is held to a distance from that point, but a pan
-   * moves the point itself, and took the view off into the room.
-   */
-  private keepNearSubject(): void {
-    const f = this.framed, reach = Math.max(f.height, 2 * f.halfWidth) * PAN_REACH;
-    const off = this.controls.target.clone().sub(this.home.target);
-    if (off.length() <= reach) return;
-    const back = off.clone().setLength(reach).sub(off);
-    this.controls.target.add(back);
-    this.camera.position.add(back);
-  }
-
-  /**
-   * Stops the orbit where the camera would go under the floor: the lowest it
-   * may look from, at the distance it stands, is where it meets the floor.
-   */
-  private holdOrbitAboveFloor(): void {
-    const t = this.controls.target, r = this.camera.position.distanceTo(t);
-    const below = (this.floorY + ABOVE_FLOOR - t.y) / Math.max(r, 1e-6);
-    this.controls.maxPolarAngle = Math.min(MAX_POLAR, Math.acos(THREE.MathUtils.clamp(below, -1, 1)));
-  }
-
-  /**
-   * The point looked at, panned down, and the camera, zoomed out under the
-   * orbit's limit, lifted back above the floor.
-   */
-  private keepAboveFloor(): void {
-    const t = this.controls.target, p = this.camera.position;
-    const lift = this.floorY + TARGET_ABOVE_FLOOR - t.y;
-    if (lift > 0) { t.y += lift; p.y += lift; }
-    p.y = Math.max(p.y, this.floorY + ABOVE_FLOOR);
+    this.rig.place(pose);
   }
 
   render(): void {
     const now = performance.now();
     const dt = Math.min(0.1, (now - this.lastRender) / 1000);
-    if (this.swaying) {
-      this.swayT += dt;
-      const a = 0.3 * Math.sin(this.swayT * 0.4);
-      const rel = this.home.pos.clone().sub(this.home.target).applyAxisAngle(new THREE.Vector3(0, 1, 0), a);
-      this.camera.position.copy(this.home.target).add(rel);
-      this.controls.target.copy(this.home.target);
-    }
-    if (this.touring) this.fly(this.touring.advance(dt));
-    this.holdOrbitAboveFloor();
-    this.controls.update();
-    this.keepNearSubject();
-    this.keepAboveFloor();
+    this.rig.update(dt);
     // (wrapped, so that the GPU's hash of it keeps its precision)
     ledClock.value = (ledClock.value + dt) % LED_CLOCK_WRAP;
     // the light of the LEDs on the cords; not for a cabinet taken off the scene (an aisle set aside)
@@ -480,10 +371,10 @@ export class Stage {
       if (top === this.scene) g.render(this.renderer);
     }
     this.lastRender = now;
-    const f = this.framed;
     // on the subject itself, wherever the view was panned
-    const focus = { at: this.home.target, reach: Math.max(f.height, 2 * f.halfWidth) * SHARP_REACH };
-    const frame = { dt, viewDistance: this.camera.position.distanceTo(this.controls.target), focus: this.focused ? focus : null, margins: this.panelMargins };
+    const subject = this.rig.subject;
+    const focus = { at: subject.at, reach: subject.size * SHARP_REACH };
+    const frame = { dt, viewDistance: this.rig.viewDistance, focus: this.focused ? focus : null, margins: this.panelMargins };
     if (this.focusWarm) {
       this.focusWarm = false;
       if (!this.focused) this.image.render({ ...frame, focus });

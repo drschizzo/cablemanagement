@@ -76,7 +76,9 @@ src/
     aisleLayout.ts  où se tiennent les baies : un demi-cercle autour du spectateur
     cableRain.ts    le décor : des câbles qui tombent et s'entassent au milieu de la salle
   render/       LE DESSIN (three.js) de ce que game décrit
-    stage.ts        Stage : la scène, la caméra, le cadrage, le rendu et sa qualité, choisie ou adaptée au GPU
+    stage.ts        Stage : la scène, les lumières, le rendu et sa qualité, choisie ou adaptée au GPU
+    cameraRig.ts    la caméra et ses mouvements : le cadrage du sujet dans l'écran laissé libre, l'orbite du joueur
+                    gardée près du sujet et au-dessus du sol, le balancement de la démo, le tour, une pose du rejeu
     imagePipeline.ts la chaîne de l'image : la scène dessinée une fois (couleur, normales, profondeur, ce qui reflète),
                     puis reflets du sol, occlusion ambiante, profondeur de champ, halo, tone mapping, finitions ;
                     reflective() et keepOutOfDepth() disent aux passes ce qu'est un matériau (le sol, un rai de lumière)
