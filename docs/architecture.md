@@ -100,8 +100,9 @@ src/
     cameraTour.ts   le vol de la caméra autour d'une baie validée, puis retour de face (Stage.tour)
     rackView.ts     la baie, ses équipements, ports, plaques et voyants (sur un équipement actif, un second voyant par
                     port : le trafic d'une liaison, à la couleur de son service, que le contrôleur lui donne)
-    serverRoom/     le décor d'un niveau autour de la baie, où rien ne se joue (posé par rackView.ts, à côté du sol ;
-                    tiré du lieu du niveau, game/levels/site.ts, que le contrôleur lui donne en graine) :
+    levelScenery.ts ce qui entoure la baie d'un niveau sans être la baie : le sol, les ombres de contact, la salle
+                    serveur (posé par le contrôleur à côté de RackView, tiré du lieu du niveau, game/levels/site.ts)
+    serverRoom/     le décor d'un niveau autour de la baie, où rien ne se joue (posé par levelScenery.ts) :
                     serverRoom.ts assemble la salle (des rangées pas tout à fait alignées, une lumière de contre-jour) ;
                     roomRack.ts, une baie de la salle (ses équipements et leurs ports ; rangée, ses cordons passés
                     dans les peignes, ou en désordre, d'un port à l'autre ; toujours devant les façades) ;

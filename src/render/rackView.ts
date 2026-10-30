@@ -3,7 +3,7 @@
 
 import * as THREE from 'three/webgpu';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { COLUMN_X, FRONT_Z, ROOM_FLOOR, Rack, SIDE_BACK, U, WALL_X, type Port, type UnitSpec } from '../game/rack';
+import { COLUMN_X, FRONT_Z, Rack, SIDE_BACK, U, WALL_X, type Port, type UnitSpec } from '../game/rack';
 import type { CordType } from '../game/cordTypes';
 import { disposeTree, shared } from './dispose';
 import { assertNever } from '../lib/assertNever';
@@ -17,9 +17,7 @@ import { rackMat } from './rackMaterials';
 import { InstancedParts } from './instancedParts';
 import { buildItem } from './rackItems';
 import { crateWall, roundedBox } from './shapes';
-import { buildFloor } from './floor';
-import { buildServerRoom } from './serverRoom/serverRoom';
-import { grilleMaterial, railMaterial, softShadow } from './rackTextures';
+import { grilleMaterial, railMaterial } from './rackTextures';
 
 const markerGeo = shared(new THREE.RingGeometry(0.0085, 0.0105, 24));
 
@@ -43,10 +41,11 @@ function cabinetLamp(): THREE.SpotLight {
 const levelLamp = once(cabinetLamp);
 
 export interface RackViewOptions {
-  /** the room round the cabinet: its floor, and the racks of the room (default: drawn) */
-  roomFloor?: boolean;
-  /** the room drawn: the same seed, the same room (default 0) */
-  roomSeed?: number;
+  /**
+   * A level's cabinet: it hangs the same lamp as the last one (see levelLamp);
+   * otherwise, a lamp of its own (the aisle of the title screen has several).
+   */
+  sharedLamp?: boolean;
   /** the words on the face plates (default: none) */
   labelOf?: UnitLabeller;
   /**
@@ -113,8 +112,6 @@ export class RackView {
     this.glow = new LedGlow(this.group, [this.leds, lights], [-COLUMN_X - 0.05, rack.floorY, COLUMN_X + 0.05, rack.topY + 0.15]);
     ledGlows.add(this.glow);
     this.glow.light(this.group);
-    // after the light of the LEDs is given to the cabinet: the room stands too far to take it
-    if (opts.roomFloor !== false) this.group.add(buildServerRoom(rack.open ? rack.floorY : ROOM_FLOOR(rack), opts.roomSeed ?? 0));
   }
 
   private light(x: number, y: number, color: THREE.ColorRepresentation, blink = STEADY, w = 0.0022, h = 0.0016, z = 0.0035): void {
@@ -218,7 +215,7 @@ export class RackView {
     // the bulb behind it, peeking out of its middle: the only part that glows, a little
     this.add(new THREE.SphereGeometry(0.011, 24, 6, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), rackMat.core, 0, lampY, lampZ, false);
     // (a level's cabinet, the one in its room, hangs the same lamp as the last: see levelLamp)
-    const lamp = this.opts.roomFloor !== false ? levelLamp() : cabinetLamp();
+    const lamp = this.opts.sharedLamp ? levelLamp() : cabinetLamp();
     lamp.position.set(0, lampY - 0.006, lampZ);
     lamp.target.position.set(0, bot, 0.02);
     this.group.add(lamp, lamp.target);
@@ -229,15 +226,6 @@ export class RackView {
     // plinth below the first unit
     this.add(bevelBox(COLUMN_X * 2 - 0.02, -0.02 - bot, 0.02, 0.003), rackMat.back, 0, (bot - 0.02) / 2, -0.01);
     this.buildCrate();
-    if (this.opts.roomFloor !== false) {
-      this.group.add(buildFloor(bot - 0.03));
-      // contact shadows of the cabinet and the crate on the room floor
-      const c = rack.crate();
-      this.group.add(
-        softShadow(0.98, 0.86, 0, bot - 0.03, (FRONT_Z - 0.5) / 2, 0.55),
-        softShadow(c.max[0] - c.min[0] + 0.07, c.max[2] - c.min[2] + 0.07, (c.min[0] + c.max[0]) / 2, bot - 0.03, (c.min[2] + c.max[2]) / 2, 0.6),
-      );
-    }
   }
 
   /** the plastic crate for unplugged cords and spares: walls with a handle and vent slots, a rim on top */
@@ -273,7 +261,6 @@ export class RackView {
     }
     this.add(roundedBox(COLUMN_X * 2 + 0.02, 0.03, 0.03, 0.005), rackMat.frame, 0, top + 0.015, -0.012);
     this.add(bevelBox(COLUMN_X * 2 - 0.02, -0.02 - bot, 0.02, 0.003), rackMat.back, 0, (bot - 0.02) / 2, -0.01);
-    if (this.opts.roomFloor !== false) this.group.add(buildFloor(bot));
   }
 
   private buildUnit(k: number, type: CordType): void {

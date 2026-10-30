@@ -81,7 +81,7 @@ export class Bay {
       await pause();
       const types = new Map<number, CordType>();
       w.circuits.forEach((c) => types.set(w.rack.port(c.a).unit, c.type));
-      b.rackView = new RackView(w.rack, types, { roomFloor: false, labelOf });
+      b.rackView = new RackView(w.rack, types, { labelOf });
       b.group.add(b.rackView.group);
       await pause();
       b.rackView.syncItems(w.itemsVersion);

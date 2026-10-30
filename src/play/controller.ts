@@ -8,6 +8,7 @@ import { RackView, type UnitLabeller } from '../render/rackView';
 import { CableView } from '../render/cableView';
 import { DEFAULT_LOOK, type Look } from '../render/look';
 import { disposeTree } from '../render/dispose';
+import { levelScenery } from '../render/levelScenery';
 import { World } from '../game/world';
 import type { Evaluation } from '../game/evaluation';
 import { ROOM_FLOOR, type Port } from '../game/rack';
@@ -74,6 +75,8 @@ const FINISH_TOUR_S = 3.2;
 export class Controller implements PlayContext, InputCommands {
   world: World;
   rackView: RackView;
+  /** the room round the cabinet: its floor, the racks of the room */
+  private scenery: THREE.Group;
   cableView: CableView;
   tool: Tool = 'hand';
   /** seconds of play (the level's clock: it only runs while playing) */
@@ -139,7 +142,8 @@ export class Controller implements PlayContext, InputCommands {
     this.world = new World(level);
     this.world.preroll(30);
     if (threaded) this.world.sim.startWorker();
-    this.rackView = rackViewOf(this.world, level, events.unitLabel);
+    this.rackView = rackViewOf(this.world, events.unitLabel);
+    this.scenery = sceneryOf(this.world, level);
     this.pointer = new Pointer(stage);
     this.picker = new CordPicker(stage, this.world, this.pointer);
     this.history = new UndoHistory(this.world);
@@ -157,7 +161,7 @@ export class Controller implements PlayContext, InputCommands {
     stage.scene.add(this.connectorGlows.group);
     this.cableView = new CableView(this.world, look.velcro);
     this.cableView.lightBy(this.rackView.glow);
-    stage.scene.add(this.rackView.group, this.cableView.group);
+    stage.scene.add(this.rackView.group, this.scenery, this.cableView.group);
     stage.setAccent(look.accent);
     stage.focusOnSubject(true);
     if (this.world.find) {
@@ -191,12 +195,13 @@ export class Controller implements PlayContext, InputCommands {
    */
   static async warm(stage: Stage, level: LevelDef, unitLabel: UnitLabeller, stop: () => boolean): Promise<{ dispose(): void } | null> {
     const world = new World(level);
-    const rackView = rackViewOf(world, level, unitLabel);
+    const rackView = rackViewOf(world, unitLabel);
+    const scenery = sceneryOf(world, level);
     const cableView = new CableView(world);
     cableView.lightBy(rackView.glow);
     rackView.syncItems(world.itemsVersion);
     cableView.update(true);
-    const roots = [rackView.group, cableView.group];
+    const roots = [rackView.group, scenery, cableView.group];
     const pieces: THREE.Object3D[] = [];
     for (const r of roots) r.traverse((o) => { if ((o as THREE.Mesh).isMesh || (o as THREE.Points).isPoints || (o as THREE.Line).isLine || (o as THREE.Sprite).isSprite) pieces.push(o); });
     let done = false;
@@ -221,6 +226,7 @@ export class Controller implements PlayContext, InputCommands {
       return {
         dispose: () => {
           rackView.dispose();
+          disposeTree(scenery);
           disposeTree(cableView.group);
         },
       };
@@ -229,6 +235,7 @@ export class Controller implements PlayContext, InputCommands {
       world.dispose();
       if (!done) {
         rackView.dispose();
+        disposeTree(scenery);
         disposeTree(cableView.group);
       }
     }
@@ -245,7 +252,7 @@ export class Controller implements PlayContext, InputCommands {
     for (const t of Object.values(this.tools)) t.dispose();
     this.stage.scene.remove(this.rackView.group);
     this.rackView.dispose();
-    for (const g of [this.cableView.group, this.otherHand.group, this.connectorGlows.group, ...(this.findView ? [this.findView] : [])]) {
+    for (const g of [this.scenery, this.cableView.group, this.otherHand.group, this.connectorGlows.group, ...(this.findView ? [this.findView] : [])]) {
       this.stage.scene.remove(g);
       disposeTree(g);
     }
@@ -720,8 +727,8 @@ const nextFrame = () => new Promise<void>((r) => {
   setTimeout(go, 100);
 });
 
-/** the cabinet of a level, its room round it */
-function rackViewOf(world: World, level: LevelDef, unitLabel: UnitLabeller): RackView {
+/** the cabinet of a level */
+function rackViewOf(world: World, unitLabel: UnitLabeller): RackView {
   const types = new Map<number, CordType>();
   world.circuits.forEach((c) => types.set(world.rack.port(c.a).unit, c.type));
   // a link carries its service's traffic: the switch shows it in the colour of its cords and labels
@@ -730,6 +737,11 @@ function rackViewOf(world: World, level: LevelDef, unitLabel: UnitLabeller): Rac
   return new RackView(world.rack, types, {
     labelOf: (u) => unitLabel(u),
     trafficColorOf: (p) => traffic.get(p.id) ?? null,
-    roomSeed: seedOf(levelSite(level)),
+    sharedLamp: true,
   });
+}
+
+/** the room round the cabinet of a level, drawn from where the level is played */
+function sceneryOf(world: World, level: LevelDef): THREE.Group {
+  return levelScenery(world.rack, seedOf(levelSite(level)));
 }
