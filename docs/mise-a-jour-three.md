@@ -24,7 +24,7 @@ dépend, ce qui le vérifie, et comment monter de version sans casse silencieuse
 `WebGPURenderer` dessine sur WebGPU, ou sur WebGL 2 quand le navigateur n'a pas WebGPU (`?webgl` force ce
 repli). Les deux doivent donner la même image : c'est à vérifier à chaque version.
 
-### Les matériaux (`render/leds.ts`, `batch.ts`, `jacket.ts`, `ledGlow.ts`, `serverRoom/roomHaze.ts`)
+### Les matériaux (`render/leds.ts`, `batch.ts`, `jacket.ts`, `ledGlow.ts`, `serverRoom/battens.ts`)
 
 Les effets des matériaux sont des nœuds TSL branchés sur leurs étapes : `emissiveNode`, `colorNode`,
 `roughnessNode`, `normalNode`, `positionNode`, `mrtNode`. Ils lisent des valeurs que three.js expose sous un nom

@@ -104,10 +104,13 @@ src/
                     roomRack.ts, une baie de la salle (ses équipements et leurs ports ; rangée, ses cordons passés
                     dans les peignes, ou en désordre, d'un port à l'autre ; toujours devant les façades) ;
                     roomProps.ts, ce qui traîne (chemins de câbles, cartons, couronnes, chariot, extincteur) ;
-                    roomHaze.ts, les rais de lumière et leur poussière ; roomParts.ts, les pièces réunies en
-                    quelques maillages
+                    battens.ts, les réglettes LED au-dessus de l'allée : leur corps, leurs rais de lumière et leur
+                    poussière ; roomParts.ts, les pièces réunies en quelques maillages, et la couleur d'un cordon
+                    de la salle
     rackItems.ts    les éléments de rangement, construits à partir de leurs formes de collision (buildItem)
-    rackMaterials.ts, rackTextures.ts, shapes.ts, room.ts   matériaux, textures, formes, sol de la salle
+    rackMaterials.ts, rackTextures.ts, shapes.ts   matériaux, textures, formes de la baie ; rackWear.ts, l'usure des
+                    années sur son métal peint et son plastique, dessinée dans le shader
+    floor.ts        le sol en dalles sur lequel se tient chaque scène (niveau et écran titre), ses passe-câbles
     cableView.ts    les câbles (tubes de three-cable-tubes), leurs connecteurs et étiquettes
     jacket.ts, straps.ts, leds.ts, ledGlow.ts   gaine vue de près, velcros, voyants et leur lumière
     bevel.ts, batch.ts, dispose.ts   pièces légères, moins d'appels de dessin, mémoire GPU

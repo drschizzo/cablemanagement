@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { MeshStandardNodeMaterial } from 'three/webgpu';
 import { shared } from './dispose';
-import { worn, type Wear } from './wear';
+import { worn, type Wear } from './rackWear';
 
 /** a painted or plastic part, worn by years in the room */
 function used(params: THREE.MeshStandardMaterialParameters, wear: Wear): THREE.MeshStandardMaterial {

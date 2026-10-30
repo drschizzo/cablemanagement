@@ -1,7 +1,7 @@
-// The light of the server room's LED battens, hung over the aisle: the opal
-// diffuser under each, a faint sheet of light in the haze below it, soft on
-// every side and stirred by slow currents of air, a long pool of light on the
-// floor, and dust glinting as it drifts through.
+// The server room's LED battens, hung over the aisle: their body, and their
+// light: the opal diffuser under each, a faint sheet of light in the haze
+// below it, soft on every side and stirred by slow currents of air, a long
+// pool of light on the floor, and dust glinting as it drifts through.
 //
 // The haze is not a surface: drawn as one (a cone seen from both sides), what
 // stood in it cut its far side away, and every rack and tray crossing it left
@@ -14,6 +14,7 @@ import { LED_CLOCK_WRAP, ledClock, ledViewHeight } from '../leds';
 import { tsl, type ShaderNode } from '../tsl';
 import { keepOutOfDepth } from '../imagePipeline';
 import { shared } from '../dispose';
+import { RoomParts } from './roomParts';
 
 const {
   Fn, Loop, abs, cameraPosition, cameraProjectionMatrix, dot, exp, float, fract, instancedBufferAttribute, length, max,
@@ -24,9 +25,9 @@ const {
 const TWO_PI = Math.PI * 2;
 
 /** the diffusers under the battens, above the floor (m) */
-export const LAMP_Y = 2.55;
+const LAMP_Y = 2.55;
 /** a batten: its length along the aisle (+z of its own frame), the width of its diffuser (m) */
-export const LAMP_LENGTH = 1.2;
+const LAMP_LENGTH = 1.2;
 const DIFFUSER_W = 0.05;
 /** the tint of the light */
 const HAZE_COLOR = new THREE.Color('#a9c8ff');
@@ -57,7 +58,7 @@ const DUST_MOTES = 150;
 const MOTE_MIN_PX = 1.5;
 
 /** the light of the battens at `lamps` (each running along z), on the floor at y = 0 of their group */
-export function roomHaze(lamps: { x: number; z: number }[], random: () => number): THREE.Group {
+export function battenLight(lamps: { x: number; z: number }[], random: () => number): THREE.Group {
   const g = new THREE.Group();
   const box = new THREE.BoxGeometry(BOX_X * 2, LAMP_Y, BOX_Z * 2).translate(0, LAMP_Y / 2, 0);
   const pool = new THREE.PlaneGeometry(BOX_X * 2, BOX_Z * 2).rotateX(-Math.PI / 2).translate(0, 0.002, 0);
@@ -74,6 +75,22 @@ export function roomHaze(lamps: { x: number; z: number }[], random: () => number
   }
   g.add(dust(lamps, random));
   return g;
+}
+
+/**
+ * An LED batten hung over the aisle, LAMP_LENGTH long along +z: a slim body of
+ * aluminium, its opal diffuser under it at LAMP_Y (its light: see battenLight), its
+ * end caps, and two wires rising out of sight into the dark.
+ */
+export function battenBody(): RoomParts {
+  const y = LAMP_Y, length = LAMP_LENGTH;
+  const parts = new RoomParts();
+  parts.box(0.07, 0.04, length, 0, y + 0.022, 0, '#8d9096');
+  for (const s of [-1, 1]) {
+    parts.box(0.074, 0.044, 0.012, 0, y + 0.022, s * length / 2, '#2a2b2e');
+    parts.solid(new THREE.CylinderGeometry(0.0015, 0.0015, 1.2, 6).translate(0, y + 0.042 + 0.6, s * length * 0.35), '#2a2b2e');
+  }
+  return parts;
 }
 
 /** a light added to the image, drawn over what lies behind it and writing no depth */

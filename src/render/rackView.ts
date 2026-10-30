@@ -15,7 +15,7 @@ import { rackMat } from './rackMaterials';
 import { InstancedParts } from './instancedParts';
 import { buildItem } from './rackItems';
 import { crateWall, roundedBox } from './shapes';
-import { buildRoom } from './room';
+import { buildFloor } from './floor';
 import { buildServerRoom } from './serverRoom/serverRoom';
 import { grilleMaterial, railMaterial, softShadow } from './rackTextures';
 
@@ -232,7 +232,7 @@ export class RackView {
     this.add(bevelBox(COLUMN_X * 2 - 0.02, -0.02 - bot, 0.02, 0.003), rackMat.back, 0, (bot - 0.02) / 2, -0.01);
     this.buildCrate();
     if (this.opts.roomFloor !== false) {
-      this.group.add(buildRoom(bot - 0.03));
+      this.group.add(buildFloor(bot - 0.03));
       // contact shadows of the cabinet and the crate on the room floor
       const c = rack.crate();
       this.group.add(
@@ -275,7 +275,7 @@ export class RackView {
     }
     this.add(roundedBox(COLUMN_X * 2 + 0.02, 0.03, 0.03, 0.005), rackMat.frame, 0, top + 0.015, -0.012);
     this.add(bevelBox(COLUMN_X * 2 - 0.02, -0.02 - bot, 0.02, 0.003), rackMat.back, 0, (bot - 0.02) / 2, -0.01);
-    if (this.opts.roomFloor !== false) this.group.add(buildRoom(bot));
+    if (this.opts.roomFloor !== false) this.group.add(buildFloor(bot));
   }
 
   private buildUnit(k: number, type: CordType): void {

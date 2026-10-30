@@ -8,11 +8,9 @@
 
 import * as THREE from 'three';
 import { U } from '../../game/rack';
-import { CORD_KINDS } from '../../game/cordTypes';
-import { SERVICES } from '../../game/services';
 import { pick } from '../../lib/random';
 import { activity, pulse } from '../leds';
-import { RoomParts } from './roomParts';
+import { RoomParts, randomCordColor } from './roomParts';
 
 /** what a rack of the room is: its size, how it was kept */
 export interface RoomRackSpec {
@@ -372,9 +370,4 @@ function buildSideBundles({ spec, parts, random }: Build): void {
       parts.cord(path, random() < 0.7 ? color : randomCordColor(random));
     }
   }
-}
-
-/** the colour of a cord of the room: a service's, or a fibre's */
-export function randomCordColor(random: () => number): string {
-  return random() < 0.75 ? pick(SERVICES, random).color : pick([CORD_KINDS.OS2.color, CORD_KINDS.OM4.color], random);
 }

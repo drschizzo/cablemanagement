@@ -6,6 +6,9 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { STEADY, type Blink, type LedSpec } from '../leds';
 import { bevelBox } from '../bevel';
+import { CORD_KINDS } from '../../game/cordTypes';
+import { SERVICES } from '../../game/services';
+import { pick } from '../../lib/random';
 
 /** the radius of a cord of the room (m) */
 export const CORD_R = 0.0025;
@@ -86,4 +89,9 @@ function painted(geo: THREE.BufferGeometry, color: string): THREE.BufferGeometry
   for (let i = 0; i < n; i++) c.toArray(a, 3 * i);
   geo.setAttribute('color', new THREE.BufferAttribute(a, 3));
   return geo;
+}
+
+/** the colour of a cord of the room: a service's, or a fibre's */
+export function randomCordColor(random: () => number): string {
+  return random() < 0.75 ? pick(SERVICES, random).color : pick([CORD_KINDS.OS2.color, CORD_KINDS.OM4.color], random);
 }

@@ -6,8 +6,7 @@
 // Each is built in its own frame (on the floor, at the origin), then placed.
 
 import * as THREE from 'three';
-import { CORD_R, RoomParts } from './roomParts';
-import { randomCordColor } from './roomRack';
+import { CORD_R, RoomParts, randomCordColor } from './roomParts';
 
 /** the tray: its width (m), the pitch of its rungs */
 const TRAY_W = 0.3;
@@ -119,21 +118,6 @@ export function floorCord(length: number, random: () => number): RoomParts {
     path.push(new THREE.Vector3(x, 0.003, z));
   }
   parts.cord(path, randomCordColor(random));
-  return parts;
-}
-
-/**
- * An LED batten hung over the aisle, `length` long along +z: a slim body of
- * aluminium, its opal diffuser under it at `y` (the light: see roomHaze), its
- * end caps, and two wires rising out of sight into the dark.
- */
-export function battenLamp(y: number, length: number): RoomParts {
-  const parts = new RoomParts();
-  parts.box(0.07, 0.04, length, 0, y + 0.022, 0, '#8d9096');
-  for (const s of [-1, 1]) {
-    parts.box(0.074, 0.044, 0.012, 0, y + 0.022, s * length / 2, '#2a2b2e');
-    parts.solid(new THREE.CylinderGeometry(0.0015, 0.0015, 1.2, 6).translate(0, y + 0.042 + 0.6, s * length * 0.35), '#2a2b2e');
-  }
   return parts;
 }
 

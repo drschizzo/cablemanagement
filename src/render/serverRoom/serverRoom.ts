@@ -10,9 +10,9 @@ import { ledMesh } from '../leds';
 import type { InstancedParts } from '../instancedParts';
 import { RoomParts, mergedMesh } from './roomParts';
 import { ROOM_RACK_DEPTH, roomRack, type RoomRackSpec } from './roomRack';
-import { boxStack, cableTray, cordCoil, crashCart, extinguisher, battenLamp, floorCord, velcroRoll, cableTies, tileStack, grommetSlack } from './roomProps';
-import { GROMMETS, GROMMET_SIZE } from '../room';
-import { LAMP_LENGTH, LAMP_Y, roomHaze } from './roomHaze';
+import { boxStack, cableTray, cordCoil, crashCart, extinguisher, floorCord, velcroRoll, cableTies, tileStack, grommetSlack } from './roomProps';
+import { GROMMETS, GROMMET_SIZE } from '../floor';
+import { battenBody, battenLight } from './battens';
 
 /**
  * How lit the lights of the room are, against those of the cabinet: past
@@ -104,7 +104,7 @@ export function buildServerRoom(floorY: number, seed: number): THREE.Group {
   const taken: Taken[] = [];
   ROWS.forEach((row, k) => buildRow(row, k === 0, random, room, taken));
   placeLoose(random, room, taken);
-  for (const l of LAMPS) battenLamp(LAMP_Y, LAMP_LENGTH).placeInto(room, new THREE.Matrix4().makeTranslation(l.x, 0, l.z));
+  for (const l of LAMPS) battenBody().placeInto(room, new THREE.Matrix4().makeTranslation(l.x, 0, l.z));
   const shade = new THREE.Color(ROOM_SHADE, ROOM_SHADE, ROOM_SHADE);
   const g = new THREE.Group();
   g.add(
@@ -112,7 +112,7 @@ export function buildServerRoom(floorY: number, seed: number): THREE.Group {
     mergedMesh(room.cords, new THREE.MeshStandardMaterial({ vertexColors: true, color: shade, roughness: 0.45, metalness: 0 })),
     mergedMesh(room.screens, new THREE.MeshBasicMaterial({ vertexColors: true })),
     dimmed(ledMesh(room.lights)),
-    roomHaze(LAMPS, random),
+    battenLight(LAMPS, random),
   );
   g.position.y = floorY;
   const rim = roomRim();

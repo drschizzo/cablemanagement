@@ -1,4 +1,4 @@
-// An abstract stage around the rack: a floor of raised tiles lit in a pool
+// The floor every scene stands on: raised tiles lit in a pool
 // under it, fading into the backdrop. Each tile has its surface drawn close
 // up (colour, roughness, relief: a plain tile or a perforated one, repeated
 // over the floor), worn over the whole floor by years of use.
@@ -11,7 +11,7 @@ import { rng } from '../lib/random';
 
 const { texture, uv, vec4, mix, normalMap, materialColor, clamp } = tsl;
 
-export function buildRoom(floorY: number): THREE.Group {
+export function buildFloor(floorY: number): THREE.Group {
   const g = new THREE.Group();
   // picked up by the screen-space reflections of the stage
   const m = reflective(new THREE.MeshStandardNodeMaterial({ color: STAGE_FLOOR, transparent: true, metalness: 0 }));

@@ -12,7 +12,7 @@
 
 import * as THREE from 'three';
 import type { Stage } from '../render/stage';
-import { buildRoom } from '../render/room';
+import { buildFloor } from '../render/floor';
 import { disposeTree } from '../render/dispose';
 import { CableRain } from './cableRain';
 import type { BakedBay } from '../game/mess/baked';
@@ -158,7 +158,7 @@ export class Showcase {
   }
 
   private constructor(private stage: Stage) {
-    this.floor = buildRoom(0);
+    this.floor = buildFloor(0);
     // hidden until start(): an aisle made ready in the background must not lay its floor over the one on screen
     this.floor.visible = false;
     stage.scene.add(this.floor);
