@@ -52,7 +52,12 @@ function shapesOf(id: FindId): THREE.Mesh[] {
       part(new THREE.BoxGeometry(0.05, 0.002, 0.012), mat('#c9ccd0', 0.3, 0.9), 0.035, 0.002, 0, 0.3),
       part(new THREE.BoxGeometry(0.045, 0.002, 0.012), mat('#b08a3a', 0.3, 0.9), 0.025, 0.004, 0.02, -0.4),
     ];
-    case 'manual': return [part(roundedBox(0.21, 0.02, 0.297, 0.003), mat('#2f5d45', 0.7), 0, 0.01, 0, 0.15)];
+    // an A5 booklet still in its film: a white cover, the maker's blue band, a grey spine
+    case 'manual': return [
+      part(roundedBox(0.148, 0.012, 0.21, 0.0015), mat('#e9e7e1', 0.25), 0, 0.006, 0, 0.15),
+      part(new THREE.BoxGeometry(0.149, 0.0006, 0.05), mat('#2d5fd0', 0.3), -0.07 * Math.sin(0.15), 0.0122, -0.07 * Math.cos(0.15), 0.15),
+      part(new THREE.BoxGeometry(0.006, 0.0122, 0.211), mat('#8d9096', 0.4), -0.072 * Math.cos(0.15), 0.006, 0.072 * Math.sin(0.15), 0.15),
+    ];
     default: return assertNever(id);
   }
 }

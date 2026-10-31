@@ -68,7 +68,7 @@ export type Phase = 'playing' | 'paused' | 'preparing';
 const MAX_STEPS_PER_FRAME = 2;
 /** how often the cabinet is scored (s) */
 const EVAL_PERIOD = 0.4;
-/** px from the find on screen within which a click picks it up */
+/** px from the find on screen within which a click picks it up, besides a click on the find itself */
 const FIND_CLICK_PX = 26;
 /** the flight round a signed-off cabinet (s) */
 const FINISH_TOUR_S = 3.2;
@@ -578,7 +578,10 @@ export class Controller implements PlayContext, InputCommands {
     const find = this.world.find, view = this.findView;
     if (!find || !view) return false;
     const [x, y, z] = find.at;
-    if (this.pointer.screenDistance(x, y + 0.02, z) > FIND_CLICK_PX) return false;
+    // on the find itself (the manual is big), or near enough to a small one
+    this.pointer.ray();
+    const onIt = this.pointer.raycaster.intersectObject(view, true).length > 0;
+    if (!onIt && this.pointer.screenDistance(x, y + 0.02, z) > FIND_CLICK_PX) return false;
     this.world.takeFind();
     this.stage.scene.remove(view);
     disposeTree(view);

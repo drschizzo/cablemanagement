@@ -28,7 +28,8 @@ export function placeFind(id: FindId | undefined, rack: Rack, random: () => numb
   const spot = pick(SPOTS, random);
   const along = random() - 0.5;
   switch (spot) {
-    case 'floor': return { id, at: [along * 0.5, rack.floorY, 0.04 + random() * 0.12] };
+    // far enough from the front edge (FRONT_Z) for the biggest, the manual, to lie inside
+    case 'floor': return { id, at: [along * 0.5, rack.floorY, 0.04 + random() * 0.08] };
     case 'roof': return { id, at: [along * 0.6, rack.topY + 0.16, FRONT_Z - 0.12] };
     case 'crate': {
       const c = rack.crate();
