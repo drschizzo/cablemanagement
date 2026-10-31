@@ -43,7 +43,6 @@ import { RouteTool } from './tools/routeTool';
 import { VelcroTool } from './tools/velcroTool';
 import { SupportsTool } from './tools/supportsTool';
 import { TesterTool } from './tools/testerTool';
-import { CombTool } from './tools/combTool';
 import { InputRouter, type InputCommands } from './inputRouter';
 import type { CableIndex, CircuitIndex } from '../game/cables';
 import type { IncidentEvent } from '../game/incidents';
@@ -87,7 +86,7 @@ export class Controller implements PlayContext, InputCommands {
   debug = false;
   /** seconds since the level opened, preparation and pauses included (animations) */
   clock = 0;
-  readonly counters: GestureCounters = { moves: 0, hovered: 0, dragged: 0, plugged: 0, unplugged: 0, orbited: 0, deposited: 0, pinched: 0, handedOver: 0, routed: 0 };
+  readonly counters: GestureCounters = { hovered: 0, dragged: 0, plugged: 0, unplugged: 0, orbited: 0, deposited: 0, pinched: 0, handedOver: 0, routed: 0 };
   /** the work as it went, the state of the cabinet a few times a second of play */
   readonly timelapse = new Timelapse<ReplayKey>();
   private recorder: ReplayRecorder;
@@ -108,7 +107,6 @@ export class Controller implements PlayContext, InputCommands {
   private route: RouteTool;
   private velcro: VelcroTool;
   private supports: SupportsTool;
-  private comb: CombTool;
   private tools: Record<Tool, ToolHandler>;
   private input: InputRouter;
 
@@ -157,8 +155,7 @@ export class Controller implements PlayContext, InputCommands {
     this.route = new RouteTool(this);
     this.velcro = new VelcroTool(this);
     this.supports = new SupportsTool(this);
-    this.comb = new CombTool(this);
-    this.tools = { hand: this.hand, route: this.route, velcro: this.velcro, supports: this.supports, comb: this.comb, tester: new TesterTool(this) };
+    this.tools = { hand: this.hand, route: this.route, velcro: this.velcro, supports: this.supports, tester: new TesterTool(this) };
     stage.scene.add(this.connectorGlows.group);
     this.cableView = new CableView(this.world, look.velcro);
     this.cableView.lightBy(this.rackView.glow);
@@ -180,7 +177,7 @@ export class Controller implements PlayContext, InputCommands {
     this.refreshLeds();
     this.recorder = new ReplayRecorder(this.world, this.rackView);
     this.input = new InputRouter(stage, this.pointer, {
-      byName: this.tools, withGestures: [this.route, this.velcro, this.comb, this.hand], hand: this.hand, route: this.route, supports: this.supports,
+      byName: this.tools, withGestures: [this.route, this.velcro, this.hand], hand: this.hand, route: this.route, supports: this.supports,
     }, this);
     this.setTool('hand');
     requestAnimationFrame(this.frame);
@@ -403,7 +400,6 @@ export class Controller implements PlayContext, InputCommands {
     while (this.physicsBacklog >= h && steps < MAX_STEPS_PER_FRAME) {
       this.hand.step();
       this.route.step(h);
-      this.comb.step(h);
       this.physicsBacklog -= h;
       steps++;
     }
@@ -501,10 +497,9 @@ export class Controller implements PlayContext, InputCommands {
     this.events.onToast({ kind: 'undone' });
   }
 
-  /** cords still being laid (a route, a comb stroke) are let go where they are: another gesture begins */
+  /** cords still being laid (a route) are let go where they are: another gesture begins */
   stopLaying(): void {
     this.route.stopLaying();
-    this.comb.stopLaying();
   }
 
   /** unplugs a cord, coils it and throws it in the crate (Delete over it) */
@@ -514,7 +509,6 @@ export class Controller implements PlayContext, InputCommands {
     this.history.remember();
     this.world.depositCable(c);
     this.counters.deposited++;
-    this.counters.moves++;
     sfx.unplug();
     this.announceCut(cut);
     this.setHover(null);
@@ -531,7 +525,6 @@ export class Controller implements PlayContext, InputCommands {
       return false;
     }
     sfx.place();
-    this.counters.moves++;
     this.afterRewire();
     return true;
   }

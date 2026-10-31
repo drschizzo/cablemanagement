@@ -7,7 +7,7 @@ import { Controller } from '../play/controller';
 import { Showcase } from '../showcase/showcase';
 import { Hud } from '../ui/hud';
 import { Tutorial } from '../ui/tutorial';
-import { customErrorText, statsText, toastText } from '../ui/messages';
+import { freeErrorText, statsText, toastText } from '../ui/messages';
 import { isDialogOpen } from '../ui/dom';
 import { unitLabel } from '../ui/names';
 import { lookOf, starsWon } from '../ui/shop';
@@ -16,8 +16,7 @@ import { nextInStory } from '../ui/progress';
 import type { LevelDef } from '../game/levels/levelDef';
 import { SHOWCASE_DEFAULT } from '../game/levels/showcaseRack';
 import { TUTORIAL } from '../game/levels/campaign';
-import { dailyLevel, dayKey } from '../game/levels/dailyLevel';
-import { customLevel, decodeSpec } from '../game/levels/customLevel';
+import { freeLevel, decodeSpec } from '../game/levels/freeLevel';
 import type { BakedBay } from '../game/mess/baked';
 import { SceneLoader } from './sceneLoader';
 import { TitleScreen, type LoadStep } from '../ui/titleScreen';
@@ -85,7 +84,6 @@ export class App {
       showShop: () => this.hud.showShop(),
       nextLevel: () => nextInStory(this.hud.progress, load('career')),
       hasProgress: () => Object.keys(this.hud.progress.stars).length > 0,
-      playDaily: () => this.startLevel(dailyLevel(dayKey(new Date()))),
     });
     this.showcaseSwitch = new ShowcaseSwitch({
       toggle: () => this.showcase?.toggle(),
@@ -184,11 +182,11 @@ export class App {
     this.stage.setPanelMargins(panelMargins());
   }
 
-  /** a cabinet of the editor shared by its link; a code that is none says why, over the title screen */
+  /** a free cabinet shared by its link; a code that is none says why, over the title screen */
   openRack(code: string): void {
     const spec = decodeSpec(code);
-    if ('kind' in spec) this.hud.toast(customErrorText(spec));
-    else this.startLevel(customLevel(spec));
+    if ('kind' in spec) this.hud.toast(freeErrorText(spec));
+    else this.startLevel(freeLevel(spec));
   }
 
   /** where the story stands (the training, then the career), or the game modes once both are done */

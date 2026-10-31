@@ -6,7 +6,7 @@ import { ITEM_KINDS, type Stock } from '../game/supplies';
 import type { LevelDef } from '../game/levels/levelDef';
 import { $ } from '../lib/page';
 import { countOf } from './names';
-import { iconComb, iconFingerManager, iconHand, iconRoute, iconStock, iconTester, iconVelcro } from './icons';
+import { iconFingerManager, iconHand, iconRoute, iconStock, iconTester, iconVelcro } from './icons';
 import { tr, type Words } from './language';
 import { DELETE_KEY } from './keyHints';
 
@@ -40,22 +40,15 @@ export const TOOL_BUTTONS: Record<Tool, ToolButton> = {
   supports: {
     key: '2', name: { fr: 'Supports', en: 'Supports' }, icon: iconFingerManager(), showsStock: true,
     help: {
-      fr: 'Cliquez une unité vide : un guide-câbles. Un couloir latéral : une goulotte (Maj : un anneau). Cliquez un support posé pour le retirer.',
-      en: 'Click an empty unit: a cable manager. A side channel: a duct (Shift: a ring). Click a support in place to take it off.',
+      fr: 'Cliquez une unité vide : un guide-câbles. Un couloir latéral : une goulotte. Cliquez un support posé pour le retirer.',
+      en: 'Click an empty unit: a cable manager. A side channel: a duct. Click a support in place to take it off.',
     },
   },
   velcro: {
     key: '3', name: { fr: 'Velcro', en: 'Velcro' }, icon: iconVelcro(), showsStock: true,
     help: {
-      fr: 'Tracez un trait <b>en travers</b> des câbles à serrer : ceux qu\'il croise s\'allument, et le velcro les serre là où le trait les croise. Il se place là où le plus de câbles passent côte à côte ; un faisceau ne compte que s\'il est d\'un seul service. Cliquez sur un velcro pour l\'enlever.',
-      en: 'Draw a line <b>across</b> the cords to strap: those it crosses light up, and the velcro straps them where the line crosses them. It goes where most cords run side by side; a bundle only counts if it is of one service. Click a velcro to take it off.',
-    },
-  },
-  comb: {
-    key: '5', name: { fr: 'Peigne', en: 'Comb' }, icon: iconComb(), showsStock: false,
-    help: {
-      fr: 'Appuyez sur un faisceau et glissez le long des câbles : ceux que le peigne traverse se rangent côte à côte, chacun à sa place, et les croisements se défont. Relâchez : ils gardent leur rang.',
-      en: 'Press on a bundle and slide along the cords: those the comb goes through line up side by side, each in its place, and the crossings come undone. Let go: they keep their rank.',
+      fr: 'Tracez un trait <b>en travers</b> des câbles à serrer : ceux qu\'il croise s\'allument, et le velcro les serre là où le trait les croise. Il se place là où le plus de câbles passent côte à côte. Cliquez sur un velcro pour l\'enlever.',
+      en: 'Draw a line <b>across</b> the cords to strap: those it crosses light up, and the velcro straps them where the line crosses them. It goes where most cords run side by side. Click a velcro to take it off.',
     },
   },
   tester: {

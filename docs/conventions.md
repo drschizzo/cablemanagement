@@ -150,8 +150,8 @@ goulotte. Avec `default: return assertNever(kind)`, il ne compile plus tant qu'o
 
 **Ce qui varie selon la sorte appartient à la sorte.** Le curseur d'un outil, le fait qu'il travaille sur les
 cordons, ce que sa bulle ajoute : c'est l'outil qui le dit (`ToolHandler`), pas une suite de `tool === 'hand'`
-ailleurs. De même, un niveau est une union discriminée par `kind` : le défi gestes n'existe que pour les puzzles, et
-le compilateur demande `level.kind === 'puzzle'` avant de lire `level.moves`.
+ailleurs. De même, un niveau est une union discriminée par `kind` : seule la baie libre a des réglages, et le
+compilateur demande `level.kind === 'free'` avant de lire `level.spec`.
 
 **Une donnée dit ce qu'elle est.** Un port tient un `CordEnd { cable, end }`, pas un entier `cable * 2 + end` à
 décoder ; une partie a une `phase` (`'playing' | 'paused' | 'preparing'`), pas deux booléens dont une combinaison n'a

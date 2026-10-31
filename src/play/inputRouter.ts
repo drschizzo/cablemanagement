@@ -37,7 +37,7 @@ export interface InputCommands {
   deposit(cable: CableIndex): void;
   undo(): void;
   cyclePick(): void;
-  /** cords still being laid (a route, a comb stroke) are let go where they are */
+  /** cords still being laid (a route) are let go where they are */
   stopLaying(): void;
   /** a click on the find the cabinet hides picks it up: true when there was one under the pointer */
   takeFindUnderPointer(): boolean;
@@ -131,16 +131,14 @@ export class InputRouter {
   // ------------------------------------------------------------ keys
 
   private bindKeys(): void {
-    const { hand, supports } = this.tools;
+    const { hand } = this.tools;
     const level = this.level;
     const plain = (e: KeyboardEvent) => !e.repeat && !e.ctrlKey && !e.metaKey && !level.events.isDialogOpen();
     const key = (type: 'keydown' | 'keyup', listener: (e: KeyboardEvent) => void) => this.on(window, type, listener);
 
-    // Shift: the hand carries the cord in depth; the supports tool puts a ring rather than a duct
+    // Shift: the hand carries the cord in depth
     key('keydown', (e) => { if (e.key === 'Shift') hand.shiftChanged(true); });
     key('keyup', (e) => { if (e.key === 'Shift') hand.shiftChanged(false); });
-    key('keydown', (e) => supports.setShift(e.shiftKey));
-    key('keyup', (e) => supports.setShift(e.shiftKey));
     // T over a cord: the tracer; Delete: into the crate, the cord under the pointer or the one in hand
     key('keydown', (e) => {
       if (!plain(e)) return;

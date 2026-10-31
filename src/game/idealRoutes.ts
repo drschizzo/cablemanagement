@@ -8,14 +8,13 @@
 // the shortest run to the side rides in front, the others pass behind the
 // points where it drops in.
 
-import { CABLE_R, CONNECTOR, DUCT_SPAN, Rack, SEG, SIDE_BACK, SIDE_IN, SIDE_OUT, insideBox, type Port } from './rack';
+import { CABLE_R, CONNECTOR, DUCT_SPAN, Rack, SEG, SIDE_BACK, SIDE_IN, SIDE_OUT, type Port } from './rack';
 import { stockOf, type ItemKind } from './supplies';
 import { CORD_KINDS } from './cordTypes';
 import { makeSchedule, type Circuit } from './schedule';
 import { rng } from '../lib/random';
 import type { CableStart } from './cables';
 import type { World } from './world';
-import { bundleCount } from './evaluation';
 import type { LevelDef } from './levels/levelDef';
 import { lerp, polyLength, type V3 } from '../lib/vec3';
 
@@ -122,7 +121,7 @@ export function tidyRoutes(rack: Rack, circuits: readonly Circuit[], radius: num
 /**
  * A level as a careful technician would finish it, with the level's own
  * stock and nothing more: its finger managers in the empty units next to the
- * equipment in use, its ducts (then its rings) down the side channels the
+ * equipment in use, its ducts down the side channels the
  * cords take, its cords to be laid on their tidy routes (tidyLayout) and plugged as planned.
  * Its score says whether the level can reach three stars (tools/solvable.ts,
  * tests/game/levels/levels.test.ts).
@@ -154,7 +153,7 @@ export function tidyKit(level: LevelDef): LevelDef {
     s[0] = Math.min(s[0], p.upper, p.lower);
     s[1] = Math.max(s[1], p.upper, p.lower);
   }
-  // ducts down those stretches, a side at a time so that both get their top first; rings in what is left
+  // ducts down those stretches, a side at a time so that both get their top first
   const todo = [-1, 1].map((side) => {
     const units: number[] = [];
     for (let u = span[side][0]; u <= span[side][1]; u += DUCT_SPAN) units.push(u);
@@ -166,11 +165,6 @@ export function tidyKit(level: LevelDef): LevelDef {
       if (u === undefined || stock.duct <= 0) continue;
       // a duct placed at u + 1 starts at u
       if (place('duct', Math.min(u + 1, level.units.length - 1), t.side)) stock.duct--;
-    }
-  }
-  for (const t of todo) {
-    for (const u of t.units) {
-      for (let k = u; k < u + DUCT_SPAN && k <= span[t.side][1] && stock.ring > 0; k += 2) if (place('ring', k, t.side)) stock.ring--;
     }
   }
   // a careful technician has swapped the cords broken inside for new ones
@@ -244,25 +238,6 @@ export function pathToNodes(path: V3[], seg: number): number[] {
   const buf = new Float64Array(3 * (n + 1));
   resample(inner, arcs, buf, 0);
   return [...path[0], ...buf, ...path[path.length - 1]];
-}
-
-/**
- * Straps a settled tidy cabinet into `n` bundles, as a technician would: where
- * three cords or more run side by side in a manager or a duct (the checks of
- * three stars, tools/solvable.ts and tests/game/levels/levels.test.ts).
- */
-export function strapBundles(w: World, bundles: number): void {
-  const supports = w.rack.supports();
-  for (let c = 0; c < w.cables.length && bundleCount(w, supports) < bundles; c++) {
-    const cb = w.cables[c];
-    for (let i = cb.start + 4; i < cb.start + cb.count - 4 && bundleCount(w, supports) < bundles; i += 3) {
-      const p = w.nodePosition(i);
-      if (w.sim.bundleOf[i] >= 0 || !supports.some((s) => insideBox(s, ...p))) continue;
-      const before = bundleCount(w, supports);
-      const st = w.addStrap(...p);
-      if (st && bundleCount(w, supports) === before) w.removeStrap(st);
-    }
-  }
 }
 
 /**

@@ -16,8 +16,8 @@ import type { UndoHistory } from './undoHistory';
 import type { PortHint } from './feedback/portHint';
 import type { HoldView } from './feedback/holdView';
 
-/** the hand, the route (a way drawn over the guides, the cord laid along it), the supports, the velcro, the comb, the cable tester */
-export type Tool = 'hand' | 'route' | 'supports' | 'velcro' | 'comb' | 'tester';
+/** the hand, the route (a way drawn over the guides, the cord laid along it), the supports, the velcro, the cable tester */
+export type Tool = 'hand' | 'route' | 'supports' | 'velcro' | 'tester';
 
 /** what the Controller tells the interface (main.ts wires it to the HUD) */
 export interface ControllerEvents {
@@ -38,13 +38,8 @@ export interface ControllerEvents {
   onFind(find: FindId): void;
 }
 
-/** what the player did, for the tutorial and the puzzles */
+/** what the player did, for the tutorial */
 export interface GestureCounters {
-  /**
-   * the technician's acts (the puzzles count them): a connector plugged or unplugged, a support or a
-   * velcro placed or taken off, a cord to the crate or out of the stock; tidying (hand, route, comb) is free
-   */
-  moves: number;
   hovered: number;
   /** metres the hand has travelled carrying a cord */
   dragged: number;

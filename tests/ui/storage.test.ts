@@ -16,12 +16,12 @@ beforeEach(() => {
 
 describe('browser storage', () => {
   it('a missing entry reads as its default', () => {
-    expect(load('progress')).toEqual({ stars: {}, times: {}, challenges: {} });
+    expect(load('progress')).toEqual({ stars: {}, times: {} });
     expect(load('tutorialDone')).toBe(false);
   });
 
   it('keeps the progress', () => {
-    const p = { stars: { l1: 3 }, times: { l1: 42 }, challenges: { l1: true } };
+    const p = { stars: { l1: 3 }, times: { l1: 42 } };
     save('progress', p);
     expect(JSON.parse(mem.get('cable.progress')!)).toEqual(p);
     expect(load('progress')).toEqual(p);
@@ -30,7 +30,7 @@ describe('browser storage', () => {
   it('an unreadable value, or one of another shape, reads as the default', () => {
     for (const raw of ['{', 'null', '42', '{"stars":3}', '{"stars":{"l2":1}}']) {
       mem.set('cable.progress', raw);
-      expect(load('progress')).toEqual({ stars: {}, times: {}, challenges: {} });
+      expect(load('progress')).toEqual({ stars: {}, times: {} });
     }
   });
 
@@ -54,15 +54,6 @@ describe('browser storage', () => {
     for (const raw of ['{"done":-1,"cabinet":null,"stars":[]}', '{"done":1.5,"cabinet":null,"stars":[]}', '{"done":1,"cabinet":{},"stars":[]}', '{"done":1,"cabinet":null}']) {
       mem.set('cable.career', raw);
       expect([raw, load('career')]).toEqual([raw, fresh]);
-    }
-  });
-
-  it('a day of the record without its stars or its grid is left out; the other days stay', () => {
-    mem.set('cable.daily', '{"2026-11-05":{"stars":2,"lines":[2,1]},"2026-11-06":{"stars":1},"2026-11-07":null,"2026-11-08":{"stars":"3","lines":[]}}');
-    expect(load('daily')).toEqual({ '2026-11-05': { stars: 2, lines: [2, 1] } });
-    for (const raw of ['[]', 'null', '"x"']) {
-      mem.set('cable.daily', raw);
-      expect([raw, load('daily')]).toEqual([raw, {}]);
     }
   });
 
@@ -104,7 +95,7 @@ describe('browser storage', () => {
   it('a blocked storage does not break the game', () => {
     const blocked = () => { throw new Error('blocked'); };
     vi.stubGlobal('localStorage', { getItem: blocked, setItem: blocked, removeItem: blocked });
-    expect(load('progress')).toEqual({ stars: {}, times: {}, challenges: {} });
+    expect(load('progress')).toEqual({ stars: {}, times: {} });
     expect(() => save('tutorialDone', true)).not.toThrow();
   });
 });

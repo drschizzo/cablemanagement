@@ -1,4 +1,4 @@
-// The cable management items of a cabinet (finger managers, ducts, rings),
+// The cable management items of a cabinet (finger managers, ducts),
 // built from their own collision shapes so that what you see is what holds.
 
 import * as THREE from 'three/webgpu';
@@ -14,32 +14,17 @@ import { roundedBox } from './shapes';
 export function buildItem(rack: Rack, it: Item, statics: RackShape[] | null, ghost: THREE.Material | null): THREE.Group {
   const g = new THREE.Group();
   const shapes = (statics ?? rack.itemShapes(it)).filter((s) => s.owner === it.id && s.kind !== 'keeper');
-  const look = itemLook(it.kind);
-  const fingerMat = ghost ?? look.fingers;
+  const fingerMat = ghost ?? fingerMaterial(it.kind);
   for (const s of shapes) {
     if (s.kind === 'capsule') {
       const a = new THREE.Vector3(s.ax, s.ay, s.az), b = new THREE.Vector3(s.bx, s.by, s.bz);
-      const len = a.distanceTo(b);
-      if (look.flatFingers) {
-        // duct and manager fingers are flat plastic strips
-        const dir = b.clone().sub(a);
-        const t = 2 * s.r + 0.0008;
-        const strip = new THREE.Mesh(bevelBox(Math.abs(dir.x) + t, Math.abs(dir.y) + t, Math.abs(dir.z) + t, 0.0012), fingerMat);
-        strip.position.copy(a).add(b).multiplyScalar(0.5);
-        strip.castShadow = !ghost; strip.receiveShadow = true;
-        g.add(strip);
-        continue;
-      }
-      const cyl = new THREE.Mesh(new THREE.CylinderGeometry(s.r, s.r, len, 10), fingerMat);
-      cyl.position.copy(a).add(b).multiplyScalar(0.5);
-      cyl.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
-      cyl.castShadow = !ghost; cyl.receiveShadow = true;
-      g.add(cyl);
-      for (const p of [a, b]) {
-        const sph = new THREE.Mesh(new THREE.SphereGeometry(s.r, 10, 8), fingerMat);
-        sph.position.copy(p);
-        g.add(sph);
-      }
+      // duct and manager fingers are flat plastic strips
+      const dir = b.clone().sub(a);
+      const t = 2 * s.r + 0.0008;
+      const strip = new THREE.Mesh(bevelBox(Math.abs(dir.x) + t, Math.abs(dir.y) + t, Math.abs(dir.z) + t, 0.0012), fingerMat);
+      strip.position.copy(a).add(b).multiplyScalar(0.5);
+      strip.castShadow = !ghost; strip.receiveShadow = true;
+      g.add(strip);
     } else {
       const sx = s.max[0] - s.min[0], sy = s.max[1] - s.min[1], sz = s.max[2] - s.min[2];
       const box = new THREE.Mesh(bevelBox(sx, sy, sz, 0.0015), ghost ?? rackMat.ductBack);
@@ -48,25 +33,22 @@ export function buildItem(rack: Rack, it: Item, statics: RackShape[] | null, gho
       g.add(box);
     }
   }
-  const backing = backingPlate(rack, it, ghost);
-  if (backing) g.add(backing);
+  g.add(backingPlate(rack, it, ghost));
   return g;
 }
 
-/** how an item's fingers look: flat plastic strips (managers, ducts) or a round metal hook (rings) */
-function itemLook(kind: ItemKind): { fingers: THREE.Material; flatFingers: boolean } {
+/** the plastic of an item's fingers */
+function fingerMaterial(kind: ItemKind): THREE.Material {
   switch (kind) {
-    case 'fingerManager': return { fingers: rackMat.ring, flatFingers: true };
-    case 'duct': return { fingers: rackMat.duct, flatFingers: true };
-    case 'ring': return { fingers: rackMat.ring, flatFingers: false };
+    case 'fingerManager': return rackMat.manager;
+    case 'duct': return rackMat.duct;
     default: return assertNever(kind);
   }
 }
 
-/** the plate behind a manager or a duct (a ring has none) */
-function backingPlate(rack: Rack, it: Item, ghost: THREE.Material | null): THREE.Mesh | null {
+/** the plate behind a manager or a duct */
+function backingPlate(rack: Rack, it: Item, ghost: THREE.Material | null): THREE.Mesh {
   switch (it.kind) {
-    case 'ring': return null;
     case 'fingerManager': {
       const plate = new THREE.Mesh(roundedBox(COLUMN_X * 2 - 0.036, U - 0.001, 0.01, 0.0015), ghost ?? rackMat.mgrPlate);
       plate.position.set(0, rack.unitY(it.unit), -0.004);

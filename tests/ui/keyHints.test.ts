@@ -22,7 +22,7 @@ describe('the keys that matter now', () => {
   });
 
   it('gives each tool its own keys', () => {
-    expect(keysHtml(keysFor({ tool: 'supports', hover: null }))).toContain('un anneau');
+    expect(keysHtml(keysFor({ tool: 'supports', hover: null }))).toContain('poser ou retirer un support');
     expect(keysHtml(keysFor({ tool: 'velcro', hover: null }))).toContain('serrer');
   });
 });

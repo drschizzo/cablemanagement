@@ -13,7 +13,7 @@ describe('the rack', () => {
   });
 
   it('says where to put an item back, a duct included (it snaps round the unit given)', () => {
-    for (const [kind, unit] of [['duct', 0], ['duct', 3], ['duct', 4], ['fingerManager', 2], ['ring', 5]] as const) {
+    for (const [kind, unit] of [['duct', 0], ['duct', 3], ['duct', 4], ['fingerManager', 2]] as const) {
       const r = new Rack(units), again = new Rack(units);
       const it = r.addItem(kind, unit, 1)!;
       const slot = r.slotOf(it);
@@ -38,8 +38,7 @@ describe('the rack', () => {
     expect(d.unit).toBe(0);
     expect(r.canPlace('duct', 2, 1)).toBe(false);
     expect(r.canPlace('duct', 2, -1)).toBe(true);
-    expect(r.canPlace('ring', 3, 1)).toBe(false);
-    expect(r.canPlace('ring', 4, 1)).toBe(true);
+    expect(r.canPlace('duct', 5, 1)).toBe(true);
   });
 
   it('a locked item stays', () => {

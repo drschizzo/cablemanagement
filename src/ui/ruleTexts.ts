@@ -1,6 +1,6 @@
 // What each rule of a level, and each gesture it calls for, says in its
 // brief (game/levels/levelRules.ts, levelGestures.ts): one tip each, with the
-// level's own figures (its budget, its bundles).
+// level's own figures (its budget, its bypasses).
 
 import type { LevelDef } from '../game/levels/levelDef';
 import type { Rule } from '../game/levels/levelRules';
@@ -16,55 +16,48 @@ import { tr } from './language';
 /** the tip of `rule` in the brief of `level`; `services`: those its schedule carries (their weights are shown) */
 export function ruleTip(rule: Rule, level: LevelDef, services: number[]): string {
   switch (rule) {
-    case 'leds': return tr({ fr: 'Les voyants des ports : vert = liaison conforme au plan, orange = mauvais port, rouge = liaison coupée.', en: 'The port LEDs: green = link as planned, orange = wrong port, red = link down.' });
+    case 'leds': return tr({ fr: 'Voyants des ports : vert, liaison conforme au plan ; orange, mauvais port ; rouge, liaison coupée.', en: 'Port LEDs: green, link as planned; orange, wrong port; red, link down.' });
     case 'taut': return tr({
-      fr: '<b>Ni tendu</b> : un câble bien plus court que son chemin dans les supports est tendu, donc pas rangé.',
-      en: '<b>Not taut</b>: a cord much shorter than its tidy route is not tidy.',
+      fr: '<b>Câble tendu</b> : un câble nettement plus court que son chemin dans les supports n\'est pas rangé.',
+      en: '<b>Taut cord</b>: a cord clearly shorter than its route through the supports is not tidy.',
     });
     case 'kinked': return tr({
-      fr: '<b>Ni plié</b> : une fibre pliée en angle vif n\'est pas rangée. Laissez-lui des courbes douces.',
-      en: '<b>Not kinked</b>: a fibre bent at a sharp angle is not tidy. Give it gentle curves.',
+      fr: '<b>Fibre pliée</b> : une fibre pliée à angle vif n\'est pas rangée.',
+      en: '<b>Kinked fibre</b>: a fibre bent at a sharp angle is not tidy.',
     });
     case 'separation': return tr({
-      fr: '<b>Chaque famille son couloir</b> : pour ★★★, fibre, cuivre et courant ne partagent ni goulotte ni anneau. Les guide-câbles, eux, se partagent.',
-      en: '<b>Each family its own channel</b>: for ★★★, fibre, copper and power share no duct and no ring. The cable managers, though, can be shared.',
+      fr: '<b>Familles séparées</b> : pour ★★★, la fibre, le cuivre et le courant ne partagent pas de goulotte. Les guide-câbles peuvent être partagés.',
+      en: '<b>Separate families</b>: for ★★★, fibre, copper and power never share a duct. Cable managers may be shared.',
     });
     case 'maintenance': return tr({
-      fr: `<b>Fenêtre de maintenance</b> : les liaisons ⚡ sont en production. Chaque seconde où l'une est coupée coûte le poids de son service sur un budget de <b>${level.downtime} pts</b> : ${serviceChips(services)}. Budget dépassé : incident, plus de ★★★.`,
-      en: `<b>Maintenance window</b>: the ⚡ links are in production. Every second one of them is cut costs its service's weight off a budget of <b>${level.downtime} pts</b>: ${serviceChips(services)}. Budget overrun: an incident, no more ★★★.`,
+      fr: `<b>En production</b> : les liaisons ⚡ portent du trafic. Chaque seconde où l'une est coupée coûte le poids de son service sur un budget de <b>${level.downtime} pts</b> : ${serviceChips(services)}. Pour ★★★, restez dans le budget.`,
+      en: `<b>In production</b>: the ⚡ links carry traffic. Every second one of them is cut costs its service's weight against a budget of <b>${level.downtime} pts</b>: ${serviceChips(services)}. For ★★★, stay within the budget.`,
     });
     case 'bypass': {
       const n = level.bypass ?? 0;
       return tr({
-        fr: `<b>Dérivation</b> : vous en avez ${n}. Posée sur une liaison (cliquez son ⚡ dans le plan), elle porte son trafic pendant qu'on la recâble.`,
-        en: `<b>Bypass</b>: you have ${n}. Put on a link (click its ⚡ on the schedule), it carries its traffic while it is recabled.`,
-      });
-    }
-    case 'bundles': {
-      const n = level.bundles ?? 0;
-      return tr({
-        fr: `<b>Faisceaux</b> : pour ★★★, au moins ${n} velcro${n > 1 ? 's' : ''} qui serre${n > 1 ? 'nt' : ''} chacun 3 câbles ou plus d'un même service, dans un guide-câbles ou une goulotte.`,
-        en: `<b>Bundles</b>: for ★★★, at least ${n} velcro${n > 1 ? 's' : ''} strapping 3 cords or more of one service each, in a cable manager or a duct.`,
+        fr: `<b>Dérivation</b> (${n} ${n > 1 ? 'disponibles' : 'disponible'}) : un clic sur le ⚡ d'une ligne du plan maintient son trafic pendant que vous la recâblez.`,
+        en: `<b>Bypass</b> (${n} available): a click on the ⚡ of a schedule line keeps its traffic up while you recable it.`,
       });
     }
     case 'blind': return tr({
-      fr: '<b>Câbles sans marque</b> : survolés, ils ne disent pas où ils vont. Le Traceur (T sur un câble) le révèle, et un câble branché comme prévu se reconnaît tout seul.',
-      en: '<b>Unmarked cords</b>: hovered, they do not say where they go. The Tracer (T over a cord) reveals it, and a cord plugged as planned is recognised by itself.',
+      fr: '<b>Câbles sans marque</b> : leur destination ne s\'affiche pas au survol. T sur un câble la révèle, et un câble branché comme prévu est reconnu.',
+      en: '<b>Unmarked cords</b>: hovering does not show where they go. T over a cord reveals it, and a cord plugged as planned is recognised.',
     });
     case 'faults': {
       const n = level.faults ?? 0;
       return tr({
-        fr: `<b>Pannes</b> : ${n > 1 ? `${n} vieux câbles sont coupés` : 'un vieux câble est coupé'} à l'intérieur. Branché comme prévu, il ne porte rien et ses voyants clignotent en rouge. Le <b>Testeur</b> (${toolKey('tester')}) le trouve d'un clic ; remplacez-le par un câble neuf du Stock.`,
-        en: `<b>Faults</b>: ${n > 1 ? `${n} old cords are` : 'an old cord is'} broken inside. Plugged as planned, it carries nothing and its LEDs blink red. The <b>Tester</b> (${toolKey('tester')}) finds it in a click; swap it for a new cord from the Stock.`,
+        fr: `<b>${n > 1 ? 'Pannes' : 'Panne'}</b> : ${n > 1 ? `${n} vieux câbles sont coupés` : 'un vieux câble est coupé'} à l'intérieur. Branché comme prévu, ses voyants clignotent en rouge. Le Testeur (${toolKey('tester')}) le confirme ; remplacez-le par un câble neuf du Stock.`,
+        en: `<b>${n > 1 ? 'Faults' : 'Fault'}</b>: ${n > 1 ? `${n} old cords are` : 'an old cord is'} broken inside. Plugged as planned, its LEDs blink red. The Tester (${toolKey('tester')}) confirms it; replace it with a new cord from the Stock.`,
       });
     }
     case 'power': return tr({
-      fr: '<b>Courant</b> : les câbles noirs vont du bandeau électrique aux alimentations des serveurs (couper l\'une, c\'est couper le service du serveur).',
-      en: '<b>Power</b>: the black cords run from the power strip to the servers\' supplies (cutting one cuts the server\'s service).',
+      fr: '<b>Courant</b> : les câbles noirs relient le bandeau électrique aux alimentations des serveurs. Couper une alimentation coupe le service du serveur.',
+      en: '<b>Power</b>: the black cords join the power strip to the servers\' supplies. Cutting a supply cuts the server\'s service.',
     });
     case 'incidents': return tr({
-      fr: `<b>Incidents</b> : pendant le chantier, un collègue peut débrancher une liaison par erreur, et un utilisateur appeler pour une liaison coupée. Rétablie en moins de ${CALL_WAIT} s, tout va bien ; trop tard, l'appel coûte ${CALL_PENALTY} pts sur le budget.`,
-      en: `<b>Incidents</b>: while you work, a colleague may unplug a link by mistake, and a user may call about a link that is down. Back within ${CALL_WAIT} s, all is well; too late, the call costs ${CALL_PENALTY} pts off the budget.`,
+      fr: `<b>Incidents</b> : un collègue peut débrancher une liaison, puis un utilisateur appeler. Rétablissez la liaison en moins de ${CALL_WAIT} s, sinon l'appel coûte ${CALL_PENALTY} pts sur le budget.`,
+      en: `<b>Incidents</b>: a colleague may unplug a link, then a user calls. Restore the link within ${CALL_WAIT} s, or the call costs ${CALL_PENALTY} pts of the budget.`,
     });
     default: return assertNever(rule);
   }
@@ -74,16 +67,8 @@ export function ruleTip(rule: Rule, level: LevelDef, services: number[]): string
 export function gestureTip(gesture: Gesture): string {
   switch (gesture) {
     case 'duct': return tr({
-      fr: `<b>Goulotte</b> : outil Supports (${toolKey('supports')}), un clic dans un couloir latéral la pose. Elle descend les câbles le long des montants et cache le mou. Au Chemin, tracez par le guide-câbles puis le long de la goulotte : le câble y entre par la fente de sa face avant, et sa longueur en trop y pend en boucle.`,
-      en: `<b>Duct</b>: Supports tool (${toolKey('supports')}), a click in a side channel places it. It takes the cords down along the posts and hides the slack. With the Route, draw through the cable manager then along the duct: the cord goes in through the slit of its front face, and its extra length hangs in a loop inside.`,
-    });
-    case 'ring': return tr({
-      fr: '<b>Anneau</b> : plus léger qu\'une goulotte, il guide un câble vertical dans un couloir latéral (outil Supports, <b>Maj</b> + clic dans un couloir). Pratique pour quelques câbles ; au-delà, la goulotte tient mieux le mou.',
-      en: '<b>Ring</b>: lighter than a duct, it guides a vertical cord in a side channel (Supports tool, <b>Shift</b> + click in a channel). Handy for a few cords; beyond that, the duct holds the slack better.',
-    });
-    case 'velcro': return tr({
-      fr: `<b>Velcro</b> (${toolKey('velcro')}) : tracez un trait en travers des câbles côte à côte, le velcro les serre là où le trait les croise. Un clic sur un velcro l'enlève. Un faisceau ne compte que s'il est d'un seul service.`,
-      en: `<b>Velcro</b> (${toolKey('velcro')}): draw a line across cords running side by side, the velcro straps them where the line crosses them. A click on a velcro takes it off. A bundle only counts when it is of one service.`,
+      fr: `<b>Goulotte</b> : outil Supports (${toolKey('supports')}), un clic dans un couloir latéral. Au Chemin, tracez par le guide-câbles puis le long de la goulotte : la longueur en trop y est rangée en boucle.`,
+      en: `<b>Duct</b>: Supports tool (${toolKey('supports')}), a click in a side channel. With the Route, draw through the cable manager then along the duct: the extra length is stowed in it as a loop.`,
     });
     default: return assertNever(gesture);
   }

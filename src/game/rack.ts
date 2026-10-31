@@ -18,7 +18,7 @@ export const SIDE_IN = 0.258; // inner edge of the side channels
 export const SIDE_OUT = 0.378; // outer edge (duct wall)
 export const WALL_X = 0.392; // cabinet side walls
 export const SIDE_BACK = -0.06; // back of the side channels
-const RING_DEPTH = 0.072; // how far the rings stand out of the managers
+const RING_DEPTH = 0.072; // how far the managers stand out of the rack
 export const CONNECTOR = 0.034; // LC connector + start of the boot, out of the port face
 export const SEG = 0.025; // cable segment length
 export const FRONT_Z = 0.25; // front edge of the cabinet
@@ -58,7 +58,7 @@ export interface Item {
   kind: ItemKind;
   /** top unit it occupies */
   unit: number;
-  /** −1 left, +1 right (duct, ring) */
+  /** −1 left, +1 right (duct) */
   side: number;
   /** units covered (duct) */
   span: number;
@@ -84,9 +84,6 @@ export const DRAFT_ITEM = 0;
 export const FINGER_R = 0.003;
 /** height of the upturned tips of a manager's bottom fingers */
 export const MANAGER_TIP = 0.016;
-/** front bar of a ring, and the gap left open at its outer end (and above its outer post) */
-export const RING_FRONT = 0.065;
-export const RING_GAP = 0.024;
 /** front of a duct, the pitch of its fingers, the middle of its front slit (|x|) and half its width */
 export const DUCT_FRONT = 0.07;
 export const DUCT_PITCH = 0.022;
@@ -269,7 +266,6 @@ export class Rack {
   private itemStatics(it: Item, S: RackShape[]): void {
     switch (it.kind) {
       case 'fingerManager': return this.managerStatics(it, S);
-      case 'ring': return this.ringStatics(it, S);
       case 'duct': return this.ductStatics(it, S);
       default: assertNever(it.kind);
     }
@@ -299,17 +295,6 @@ export class Rack {
     // longer slips out through the slots or over the tips, dragged by its
     // hanging tail
     S.push({ kind: 'keeper', min: [xs[0] - r, y0 + r, 0.002], max: [xs[xs.length - 1] + r, y1 - r, RING_DEPTH - r], owner: it.id });
-  }
-
-  private ringStatics(it: Item, S: RackShape[]): void {
-    const r = FINGER_R;
-    // a hook: open at its front outer corner, where a cord slips in
-    const y = this.unitY(it.unit);
-    const s = it.side;
-    const xi = s * (SIDE_IN + 0.004), xo = s * (SIDE_OUT - 0.004);
-    S.push(cap(xi, y, SIDE_BACK, xi, y, RING_FRONT, r, it.id));
-    S.push(cap(xi, y, RING_FRONT, xo - s * RING_GAP, y, RING_FRONT, r, it.id));
-    S.push(cap(xo, y, SIDE_BACK, xo, y, RING_FRONT - RING_GAP, r, it.id));
   }
 
   private ductStatics(it: Item, S: RackShape[]): void {
@@ -342,7 +327,6 @@ export class Rack {
   guide(it: Item): Guide {
     switch (it.kind) {
       case 'fingerManager': return this.managerGuide(it);
-      case 'ring': return this.ringGuide(it);
       case 'duct': return this.ductGuide(it);
       default: return assertNever(it.kind);
     }
@@ -356,18 +340,6 @@ export class Rack {
       item: it.id, kind: it.kind,
       room: { min: [xs[0] - r, y0 + r, 0.004], max: [xs[xs.length - 1] + r, y1 - r, RING_DEPTH - r] },
       reach: { min: [-COLUMN_X, y0 - 0.006, 0], max: [COLUMN_X, y1 + 0.006, RING_DEPTH + 0.012] },
-    };
-  }
-
-  private ringGuide(it: Item): Guide {
-    const r = FINGER_R, s = it.side;
-    const y = this.unitY(it.unit);
-    const [x0, x1] = sideSpan(s, SIDE_IN + 0.004 + r, SIDE_OUT - 0.004 - r);
-    const [rx0, rx1] = sideSpan(s, SIDE_IN - 0.006, SIDE_OUT + 0.006);
-    return {
-      item: it.id, kind: it.kind,
-      room: { min: [x0, y - 0.004, SIDE_BACK], max: [x1, y + 0.004, RING_FRONT - r] },
-      reach: { min: [rx0, y - 0.035, SIDE_BACK], max: [rx1, y + 0.035, 0.08] },
     };
   }
 
@@ -402,10 +374,6 @@ export class Rack {
       case 'fingerManager': {
         const y0 = this.unitBottom(it.unit);
         return { min: [-0.25, y0 - 0.01, -0.01], max: [0.25, y0 + U + 0.004, RING_DEPTH + 0.004], item: it.id };
-      }
-      case 'ring': {
-        const y = this.unitY(it.unit);
-        return { min: [a, y - 0.05, SIDE_BACK - 0.01], max: [b, y + 0.05, 0.072], item: it.id };
       }
       case 'duct': {
         const yTop = this.topY - it.unit * U, yBot = this.topY - (it.unit + it.span) * U;

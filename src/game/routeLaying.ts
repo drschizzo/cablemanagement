@@ -7,11 +7,11 @@
 // through anything: every node is led by a soft spring on a leash (`setGoals`)
 // along its own way — out of where it is to the front of the cabinet, across,
 // and in through the opening of the guide it belongs in (over the tips of a
-// manager, through the slit of a duct, the open corner of a ring). The
+// manager, through the slit of a duct). The
 // contacts stay hard: a cord that meets something stops there.
 
 import {
-  CONNECTOR, COLUMN_X, FRONT_Z, WALL_X, DUCT_FRONT, DUCT_PITCH, DUCT_SLIT_X, FINGER_R, MANAGER_TIP, RING_FRONT, RING_GAP, SIDE_IN, SIDE_OUT,
+  CONNECTOR, COLUMN_X, FRONT_Z, WALL_X, DUCT_FRONT, DUCT_PITCH, DUCT_SLIT_X, FINGER_R, MANAGER_TIP, SIDE_IN, SIDE_OUT,
   managerFingers, type Guide, type Port,
 } from './rack';
 import type { World } from './world';
@@ -182,7 +182,6 @@ function routeThrough(w: World, c: CableIndex, guides: Guide[], drawn: V3[][], p
 function throughGuide(g: Guide, lane: number, prev: V3 | null, next: V3 | null, r: number): GuidePass {
   switch (g.kind) {
     case 'fingerManager': return throughManager(g, lane, prev, next, r);
-    case 'ring': return throughRing(g, lane, r);
     case 'duct': return throughDuct(g, lane, prev, next, r);
     default: return assertNever(g.kind);
   }
@@ -225,15 +224,6 @@ function throughManager(g: Guide, lane: number, prev: V3 | null, next: V3 | null
   // its lanes towards the deeper side of the trough, if there is more room there
   const run = { g, p: pin[pin.length - 1], q: pout[0], lane: [0, 0, z - g.room.min[2] > g.room.max[2] - z ? -LANE : LANE] as V3 };
   return { points: [...pin, ...pout], run };
-}
-
-/** through a ring: one point inside it, the lanes side by side then in rows */
-function throughRing(g: Guide, lane: number, r: number): GuidePass {
-  const s = Math.sign(g.room.min[0] + g.room.max[0]);
-  const xIn = s > 0 ? g.room.min[0] : g.room.max[0];
-  const x = xIn + s * (r + 0.004 + (lane % 4) * 0.02);
-  const z = clamp(0.045 - Math.floor(lane / 4) * 0.02, g.room.min[2] + r, g.room.max[2] - r);
-  return { points: [[x, (g.room.min[1] + g.room.max[1]) / 2, z]] };
 }
 
 /** through a duct: in and out through a slot of the inner wall from the column, else by an end */
@@ -412,11 +402,6 @@ function entry(guides: Guide[], p: V3): Entry | null {
     // over the tips, under the top row, then down onto the fingers
     const gap = (g.room.min[1] + MANAGER_TIP + g.room.max[1]) / 2;
     return { dx: 0, dy: gap - p[1], z: p[2] };
-  }
-  if (g?.kind === 'ring') {
-    // by the open corner
-    const s = Math.sign(g.room.min[0] + g.room.max[0]);
-    return { dx: s * (SIDE_OUT - 0.004 - RING_GAP / 2) - p[0], dy: 0, z: RING_FRONT - RING_GAP / 2 };
   }
   if (g?.kind === 'duct' && Math.abs(p[0]) > SIDE_IN) {
     // through the slit, then across behind the lips

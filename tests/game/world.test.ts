@@ -303,16 +303,6 @@ describe('what the player sees while tidying', () => {
     expect(w.tidyLength(0)).toBeNull();
   });
 
-  it('a strap round two cords is not a bundle', () => {
-    const w = new World({ ...L1, bundles: 1 });
-    const [a] = w.endNodes(0, 0);
-    const i = a + 4, x = w.sim.x;
-    w.sim.moveNodes(w.cables[1].start + 4, [x[3 * i] + 0.002, x[3 * i + 1], x[3 * i + 2]]);
-    expect(w.addStrap(x[3 * i], x[3 * i + 1], x[3 * i + 2], 0.01)).not.toBeNull();
-    const ev = w.evaluate();
-    expect(ev.bundles).toBe(0);
-    expect(ev.bundlesNeeded).toBe(1);
-  });
 });
 
 describe('a cord laid along a drawn route', () => {
@@ -322,7 +312,7 @@ describe('a cord laid along a drawn route', () => {
     units: [B, { kind: 'panel', name: 'A', ports: 12, style: 'copper' }, B, B, B, B, B, B, { kind: 'switch', name: 'S', ports: 12, style: 'switch' }, B, B],
     cables: 2, wrong: 0, loose: 0, slack: [0.3, 0.4], mess: 1,
     labels: false, services: 1, types: ['CU'], colorByService: true, inventory: {},
-    preinstalled: [{ kind: 'fingerManager', unit: 2, side: 0 }, { kind: 'fingerManager', unit: 7, side: 0 }, { kind: 'ring', unit: 3, side: 1 }, { kind: 'ring', unit: 5, side: 1 }],
+    preinstalled: [{ kind: 'fingerManager', unit: 2, side: 0 }, { kind: 'fingerManager', unit: 7, side: 0 }, { kind: 'duct', unit: 4, side: 1 }],
     seed: 2, seg: 0.025,
   };
 
@@ -331,8 +321,8 @@ describe('a cord laid along a drawn route', () => {
     w.preroll(60);
     const c = 0, port = w.circuits[c].b;
     w.unplug(c, 1);
-    const [m2, m7, r3, r5] = w.rack.guides();
-    const res = planRoute(w, c, [m2, r3, r5, m7], w.rack.port(port));
+    const [m2, m7, duct] = w.rack.guides();
+    const res = planRoute(w, c, [m2, duct, m7], w.rack.port(port));
     expect('plan' in res).toBe(true);
     if (!('plan' in res)) return;
     const run = new RouteRun(w, res.plan);
@@ -347,8 +337,8 @@ describe('a cord laid along a drawn route', () => {
     w.preroll(60);
     const c = 0;
     w.unplug(c, 1);
-    const [m2, m7, r3, r5] = w.rack.guides();
-    const res = planRoute(w, c, [m2, r3, r5, m7], w.rack.port(w.circuits[c].b));
+    const [m2, m7, duct] = w.rack.guides();
+    const res = planRoute(w, c, [m2, duct, m7], w.rack.port(w.circuits[c].b));
     if (!('plan' in res)) throw new Error('no route');
     const run = new RouteRun(w, res.plan);
     for (let f = 0; f < 600 && !run.step(1 / 60); f++) w.sim.step();
@@ -429,8 +419,8 @@ describe('a cord laid along a drawn route', () => {
     const c = 0;
     w.unplug(c, 1);
     w.setCableLength(c, w.minCableLength(c));
-    const [m2, m7, r3, r5] = w.rack.guides();
-    const res = planRoute(w, c, [m2, r3, r5, m7], w.rack.port(w.circuits[c].b));
+    const [m2, m7, duct] = w.rack.guides();
+    const res = planRoute(w, c, [m2, duct, m7], w.rack.port(w.circuits[c].b));
     if (!('error' in res)) throw new Error('the route should be refused');
     expect(res.error.kind).toBe('tooShort');
     expect(res.error.kind === 'tooShort' && res.error.missing).toBeGreaterThan(0.005);

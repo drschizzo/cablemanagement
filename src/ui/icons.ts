@@ -9,4 +9,3 @@ export function iconFingerManager(): string { return svg('<rect x="2" y="9" widt
 export function iconVelcro(): string { return svg('<path d="M4 8c3-3 13-3 16 0M4 16c3 3 13 3 16 0"/><path d="M4 8v8M20 8v8"/><path d="M9 10.5v3M12 10v4M15 10.5v3"/>'); }
 export function iconStock(): string { return svg('<path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/>'); }
 export function iconTester(): string { return svg('<rect x="3" y="4" width="10" height="16" rx="2"/><path d="M6 8h4M6 11h4"/><circle cx="8" cy="15.5" r="1.5"/><path d="M13 12h3a3 3 0 0 1 3 3v5"/>'); }
-export function iconComb(): string { return svg('<rect x="3" y="5" width="18" height="4" rx="1"/><path d="M5 9v9M8 9v9M11 9v9M14 9v9M17 9v9M20 9v7"/>'); }

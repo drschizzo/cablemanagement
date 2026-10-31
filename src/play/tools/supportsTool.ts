@@ -1,6 +1,5 @@
-// The supports: in an empty unit, a finger manager; in a side channel, a duct
-// (a ring with Shift, or when no duct is left); on an item already there, take
-// it off. A ghost shows what a click would do.
+// The supports: in an empty unit, a finger manager; in a side channel, a
+// duct; on an item already there, take it off. A ghost shows what a click would do.
 
 import * as THREE from 'three/webgpu';
 import { sfx } from '../../audio/sfx';
@@ -26,8 +25,6 @@ export class SupportsTool implements ToolHandler {
   private ghost: THREE.Group | null = null;
   /** what the ghost shows, to rebuild it only when that changes */
   private ghostKey = '';
-  /** Shift held: a ring rather than a duct */
-  private shift = false;
 
   constructor(private ctx: PlayContext) {}
 
@@ -50,13 +47,6 @@ export class SupportsTool implements ToolHandler {
     this.removeGhost();
   }
 
-  /** Shift pressed or released */
-  setShift(down: boolean): void {
-    if (down === this.shift) return;
-    this.shift = down;
-    this.updateGhost(true);
-  }
-
   /** what a click would do under the pointer, or null */
   private slotUnderPointer(): Slot | null {
     const ctx = this.ctx;
@@ -73,8 +63,7 @@ export class SupportsTool implements ToolHandler {
     const side = Math.sign(p.x);
     const existing = rack.itemAt('duct', unit, side);
     if (existing) return { kind: existing.kind, unit, side, existing };
-    const kind: ItemKind = this.shift || ctx.world.stock.duct <= 0 ? 'ring' : 'duct';
-    return { kind, unit, side };
+    return { kind: 'duct', unit, side };
   }
 
   private apply(): void {
@@ -90,7 +79,6 @@ export class SupportsTool implements ToolHandler {
       if (!w.placeItem(s.kind, s.unit, s.side)) { ctx.events.onToast({ kind: 'cannotPlace', item: s.kind }); sfx.error(); return; }
       sfx.place();
     }
-    ctx.counters.moves++;
     this.updateGhost(true);
     ctx.events.onInventory();
   }

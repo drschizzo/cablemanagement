@@ -4,15 +4,15 @@ import { describe, expect, it } from 'vitest';
 import { World } from '../../../src/game/world';
 import { TICKETS, ticketLevel } from '../../../src/game/levels/career';
 import { cabinetOf, type CabinetState } from '../../../src/game/cabinetState';
-import { strapBundles, tidyKit, tidyLayout } from '../../../src/game/idealRoutes';
+import { tidyKit, tidyLayout } from '../../../src/game/idealRoutes';
 import type { LevelDef } from '../../../src/game/levels/levelDef';
+import { insideBox } from '../../../src/game/rack';
 
-/** the cabinet of a level finished by a careful technician, settled, labelled, strapped */
+/** the cabinet of a level finished by a careful technician, settled and labelled */
 function finished(level: LevelDef): World {
   const kit = tidyKit(level);
   const w = new World(kit, tidyLayout(kit).starts);
   for (let f = 0; f < 240; f++) w.sim.step();
-  strapBundles(w, level.bundles ?? 0);
   for (let f = 0; f < 60; f++) w.sim.step();
   w.circuits.forEach((ci, i) => w.labelCord(i, ci.service));
   return w;
@@ -33,7 +33,7 @@ describe('a cabinet carried over', () => {
   it('keeps each strap round the same cords, though a cord before them went to the crate', () => {
     const level = ticketLevel(0, null);
     const w = finished(level);
-    strapBundles(w, 1);
+    strapThree(w);
     expect(w.straps.length).toBeGreaterThan(0);
     // a strap, told by the ports of its cords (their indices change)
     const strapped = (world: World) => world.straps.map((st) => st.nodes.map((i) => world.cables[world.sim.cableOf[i]].ends.map((e) => e.port).join('-')).sort());
@@ -79,3 +79,14 @@ describe('the career, ticket after ticket', () => {
     expect(third.schedule!(null as never).length).toBe(third.cables);
   });
 });
+
+/** a strap round three cords or more, where they run side by side in a support */
+function strapThree(w: World): void {
+  const supports = w.rack.supports();
+  for (let i = 0; i < w.sim.n && !w.straps.some((st) => st.nodes.length >= 3); i += 3) {
+    const p = w.nodePosition(i);
+    if (w.sim.bundleOf[i] >= 0 || !supports.some((s) => insideBox(s, ...p))) continue;
+    const st = w.addStrap(...p);
+    if (st && st.nodes.length < 3) w.removeStrap(st);
+  }
+}

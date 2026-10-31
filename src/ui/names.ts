@@ -55,7 +55,6 @@ export function serviceWhat(service: number): string {
 const SUPPLY_NAMES: Record<Supply, Words<{ singular: string; plural: string }>> = {
   fingerManager: { fr: { singular: 'guide-câbles', plural: 'guide-câbles' }, en: { singular: 'cable manager', plural: 'cable managers' } },
   duct: { fr: { singular: 'goulotte', plural: 'goulottes' }, en: { singular: 'duct', plural: 'ducts' } },
-  ring: { fr: { singular: 'anneau', plural: 'anneaux' }, en: { singular: 'ring', plural: 'rings' } },
   velcro: { fr: { singular: 'velcro', plural: 'velcros' }, en: { singular: 'velcro', plural: 'velcros' } },
 };
 
@@ -63,7 +62,7 @@ export function supplyName(supply: Supply): string {
   return tr(SUPPLY_NAMES[supply]).singular;
 }
 
-/** `count` of a supply, as the player reads it: "2 goulottes", "1 anneau" */
+/** `count` of a supply, as the player reads it: "2 goulottes", "1 velcro" */
 export function countOf(supply: Supply, count: number): string {
   const names = tr(SUPPLY_NAMES[supply]);
   return `${count} ${count > 1 ? names.plural : names.singular}`;

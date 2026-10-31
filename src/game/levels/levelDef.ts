@@ -9,7 +9,7 @@ import type { CordType } from '../cordTypes';
 import type { CableStart, StrapStart } from '../cables';
 import type { IncidentSpec } from '../incidents';
 import type { FindId } from '../finds';
-import type { CustomSpec } from './customLevel';
+import type { FreeSpec } from './freeLevel';
 
 /** what every level has, whatever its kind */
 interface LevelBase {
@@ -62,8 +62,6 @@ interface LevelBase {
   starts?: CableStart[];
   /** the straps on at the start (a cabinet carried over) */
   straps?: StrapStart[];
-  /** three stars need this many velcro bundles: a strap round three cords or more, in a manager or a duct */
-  bundles?: number;
   /** old unmarked cords: where one goes only shows once it is traced, or plugged as planned */
   blind?: boolean;
   /** old cords broken inside: plugged as planned, they carry nothing (the tester finds them) */
@@ -75,13 +73,6 @@ interface LevelBase {
 /** a level of the campaign, in order */
 export interface CampaignLevel extends LevelBase {
   kind: 'campaign';
-}
-
-/** a puzzle: a tiny cabinet, solved in as few gestures as possible */
-export interface PuzzleLevel extends LevelBase {
-  kind: 'puzzle';
-  /** the gestures challenge: three stars in at most this many acts of a technician (see GestureCounters.moves) */
-  moves: number;
 }
 
 /** a ticket of the career: one visit to the client's cabinet, as the player left it */
@@ -96,30 +87,11 @@ export interface TutorialLevel extends LevelBase {
   kind: 'tutorial';
 }
 
-/** free play: a cabinet generated at random */
+/** free play: a cabinet the player set up (freeLevel.ts) */
 export interface FreeLevel extends LevelBase {
   kind: 'free';
-}
-
-/** zen: a big cabinet at random, no clock, no downtime budget, plenty of material */
-export interface ZenLevel extends LevelBase {
-  kind: 'zen';
-}
-
-/** a cabinet composed in the editor (customLevel.ts) */
-export interface CustomLevel extends LevelBase {
-  kind: 'custom';
-  /** what the editor set: its code shares it */
-  spec: CustomSpec;
-}
-
-/** the cabinet of the day: the same for every player on a given date */
-export interface DailyLevel extends LevelBase {
-  kind: 'daily';
-  /** the day it is the cabinet of (YYYY-MM-DD) */
-  date: string;
-  /** its number, counted from the first cabinet of the day (1) */
-  number: number;
+  /** what the player set: its code shares it */
+  spec: FreeSpec;
 }
 
 /** a cabinet of the before/after aisle (the title screen) */
@@ -136,4 +108,4 @@ export interface BenchLevel extends LevelBase {
   kind: 'bench';
 }
 
-export type LevelDef = CampaignLevel | PuzzleLevel | TicketLevel | TutorialLevel | FreeLevel | ZenLevel | CustomLevel | DailyLevel | ShowcaseLevel | BenchLevel;
+export type LevelDef = CampaignLevel | TicketLevel | TutorialLevel | FreeLevel | ShowcaseLevel | BenchLevel;

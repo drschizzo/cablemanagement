@@ -3,54 +3,39 @@
 import { describe, expect, it } from 'vitest';
 import { endsTheTraining, isUnlocked, knownGestures, knownRules, levelAfter, nextInStory, recordResult, withMet } from '../../src/ui/progress';
 import { levelRules } from '../../src/game/levels/levelRules';
-import { PUZZLES } from '../../src/game/levels/puzzles';
 import { BIG_BAYS, LEVELS } from '../../src/game/levels/campaign';
 import type { Progress } from '../../src/ui/storage';
 
-const empty = (): Progress => ({ stars: {}, times: {}, challenges: {} });
+const empty = (): Progress => ({ stars: {}, times: {} });
 const level = LEVELS[0];
 
 describe('the progress record', () => {
   it('keeps the best stars and time, and tells what it held before', () => {
     const p = empty();
-    recordResult(p, level, 2, 90, 10);
-    const second = recordResult(p, level, 1, 120, 10);
+    recordResult(p, level, 2, 90);
+    const second = recordResult(p, level, 1, 120);
     expect(p.stars[level.id]).toBe(2);
     expect(p.times[level.id]).toBe(90);
     expect(second.previousStars).toBe(2);
   });
 
-  it('has no challenge on a level of the training, however fast', () => {
-    const p = empty();
-    expect(recordResult(p, level, 3, 1, 1).challengeWon).toBe(false);
-    expect(p.challenges[level.id]).toBeUndefined();
-  });
-
-  it('wins the gestures challenge of a puzzle with three stars in few enough gestures', () => {
-    const puzzle = { ...PUZZLES[2], moves: 4 };
-    expect(recordResult(empty(), puzzle, 3, 999, 5).challengeWon).toBe(false);
-    expect(recordResult(empty(), puzzle, 2, 10, 2).challengeWon).toBe(false);
-    expect(recordResult(empty(), puzzle, 3, 999, 4).challengeWon).toBe(true);
-  });
 });
 
-describe('the training and the big cabinets', () => {
+describe('the training', () => {
   it('opens a level once the one before has two stars', () => {
     const p = empty();
-    expect(isUnlocked(p, LEVELS, 0)).toBe(true);
-    expect(isUnlocked(p, LEVELS, 1)).toBe(false);
+    expect(isUnlocked(p, 0)).toBe(true);
+    expect(isUnlocked(p, 1)).toBe(false);
     p.stars[LEVELS[0].id] = 1;
-    expect(isUnlocked(p, LEVELS, 1)).toBe(false);
+    expect(isUnlocked(p, 1)).toBe(false);
     p.stars[LEVELS[0].id] = 2;
-    expect(isUnlocked(p, LEVELS, 1)).toBe(true);
-    expect(isUnlocked(p, BIG_BAYS, 0)).toBe(true);
-    expect(isUnlocked(p, BIG_BAYS, 1)).toBe(false);
+    expect(isUnlocked(p, 1)).toBe(true);
   });
 
-  it('knows the level after each one, and none after the last of its list', () => {
+  it('knows the level after each one, and none after the last', () => {
     expect(levelAfter(LEVELS[0])).toBe(LEVELS[1]);
     expect(levelAfter(LEVELS[LEVELS.length - 1])).toBeNull();
-    expect(levelAfter(BIG_BAYS[0])).toBe(BIG_BAYS[1]);
+    expect(levelAfter(BIG_BAYS[0])).toBeNull();
     expect(endsTheTraining(LEVELS[LEVELS.length - 1])).toBe(true);
     expect(endsTheTraining(BIG_BAYS[0])).toBe(false);
   });
@@ -86,6 +71,5 @@ describe('the rules met', () => {
     expect(knownGestures([], p).has('duct')).toBe(false);
     p.stars[LEVELS[1].id] = 2;
     expect(knownGestures([], p).has('duct')).toBe(true);
-    expect(knownGestures(['velcro'], p).has('velcro')).toBe(true);
   });
 });

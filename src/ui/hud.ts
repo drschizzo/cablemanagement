@@ -3,7 +3,7 @@
 // its scores (schedulePanel.ts), the brief (levelBrief.ts), the result screen
 // and its timelapse (resultScreen.ts, timelapsePlayer.ts), the pause menu
 // (pauseMenu.ts), the game modes and what they open (modesPanel.ts,
-// levelMenu.ts, careerPanel.ts, editorPanel.ts), the workshop (shopPanel.ts),
+// levelMenu.ts, careerPanel.ts, freePanel.ts), the workshop (shopPanel.ts),
 // the settings (settingsPanel.ts); and the small things (hint, tooltip, toast,
 // timer, call, sound, a find picked up) and the interface's keys. It reads the
 // Controller's state and calls its actions; the Controller tells it what
@@ -33,7 +33,7 @@ import { ShopPanel } from './shopPanel';
 import { collectFind } from './shop';
 import { CareerPanel } from './careerPanel';
 import { ModesPanel } from './modesPanel';
-import { EditorPanel } from './editorPanel';
+import { FreePanel } from './freePanel';
 import { FINDS, type FindId } from '../game/finds';
 import { findName, findStory } from './names';
 import { LevelMenu } from './levelMenu';
@@ -65,7 +65,7 @@ export class Hud {
   private schedule = new SchedulePanel();
   private brief: LevelBrief;
   private pause: PauseMenu;
-  private editor = new EditorPanel();
+  private freePanel = new FreePanel();
   private levelMenu = new LevelMenu();
   private modes: ModesPanel;
   private settings: SettingsPanel;
@@ -83,9 +83,9 @@ export class Hud {
     this.stockMenu = new StockMenu((message) => this.toast(message));
     this.brief = new LevelBrief((tool) => this.selectTool(tool));
     this.modes = new ModesPanel({
-      levels: (section, start, back) => this.levelMenu.show(this.progress, section, start, back),
+      training: (start, back) => this.levelMenu.show(this.progress, start, back),
       career: (start, back) => this.career.show(start, back),
-      editor: (start, back) => this.editor.show(start, back),
+      free: (start, back) => this.freePanel.show(this.progress, start, back),
     }, () => this.progress);
     this.settings = new SettingsPanel(image, image, { isOn: () => !isMuted(), toggle: () => this.toggleSound() }, {
       isOn: () => !load('musicOff'),
@@ -145,9 +145,9 @@ export class Hud {
     this.followMusic();
   }
 
-  /** the ambient music plays in a zen level, unless the player turned it (or the sound) off */
+  /** the ambient music plays in a free cabinet out of production, unless the player turned it (or the sound) off */
   private followMusic(): void {
-    if (this.level?.kind === 'zen' && !load('musicOff') && !isMuted()) ambient.start();
+    if (this.level?.kind === 'free' && !this.level.spec.production && !load('musicOff') && !isMuted()) ambient.start();
     else ambient.stop();
   }
 
@@ -248,16 +248,11 @@ export class Hud {
     $('#stats').textContent = text;
   }
 
-  /** the timer, the call under way, and the gestures of a puzzle, a few times a second */
+  /** the timer and the call under way, a few times a second */
   tick(): void {
     if (!this.ctl) return;
     $('#timer').textContent = formatTime(this.ctl.elapsed);
     this.showCall();
-    if (this.level?.kind === 'puzzle') {
-      const moves = this.ctl.counters.moves, most = this.level.moves;
-      $('#moves').textContent = tr({ fr: `Gestes ${moves}/${most}`, en: `Gestures ${moves}/${most}` });
-      $('#moves').classList.toggle('over', moves > most);
-    }
   }
 
   /** a user waiting for a link: which one, and how long they still wait */
@@ -281,7 +276,7 @@ export class Hud {
     if (!ctl || !level) return;
     const ev = ctl.world.evaluate();
     if (ev.stars < 1 || document.body.classList.contains('touring')) return;
-    const outcome = recordOutcome(level, ev, ctl.world, ctl.elapsed, ctl.counters.moves, this.progress);
+    const outcome = recordOutcome(level, ev, ctl.world, ctl.elapsed, this.progress);
     sfx.win();
     // the panels step aside while the camera flies round the work
     document.body.classList.add('touring');

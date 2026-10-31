@@ -3,14 +3,13 @@
 import { describe, expect, it } from 'vitest';
 import { levelRules } from '../../../src/game/levels/levelRules';
 import { BIG_BAYS, LEVELS } from '../../../src/game/levels/campaign';
-import { PUZZLES } from '../../../src/game/levels/puzzles';
-import { freeLevel } from '../../../src/game/levels/freeLevel';
+import { freeLevel, plainSpec } from '../../../src/game/levels/freeLevel';
 
-const byId = (id: string) => [...LEVELS, ...BIG_BAYS, ...PUZZLES].find((l) => l.id === id)!;
+const byId = (id: string) => [...LEVELS, ...BIG_BAYS].find((l) => l.id === id)!;
 
 describe('the rules of a level', () => {
   it('every cabinet has its LEDs and its taut cords', () => {
-    for (const level of [...LEVELS, ...BIG_BAYS, ...PUZZLES]) expect(levelRules(level)).toEqual(expect.arrayContaining(['leds', 'taut']));
+    for (const level of [...LEVELS, ...BIG_BAYS]) expect(levelRules(level)).toEqual(expect.arrayContaining(['leds', 'taut']));
   });
 
   it('the first two levels of the training have nothing in production', () => {
@@ -24,13 +23,12 @@ describe('the rules of a level', () => {
 
   it('reads each rule from what the level is', () => {
     expect(levelRules(byId('l5'))).toContain('kinked');
-    expect(levelRules(byId('l6'))).toContain('bundles');
     expect(levelRules(byId('l8'))).toContain('blind');
-    expect(levelRules(byId('p9'))).toContain('faults');
-    expect(levelRules(byId('p10'))).toEqual(expect.arrayContaining(['power', 'separation']));
     expect(levelRules(byId('l5'))).toContain('separation');
     expect(levelRules(byId('l4'))).not.toContain('separation');
-    expect(levelRules(freeLevel(12, 1))).toContain('incidents');
-    expect(levelRules(freeLevel(4, 1))).not.toContain('incidents');
+    expect(levelRules(freeLevel(plainSpec(12, 1, true)))).toContain('incidents');
+    expect(levelRules(freeLevel(plainSpec(16, 1, true)))).toContain('faults');
+    expect(levelRules(freeLevel(plainSpec(4, 1, true)))).not.toContain('incidents');
+    expect(levelRules(freeLevel(plainSpec(16, 1, false)))).not.toContain('maintenance');
   });
 });

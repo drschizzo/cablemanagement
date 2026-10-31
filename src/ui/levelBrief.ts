@@ -1,6 +1,7 @@
 // The brief of a level, before it starts (and on the Help button): what to
 // do, the tips, the rules and gestures met here for the first time (those
-// met before are folded), the material given. On a first reading of a level with supports to
+// met before are not told again: the stars of the side panel say what
+// counts), the material given. On a first reading of a level with supports to
 // place, the preparation follows: the cabinet stands still and the clock
 // waits while the player places them.
 
@@ -37,9 +38,6 @@ export class LevelBrief {
     const met = splitMet(level);
     const services = ctl?.world.circuits.map((c) => c.service) ?? [];
     $('#brief-tips').innerHTML = briefTips(level, met, services).map((t) => `<li>${t}</li>`).join('');
-    const known = knownTips(level, met, services);
-    $('#brief-known').style.display = known.length ? '' : 'none';
-    $('#brief-known-tips').innerHTML = known.map((t) => `<li>${t}</li>`).join('');
     $('#brief-inv').textContent = materialLine(level);
     // the clock waits for the player to read
     ctl?.pause();
@@ -67,27 +65,9 @@ export class LevelBrief {
   }
 }
 
-/** the brief's tips: the level's own, its challenge, then the rules and gestures met for the first time (flagged new) */
+/** the brief's tips: the level's own, then the rules and gestures met for the first time */
 function briefTips(level: LevelDef, met: Met, services: number[]): string[] {
-  const tips = levelTips(level);
-  const challenge = challengeTip(level);
-  if (challenge) tips.push(challenge);
-  const isNew = (tip: string) => `<span class="new">${tr({ fr: 'Nouveau', en: 'New' })}</span> ${tip}`;
-  return [...tips, ...met.rules.fresh.map((r) => isNew(ruleTip(r, level, services))), ...met.gestures.fresh.map((g) => isNew(gestureTip(g)))];
-}
-
-/** the tips met before: folded, to read again on demand */
-function knownTips(level: LevelDef, met: Met, services: number[]): string[] {
-  return [...met.rules.known.map((r) => ruleTip(r, level, services)), ...met.gestures.known.map(gestureTip)];
-}
-
-/** the gestures challenge of a puzzle (told before the first try, so it can be aimed at) */
-function challengeTip(level: LevelDef): string | null {
-  if (level.kind === 'puzzle') return tr({
-    fr: `<b>Défi gestes</b> : ★★★ en ${level.moves} geste${level.moves > 1 ? 's' : ''} au plus. Compte pour un geste : brancher ou débrancher un connecteur (à la main ou au bout d'un chemin), poser ou retirer un support ou un velcro, jeter un câble au bac, en prendre un au Stock. Ranger (déplacer un câble, poser un chemin, peigner) est gratuit.`,
-    en: `<b>Gestures challenge</b>: ★★★ in ${level.moves} gesture${level.moves > 1 ? 's' : ''} at most. A gesture is: plugging or unplugging a connector (by hand or at the end of a route), placing or taking off a support or a velcro, throwing a cord into the crate, taking one from the Stock. Tidying (moving a cord, laying a route, combing) is free.`,
-  });
-  return null;
+  return [...levelTips(level), ...met.rules.fresh.map((r) => ruleTip(r, level, services)), ...met.gestures.fresh.map(gestureTip)];
 }
 
 /** the level's rules and gestures, each split: those the player meets here for the first time, and those met before */

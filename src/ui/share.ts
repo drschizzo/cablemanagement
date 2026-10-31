@@ -1,14 +1,14 @@
 // What leaves the page to be shared: the game's address, the link of a
-// cabinet of the editor, and the files the page makes (a video, an image)
+// free cabinet, and the files the page makes (a video, an image)
 // offered to the player to save.
 
-import { encodeSpec, type CustomSpec } from '../game/levels/customLevel';
+import { encodeSpec, type FreeSpec } from '../game/levels/freeLevel';
 
 /** where the game is played */
 export const GAME_URL = 'https://drschizzo.github.io/cablemanagement/';
 
-/** the link that opens a cabinet of the editor (?rack=CODE) */
-export function customLink(spec: CustomSpec): string {
+/** the link that opens a free cabinet (?rack=CODE) */
+export function freeLink(spec: FreeSpec): string {
   return `${GAME_URL}?rack=${encodeSpec(spec)}`;
 }
 

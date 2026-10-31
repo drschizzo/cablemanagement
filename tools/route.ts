@@ -1,13 +1,13 @@
 // Laying cords along a drawn route, headless (src/game/routeLaying.ts): a cord
 // plugged in its panel port, its other end hanging, routed through the
-// manager below the panel, two rings (or a duct) down the side channel and
+// manager below the panel, a duct down the side channel and
 // the manager above the switch, into its switch port. Then: whether it got
 // there and plugged in, how much of it lies in its guides once let go and
 // settled, how calm it is, the worst it went into a part of the cabinet
 // (a cord must never pass through it), and how far it carried the other
 // cords (it passes through them while laid), and how folded it is on its way
 // (sharp bends, by phase: out, across, in, held there).
-//   SEEDS=1,2 SLACK=0.5 ROWS=1 VIA=duct PARAMS='{"goalK":2}' npm run route
+//   SEEDS=1,2 SLACK=0.5 ROWS=1 PARAMS='{"goalK":2}' npm run route
 import { World } from '../src/game/world';
 import type { LevelDef } from '../src/game/levels/levelDef';
 import { planRoute, RouteRun } from '../src/game/routeLaying';
@@ -19,7 +19,6 @@ const params = envParams();
 const seeds = envSeeds('1,2,3,4,5,6,7,8');
 /** extra length of the cords over their ideal route (m) */
 const slack = envNumber('SLACK', 0.3);
-const via = env.VIA ?? 'rings';
 const B = { kind: 'blank' as const };
 const bench = (seed: number): LevelDef => ({
   id: 'route', kind: 'bench',
@@ -27,9 +26,7 @@ const bench = (seed: number): LevelDef => ({
   cables: 4, wrong: 0, loose: 0, slack: [slack, slack + 0.1], mess: 1,
   labels: false, services: 1, types: ['CU'], colorByService: true,
   inventory: {},
-  preinstalled: via === 'duct'
-    ? [{ kind: 'fingerManager', unit: 2, side: 0 }, { kind: 'fingerManager', unit: 7, side: 0 }, { kind: 'duct', unit: 4, side: 1 }]
-    : [{ kind: 'fingerManager', unit: 2, side: 0 }, { kind: 'fingerManager', unit: 7, side: 0 }, { kind: 'ring', unit: 3, side: 1 }, { kind: 'ring', unit: 5, side: 1 }],
+  preinstalled: [{ kind: 'fingerManager', unit: 2, side: 0 }, { kind: 'fingerManager', unit: 7, side: 0 }, { kind: 'duct', unit: 4, side: 1 }],
   seed, seg: 0.025,
 });
 
@@ -131,26 +128,16 @@ for (const seed of seeds) for (const c of [0, 1, 2, 3]) {
 }
 const n = tot.planned || 1;
 console.log(`folds while laid: mean ${(tot.foldMean / n).toFixed(1)}, peak ${(tot.foldPeak / n).toFixed(1)}, at rest ${(tot.foldRest / n).toFixed(1)}; peak by phase out/across/in/held ${phaseTot.map((v) => (v / n).toFixed(1)).join(' / ')}`);
-console.log(`${tot.runs} routes (${via}), ${tot.planned} planned: plugged ${tot.plugged}/${tot.planned}, through ${tot.through}/${tot.guides} guides, cord in them ${(100 * tot.inGuides / n).toFixed(0)} %, into a part mean ${(tot.pen / n * 1000).toFixed(1)} mm worst ${(tot.penMax * 1000).toFixed(1)} mm (at rest ${(tot.penRest * 1000).toFixed(1)} mm), peak at rest ${(tot.calm / n).toFixed(3)} m/s, others carried ${(tot.moved / n * 1000).toFixed(1)} mm (furthest ${(tot.movedMax * 100).toFixed(0)} cm)`);
+console.log(`${tot.runs} routes, ${tot.planned} planned: plugged ${tot.plugged}/${tot.planned}, through ${tot.through}/${tot.guides} guides, cord in them ${(100 * tot.inGuides / n).toFixed(0)} %, into a part mean ${(tot.pen / n * 1000).toFixed(1)} mm worst ${(tot.penMax * 1000).toFixed(1)} mm (at rest ${(tot.penRest * 1000).toFixed(1)} mm), peak at rest ${(tot.calm / n).toFixed(3)} m/s, others carried ${(tot.moved / n * 1000).toFixed(1)} mm (furthest ${(tot.movedMax * 100).toFixed(0)} cm)`);
 
 function settleFor(w: World, f: number): void { for (let k = 0; k < f; k++) w.sim.step(); }
 
-/** nodes of cable c in each guide (a ring: where the cord passes through it inside, between two nodes) */
+/** nodes of cable c in each guide */
 function nodesIn(w: World, c: number, order: Guide[]): number[] {
   const sim = w.sim, cb = w.cables[c];
   return order.map((g) => {
     let n = 0;
     for (let i = cb.start; i < cb.start + cb.count; i++) if (inside(g.room, sim.x, i)) n++;
-    if (g.kind === 'ring') {
-      const y = (g.room.min[1] + g.room.max[1]) / 2, x = sim.x;
-      for (let i = cb.start; i < cb.start + cb.count - 1; i++) {
-        const y0 = x[3 * i + 1], y1 = x[3 * i + 4];
-        if ((y0 - y) * (y1 - y) > 0 || y0 === y1) continue;
-        const t = (y - y0) / (y1 - y0);
-        const px = x[3 * i] + t * (x[3 * i + 3] - x[3 * i]), pz = x[3 * i + 2] + t * (x[3 * i + 5] - x[3 * i + 2]);
-        if (px >= g.room.min[0] - 0.003 && px <= g.room.max[0] + 0.003 && pz >= g.room.min[2] - 0.003 && pz <= g.room.max[2] + 0.003) n++;
-      }
-    }
     return n;
   });
 }

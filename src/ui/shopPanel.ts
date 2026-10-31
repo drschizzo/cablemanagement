@@ -6,12 +6,11 @@ import { load, save } from './storage';
 import { hide, show } from './dom';
 import { $ } from '../lib/page';
 import { LOOK_SLOTS, SHOP, equip, equippedIn, isOpen, starsWon, type LookSlot } from './shop';
-import { language, tr } from './language';
+import { tr } from './language';
 import { assertNever } from '../lib/assertNever';
 import { FINDS, type FindId } from '../game/finds';
 import { BIG_BAYS, LEVELS } from '../game/levels/campaign';
-import { KEYS_WEEKDAY } from '../game/levels/dailyLevel';
-import { MANUAL_FROM } from '../game/levels/freeLevel';
+import { KEYS_FROM, MANUAL_FROM } from '../game/levels/freeLevel';
 import { findName, findStory } from './names';
 import { levelTitle } from './levelTexts';
 
@@ -83,14 +82,9 @@ function whereHidden(id: FindId): string {
   const big = BIG_BAYS.find((l) => l.find === id);
   if (big) return tr({ fr: `Quelque part dans une grande baie, ${levelTitle(big)}.`, en: `Somewhere in a big cabinet, ${levelTitle(big)}.` });
   switch (id) {
-    case 'keys': return tr({ fr: `Dans la baie du jour, un ${weekdayName(KEYS_WEEKDAY)}.`, en: `In the cabinet of the day, on a ${weekdayName(KEYS_WEEKDAY)}.` });
-    case 'manual': return tr({ fr: `Dans une grande partie libre (${MANUAL_FROM} câbles ou plus).`, en: `In a big free play (${MANUAL_FROM} cords or more).` });
+    case 'keys': return tr({ fr: `Dans une baie libre en production, de ${KEYS_FROM} à ${MANUAL_FROM - 1} câbles.`, en: `In a free cabinet in production, of ${KEYS_FROM} to ${MANUAL_FROM - 1} cords.` });
+    case 'manual': return tr({ fr: `Dans une baie libre de ${MANUAL_FROM} câbles ou plus.`, en: `In a free cabinet of ${MANUAL_FROM} cords or more.` });
     default: return tr({ fr: 'Quelque part, dans une baie.', en: 'Somewhere, in a cabinet.' });
   }
 }
 
-/** a day of the week (Monday 0) in the player's language */
-function weekdayName(weekday: number): string {
-  // 2026-10-26 was a Monday
-  return new Intl.DateTimeFormat(language(), { weekday: 'long' }).format(new Date(2026, 9, 26 + weekday));
-}

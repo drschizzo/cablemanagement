@@ -13,18 +13,6 @@ import type { Look } from '../render/look';
 import { RULES, type Rule } from '../game/levels/levelRules';
 import { GESTURES, type Gesture } from '../game/levels/levelGestures';
 
-/** the best result of one cabinet of the day */
-export interface DailyResult {
-  stars: number;
-  /** s of play */
-  time: number;
-  /** downtime points spent, and the budget (0: none) */
-  downtime: number;
-  budget: number;
-  /** each line of the schedule: 2 tidy, 1 plugged only, 0 not plugged (the shared grid) */
-  lines: number[];
-}
-
 /** the career: tickets done, the client's cabinet as the last one left it, the best stars of each */
 export interface Career {
   done: number;
@@ -40,11 +28,10 @@ export interface Workshop {
   finds: FindId[];
 }
 
-/** best result per level id: stars (1..3), time (s), and the challenges won */
+/** best result per level id: stars (1..3), time (s) */
 export interface Progress {
   stars: Record<string, number>;
   times: Record<string, number>;
-  challenges: Record<string, boolean>;
 }
 
 interface Entry<T> {
@@ -69,24 +56,12 @@ function isQualityChoice(v: QualityChoice): boolean {
 const ENTRIES = {
   progress: {
     key: 'cable.progress',
-    fallback: (): Progress => ({ stars: {}, times: {}, challenges: {} }),
+    fallback: (): Progress => ({ stars: {}, times: {} }),
     parse: (raw: string): Progress => JSON.parse(raw),
     format: (v: Progress) => JSON.stringify(v),
-    valid: (v: Progress) => isRecord(v.stars) && isRecord(v.times) && isRecord(v.challenges),
+    valid: (v: Progress) => isRecord(v.stars) && isRecord(v.times),
   } satisfies Entry<Progress>,
   /** the cabinets of the day signed off, by date (YYYY-MM-DD) */
-  daily: {
-    key: 'cable.daily',
-    fallback: (): Record<string, DailyResult> => ({}),
-    // a day of another shape is left out; the others, and the run of days, stay
-    parse: (raw: string): Record<string, DailyResult> => {
-      const v: unknown = JSON.parse(raw);
-      if (!isRecord(v)) return v as Record<string, DailyResult>;
-      return Object.fromEntries(Object.entries(v).filter(([, r]) => isRecord(r) && typeof r.stars === 'number' && Array.isArray(r.lines))) as Record<string, DailyResult>;
-    },
-    format: (v: Record<string, DailyResult>) => JSON.stringify(v),
-    valid: isRecord,
-  } satisfies Entry<Record<string, DailyResult>>,
   /** the career, and the client's cabinet as the player left it */
   career: {
     key: 'cable.career',
@@ -103,9 +78,9 @@ const ENTRIES = {
     format: (v: Workshop) => JSON.stringify(v),
     valid: (v: Workshop) => isRecord(v.equipped) && Array.isArray(v.finds),
   } satisfies Entry<Workshop>,
-  /** the code of the last cabinet composed in the editor ('' : none yet) */
-  editorDraft: {
-    key: 'cable.editor',
+  /** the code of the last free cabinet set up ('' : none yet) */
+  freeDraft: {
+    key: 'cable.free',
     fallback: (): string => '',
     parse: (raw: string) => raw,
     format: (v: string) => v,
@@ -170,7 +145,7 @@ const ENTRIES = {
     format: (v: Language) => v,
     valid: (v: Language) => LANGUAGES.some((l) => l.id === v),
   } satisfies Entry<Language>,
-  /** the ambient music of the zen mode is turned off */
+  /** the ambient music of free play out of production is turned off */
   musicOff: {
     key: 'cable.music-off',
     fallback: (): boolean => false,

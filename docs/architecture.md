@@ -21,9 +21,9 @@ src/
     cables.ts       ce qu'est un cordon (Cable, CableEnd, Strap) et ses indices nommés (CableIndex, EndIndex,
                     NodeIndex, CircuitIndex)
     cordShapes.ts   la géométrie d'un cordon hors physique : remis à une autre longueur, enroulé dans le bac
-    evaluation.ts   le score : chaque liaison (branchée, rangée, dégagée, étiquetée, sans tension), les couloirs qui
-                    mêlent les familles, les faisceaux, étoiles, ce qui manque à l'étoile suivante (nextStar) — des
-                    fonctions qui lisent un World sans le modifier
+    evaluation.ts   le score : chaque liaison (branchée, rangée, dégagée, étiquetée, sans tension), les goulottes qui
+                    mêlent les familles, les étoiles et ce que chacune demande (starGoals) — des fonctions qui lisent
+                    un World sans le modifier
     maintenanceWindow.ts  liaisons en production, budget d'interruption, dérivations
     cabinetState.ts une baie telle que le joueur la laisse (équipements, supports, plan, cordons branchés, velcros),
                     pour la retrouver à la visite suivante (la carrière)
@@ -38,25 +38,24 @@ src/
     services.ts     les services du plan (données, voix…) : couleur, poids d'une coupure (leurs noms : ui/names.ts)
     idealRoutes.ts  la route idéale de chaque cordon, la baie « finie » d'un niveau (tidyKit), les cordons couchés
                     sur leurs routes (tidyLayout, la baie rangée de la vitrine)
-    comb.ts         le peigne côté règles : les couloirs des câbles qu'il a traversés, posés le long de son chemin
     routeLaying.ts  l'outil Chemin côté règles : le chemin planifié (planRoute), le câble posé (RouteRun)
     physics/        le solveur tel que le jeu le mène (rackCableSim : mains, ports, creux des guides), et son Worker
     mess/           le désordre de départ : les chemins emmêlés des cordons (tangle), leur chute dans un Worker,
                     sa version précalculée pour l'écran titre (baked, showcase.bin)
-    levels/         ce qu'est un niveau (levelDef : une union par sorte, campagne, puzzle, ticket, tutoriel, partie libre,
-                    zen, baie du jour, vitrine, banc), les règles qu'il joue en plus de brancher et ranger (levelRules :
-                    voyants, tension, fenêtre de maintenance, faisceaux, pannes…) et les gestes qu'il demande au-delà du
-                    tutoriel (levelGestures : goulotte, anneau, velcro), les équipements nommés, la formation, les grandes baies et le tutoriel, les puzzles,
-                    la carrière (un client, ses tickets, chacun bâti sur la baie laissée par le précédent),
-                    la baie sur mesure de l'éditeur (customLevel : sa palette, ses règles, son code de partage), la partie libre et son réglage zen, la baie du jour
-                    (tirée de la date : la même pour tous), les baies de la vitrine ; site.ts, où se passe un niveau
+    levels/         ce qu'est un niveau (levelDef : une union par sorte, campagne, ticket, tutoriel, baie libre,
+                    vitrine, banc), les règles qu'il joue en plus de brancher et ranger (levelRules : voyants,
+                    tension, production, pannes…) et le geste qu'il demande au-delà du tutoriel (levelGestures : la
+                    goulotte), les équipements nommés, la formation, les grandes baies et le tutoriel, la carrière
+                    (un client, ses tickets, chacun bâti sur la baie laissée par le précédent), la baie libre
+                    (freeLevel : sa palette, ses réglages, en production ou non, son code de partage), les baies de
+                    la vitrine ; site.ts, où se passe un niveau
                     (tous les tickets chez le client, chaque autre niveau dans sa propre salle) : le décor en est tiré
   play/         UNE PARTIE EN COURS : relie game, render et l'interface
     controller.ts   Controller : la boucle à pas fixe, ce que la baie montre de son état, les actions du HUD
     context.ts      PlayContext (ce que les outils voient du contrôleur), ToolHandler (l'interface d'un outil),
                     ControllerEvents (ce que le contrôleur dit à l'interface)
     inputRouter.ts  la souris et le clavier, aiguillés vers l'outil qui a un geste en cours, ou vers la vue
-    tools/          un fichier par outil : main, Chemin, velcro, supports, peigne, testeur
+    tools/          un fichier par outil : main, Chemin, velcro, supports, testeur
     feedback/       les repères dessinés par-dessus la baie : surbrillances et traceur, fil à plomb, autre main,
                     lueurs des connecteurs, port visé, portions tenues / pendantes, cadre du tutoriel
     pointer.ts      la souris sur la vue : pixels, rayon, projections écran ↔ baie
@@ -131,30 +130,29 @@ src/
   ui/           L'INTERFACE HTML autour de la baie
     hud.ts          Hud : assemble les panneaux, et les petites choses (aide, bulle, message, chronomètre)
     toolbar.ts      la barre d'outils et ce qui reste en stock ; stockMenu.ts, le stock de cordons neufs
-    schedulePanel.ts le plan de brassage, le budget d'interruption, l'étoile suivante et ce qui lui manque, les
-                    jauges repliées, le bouton Valider
-    levelBrief.ts   le brief d'un niveau (ses conseils, les règles et les gestes qu'on y rencontre pour la première fois,
-                    les autres repliés), puis la préparation ; ruleTexts.ts, les mots de chaque règle et de chaque geste
+    schedulePanel.ts le plan de brassage, le budget d'interruption, les trois étoiles et ce que chacune demande,
+                    le bouton Valider
+    levelBrief.ts   le brief d'un niveau (ses conseils, les règles et les gestes qu'on y rencontre pour la première fois),
+                    puis la préparation ; ruleTexts.ts, les mots de chaque règle et de chaque geste
     timelapsePlayer.ts le timelapse rejoué en boucle en 5 s, la caméra qui dérive, et enregistré en vidéo (MediaRecorder) ; beforeAfterImage.ts, la baie
                     avant / après en une image ; share.ts, l'adresse du jeu et les fichiers offerts au joueur
-    resultScreen.ts l'écran de résultat ; modesPanel.ts, les modes de jeu en trois groupes (histoire, défis, partie libre
-                    avec son réglage zen et l'éditeur) ; modeLocks.ts, quels modes sont ouverts : la formation et la partie libre d'emblée, le reste à la fin de la formation (fonctions pures) ;
-                    levelMenu.ts, une section à la fois (la formation et son tutoriel, les grandes baies, ou les puzzles)
+    resultScreen.ts l'écran de résultat ; modesPanel.ts, les modes de jeu en deux groupes (histoire, partie libre) ;
+                    modeLocks.ts, quels modes sont ouverts : la formation et la baie libre d'emblée, la carrière à la
+                    fin de la formation (fonctions pures) ; levelMenu.ts, la formation et son tutoriel
     pauseMenu.ts    le menu d'un niveau (☰ Menu, Échap) : le chrono attend ; consignes, recommencer, niveaux,
                     paramètres, accueil ; confirmDialog.ts, la question avant de quitter une baie entamée
     settingsPanel.ts les paramètres : qualité de l'image (auto, préréglages, détails) et son
-    progress.ts     la progression du joueur : meilleur score, défi réussi (les gestes d'un puzzle),
-                    niveau ouvert, niveau suivant, règles déjà rencontrées (fonctions pures)
+    progress.ts     la progression du joueur : meilleur score, niveau ouvert, niveau suivant, règles déjà
+                    rencontrées (fonctions pures)
     shop.ts         le carnet du technicien : les trouvailles, puis en prime les teintes (le catalogue, les étoiles
                     qui ouvrent chaque teinte, celle qu'on porte), quand le carnet s'ouvre, les trouvailles gardées
                     (fonctions pures) ; shopPanel.ts, son panneau
-    editorPanel.ts  l'éditeur de baie : la baie en élévation (une bande par unité, aux couleurs de son équipement), la
-                    palette, les règles, jouer ou copier le lien (?rack=CODE)
+    freePanel.ts    la baie libre : les grandes baies, ou une baie réglée (câbles, services, désordre, production, la
+                    baie en élévation et sa palette), jouer ou copier le lien (?rack=CODE)
     outcome.ts      ce que laisse une baie validée, selon sa sorte de niveau : record, partage, niveau suivant
     career.ts       la carrière : le ticket à jouer, le ticket validé (la baie gardée) ; careerPanel.ts, son panneau
-    daily.ts        les baies du jour réussies : le meilleur de chaque jour, les jours de suite, le résultat à partager
     messages.ts     tous les textes d'une partie : messages, aides, bulle d'un cordon, et pourquoi
-                    une baie de l'éditeur ne se joue pas
+                    une baie libre ne se joue pas
     keyHints.ts     les touches qui comptent à l'instant (outil en main, cordon survolé), en touches de clavier sous la baie
     language.ts     la langue parlée (français, anglais) : tr({ fr, en }) choisit les mots, onLanguageChange fait
                     réécrire ce qui n'est écrit qu'une fois ; pageTexts.ts, les mots de index.html (data-i18n)
@@ -168,7 +166,7 @@ src/
     format.ts       nombres, longueurs et durées tels que le joueur les lit
     storage.ts      données gardées dans le navigateur (clés, valeurs par défaut, validation)
     dom.ts, icons.ts petites aides DOM (dialogue ouvert, étoiles), icônes de la barre d'outils
-  audio/        les sons, synthétisés : effets (sfx.ts), musique d'ambiance du mode zen (ambient.ts), le contexte
+  audio/        les sons, synthétisés : effets (sfx.ts), musique d'ambiance de la baie libre hors production (ambient.ts), le contexte
                 audio qu'ils partagent (context.ts)
   lib/          DES OUTILS SANS RAPPORT AVEC LE JEU, que toutes les couches peuvent importer et qui n'importent rien
     assertNever.ts  le défaut d'un switch qui a traité tous les cas
@@ -278,7 +276,7 @@ sur le fil principal.
 ## Données dans le navigateur
 
 `ui/storage.ts` déclare chaque entrée (clé, valeur par défaut, validation) : progression (étoiles et meilleurs temps
-par niveau), tutoriel terminé, règles et gestes déjà rencontrés, carrière (tickets faits, la baie du client telle que laissée), dernière baie de l'éditeur, carnet (teintes portées, trouvailles), baies du jour (le meilleur résultat de chaque date), langue (celle du navigateur tant que le joueur n'en a pas choisi), musique coupée, qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu), image HDR (automatique, activée ou désactivée, et l'intensité de ses lumières) et son
+par niveau), tutoriel terminé, règles et gestes déjà rencontrés, carrière (tickets faits, la baie du client telle que laissée), dernière baie libre réglée, carnet (teintes portées, trouvailles), langue (celle du navigateur tant que le joueur n'en a pas choisi), musique coupée, qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu), image HDR (automatique, activée ou désactivée, et l'intensité de ses lumières) et son
 coupé. Une valeur illisible ou d'une autre forme se lit comme la valeur par défaut.
 
 ## Ajouter…

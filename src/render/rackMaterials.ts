@@ -24,7 +24,7 @@ export const rackMat = {
   cage: new THREE.MeshStandardMaterial({ color: '#aba8a3', roughness: 0.32, metalness: 0.9 }),
   adapterSM: new THREE.MeshStandardMaterial({ color: '#2d6fd8', roughness: 0.45 }),
   adapterMM: new THREE.MeshStandardMaterial({ color: '#d8cfa8', roughness: 0.45 }),
-  ring: new THREE.MeshStandardMaterial({ color: '#19181a', roughness: 0.45, metalness: 0.1 }),
+  manager: new THREE.MeshStandardMaterial({ color: '#19181a', roughness: 0.45, metalness: 0.1 }),
   duct: used({ color: '#353437', roughness: 0.55, metalness: 0.1 }, { scratches: 0.4, grime: 0.4, dust: 0.5 }),
   ductBack: new THREE.MeshStandardMaterial({ color: '#2f2e31', roughness: 0.8 }),
   mgrPlate: used({ color: '#19181b', roughness: 0.55, metalness: 0.3 }, { scratches: 0.5, grime: 0.4, dust: 0.4 }),

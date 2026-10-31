@@ -14,7 +14,6 @@
       <button id="btn-menu" class="ghost" data-i18n="top.menu" data-i18n-title="top.menuTip"></button>
       <div id="level-title"></div>
       <div id="timer">0:00</div>
-      <div id="moves"></div>
       <div id="cuts"></div>
       <div id="call"></div>
       <div class="spacer"></div>
@@ -33,15 +32,8 @@
           <tbody></tbody>
         </table>
       </div>
-      <div id="goal"><div class="head"><span data-i18n="side.next"></span><span id="goal-stars"></span></div><ul id="goal-needs"></ul></div>
-      <details id="scores-box"><summary data-i18n="side.details"></summary>
       <div class="legend" data-i18n="side.legend"></div>
-      <div id="scores">
-        <div class="score" id="bar-conn"><span data-i18n="side.connections"></span><div class="bar"><div class="fill"></div></div><span class="val"></span></div>
-        <div class="score" id="bar-tidy" data-i18n-title="side.tidyTip"><span data-i18n="side.tidy"></span><div class="bar"><div class="fill"></div></div><span class="val"></span></div>
-        <div class="score" id="bar-bundle" data-i18n-title="side.bundlesTip"><span data-i18n="side.bundles"></span><div class="bar"><div class="fill"></div></div><span class="val"></span></div>
-      </div>
-      </details>
+      <div id="goal"><div class="head" data-i18n="side.stars"></div><ul id="goal-list"></ul></div>
       <div id="live-stars"></div>
       <button id="btn-validate" disabled></button>
     </aside>
@@ -75,7 +67,6 @@
         <h1 id="brief-title"></h1>
         <p id="brief-text"></p>
         <ul id="brief-tips"></ul>
-        <details id="brief-known"><summary data-i18n="brief.known"></summary><ul id="brief-known-tips"></ul></details>
         <p id="brief-inv" class="sub"></p>
         <button id="brief-go" class="primary" data-i18n="brief.go"></button>
       </div>
@@ -114,7 +105,6 @@
       <nav class="menu">
         <button id="title-play" class="primary"></button>
         <div class="more">
-          <button id="title-daily" class="ghost"></button>
           <button id="title-modes" class="ghost" data-i18n="common.modes"></button>
         </div>
         <div class="links">
@@ -189,42 +179,45 @@
         </div>
       </div>
     </div>
-    <div id="editor" class="overlay">
+    <div id="free" class="overlay">
       <div class="panel wide">
-        <button id="ed-back" class="link back" data-i18n="common.back"></button>
-        <h1 data-i18n="editor.title"></h1>
-        <p class="sub" data-i18n="editor.sub"></p>
-        <div class="ed-body">
-          <section class="ed-rack-side">
-            <h2><span data-i18n="editor.units"></span> <span id="ed-count"></span></h2>
-            <div class="ed-rack"><div id="ed-units"></div></div>
-            <h2 data-i18n="editor.add"></h2>
-            <div id="ed-palette"></div>
+        <button id="free-back" class="link back" data-i18n="common.back"></button>
+        <h1 data-i18n="free.title"></h1>
+        <p class="sub" data-i18n="free.sub"></p>
+        <h2 data-i18n="free.ready"></h2>
+        <div id="free-ready" class="free-ready"></div>
+        <div class="free-body">
+          <section class="free-rules">
+            <h2 data-i18n="free.rules"></h2>
+            <div class="free-field">
+              <div class="free-label"><span data-i18n="free.cords"></span><b id="free-cables-val"></b></div>
+              <input id="free-cables" type="range" min="1" max="48" />
+            </div>
+            <div class="free-field">
+              <div class="free-label"><span data-i18n="free.services"></span><span id="free-services-dots"></span></div>
+              <div id="free-services" class="choices six"></div>
+            </div>
+            <div class="free-field">
+              <div class="free-label"><span data-i18n="free.difficulty"></span></div>
+              <div id="free-difficulty" class="choices three"></div>
+            </div>
+            <label class="free-toggle"><input id="free-production" type="checkbox" /><i></i><span data-i18n="free.production"></span></label>
+            <p id="free-production-what" class="free-what"></p>
+            <p id="free-error"></p>
+            <div class="free-actions">
+              <button id="free-link" class="ghost"></button>
+              <button id="free-play" class="primary" data-i18n="free.play"></button>
+            </div>
+            <div class="free-import">
+              <input id="free-code" type="text" data-i18n-placeholder="free.code" />
+              <button id="free-import" class="ghost" data-i18n="free.open"></button>
+            </div>
           </section>
-          <section class="ed-rules">
-            <h2 data-i18n="editor.rules"></h2>
-            <div class="ed-field">
-              <div class="ed-label"><span data-i18n="editor.cords"></span><b id="ed-cables-val"></b></div>
-              <input id="ed-cables" type="range" min="1" max="48" />
-            </div>
-            <div class="ed-field">
-              <div class="ed-label"><span data-i18n="editor.services"></span><span id="ed-services-dots"></span></div>
-              <div id="ed-services" class="choices six"></div>
-            </div>
-            <div class="ed-field">
-              <div class="ed-label"><span data-i18n="editor.difficulty"></span></div>
-              <div id="ed-difficulty" class="choices three"></div>
-            </div>
-            <label class="ed-toggle"><input id="ed-maintenance" type="checkbox" /><i></i><span data-i18n="editor.maintenance"></span></label>
-            <p id="ed-error"></p>
-            <div class="ed-actions">
-              <button id="ed-link" class="ghost"></button>
-              <button id="ed-play" class="primary" data-i18n="editor.play"></button>
-            </div>
-            <div class="ed-import">
-              <input id="ed-code" type="text" data-i18n-placeholder="editor.code" />
-              <button id="ed-import" class="ghost" data-i18n="editor.open"></button>
-            </div>
+          <section class="free-rack-side">
+            <h2><span data-i18n="free.units"></span> <span id="free-count"></span></h2>
+            <div class="free-rack"><div id="free-units"></div></div>
+            <h2 data-i18n="free.add"></h2>
+            <div id="free-palette"></div>
           </section>
         </div>
       </div>

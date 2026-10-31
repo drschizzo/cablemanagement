@@ -2,7 +2,7 @@
 // and how erratic the other cords get while the hand drags one through them.
 //   NC=48 SEEDS=1,2,3 PARAMS='{"kCapCable":2}' npm run free
 import { World } from '../src/game/world';
-import { freeLevel } from '../src/game/levels/freeLevel';
+import { freeLevel, plainSpec } from '../src/game/levels/freeLevel';
 import { envNumber, envParams, envSeeds } from './env';
 
 const NC = envNumber('NC', 48);
@@ -34,7 +34,7 @@ function worstPen(w: World): number {
 
 const tot = { shakeX: 0, settle: 0, ms: 0, kicks: 0, jerk: 0, rest: 0, shake: 0, pen: 0 };
 for (const seed of seeds) {
-  const w = new World(freeLevel(NC, seed));
+  const w = new World(freeLevel(plainSpec(NC, seed, true)));
   Object.assign(w.sim.P, params);
   const sim = w.sim;
   // 1. settling from the generated mess

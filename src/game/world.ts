@@ -5,7 +5,7 @@
 // the find it hides. How tidy it all is: evaluation.ts.
 
 import { CABLES, type CableInit, type Pinch } from '@drschizzo/avbd-cables';
-import { bundleCount, cordStrain, evaluate, holdMap, okPorts, type Evaluation, type Strain } from './evaluation';
+import { cordStrain, evaluate, holdMap, okPorts, type Evaluation, type Strain } from './evaluation';
 import { ThreadedSim } from './physics/threadedSim';
 import { CABLE_R, CONNECTOR, Rack, SEG, type Item } from './rack';
 import { stockOf, type ItemKind, type Stock } from './supplies';
@@ -613,10 +613,5 @@ export class World {
   /** ports of the lines connected as planned (their LEDs are green) */
   okPorts(ev?: Evaluation): Set<string> {
     return okPorts(this, ev);
-  }
-
-  /** straps round three cords or more, lying in a manager or a duct */
-  bundleCount(): number {
-    return bundleCount(this);
   }
 }

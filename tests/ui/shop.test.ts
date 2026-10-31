@@ -6,7 +6,7 @@ import type { Career, Progress, Workshop } from '../../src/ui/storage';
 
 const workshop = (): Workshop => ({ equipped: {}, finds: [] });
 const item = (id: string) => SHOP.find((i) => i.id === id)!;
-const progress = (stars: Record<string, number>): Progress => ({ stars, times: {}, challenges: {} });
+const progress = (stars: Record<string, number>): Progress => ({ stars, times: {} });
 const career = (done: number, stars: number[] = []): Career => ({ done, cabinet: null, stars });
 
 describe('the workshop', () => {
@@ -24,8 +24,8 @@ describe('the workshop', () => {
     expect(lookOf(w, needed).velcro).toBe(DEFAULT_LOOK.velcro);
   });
 
-  it('adds up the stars of the campaign, the puzzles and the career', () => {
-    expect(starsWon(progress({ l1: 3, l2: 2, p1: 3, unknown: 3 }), career(2, [3, 2]))).toBe(13);
+  it('adds up the stars of the training, the big cabinets and the career', () => {
+    expect(starsWon(progress({ l1: 3, l2: 2, l6: 3, unknown: 3 }), career(2, [3, 2]))).toBe(13);
   });
 
   it('keeps a find once', () => {

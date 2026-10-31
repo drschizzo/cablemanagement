@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { nextStar, starsOf, type StarCounts } from '../../src/game/evaluation';
+import { isGoalMet, starGoals, starsOf, type StarCounts } from '../../src/game/evaluation';
 import { World } from '../../src/game/world';
-import { BIG_BAYS, LEVELS } from '../../src/game/levels/campaign';
+import { LEVELS } from '../../src/game/levels/campaign';
 import type { LevelDef } from '../../src/game/levels/levelDef';
-import { strapBundles, tidyKit, tidyLayout } from '../../src/game/idealRoutes';
+import { tidyKit, tidyLayout } from '../../src/game/idealRoutes';
 
 /** a cabinet of 20 lines with everything done; each test takes one thing away */
-const perfect: StarCounts = { total: 20, connected: 20, routed: 20, clear: 20, labelled: 20, relaxed: 20, tidy: 20, tautShort: 0, mixedSupports: 0, bundles: 2, bundlesNeeded: 2, downtime: 50, budget: 50 };
+const perfect: StarCounts = { total: 20, connected: 20, routed: 20, clear: 20, relaxed: 20, tidy: 20, tautShort: 0, mixedSupports: 0, families: 2, downtime: 50, budget: 50 };
 const stars = (c: Partial<StarCounts>) => starsOf({ ...perfect, ...c });
 
 describe('the stars', () => {
@@ -22,7 +22,7 @@ describe('the stars', () => {
 
   it('three only with everything: each thing the level asks besides, missing alone, leaves two', () => {
     expect(stars({})).toBe(3);
-    for (const missing of [{ labelled: 19 }, { mixedSupports: 1 }, { bundles: 1 }]) {
+    for (const missing of [{ mixedSupports: 1 }, { downtime: 51 }]) {
       expect([missing, stars(missing)]).toEqual([missing, 2]);
     }
   });
@@ -33,55 +33,42 @@ describe('the stars', () => {
     expect(stars({ downtime: 1e6, budget: Infinity })).toBe(3);
   });
 
-  it('a level with no bundle asked: none needed, more are fine', () => {
-    expect(stars({ bundles: 0, bundlesNeeded: 0 })).toBe(3);
-    expect(stars({ bundles: 5 })).toBe(3);
+  it('a level with neither budget nor several families: three with two', () => {
+    expect(stars({ budget: Infinity, families: 1, mixedSupports: 3 })).toBe(3);
   });
 });
 
-/** the cabinet of a level finished by a careful technician, settled, strapped and labelled */
+/** the cabinet of a level finished by a careful technician, settled and labelled */
 function finished(lv: LevelDef): World {
   const kit = tidyKit(lv);
   const w = new World(kit, tidyLayout(kit).starts);
   for (let f = 0; f < 240; f++) w.sim.step();
-  strapBundles(w, lv.bundles ?? 0);
-  for (let f = 0; f < 60; f++) w.sim.step();
   w.circuits.forEach((ci, i) => w.labelCord(i, ci.service));
   return w;
 }
 
-describe('what the next star needs', () => {
-  const next = (c: Partial<StarCounts>) => nextStar({ ...perfect, ...c });
+describe('what each star asks', () => {
+  const goals = (c: Partial<StarCounts>) => starGoals({ ...perfect, ...c });
 
-  it('nothing once there are three stars', () => {
-    expect(next({})).toBeNull();
+  it('every goal from the start, the third star\'s included', () => {
+    expect(goals({ connected: 0, tidy: 0 }).map((g) => [g.stars, g.kind])).toEqual([[1, 'connect'], [2, 'tidy'], [3, 'budget'], [3, 'separate']]);
   });
 
-  it('the first star: the links still to plug', () => {
-    expect(next({ connected: 17 })).toEqual({ stars: 1, needs: [{ kind: 'connect', count: 3 }] });
+  it('the cords not tidy yet, and what is wrong with them', () => {
+    expect(goals({ tidy: 10, routed: 12, clear: 15, relaxed: 18 })[1]).toEqual({ stars: 2, kind: 'tidy', done: 10, total: 20, hanging: 8, front: 5, strained: 2, short: 0 });
   });
 
-  it('the second: every cord not tidy yet, and what is wrong with them', () => {
-    expect(next({ tidy: 10, routed: 12, clear: 15, relaxed: 18 })).toEqual({ stars: 2, needs: [{ kind: 'tidy', count: 10, hanging: 8, front: 5, strained: 2, short: 0 }] });
+  it('the third star asks only what the level has', () => {
+    expect(goals({ budget: Infinity, families: 1 }).filter((g) => g.stars === 3)).toEqual([]);
   });
 
-  it('the third: what the level asks besides, the incident first when the budget is overrun', () => {
-    expect(next({ bundles: 1, downtime: 51 })).toEqual({ stars: 3, needs: [{ kind: 'incident' }, { kind: 'bundle', count: 1 }] });
+  it('the budget is met until it is overrun', () => {
+    const budget = (downtime: number) => isGoalMet(goals({ downtime }).find((g) => g.kind === 'budget')!);
+    expect([budget(50), budget(51)]).toEqual([true, false]);
   });
 });
 
 describe('a perfect cabinet spoiled by one thing', () => {
-  it('one cord without its label: two stars', () => {
-    const w = finished(LEVELS[3]);
-    expect(w.level.labels).toBe(true);
-    expect(w.evaluate().stars).toBe(3);
-    w.labelCord(0, null);
-    const ev = w.evaluate();
-    expect(ev.labelled).toBe(ev.total - 1);
-    expect(ev.stars).toBe(2);
-    w.dispose();
-  });
-
   it('one cord cut too short, pulled taut: no third star', () => {
     const w = finished(LEVELS[2]);
     expect(w.evaluate().stars).toBe(3);
@@ -93,18 +80,6 @@ describe('a perfect cabinet spoiled by one thing', () => {
     expect(ev.cableStrain[cord]).toBe('taut');
     expect(ev.relaxed).toBe(ev.total - 1);
     expect(ev.stars).toBeLessThan(3);
-    w.dispose();
-  });
-
-  it('one bundle short of what the level asks: two stars', () => {
-    const lv = BIG_BAYS[0];
-    expect(lv.bundles).toBeGreaterThan(0);
-    const w = finished(lv);
-    expect(w.evaluate().stars).toBe(3);
-    w.removeStrap(w.straps[0]);
-    const ev = w.evaluate();
-    expect(ev.bundles).toBe(lv.bundles! - 1);
-    expect(ev.stars).toBe(2);
     w.dispose();
   });
 });

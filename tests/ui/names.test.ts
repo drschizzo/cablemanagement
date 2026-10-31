@@ -17,6 +17,6 @@ describe('the names of things', () => {
 
   it('counts the supplies, one and several', () => {
     expect(countOf('duct', 2)).toBe('2 goulottes');
-    expect(countOf('ring', 1)).toBe('1 anneau');
+    expect(countOf('velcro', 1)).toBe('1 velcro');
   });
 });

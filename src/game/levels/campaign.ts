@@ -1,5 +1,5 @@
-// The training (five cabinets, one rule more each), the big cabinets of the
-// challenges, and the guided tutorial.
+// The training (five cabinets, one rule more each), the big cabinets of free
+// play, and the guided tutorial.
 
 import type { CampaignLevel, TutorialLevel } from './levelDef';
 import { BLANK, FIREWALL, ROUTER, SERVER, UPS, copperPanel, ethernetSwitch, fingerManager, opticalPanel, server } from './equipment';
@@ -34,7 +34,7 @@ export const LEVELS: CampaignLevel[] = [
     // down the side through a duct the cords take 0.6 to 1.07 m, across the front 0.35 to 0.75 m
     cords: [[0.75, 2], [1, 5], [1.5, 2]],
     labels: false, services: 2, types: ['CU'], colorByService: true,
-    inventory: { fingerManager: 1, duct: 2, ring: 2, velcro: 3 },
+    inventory: { fingerManager: 1, duct: 2, velcro: 3 },
     preinstalled: [fingerManager(2)],
     seed: 23,
   },
@@ -48,7 +48,7 @@ export const LEVELS: CampaignLevel[] = [
     links: [{ a: 'S23', b: 'F1' }, { a: 'S24', b: 'F2' }],
     downtime: 170, bypass: 1, cords: [[0.5, 2], [1, 4]],
     labels: false, services: 2, types: ['CU'], colorByService: true,
-    inventory: { fingerManager: 1, duct: 2, ring: 3, velcro: 4 },
+    inventory: { fingerManager: 1, duct: 2, velcro: 4 },
     preinstalled: [fingerManager(2), fingerManager(5)],
     seed: 37,
   },
@@ -62,7 +62,7 @@ export const LEVELS: CampaignLevel[] = [
     links: [{ a: 'S23', b: 'F1' }, { a: 'S24', b: 'R1', service: 2 }, { a: 'F8', b: 'R8', service: 2 }],
     downtime: 250, bypass: 1, cords: [[0.25, 1], [0.5, 1], [0.75, 3], [1, 7]],
     labels: true, services: 3, types: ['CU'], colorByService: true,
-    inventory: { fingerManager: 1, duct: 2, ring: 3, velcro: 5 },
+    inventory: { fingerManager: 1, duct: 4, velcro: 5 },
     preinstalled: [fingerManager(2), fingerManager(5), fingerManager(7)],
     seed: 41,
   },
@@ -76,16 +76,15 @@ export const LEVELS: CampaignLevel[] = [
     links: [{ a: 'S22', b: 'F1' }, { a: 'F7', b: 'X1', service: 4 }, { a: 'F8', b: 'Y1', service: 4 }],
     downtime: 150, bypass: 1, cords: [[0.25, 1], [0.5, 2], [0.75, 6], [1, 5], [1.5, 1]],
     labels: true, services: 3, types: ['OS2', 'CU'], colorByService: true,
-    inventory: { fingerManager: 2, duct: 4, ring: 4, velcro: 6 },
+    inventory: { fingerManager: 2, duct: 4, velcro: 6 },
     preinstalled: [fingerManager(2), fingerManager(4), fingerManager(8), fingerManager(10)],
     seed: 53,
   },
 ];
 
 /**
- * The big cabinets, among the challenges: busy server rooms where every rule
- * of the training and the career meets the others. Open once the training is
- * done (ui/modeLocks.ts); two stars on one open the next.
+ * The big cabinets, ready to play in free play: busy server rooms where every
+ * rule of the training and the career meets the others.
  */
 export const BIG_BAYS: CampaignLevel[] = [
   {
@@ -102,10 +101,9 @@ export const BIG_BAYS: CampaignLevel[] = [
     pairing: true,
     downtime: 880, bypass: 2, cords: [[0.15, 21], [0.5, 1], [0.75, 1], [1, 3], [1.5, 1]],
     labels: true, services: 5, types: ['CU'], colorByService: true,
-    inventory: { fingerManager: 1, duct: 4, ring: 2, velcro: 8 },
+    inventory: { fingerManager: 1, duct: 4, velcro: 8 },
     preinstalled: [fingerManager(3), fingerManager(6), fingerManager(9), fingerManager(11)],
     seed: 67,
-    bundles: 1,
   },
   {
     id: 'l7',
@@ -122,10 +120,9 @@ export const BIG_BAYS: CampaignLevel[] = [
     pairing: true,
     downtime: 720, bypass: 3, cords: [[0.15, 19], [0.25, 1], [0.5, 1], [0.75, 1], [1, 5], [1.5, 4]],
     labels: true, services: 5, types: ['OS2', 'CU'], colorByService: true,
-    inventory: { fingerManager: 2, duct: 8, ring: 4, velcro: 10 },
+    inventory: { fingerManager: 2, duct: 8, velcro: 10 },
     preinstalled: [fingerManager(6), fingerManager(9), fingerManager(12), fingerManager(14)],
     seed: 79,
-    bundles: 3,
   },
   {
     id: 'l8',
@@ -141,10 +138,9 @@ export const BIG_BAYS: CampaignLevel[] = [
     pairing: true,
     downtime: 660, bypass: 2, cords: [[0.15, 29], [0.25, 1], [0.5, 3], [0.75, 1], [1, 1], [1.5, 2]],
     labels: true, services: 6, types: ['CU'], colorByService: true,
-    inventory: { fingerManager: 2, duct: 6, ring: 4, velcro: 12 },
+    inventory: { fingerManager: 2, duct: 6, velcro: 12 },
     preinstalled: [fingerManager(3), fingerManager(6), fingerManager(9), fingerManager(12)],
     seed: 97,
-    bundles: 4,
     blind: true,
   },
 ];
@@ -156,7 +152,7 @@ export const TUTORIAL: TutorialLevel = {
   units: [BLANK, copperPanel('A', 12), BLANK, BLANK, BLANK, BLANK, BLANK, ethernetSwitch('S', 12), BLANK, BLANK],
   cables: 4, wrong: 1, loose: 0, slack: [0.25, 0.35], mess: 2,
   labels: true, services: 2, types: ['CU'], colorByService: true,
-  inventory: { fingerManager: 1, duct: 1, ring: 1, velcro: 2 },
+  inventory: { fingerManager: 1, duct: 1, velcro: 2 },
   preinstalled: [{ kind: 'fingerManager', unit: 2, side: 0 }],
   seed: 5,
 };

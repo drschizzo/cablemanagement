@@ -1,5 +1,5 @@
 // What the player is given to tidy a cabinet: the supports, items placed in
-// the rack that guide the cords (finger managers, ducts, rings), and the
+// the rack that guide the cords (finger managers, ducts), and the
 // velcros, straps closed round several cords. Everything the rules know of
 // each sort lives here; the types are derived from this list, so that a new
 // sort is added in one place and the compiler points at every switch (and
@@ -16,7 +16,6 @@ interface SupplyInfo {
 export const SUPPLIES = {
   fingerManager: { category: 'support' },
   duct: { category: 'support' },
-  ring: { category: 'support' },
   velcro: { category: 'strap' },
 } as const satisfies Record<string, SupplyInfo>;
 

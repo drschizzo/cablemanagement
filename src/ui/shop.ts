@@ -5,7 +5,6 @@
 
 import { DEFAULT_LOOK, type Look } from '../render/look';
 import { BIG_BAYS, LEVELS } from '../game/levels/campaign';
-import { PUZZLES } from '../game/levels/puzzles';
 import type { FindId } from '../game/finds';
 import type { Career, Progress, Workshop } from './storage';
 import type { Words } from './language';
@@ -44,9 +43,9 @@ export function isWorkshopOpen(progress: Progress, workshop: Workshop): boolean 
   return workshop.finds.length > 0 || (progress.stars[WORKSHOP_OPENS_AT] ?? 0) > 0;
 }
 
-/** the best stars of every cabinet of the training, big cabinet, puzzle and ticket of the career, added up */
+/** the best stars of every cabinet of the training, big cabinet and ticket of the career, added up */
 export function starsWon(progress: Progress, career: Career): number {
-  const levels = [...LEVELS, ...BIG_BAYS, ...PUZZLES].reduce((sum, l) => sum + (progress.stars[l.id] ?? 0), 0);
+  const levels = [...LEVELS, ...BIG_BAYS].reduce((sum, l) => sum + (progress.stars[l.id] ?? 0), 0);
   return levels + career.stars.reduce((sum, s) => sum + (s ?? 0), 0);
 }
 

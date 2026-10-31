@@ -12,7 +12,7 @@ import { CATALOGUE } from '../src/game/cordTypes';
 import { BIG_BAYS, LEVELS } from '../src/game/levels/campaign';
 import { SERVICES } from '../src/game/services';
 import { polyLength } from '../src/lib/vec3';
-import { routePlan, strapBundles, tidyKit, tidyLayout, tidyRoutes } from '../src/game/idealRoutes';
+import { routePlan, tidyKit, tidyLayout, tidyRoutes } from '../src/game/idealRoutes';
 import { planRoute, RouteRun } from '../src/game/routeLaying';
 import type { Guide } from '../src/game/rack';
 import { env } from './env';
@@ -32,15 +32,14 @@ for (const lv of [...LEVELS, ...BIG_BAYS]) {
   const kit = tidyKit(lv);
   const w = new World(kit, tidyLayout(kit).starts);
   for (let f = 0; f < 240; f++) w.sim.step();
-  strapBundles(w, lv.bundles ?? 0);
   for (let f = 0; f < 60; f++) w.sim.step();
   w.circuits.forEach((ci, i) => w.labelCord(i, ci.service));
   const ev = w.evaluate();
   const added = kit.preinstalled.slice(lv.preinstalled.length);
   const count = (k: string) => added.filter((p) => p.kind === k).length;
-  const stock = `guide-câbles ${count('fingerManager')}/${lv.inventory.fingerManager ?? 0} goulottes ${count('duct')}/${lv.inventory.duct ?? 0} anneaux ${count('ring')}/${lv.inventory.ring ?? 0}`;
+  const stock = `guide-câbles ${count('fingerManager')}/${lv.inventory.fingerManager ?? 0} goulottes ${count('duct')}/${lv.inventory.duct ?? 0}`;
   const bad = w.cables.map((cb, c) => (ev.cableRouted[c] ? '' : `R:${cb.ends.map((e) => e.port).join('-')} `) + (ev.cableObstructs[c] ? `O:${cb.ends.map((e) => e.port).join('-')} ` : '')).join('');
-  console.log(`${lv.id}: routed ${ev.routed}/${ev.total} clear ${ev.clear} relaxed ${ev.relaxed} stars ${ev.stars} bundles ${ev.bundles}/${ev.bundlesNeeded} velcro ${(lv.inventory.velcro ?? 0) - w.stock.velcro}/${lv.inventory.velcro ?? 0} | ${stock} ${bad}`);
+  console.log(`${lv.id}: routed ${ev.routed}/${ev.total} clear ${ev.clear} relaxed ${ev.relaxed} stars ${ev.stars} | ${stock} ${bad}`);
 }
 
 console.log('\nAu départ : les liaisons en production rangées sans les débrancher');

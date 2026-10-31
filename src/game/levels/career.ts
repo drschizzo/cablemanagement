@@ -47,7 +47,6 @@ export interface TicketSpec {
   bypass?: number;
   incidents?: number;
   faults?: number;
-  bundles?: number;
   inventory: Partial<Stock>;
   cords: [number, number][];
 }
@@ -60,17 +59,17 @@ const SEED = 7300;
 /**
  * The tickets, in order. Each one brings at most one thing the player has not
  * met yet in the career: power (3), incidents (4), links out of service (5),
- * a broken cord (6), a second panel (7), bundles (8).
+ * a broken cord (6), a second panel (7).
  */
 export const TICKETS: TicketSpec[] = [
   // the first day: put the cabinet in order
-  { services: 2, downtime: 160, bypass: 1, inventory: { fingerManager: 1, duct: 2, ring: 2, velcro: 3 }, cords: [[0.5, 3], [0.75, 3], [1, 3]] },
+  { services: 2, downtime: 160, bypass: 1, inventory: { fingerManager: 1, duct: 2, velcro: 3 }, cords: [[0.5, 3], [0.75, 3], [1, 3]] },
   // the newsroom moves in: six links more on the panel
   { add: 6, services: 3, downtime: 140, bypass: 1, inventory: { velcro: 3 }, cords: [[0.5, 3], [0.75, 3], [1, 2]] },
   // the archives server, and the power strip that feeds its two supplies
   { install: [{ unit: 11, spec: pdu() }, { unit: 13, spec: poweredServer('X', 0.03) }],
     links: [{ from: 'S', to: 'X1', service: 4 }, { from: 'S', to: 'X2', service: 4 }, { from: 'P', to: 'XP1', service: 4, type: 'PWR' }, { from: 'P', to: 'XP2', service: 4, type: 'PWR' }],
-    add: 2, services: 5, downtime: 160, bypass: 1, inventory: { fingerManager: 1, ring: 2, velcro: 2 }, cords: [[1, 2], [1.5, 2], [2, 2]] },
+    add: 2, services: 5, downtime: 160, bypass: 1, inventory: { fingerManager: 1, velcro: 2 }, cords: [[1, 2], [1.5, 2], [2, 2]] },
   // a colleague of the sound crew in the cabinet too: links unplugged by mistake, and listeners calling
   { add: 2, incidents: 2, services: 5, downtime: 160, bypass: 1, inventory: { velcro: 2 }, cords: [[0.5, 2], [0.75, 2], [1, 2]] },
   // the night show moves: links out, links in
@@ -80,17 +79,17 @@ export const TICKETS: TicketSpec[] = [
   // the festival: a second panel and its switch
   { install: [{ unit: 4, spec: copperPanel('B', 24) }, { unit: 5, spec: ethernetSwitch('T', 24) }], links: [{ from: 'T', to: 'F2' }],
     add: 8, services: 5, downtime: 220, bypass: 2, inventory: { fingerManager: 1, duct: 2, velcro: 4 }, cords: [[0.15, 6], [0.25, 4], [0.5, 4], [1, 3]] },
-  // the morning studio is rewired: a first bundle
-  { add: 3, services: 5, downtime: 200, bypass: 2, bundles: 1, inventory: { velcro: 4 }, cords: [[0.5, 3], [0.75, 3], [1, 2]] },
+  // the morning studio is rewired: three links more
+  { add: 3, services: 5, downtime: 200, bypass: 2, inventory: { velcro: 4 }, cords: [[0.5, 3], [0.75, 3], [1, 2]] },
   // the storm: old cords broken inside, and listeners calling
   { add: 2, faults: 2, incidents: 2, services: 5, downtime: 200, bypass: 2, inventory: { velcro: 2 }, cords: [[0.5, 3], [0.75, 3], [1, 3]] },
   // online: the streaming server
   { install: [{ unit: 7, spec: server('Y', 0.09) }], links: [{ from: 'T', to: 'Y1', service: 4 }, { from: 'T', to: 'Y2', service: 4 }],
-    add: 4, services: 6, downtime: 240, bypass: 2, bundles: 2, inventory: { ring: 2, velcro: 6 }, cords: [[1, 3], [1.5, 3], [2, 2]] },
+    add: 4, services: 6, downtime: 240, bypass: 2, inventory: { velcro: 6 }, cords: [[1, 3], [1.5, 3], [2, 2]] },
   // election night: links out, links in, on a tight budget
-  { remove: 2, add: 3, services: 6, downtime: 100, bypass: 1, bundles: 2, inventory: { velcro: 4 }, cords: [[0.5, 3], [0.75, 3], [1, 2]] },
-  // the 40th anniversary live: nothing new, everything perfect, in bundles
-  { services: 6, downtime: 260, bypass: 2, bundles: 4, inventory: { velcro: 8 }, cords: [[0.5, 4], [0.75, 4], [1, 4]] },
+  { remove: 2, add: 3, services: 6, downtime: 100, bypass: 1, inventory: { velcro: 4 }, cords: [[0.5, 3], [0.75, 3], [1, 2]] },
+  // the 40th anniversary live: two links for the guests' set, and the phone ringing
+  { add: 2, incidents: 2, services: 6, downtime: 260, bypass: 2, inventory: { velcro: 4 }, cords: [[0.5, 4], [0.75, 4], [1, 4]] },
 ];
 
 /** what every ticket shares: cords coloured by service, labels; copper, and power once a power strip is in */
@@ -103,7 +102,7 @@ function base(index: number, units: UnitSpec[], spec: TicketSpec): Omit<TicketLe
     units,
     ...MESS,
     labels: true, services: spec.services, types, colorByService: true,
-    downtime: spec.downtime, bypass: spec.bypass, faults: spec.faults, bundles: spec.bundles,
+    downtime: spec.downtime, bypass: spec.bypass, faults: spec.faults,
     incidents: spec.incidents ? drawIncidents(spec.incidents, rng(SEED + 100 + index)) : undefined,
     inventory: spec.inventory,
     cords: spec.cords,

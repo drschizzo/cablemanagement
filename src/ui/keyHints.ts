@@ -42,16 +42,11 @@ export function keysFor(ctx: KeyContext): KeyCap[] {
     ];
     case 'supports': return [
       { keys: CLICK, action: { fr: 'poser ou retirer un support', en: 'place or take off a support' } },
-      { keys: { fr: 'Maj+clic', en: 'Shift+click' }, action: { fr: 'un anneau', en: 'a ring' } },
       ESCAPE,
     ];
     case 'velcro': return [
       { keys: { fr: 'Glisser en travers', en: 'Drag across' }, action: { fr: 'serrer les câbles', en: 'strap the cords' } },
       { keys: { fr: 'Clic sur un velcro', en: 'Click a velcro' }, action: { fr: 'l\'enlever', en: 'take it off' } },
-      ESCAPE,
-    ];
-    case 'comb': return [
-      { keys: { fr: 'Glisser le long d\'un faisceau', en: 'Drag along a bundle' }, action: { fr: 'peigner les câbles', en: 'comb the cords' } },
       ESCAPE,
     ];
     case 'tester': return [

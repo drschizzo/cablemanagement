@@ -1,12 +1,12 @@
 // The side panel: the patching schedule (one row per link: plugged, tidy),
-// the downtime budget, what the next star needs, the score bars
-// (folded), the stars, and the Validate button.
+// the downtime budget, the three stars with what each asks and how far along
+// it is, the stars won, and the Validate button.
 
 import type { Controller } from '../play/controller';
 import { CORD_KINDS } from '../game/cordTypes';
 import { SERVICES } from '../game/services';
-import { nextStar, type CircuitStatus, type Evaluation, type Strain } from '../game/evaluation';
-import { starNeedText, strainLabel } from './messages';
+import { isGoalMet, starGoals, type CircuitStatus, type Evaluation, type Strain } from '../game/evaluation';
+import { starGoalText, strainLabel } from './messages';
 import { UNLOCK_STARS } from '../game/levels/campaign';
 import type { LevelDef } from '../game/levels/levelDef';
 import { formatCost } from './format';
@@ -73,11 +73,7 @@ export class SchedulePanel {
     });
     const n = ev.total;
     this.showDowntime(ev, ctl, level);
-    setBar('#bar-conn', ev.connected, n);
-    setBar('#bar-tidy', ev.tidy, n);
-    setBar('#bar-bundle', Math.min(ev.bundles, ev.bundlesNeeded), ev.bundlesNeeded);
-    $('#bar-bundle').style.display = ev.bundlesNeeded ? '' : 'none';
-    this.showGoal(ev);
+    this.showGoals(ev);
     $('#live-stars').innerHTML = starsHtml(ev.stars);
     const validate = $<HTMLButtonElement>('#btn-validate');
     validate.disabled = ev.stars < 1;
@@ -104,13 +100,19 @@ export class SchedulePanel {
       });
   }
 
-  /** the next star, and the list of what it still needs */
-  private showGoal(ev: Evaluation): void {
-    const next = nextStar(ev);
-    $('#goal-stars').innerHTML = starsHtml(next?.stars ?? 3);
-    $('#goal-needs').innerHTML = next
-      ? next.needs.map((need) => `<li${need.kind === 'incident' ? ' class="bad"' : ''}>${starNeedText(need)}</li>`).join('')
-      : `<li class="done">${tr({ fr: 'Tout est en ordre : validez la baie.', en: 'All in order: sign off the cabinet.' })}</li>`;
+  /** the three stars: each goal, reached or not, with what is still wrong */
+  private showGoals(ev: Evaluation): void {
+    const goals = starGoals(ev);
+    const line = (stars: number, cls: string, label: string, progress = '', detail = '', title = '') =>
+      `<li class="${cls}"${title ? ` title="${title}"` : ''}><span class="s">${'★'.repeat(stars)}</span><span class="l">${label}</span><span class="p">${progress}</span>${detail ? `<span class="d">${detail}</span>` : ''}</li>`;
+    const items = goals.map((g) => {
+      const text = starGoalText(g);
+      const cls = isGoalMet(g) ? 'met' : g.kind === 'budget' ? 'lost' : '';
+      const title = g.kind === 'tidy' ? tr({ fr: 'Un câble rangé ne pend nulle part de plus de 20 cm hors des supports, ne passe devant aucun autre port, et n\'est ni tendu ni plié.', en: 'A tidy cord hangs nowhere more than 20 cm out of the supports, crosses no other port, and is neither taut nor kinked.' }) : '';
+      return line(g.stars, cls, text.label, text.progress, text.detail, title);
+    });
+    if (!goals.some((g) => g.stars === 3)) items.push(line(3, 'none', tr({ fr: 'Aucune consigne de plus : ★★★ vient avec ★★', en: 'Nothing more asked: ★★★ comes with ★★' })));
+    $('#goal-list').innerHTML = items.join('');
   }
 }
 
@@ -126,10 +128,3 @@ function tidyTip(s: CircuitStatus, strain: Strain | null): string {
   return tr({ fr: `Câble pas encore rangé : ${why}`, en: `Cord not tidy yet: ${why}` });
 }
 
-/** a score bar: `value` of `total` */
-function setBar(selector: string, value: number, total: number): void {
-  const el = $(selector);
-  (el.querySelector('.fill') as HTMLElement).style.width = `${total ? (100 * value) / total : 0}%`;
-  el.querySelector('.val')!.textContent = `${value}/${total}`;
-  el.classList.toggle('full', value === total);
-}

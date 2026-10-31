@@ -4,13 +4,12 @@ import { World } from '../../../src/game/world';
 import { ITEM_KINDS } from '../../../src/game/supplies';
 import { SERVICES } from '../../../src/game/services';
 import { BIG_BAYS, LEVELS, TUTORIAL } from '../../../src/game/levels/campaign';
-import { freeLevel } from '../../../src/game/levels/freeLevel';
-import { PUZZLES } from '../../../src/game/levels/puzzles';
+import { freeLevel, plainSpec } from '../../../src/game/levels/freeLevel';
 import { showcaseRack } from '../../../src/game/levels/showcaseRack';
 import type { LevelDef } from '../../../src/game/levels/levelDef';
-import { strapBundles, tidyKit, tidyLayout, tidyTargets } from '../../../src/game/idealRoutes';
+import { tidyKit, tidyLayout, tidyTargets } from '../../../src/game/idealRoutes';
 
-const ALL: LevelDef[] = [...LEVELS, ...BIG_BAYS, ...PUZZLES, TUTORIAL, freeLevel(30, 1), showcaseRack('mess', 1), showcaseRack('tidy', 1)];
+const ALL: LevelDef[] = [...LEVELS, ...BIG_BAYS, TUTORIAL, freeLevel(plainSpec(30, 1, true)), showcaseRack('mess', 1), showcaseRack('tidy', 1)];
 
 describe.each(ALL.map((lv) => [lv.id, lv] as const))('%s', (_, lv) => {
   const w = new World(lv);
@@ -55,14 +54,13 @@ function finishedWorld(lv: LevelDef) {
   const kit = tidyKit(lv);
   const w = new World(kit, tidyLayout(kit).starts);
   for (let f = 0; f < 240; f++) w.sim.step();
-  strapBundles(w, lv.bundles ?? 0);
   for (let f = 0; f < 60; f++) w.sim.step();
   w.circuits.forEach((ci, i) => w.labelCord(i, ci.service));
   return w;
 }
 
 describe('no level is won before the player does anything', () => {
-  for (const lv of [...LEVELS, ...BIG_BAYS, ...PUZZLES]) {
+  for (const lv of [...LEVELS, ...BIG_BAYS]) {
     it(lv.id, () => {
       const w = new World(lv);
       w.preroll(60);
@@ -72,7 +70,7 @@ describe('no level is won before the player does anything', () => {
 });
 
 describe('three stars are possible, with the level\'s own stock', () => {
-  for (const lv of [...LEVELS, ...BIG_BAYS, ...PUZZLES]) {
+  for (const lv of [...LEVELS, ...BIG_BAYS]) {
     it(lv.id, () => {
       const kit = tidyKit(lv);
       const added = kit.preinstalled.slice(lv.preinstalled.length);

@@ -1,12 +1,12 @@
 // Every sentence a level says to the player: the toasts, the hints under the
-// cabinet, the tooltip of a cord, what the next star needs, and why a cabinet of the editor cannot be played. The game sends data (play/messages.ts,
-// game/evaluation.ts, game/levels/customLevel.ts); the words live here.
+// cabinet, the tooltip of a cord, what each star asks, and why a free cabinet cannot be played. The game sends data (play/messages.ts,
+// game/evaluation.ts, game/levels/freeLevel.ts); the words live here.
 
 import type { CordInfo, Hint, HoverNote, PhysicsStats, Toast } from '../play/messages';
 import type { RouteError } from '../game/routeLaying';
-import type { StarNeed, Strain } from '../game/evaluation';
+import { isGoalMet, type StarGoal, type Strain } from '../game/evaluation';
 import type { IncidentEvent } from '../game/incidents';
-import type { CustomError } from '../game/levels/customLevel';
+import type { FreeError } from '../game/levels/freeLevel';
 import { assertNever } from '../lib/assertNever';
 import { formatCost, formatDecimal } from './format';
 import { cordTypeName, serviceName, supplyName } from './names';
@@ -99,15 +99,12 @@ export function hintHtml(h: Hint): string {
       ? tr({ fr: '<b>Profondeur</b> : souris vers le haut = vers le fond, vers le bas = vers vous. Relâchez Maj pour revenir.', en: '<b>Depth</b>: mouse up = to the back, down = towards you. Let go of Shift to come back.' })
       : tr({ fr: 'Maintenez <b>Maj</b> pour pousser le câble vers le fond ou le ramener vers vous.', en: 'Hold <b>Shift</b> to push the cord to the back or bring it towards you.' });
     case 'drawRoute': return tr({
-      fr: 'Tracez le chemin du câble <b>par-dessus les guides</b>, dans l\'ordre où il doit les traverser (guide-câbles, anneaux, goulottes), et finissez sur un <b>port libre</b> pour l\'y brancher. Relâchez : le câble est posé le long du chemin.',
-      en: 'Draw the cord\'s route <b>over the guides</b>, in the order it must go through them (cable managers, rings, ducts), and end on a <b>free port</b> to plug it there. Let go: the cord is laid along the route.',
+      fr: 'Tracez le chemin du câble <b>par-dessus les guides</b>, dans l\'ordre où il doit les traverser (guide-câbles, goulottes), et finissez sur un <b>port libre</b> pour l\'y brancher. Relâchez : le câble est posé le long du chemin.',
+      en: 'Draw the cord\'s route <b>over the guides</b>, in the order it must go through them (cable managers, ducts), and end on a <b>free port</b> to plug it there. Let go: the cord is laid along the route.',
     });
     case 'velcroLine': return h.cords >= 2
       ? tr({ fr: `<b>${h.cords} câbles</b> : relâchez, le velcro les serre là où le trait les croise.`, en: `<b>${h.cords} cords</b>: let go, the velcro straps them where the line crosses them.` })
       : tr({ fr: 'Tracez le trait <b>en travers</b> des câbles à serrer, là où ils passent côte à côte : ceux qu\'il prend s\'allument.', en: 'Draw the line <b>across</b> the cords to strap, where they run side by side: those it takes light up.' });
-    case 'comb': return h.cords >= 2
-      ? tr({ fr: `<b>${h.cords} câbles</b> dans le peigne : glissez le long du faisceau, ils se rangent côte à côte.`, en: `<b>${h.cords} cords</b> in the comb: slide along the bundle, they line up side by side.` })
-      : tr({ fr: 'Glissez le peigne <b>le long</b> des câbles, là où ils passent ensemble.', en: 'Slide the comb <b>along</b> the cords, where they run together.' });
     default: return assertNever(h);
   }
 }
@@ -146,31 +143,45 @@ export function statsText(s: PhysicsStats): string {
   });
 }
 
-/** one thing the next star needs, as a line of its list */
-export function starNeedText(need: StarNeed): string {
+/** a goal of the stars as the side panel lists it: what it asks, how far along it is, and what is still wrong (empty: nothing) */
+export function starGoalText(g: StarGoal): { label: string; progress: string; detail: string } {
   const plural = (n: number, one: string, many: string) => n > 1 ? many : one;
-  switch (need.kind) {
-    case 'connect': { const n = need.count; return tr({ fr: `Branchez ${plural(n, 'la dernière liaison', `encore ${n} liaisons`)} du plan`, en: `Plug ${plural(n, 'the last link', `${n} more links`)} of the schedule` }); }
+  const met = isGoalMet(g);
+  switch (g.kind) {
+    case 'connect': return {
+      label: g.total > 1 ? tr({ fr: `Brancher les ${g.total} liaisons du plan`, en: `Plug the ${g.total} links of the schedule` }) : tr({ fr: 'Brancher la liaison du plan', en: 'Plug the link of the schedule' }),
+      progress: `${g.done}/${g.total}`,
+      detail: '',
+    };
     case 'tidy': {
-      const n = need.count;
-      const why = [
-        need.hanging ? tr({ fr: `${need.hanging} ${plural(need.hanging, 'pend', 'pendent')} hors des supports`, en: `${need.hanging} ${plural(need.hanging, 'hangs', 'hang')} out of the supports` }) : '',
-        need.front ? tr({ fr: `${need.front} ${plural(need.front, 'passe', 'passent')} devant un port`, en: `${need.front} across a port` }) : '',
-        need.strained ? tr({ fr: `${need.strained} ${plural(need.strained, 'tendu ou plié', 'tendus ou pliés')}`, en: `${need.strained} taut or kinked` })
-          + (need.short > 0 ? tr({ fr: ` (il manque jusqu'à ${Math.ceil(need.short * 100)} cm : prenez un câble plus long au Stock)`, en: ` (up to ${Math.ceil(need.short * 100)} cm short: a longer cord from the Stock)` }) : '') : '',
-      ].filter(Boolean).join(', ');
-      return tr({ fr: `Encore ${n} ${plural(n, 'câble', 'câbles')} à ranger`, en: `${n} more ${plural(n, 'cord', 'cords')} to tidy` }) + (why ? ` : ${why}` : '');
+      const why = met ? [] : [
+        g.hanging ? tr({ fr: `${g.hanging} ${plural(g.hanging, 'pend', 'pendent')} hors des supports`, en: `${g.hanging} ${plural(g.hanging, 'hangs', 'hang')} out of the supports` }) : '',
+        g.front ? tr({ fr: `${g.front} ${plural(g.front, 'passe', 'passent')} devant un port`, en: `${g.front} ${plural(g.front, 'crosses', 'cross')} a port` }) : '',
+        g.strained ? tr({ fr: `${g.strained} ${plural(g.strained, 'est tendu ou plié', 'sont tendus ou pliés')}`, en: `${g.strained} ${plural(g.strained, 'is', 'are')} taut or kinked` })
+          + (g.short > 0 ? tr({ fr: ` (il manque jusqu'à ${Math.ceil(g.short * 100)} cm : prenez un câble plus long au Stock)`, en: ` (up to ${Math.ceil(g.short * 100)} cm short: take a longer cord from the Stock)` }) : '') : '',
+      ].filter(Boolean);
+      return {
+        label: g.total > 1 ? tr({ fr: `Ranger les ${g.total} câbles`, en: `Tidy the ${g.total} cords` }) : tr({ fr: 'Ranger le câble', en: 'Tidy the cord' }),
+        progress: `${g.done}/${g.total}`,
+        detail: why.join(', '),
+      };
     }
-    case 'label': { const n = need.count; return tr({ fr: `${n} ${plural(n, 'câble sans l\'étiquette de son service', 'câbles sans l\'étiquette de leur service')}`, en: `${n} ${plural(n, 'cord without', 'cords without')} their service's label` }); }
-    case 'separate': { const n = need.count; return tr({ fr: `Séparez fibre, cuivre et courant : ${n} ${plural(n, 'goulotte ou anneau les mêle', 'goulottes ou anneaux les mêlent')}`, en: `Keep fibre, copper and power apart: ${n} ${plural(n, 'duct or ring mixes', 'ducts or rings mix')} them` }); }
-    case 'bundle': { const n = need.count; return tr({ fr: `Serrez encore ${n} ${plural(n, 'faisceau', 'faisceaux')} : un velcro autour de 3 câbles ou plus du même service`, en: `Strap ${n} more ${plural(n, 'bundle', 'bundles')} (a velcro round 3 cords or more of one service)` }); }
-    case 'incident': return tr({ fr: 'Budget d\'interruption dépassé : ★★★ n\'est plus possible', en: 'Downtime budget overrun: ★★★ is out of reach' });
-    default: return assertNever(need);
+    case 'budget': return {
+      label: tr({ fr: 'Rester dans le budget d\'interruption', en: 'Stay within the downtime budget' }),
+      progress: `${Math.round(g.spent)}/${g.budget}`,
+      detail: met ? '' : tr({ fr: 'Budget dépassé : ★★★ n\'est plus possible dans cette partie.', en: 'Budget overrun: ★★★ is out of reach in this game.' }),
+    };
+    case 'separate': return {
+      label: tr({ fr: 'Fibre, cuivre et courant dans des goulottes séparées', en: 'Fibre, copper and power in separate ducts' }),
+      progress: '',
+      detail: met ? '' : tr({ fr: `${g.mixed} ${plural(g.mixed, 'goulotte mélange', 'goulottes mélangent')} des familles`, en: `${g.mixed} ${plural(g.mixed, 'duct mixes', 'ducts mix')} families` }),
+    };
+    default: return assertNever(g);
   }
 }
 
-/** why a cabinet of the editor cannot be played, or a code read */
-export function customErrorText(e: CustomError): string {
+/** why a free cabinet cannot be played, or a code read */
+export function freeErrorText(e: FreeError): string {
   switch (e.kind) {
     case 'noPanel': return tr({ fr: 'Il faut au moins un panneau de brassage.', en: 'It takes a patch panel at least.' });
     case 'noSwitch': return tr({ fr: 'Il faut au moins un switch.', en: 'It takes a switch at least.' });

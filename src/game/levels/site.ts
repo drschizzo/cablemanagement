@@ -11,15 +11,11 @@ export function levelSite(level: LevelDef): string {
     // the client's premises, visit after visit
     case 'ticket': return 'career';
     case 'campaign':
-    case 'puzzle':
     case 'tutorial':
     case 'showcase':
     case 'bench': return `${level.kind}:${level.id}`;
     // a cabinet drawn at random: a room drawn with it
-    case 'free':
-    case 'zen':
-    case 'custom': return `${level.kind}:${level.seed}`;
-    case 'daily': return `daily:${level.date}`;
+    case 'free': return `free:${level.seed}`;
     default: return assertNever(level);
   }
 }

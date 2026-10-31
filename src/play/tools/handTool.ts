@@ -202,7 +202,6 @@ export class HandTool implements ToolHandler {
       if (port) {
         ctx.world.plug(c.cable, c.end, port.id);
         ctx.counters.plugged++;
-        ctx.counters.moves++;
         ctx.reevaluate();
         sfx.plug(ctx.isLineConnectedAt(port));
       } else if (hook && this.canHook(c.target)) {
@@ -268,7 +267,6 @@ export class HandTool implements ToolHandler {
     w.unplug(c.cable, p.end);
     ctx.announceCut(cut);
     ctx.counters.unplugged++;
-    ctx.counters.moves++;
     sfx.unplug();
     ctx.reevaluate();
     const [n0] = w.endNodes(c.cable, p.end);

@@ -46,9 +46,7 @@ export type Hint =
   | { kind: 'depth'; on: boolean }
   | { kind: 'drawRoute' }
   /** `cords`: how many the velcro line would strap (fewer than two: none) */
-  | { kind: 'velcroLine'; cords: number }
-  /** the comb going along a bundle, `cords` in its teeth */
-  | { kind: 'comb'; cords: number };
+  | { kind: 'velcroLine'; cords: number };
 
 /** the cord under the pointer */
 export interface CordInfo {

@@ -193,7 +193,6 @@ export class RouteTool implements ToolHandler {
     const port = run.plan.portB;
     if (port && run.plugged) {
       ctx.counters.plugged++;
-      ctx.counters.moves++;
       sfx.plug(ctx.isLineConnectedAt(ctx.world.rack.port(port)));
     } else if (port) {
       ctx.events.onToast({ kind: 'connectorHeldBack' });

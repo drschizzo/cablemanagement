@@ -468,7 +468,7 @@ export class RackView {
   }
 
   /**
-   * Rebuilds the managers, ducts and rings when the rack items change; those of
+   * Rebuilds the managers and ducts when the rack items change; those of
    * `rack`, another of the same units, when given (the replay of the work: its
    * versions are its own, apart from the cabinet's)
    */
