@@ -15,7 +15,6 @@ export interface CircuitStatus {
   connected: boolean;
   routed: boolean;
   clear: boolean;
-  labelled: boolean;
   /** neither pulled taut nor kinked */
   relaxed: boolean;
   /** connected, routed, clear and relaxed: nothing left to do on its cord */
@@ -27,7 +26,6 @@ export interface Evaluation {
   connected: number;
   routed: number;
   clear: number;
-  labelled: number;
   /** links whose cord is tidy */
   tidy: number;
   total: number;
@@ -103,16 +101,14 @@ export function evaluate(w: World): Evaluation {
     const connected = w.circuitUp(i);
     const routed = connected && cableRouted[cable];
     const clear = connected && !cableObstructs[cable];
-    const labelled = connected && w.cables[cable].ends.every((e) => e.label === ci.service);
     const relaxed = connected && !cableStrain[cable];
-    return { cable, connected, routed, clear, labelled, relaxed, tidy: routed && clear && relaxed };
+    return { cable, connected, routed, clear, relaxed, tidy: routed && clear && relaxed };
   });
   const n = circuits.length;
   const count = (f: (s: CircuitStatus) => boolean) => circuits.filter(f).length;
   const connected = count((s) => s.connected);
   const routed = count((s) => s.routed);
   const clear = count((s) => s.clear);
-  const labelled = w.level.labels ? count((s) => s.labelled) : n;
   const relaxed = count((s) => s.relaxed);
   const tidy = count((s) => s.tidy);
   const tautShort = w.cables.reduce((most, _, c) => cableStrain[c] === 'taut' ? Math.max(most, TAUT_SHORT * w.routeLength(c)! - w.cableLength(c)) : most, 0);
@@ -120,7 +116,7 @@ export function evaluate(w: World): Evaluation {
   const families = new Set(w.cables.map((cb) => CORD_KINDS[cb.type].family)).size;
   const stars = starsOf({ total: n, connected, routed, clear, relaxed, tidy, tautShort, mixedSupports, families, downtime: w.maintenance.downtime, budget: w.maintenance.budget });
   return {
-    circuits, connected, routed, clear, labelled, relaxed, tidy, tautShort, total: n, stars, cableRouted, cableObstructs, cableStrain,
+    circuits, connected, routed, clear, relaxed, tidy, tautShort, total: n, stars, cableRouted, cableObstructs, cableStrain,
     liveDown: w.maintenance.liveDown(), downtime: w.maintenance.downtime, budget: w.maintenance.budget, mixedSupports, families,
   };
 }

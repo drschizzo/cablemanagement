@@ -201,7 +201,6 @@ export class HandTool implements ToolHandler {
     if (c.end >= 0) {
       if (port) {
         ctx.world.plug(c.cable, c.end, port.id);
-        ctx.counters.plugged++;
         ctx.reevaluate();
         sfx.plug(ctx.isLineConnectedAt(port));
       } else if (hook && this.canHook(c.target)) {
@@ -329,7 +328,7 @@ export class HandTool implements ToolHandler {
     if (on === was) return;
     this.ctx.world.sim.pinch(on);
     c.pinchSince = on ? this.ctx.clock : -1;
-    if (on) { this.ctx.counters.pinched++; c.pinched = true; sfx.pinch(); }
+    if (on) { c.pinched = true; sfx.pinch(); }
   }
 
   /** the pinch being made firms up with the time it has been held */

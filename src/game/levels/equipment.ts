@@ -5,9 +5,8 @@ import type { UnitSpec } from '../rack';
 
 export const BLANK: UnitSpec = { kind: 'blank' };
 
-// an optical distribution frame and its switch
+// an optical distribution frame
 export const opticalPanel = (name: string, ports: number): UnitSpec => ({ kind: 'panel', name, ports });
-export const opticalSwitch = (name: string, ports: number): UnitSpec => ({ kind: 'switch', name, ports });
 
 // a wiring closet's equipment
 export const copperPanel = (name: string, ports: number): UnitSpec => ({ kind: 'panel', name, ports, style: 'copper' });

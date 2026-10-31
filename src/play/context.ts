@@ -19,7 +19,7 @@ import type { HoldView } from './feedback/holdView';
 /** the hand, the route (a way drawn over the guides, the cord laid along it), the supports, the velcro, the cable tester */
 export type Tool = 'hand' | 'route' | 'supports' | 'velcro' | 'tester';
 
-/** what the Controller tells the interface (main.ts wires it to the HUD) */
+/** what the Controller tells the interface (app/app.ts wires it to the HUD) */
 export interface ControllerEvents {
   onEval(ev: Evaluation): void;
   onInventory(): void;
@@ -43,13 +43,10 @@ export interface GestureCounters {
   hovered: number;
   /** metres the hand has travelled carrying a cord */
   dragged: number;
-  plugged: number;
   unplugged: number;
   orbited: number;
   deposited: number;
-  pinched: number;
   handedOver: number;
-  routed: number;
 }
 
 export interface PlayContext {

@@ -142,7 +142,6 @@ export class RouteTool implements ToolHandler {
     ctx.history.remember();
     w.unpark(sk.cable, b);
     this.laying = new RouteRun(w, res.plan);
-    ctx.counters.routed++;
     if (res.plan.slack > 0.2) ctx.events.onToast({ kind: 'routeSlack', extra: res.plan.slack });
     sfx.whoosh();
   }
@@ -192,7 +191,6 @@ export class RouteTool implements ToolHandler {
     this.laying = null;
     const port = run.plan.portB;
     if (port && run.plugged) {
-      ctx.counters.plugged++;
       sfx.plug(ctx.isLineConnectedAt(ctx.world.rack.port(port)));
     } else if (port) {
       ctx.events.onToast({ kind: 'connectorHeldBack' });

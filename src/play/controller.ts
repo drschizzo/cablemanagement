@@ -86,7 +86,7 @@ export class Controller implements PlayContext, InputCommands {
   debug = false;
   /** seconds since the level opened, preparation and pauses included (animations) */
   clock = 0;
-  readonly counters: GestureCounters = { hovered: 0, dragged: 0, plugged: 0, unplugged: 0, orbited: 0, deposited: 0, pinched: 0, handedOver: 0, routed: 0 };
+  readonly counters: GestureCounters = { hovered: 0, dragged: 0, unplugged: 0, orbited: 0, deposited: 0, handedOver: 0 };
   /** the work as it went, the state of the cabinet a few times a second of play */
   readonly timelapse = new Timelapse<ReplayKey>();
   private recorder: ReplayRecorder;

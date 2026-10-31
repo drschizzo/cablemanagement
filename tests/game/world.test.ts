@@ -115,12 +115,11 @@ describe('labels, straps and cord lengths', () => {
     const w = new World({ ...L1, labels: true });
     const svc = w.circuits[0].service;
     w.labelCord(0, null);
-    expect(w.evaluate().circuits[0].labelled).toBe(false);
+    expect(w.cables[0].ends.map((e) => e.label)).toEqual([null, null]);
     const port = w.cables[0].ends[1].port!;
     w.unplug(0, 1);
     w.plug(0, 1, port);
     expect(w.cables[0].ends.map((e) => e.label)).toEqual([svc, svc]);
-    expect(w.evaluate().circuits[0].labelled).toBe(true);
   });
 
   it('new cords come out of a stock counted by length', () => {

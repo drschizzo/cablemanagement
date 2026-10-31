@@ -48,6 +48,11 @@ export function endsTheTraining(level: LevelDef): boolean {
   return level.id === LEVELS[LEVELS.length - 1].id;
 }
 
+/** the last cabinet of the training signed off: the career is open */
+export function isTrainingDone(progress: Progress): boolean {
+  return (progress.stars[LEVELS[LEVELS.length - 1].id] ?? 0) > 0;
+}
+
 /**
  * The rules the player has met: those saved, and those of every campaign
  * level signed off (a save from before the rules were kept).

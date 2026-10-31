@@ -11,7 +11,7 @@ import { $ } from '../lib/page';
 import { hide, show } from './dom';
 import { load, type Progress } from './storage';
 import { tr, type Words } from './language';
-import { isModeOpen, savedModeRecords, TRAINING_END, type Mode } from './modeLocks';
+import { isModeOpen, type Mode } from './modeLocks';
 import { levelTitle } from './levelTexts';
 
 /** where the cards lead; each gets `start` (what a level chosen does) and `back` (back to the modes) */
@@ -105,7 +105,7 @@ export class ModesPanel {
 
   private cardElement(card: ModeCard): HTMLElement {
     const el = document.createElement('div');
-    const open = isModeOpen(card.mode, savedModeRecords());
+    const open = isModeOpen(card.mode, this.progress());
     el.className = 'mode-card' + (open ? '' : ' locked');
     el.innerHTML = `<div class="t">${tr(card.name)}<span class="status">${open ? card.status() : ''}</span></div><p>${tr(card.what)}</p>`;
     if (!open) {
@@ -123,7 +123,7 @@ export class ModesPanel {
   private lockElement(): HTMLElement {
     const el = document.createElement('div');
     el.className = 'lock';
-    const last = LEVELS.findIndex((l) => l.id === TRAINING_END);
+    const last = LEVELS.length - 1;
     el.textContent = tr({ fr: `🔒 S'ouvre à la fin de la formation · niveau ${last + 1}, ${levelTitle(LEVELS[last])}`, en: `🔒 Opens at the end of the training · level ${last + 1}, ${levelTitle(LEVELS[last])}` });
     return el;
   }

@@ -21,7 +21,7 @@ src/
     cables.ts       ce qu'est un cordon (Cable, CableEnd, Strap) et ses indices nommés (CableIndex, EndIndex,
                     NodeIndex, CircuitIndex)
     cordShapes.ts   la géométrie d'un cordon hors physique : remis à une autre longueur, enroulé dans le bac
-    evaluation.ts   le score : chaque liaison (branchée, rangée, dégagée, étiquetée, sans tension), les goulottes qui
+    evaluation.ts   le score : chaque liaison (branchée, rangée, dégagée, sans tension), les goulottes qui
                     mêlent les familles, les étoiles et ce que chacune demande (starGoals) — des fonctions qui lisent
                     un World sans le modifier
     maintenanceWindow.ts  liaisons en production, budget d'interruption, dérivations
@@ -284,7 +284,7 @@ coupé. Une valeur illisible ou d'une autre forme se lit comme la valeur par dé
 | Évolution | Où |
 |---|---|
 | une règle de niveau | une entrée dans `RULES` et `hasRule` (`game/levels/levelRules.ts`), ses mots dans `ruleTip` (`ui/ruleTexts.ts`) : le brief la dit au premier niveau qui l'a, puis la replie ; un geste de même, dans `GESTURES` (`levelGestures.ts`) et `gestureTip` |
-| un niveau | une entrée dans `LEVELS` (la formation) ou `BIG_BAYS` (`game/levels/campaign.ts`), bâtie avec les équipements de `game/levels/equipment.ts`, et ses mots dans `ui/levelTexts.ts` (un test vérifie qu'aucun ne manque) ; un puzzle, de même dans `PUZZLES` (`game/levels/puzzles.ts`) ; `tests/game/levels/levels.test.ts` vérifie son plan, qu'il ne se gagne pas sans rien faire et qu'il peut atteindre 3 étoiles avec son seul inventaire (`tidyKit`) |
+| un niveau | une entrée dans `LEVELS` (la formation) ou `BIG_BAYS` (`game/levels/campaign.ts`), bâtie avec les équipements de `game/levels/equipment.ts`, et ses mots dans `ui/levelTexts.ts` (un test vérifie qu'aucun ne manque) ; `tests/game/levels/levels.test.ts` vérifie son plan, qu'il ne se gagne pas sans rien faire et qu'il peut atteindre 3 étoiles avec son seul inventaire (`tidyKit`) |
 | un équipement de baie | `UnitSpec` et le constructeur de `Rack` (`game/rack.ts`), sa face dans `faceOf` et son rendu dans `render/rackView.ts`, son nom dans `unitLabel` (`ui/names.ts`) |
 | une sorte de cordon | une entrée dans `CORD_KINDS` (`game/cordTypes.ts`) ; le compilateur demande son nom (`ui/names.ts`), son marquage (`JACKET_KIND`, `render/jacket.ts`) et, s'il en a un nouveau, son connecteur (`plugShape`, `render/cableView.ts`) |
 | un élément de rangement | `ItemKind`, `canPlace`, `statics` et `supports` dans `game/rack.ts`, `buildItem` dans `render/rackItems.ts`, un outil dans `TOOL_BUTTONS` (`ui/toolbar.ts`) |
