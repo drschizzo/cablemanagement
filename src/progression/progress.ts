@@ -1,33 +1,32 @@
-// The player's progress, level by level: best stars and best time; and the
-// rules already met. Pure functions over the saved record: saving it is the
-// caller's business (storage.ts).
+// The player's progress, level by level: the record of each cabinet signed
+// off (the client's requirements met, the time), what opens the levels of the
+// training, where the story stands; and the rules already met. Pure functions
+// over the saved record: saving it is the caller's business (storage.ts).
 
-import type { Career, Progress } from './storage';
-import { TRAINING, UNLOCK_STARS, nextLevelToPlay } from '../game/levels/training';
+import type { Career, LevelRecord, Progress } from './storage';
+import { TRAINING } from '../game/levels/training';
 import { currentTicket } from './career';
-import type { LevelDef } from '../game/levels/levelDef';
+import type { LevelDef, TrainingLevel } from '../game/levels/levelDef';
+import { bestRecord } from './levelRecord';
 
-/** a level just validated, and what the record said before it */
-export interface LevelResult {
-  stars: number;
-  /** seconds of play */
-  time: number;
-  /** stars recorded before this result */
-  previousStars: number;
+/** keeps the best of a level's record and a new one */
+export function recordLevel(progress: Progress, level: LevelDef, record: LevelRecord): void {
+  progress.levels[level.id] = bestRecord(progress.levels[level.id], record);
 }
 
-/** keeps the best of each in the record, and tells what it held before */
-export function recordResult(progress: Progress, level: LevelDef, stars: number, time: number): LevelResult {
-  const id = level.id;
-  const previousStars = progress.stars[id] ?? 0;
-  progress.stars[id] = Math.max(previousStars, stars);
-  if (!progress.times[id] || time < progress.times[id]) progress.times[id] = time;
-  return { stars, time, previousStars };
+/** the level `id` was signed off once */
+export function isSignedOff(progress: Progress, id: string): boolean {
+  return Object.hasOwn(progress.levels, id);
 }
 
-/** level `index` of the training can be played: the first one, one after a tidy enough level, or one already played */
+/** level `index` of the training can be played: the first one, one after a level signed off, or one already signed off */
 export function isUnlocked(progress: Progress, index: number): boolean {
-  return index === 0 || (progress.stars[TRAINING[index - 1].id] ?? 0) >= UNLOCK_STARS || (progress.stars[TRAINING[index].id] ?? 0) > 0;
+  return index === 0 || isSignedOff(progress, TRAINING[index - 1].id) || isSignedOff(progress, TRAINING[index].id);
+}
+
+/** the first level of the training not signed off yet (undefined: all are) */
+export function nextTrainingLevel(progress: Progress): TrainingLevel | undefined {
+  return TRAINING.find((l) => !isSignedOff(progress, l.id));
 }
 
 /** the level after this one in the training, if any */
@@ -36,9 +35,9 @@ export function levelAfter(level: LevelDef): LevelDef | null {
   return index >= 0 && index + 1 < TRAINING.length ? TRAINING[index + 1] : null;
 }
 
-/** where the story stands: the first level of the training not tidy enough yet, then the ticket of the career (undefined: both done) */
+/** where the story stands: the first level of the training not signed off yet, then the ticket of the career (undefined: both done) */
 export function nextInStory(progress: Progress, career: Career): LevelDef | undefined {
-  return nextLevelToPlay(progress.stars) ?? currentTicket(career) ?? undefined;
+  return nextTrainingLevel(progress) ?? currentTicket(career) ?? undefined;
 }
 
 /** the last cabinet of the training: the career comes after it */
@@ -48,7 +47,7 @@ export function endsTheTraining(level: LevelDef): boolean {
 
 /** the last cabinet of the training signed off: the career is open */
 export function isTrainingDone(progress: Progress): boolean {
-  return (progress.stars[TRAINING[TRAINING.length - 1].id] ?? 0) > 0;
+  return isSignedOff(progress, TRAINING[TRAINING.length - 1].id);
 }
 
 /** the rules met, with those just met, each once */

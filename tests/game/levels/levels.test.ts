@@ -9,6 +9,10 @@ import { freeLevel, plainSpec } from '../../../src/game/levels/freeLevel';
 import { showcaseRack } from '../../../src/game/levels/showcaseRack';
 import type { LevelDef } from '../../../src/game/levels/levelDef';
 import { tidyKit, tidyLayout, tidyTargets } from '../../../src/game/idealRoutes';
+import { isGoalMet, requirementsOf, type Evaluation } from '../../../src/game/evaluation';
+
+/** signed off, with every requirement of the client met */
+const isPerfect = (ev: Evaluation) => ev.ready && requirementsOf(ev).every(isGoalMet);
 
 const ALL: LevelDef[] = [...HANDMADE_LEVELS, TUTORIAL, freeLevel(plainSpec(30, 1, true)), showcaseRack('mess', 1), showcaseRack('tidy', 1)];
 
@@ -65,30 +69,32 @@ describe('no level is won before the player does anything', () => {
     it(lv.id, () => {
       const w = new World(lv);
       w.preroll(60);
-      expect(w.evaluate().stars).toBe(0);
+      expect(w.evaluate().ready).toBe(false);
     });
   }
 });
 
-describe('three stars are possible, with the level\'s own stock', () => {
+describe('signing off with every requirement of the client met is possible, with the level\'s own stock', () => {
   for (const lv of HANDMADE_LEVELS) {
     it(lv.id, () => {
       const kit = tidyKit(lv);
       const added = kit.preinstalled.slice(lv.preinstalled.length);
       for (const k of ITEM_KINDS) expect(added.filter((p) => p.kind === k).length).toBeLessThanOrEqual(lv.inventory[k] ?? 0);
-      expect(finished(lv).stars).toBe(3);
+      expect(isPerfect(finished(lv))).toBe(true);
     });
   }
 
-  it('past the downtime budget, an incident: two stars at most', () => {
+  it('past the downtime budget, an incident: the requirement is missed, signing off is still possible', () => {
     // the first level with links in production
     const lv = TRAINING.find((l) => l.downtime !== undefined)!;
     const kit = tidyKit(lv);
     const w = new World(kit, tidyLayout(kit).starts);
     for (let f = 0; f < 240; f++) w.sim.step();
-    expect(w.evaluate().stars).toBe(3);
+    expect(isPerfect(w.evaluate())).toBe(true);
     w.maintenance.downtime = w.maintenance.budget + 1;
-    expect(w.evaluate().stars).toBe(2);
+    const ev = w.evaluate();
+    expect(ev.ready).toBe(true);
+    expect(requirementsOf(ev).filter((g) => !isGoalMet(g)).map((g) => g.kind)).toEqual(['budget']);
   });
 
   it('the tidy cabinet of the before/after is perfect', () => {

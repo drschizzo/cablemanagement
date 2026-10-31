@@ -39,7 +39,7 @@ baies en désordre. Au premier lancement, un seul bouton, **Commencer**, et en d
 les paramètres. L'interrupteur **Avant / Après** montre la même salle une fois rangée.
 
 **Commencer** ouvre le **tutoriel**, qui présente pas à pas ce que demande le premier niveau
-(saisir, brancher, ranger au Chemin, les étoiles), puis, au choix, les **gestes avancés** (coude
+(saisir, brancher, ranger au Chemin, valider la baie), puis, au choix, les **gestes avancés** (coude
 pincé, seconde main, goulotte, velcro). La goulotte s'explique aussi dans le brief du premier niveau
 qui la donne. Par la suite, le même bouton reprend où en est l'histoire : la **formation** (cinq
 niveaux), puis la **carrière**. L'écran titre montre aussi les **modes de jeu** :
@@ -67,7 +67,7 @@ le temps d'une visite.
 ### Objectif
 
 Chaque niveau fournit un **plan de brassage** : la liste des liaisons à établir
-(tel port du panneau vers tel port du switch). Pour réussir, il faut :
+(tel port du panneau vers tel port du switch). Pour **valider** la baie, il faut :
 
 1. brancher chaque liaison sur les bons ports, avec le bon type de câble
    (fibre ou cuivre) ;
@@ -75,11 +75,10 @@ Chaque niveau fournit un **plan de brassage** : la liste des liaisons à établi
    guide-câbles ou d'une goulotte ;
 3. dégager la façade : aucun câble ne doit passer devant le port d'un autre ;
 4. ne rien tendre ni plier : un câble bien plus court que son chemin dans les supports
-   est tendu, une fibre en angle vif est pliée ;
-5. quand la baie mêle fibre, cuivre ou courant, séparer les familles : elles ne partagent pas de
-   goulotte (les guide-câbles, eux, se partagent).
+   est tendu, une fibre en angle vif est pliée.
 
-Le velcro est facultatif : il serre des câbles en faisceau, sans compter pour les étoiles.
+Le bouton **Valider** reste grisé tant que ce n'est pas fait. Le velcro est facultatif : il serre des
+câbles en faisceau, sans compter pour valider.
 
 Un câble branché comme prévu reçoit tout seul l'étiquette de son service.
 
@@ -87,11 +86,15 @@ Le jeu ajoute ses règles une à une : le brief d'un niveau explique celles qu'o
 première fois (la baie en production au niveau 3, la fibre qui se plie au niveau 5, le courant au
 ticket 3 de la carrière, les incidents au ticket 4…), et ne répète pas les autres.
 
-| Étoiles | Condition |
+Certaines baies ajoutent des **exigences du client**, seulement là où elles ont un sens :
+
+| Exigence | Dans quelles baies |
 |---|---|
-| ★ | toutes les liaisons du plan sont branchées |
-| ★★ | et tous les câbles sont rangés |
-| ★★★ | et les consignes du niveau sont respectées : le budget d'interruption, les familles séparées (un niveau qui n'en a pas donne ★★★ dès que tout est rangé) |
+| rester dans le budget d'interruption | les baies en production |
+| le courant dans d'autres goulottes que les données (cuivre et fibre) | les baies qui ont des câbles d'alimentation |
+
+Une exigence ne bloque pas la validation : le dossier du niveau garde combien d'exigences ont été
+remplies (« 1/2 exigences du client »), et une baie qui n'en a pas est simplement validée.
 
 Le joueur suit trois choses : **branché**, **rangé**, **en production**. Un câble est rangé quand
 il ne pend nulle part hors des supports, ne passe devant aucun autre port, et n'est ni tendu ni plié
@@ -106,12 +109,12 @@ pendant que les câbles s'allument de haut en bas, puis l'écran de résultat s'
 L'écran de fin propose de **revoir le chantier en accéléré** : l'état de la baie, relevé quatre fois
 par seconde de jeu, rejoué en cinq secondes par la vue 3D elle-même, à la cadence de l'écran ; de
 l'**enregistrer en vidéo**, et de télécharger l'**image avant / après** de la baie, avec
-ses étoiles.
+les exigences remplies.
 
-Il faut **★★** pour ouvrir le niveau suivant : brancher ne suffit pas, il faut
-ranger. Sous le plan, **la liste des étoiles** montre dès le départ ce que chacune demande et où en
-est la baie (« Ranger les 6 câbles 4/6 : 1 pend hors des supports, 1 passe devant un port »,
-« Rester dans le budget d'interruption 38/250 »). Un câble qui devient rangé s'allume en vert avec
+Valider un niveau de la formation ouvre le suivant ; valider un ticket de la carrière ouvre le ticket
+suivant. Sous le plan, deux listes montrent dès le départ ce qui reste à faire et où en est la baie :
+**Pour valider** (« Ranger les 6 câbles 4/6 : 1 pend hors des supports, 1 passe devant un port ») et,
+s'il y en a, **Exigences du client** (« Rester dans le budget d'interruption 38/250 »). Un câble qui devient rangé s'allume en vert avec
 une note. Un câble tendu dit combien de centimètres il lui
 manque.
 
@@ -119,8 +122,8 @@ Chaque niveau de la formation et chaque grande baie cache une **trouvaille** lai
 une clé USB, un canard en plastique…) : sur le plancher de la baie sous les câbles, sur son toit ou dans
 le bac. Un clic la ramasse et raconte son histoire. Le **carnet du technicien** (écran titre, dès la
 première trouvaille ou le niveau 3) les rassemble, et dit où chercher celles qui manquent (deux se
-cachent ailleurs). En prime, il offre des teintes qui s'ouvrent avec les étoiles gagnées : la couleur
-des velcros, la lumière autour de la baie. Rien de ce qui porte un sens (câbles, étiquettes,
+cachent ailleurs). En prime, il offre des teintes qui s'ouvrent avec les coches gagnées (une par baie
+validée, une par exigence du client remplie) : la couleur des velcros, la lumière autour de la baie. Rien de ce qui porte un sens (câbles, étiquettes,
 voyants) ne change.
 
 ### Préparation
@@ -147,7 +150,7 @@ haut de l'écran :
 | Invités | Wi-Fi des visiteurs | ×0,25 |
 
 On peut toujours débrancher, pour démêler par exemple ; au-delà du budget, un
-incident est déclaré et ★★★ n'est plus possible. Une **dérivation** (clic sur
+incident est déclaré et l'exigence du budget n'est plus remplie. Une **dérivation** (clic sur
 le ⚡ d'une ligne du plan) porte le trafic d'une liaison pendant qu'on la
 recâble, puis revient au stock quand la liaison est rétablie. Les voyants d'une
 liaison coupée clignotent en rouge, ceux d'une liaison dérivée en ambre.
@@ -171,7 +174,8 @@ signal ; un câble coupé se jette au bac et se remplace par un neuf du Stock.
 Certaines baies (le ticket 3 de la carrière et la suite, les baies libres qui ont un bandeau électrique) alimentent
 leurs serveurs : des **câbles d'alimentation** noirs, raides, à fiche C13, vont des prises du
 **bandeau électrique** aux deux alimentations de chaque serveur. Couper l'une, c'est couper le service
-du serveur. Pour ★★★, le courant ne partage pas de goulotte avec les données.
+du serveur. Le client demande que le courant ne partage aucune goulotte avec les données : on le
+descend d'un côté de la baie, les données de l'autre.
 
 ### Câbles neufs
 
@@ -190,7 +194,7 @@ La **formation** apprend le métier en cinq niveaux, une règle de plus à chacu
 | 2 | Le mou | 6 |
 | 3 | Erreurs de brassage | 8 · baie en production |
 | 4 | Les services | 10 · trois services |
-| 5 | Fibre et cuivre | 12 · fibre pliable, familles séparées |
+| 5 | Fibre et cuivre | 12 · fibre pliable |
 
 ### Carrière
 
@@ -358,7 +362,7 @@ Pour une première lecture, suivre le chemin d'un clic :
 | `npm run dev` | serveur de développement |
 | `npm run build` | version de production dans `dist/` (publiée sur GitHub Pages à chaque push sur `main`) |
 | `npm run check` | lint (dont le sens des dépendances), types et tests, à lancer avant de pousser |
-| `npm run solvable` | vérifie que chaque niveau peut atteindre 3 étoiles avec son seul inventaire ; puis, depuis l'emmêlement de départ, combien de liaisons en production il faudra débrancher, ce que cela coûte face au budget d'interruption, et les câbles neufs qu'il faut |
+| `npm run solvable` | vérifie que chaque niveau peut être validé avec toutes ses exigences, avec son seul inventaire ; puis, depuis l'emmêlement de départ, combien de liaisons en production il faudra débrancher, ce que cela coûte face au budget d'interruption, et les câbles neufs qu'il faut |
 | `npm run bench` | performance et stabilité du moteur physique |
 | `npm run precision` | gestes délicats : entrer dans une goulotte, coucher un câble dans un guide-câbles… |
 | `npm run levels` | coût et mise au repos de chaque niveau |

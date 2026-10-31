@@ -1,6 +1,6 @@
 // Is a perfect cabinet possible in every level, with its own stock? Lay every
 // cord on its tidy route (the level's managers and ducts placed by
-// tidyKit) and score it.
+// tidyKit): can it be signed off, with the client's requirements met?
 //
 // Then, from the level's own starting mess: with the same supports placed,
 // each cord in production is laid along its tidy route without unplugging it
@@ -8,6 +8,7 @@
 // out of the heap the hard way, unplugged: about `REWORK` seconds cut each,
 // at their service's weight. Is the downtime budget enough for that?
 import { World } from '../src/game/world';
+import { isGoalMet, requirementsOf } from '../src/game/evaluation';
 import { CATALOGUE } from '../src/game/cordTypes';
 import type { LevelDef } from '../src/game/levels/levelDef';
 import { HANDMADE_LEVELS } from '../src/game/levels/handmade';
@@ -40,7 +41,9 @@ for (const lv of HANDMADE_LEVELS) {
   const count = (k: string) => added.filter((p) => p.kind === k).length;
   const stock = `guide-câbles ${count('fingerManager')}/${lv.inventory.fingerManager ?? 0} goulottes ${count('duct')}/${lv.inventory.duct ?? 0}`;
   const bad = w.cables.map((cb, c) => (ev.cableRouted[c] ? '' : `R:${cb.ends.map((e) => e.port).join('-')} `) + (ev.cableObstructs[c] ? `O:${cb.ends.map((e) => e.port).join('-')} ` : '')).join('');
-  console.log(`${lv.id}: routed ${ev.routed}/${ev.total} clear ${ev.clear} relaxed ${ev.relaxed} stars ${ev.stars} | ${stock} ${bad}`);
+  const requirements = requirementsOf(ev);
+  const met = `${requirements.filter(isGoalMet).length}/${requirements.length}`;
+  console.log(`${lv.id}: routed ${ev.routed}/${ev.total} clear ${ev.clear} relaxed ${ev.relaxed} ${ev.ready ? 'signable' : 'not signable'} requirements ${met} | ${stock} ${bad}`);
 }
 
 console.log('\nAu départ : les liaisons en production rangées sans les débrancher');

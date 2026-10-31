@@ -10,7 +10,7 @@
 
 import { CABLE_R, CONNECTOR, DUCT_SPAN, Rack, SEG, SIDE_BACK, SIDE_IN, SIDE_OUT, type Port } from './rack';
 import { stockOf, type ItemKind } from './supplies';
-import { CORD_KINDS } from './cordTypes';
+import { carriesPower } from './cordTypes';
 import { makeSchedule, type Circuit } from './schedule';
 import { rng } from '../lib/random';
 import type { CableStart } from './cables';
@@ -27,8 +27,8 @@ const WALL_COLUMNS = 2;
  * How each cord travels: out of its port into the `upper` manager, down the
  * side duct of `side`, into the `lower` manager and up into its other port.
  * `curl`: a panel right above its switch, port to port, no manager at all.
- * Where fibre, copper and power both go down the side channels, each family
- * takes its own side (three stars want them in separate ducts).
+ * Where power and data both go down the side channels, each takes its own
+ * side (the client wants them in separate ducts).
  */
 export function routePlan(rack: Rack, circuits: readonly Circuit[]) {
   const mgrs = rack.items.filter((it) => it.kind === 'fingerManager').map((it) => it.unit);
@@ -39,11 +39,10 @@ export function routePlan(rack: Rack, circuits: readonly Circuit[]) {
     const lower = mgrs.includes(b.unit - 1) ? b.unit - 1 : mgrs.includes(b.unit + 1) ? b.unit + 1 : nearestManager(mgrs, b.unit, -1);
     const side = a.x + b.x * 0.3 < 0 ? -1 : 1;
     const curl = b.unit === a.unit + 1 && Math.abs(a.x - b.x) < 0.012;
-    return { a, b, upper, lower, side, curl, li: 0, lo: 0, duct: 0, family: CORD_KINDS[c.type].family };
+    return { a, b, upper, lower, side, curl, li: 0, lo: 0, duct: 0, power: carriesPower(c.type) };
   });
   const down = plan.filter((p) => !p.curl && p.upper !== p.lower);
-  const families = [...new Set(down.map((p) => p.family))].sort();
-  if (families.length > 1) for (const p of down) p.side = families.indexOf(p.family) % 2 ? 1 : -1;
+  if (down.some((p) => p.power) && down.some((p) => !p.power)) for (const p of down) p.side = p.power ? 1 : -1;
   return plan;
 }
 
@@ -123,7 +122,8 @@ export function tidyRoutes(rack: Rack, circuits: readonly Circuit[], radius: num
  * stock and nothing more: its finger managers in the empty units next to the
  * equipment in use, its ducts down the side channels the
  * cords take, its cords to be laid on their tidy routes (tidyLayout) and plugged as planned.
- * Its score says whether the level can reach three stars (tools/solvable.ts,
+ * Its evaluation says whether the level can be signed off with every
+ * requirement of the client met (tools/solvable.ts,
  * tests/game/levels/levels.test.ts).
  */
 export function tidyKit(level: LevelDef): LevelDef {

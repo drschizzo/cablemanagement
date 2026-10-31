@@ -15,10 +15,3 @@ export function hide(selector: string): void {
 export function isDialogOpen(): boolean {
   return !!document.querySelector('.overlay.on');
 }
-
-/** three stars, the first `count` lit */
-export function starsHtml(count: number, big = false): string {
-  let html = '';
-  for (let i = 0; i < 3; i++) html += `<span class="star${i < count ? ' on' : ''}${big ? ' big' : ''}">★</span>`;
-  return html;
-}

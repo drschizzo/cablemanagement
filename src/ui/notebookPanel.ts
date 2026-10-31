@@ -1,11 +1,11 @@
 // The technician's notebook, from the title screen: the finds picked up so
 // far, and where to look for the others; then, as a bonus, for each slot the
-// looks open or still to win with the stars (a swatch each).
+// looks open or still to win with the ticks (a swatch each).
 
 import { load, save } from '../progression/storage';
 import { hide, show } from './dom';
 import { $ } from '../lib/page';
-import { LOOK_SLOTS, LOOKS, equip, equippedIn, isOpen, starsWon, type LookSlot } from '../progression/notebook';
+import { LOOK_SLOTS, LOOKS, equip, equippedIn, isOpen, ticksWon, type LookSlot } from '../progression/notebook';
 import { tr } from '../lib/language';
 import { assertNever } from '../lib/assertNever';
 import { FINDS, type FindId } from '../game/finds';
@@ -31,8 +31,8 @@ export class NotebookPanel {
 
   private render(): void {
     const notebook = load('notebook');
-    const stars = starsWon(load('progress'), load('career'));
-    $('#notebook-stars').textContent = `${stars} ★`;
+    const ticks = ticksWon(load('progress'), load('career'));
+    $('#notebook-ticks').textContent = `${ticks} ✓`;
     const box = $('#notebook-items');
     box.innerHTML = '';
     for (const slot of LOOK_SLOTS) {
@@ -40,16 +40,16 @@ export class NotebookPanel {
       title.textContent = slotName(slot);
       const row = document.createElement('div');
       row.className = 'swatches';
-      const equipped = equippedIn(notebook, stars, slot);
+      const equipped = equippedIn(notebook, ticks, slot);
       for (const item of LOOKS.filter((i) => i.slot === slot)) {
-        const open = isOpen(stars, item);
+        const open = isOpen(ticks, item);
         const button = document.createElement('button');
         button.className = 'swatch' + (item === equipped ? ' cur' : '') + (open ? '' : ' locked');
         button.disabled = !open;
-        button.innerHTML = `<i style="background:${item.value}"></i><span>${lookName(item.id)}</span><small>${item === equipped ? tr({ fr: 'équipé', en: 'equipped' }) : open ? tr({ fr: 'équiper', en: 'equip' }) : `${item.stars} ★`}</small>`;
+        button.innerHTML = `<i style="background:${item.value}"></i><span>${lookName(item.id)}</span><small>${item === equipped ? tr({ fr: 'équipé', en: 'equipped' }) : open ? tr({ fr: 'équiper', en: 'equip' }) : `${item.ticks} ✓`}</small>`;
         button.onclick = () => {
           const w = load('notebook');
-          if (equip(w, stars, item)) save('notebook', w);
+          if (equip(w, ticks, item)) save('notebook', w);
           this.render();
         };
         row.appendChild(button);

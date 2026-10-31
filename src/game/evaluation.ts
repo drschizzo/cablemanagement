@@ -1,14 +1,15 @@
 // How tidy a cabinet is: for each line of the schedule, whether its cord is
 // connected, and whether it is tidy (routed through the management, clear of
-// the other ports, relaxed); the ducts mixing fibre, copper and power; the
-// stars, and what each of them asks. The player sees three things: plugged,
-// tidy, within the downtime budget. Reads a World, changes
-// nothing.
+// the other ports, relaxed); whether it can be signed off (every link plugged,
+// every cord tidy); and the client's requirements the level adds, met or not
+// (the downtime within its budget, power down other ducts than data). Reads a
+// World, changes nothing.
 
-import { CORD_KINDS } from './cordTypes';
+import { CORD_KINDS, carriesPower, mixesPowerAndData } from './cordTypes';
 import { insideBox, type SupportBox } from './rack';
 import type { World } from './world';
 import type { CableIndex } from './cables';
+import { assertNever } from '../lib/assertNever';
 
 export interface CircuitStatus {
   cable: number; // cable serving it (−1 none)
@@ -29,7 +30,8 @@ export interface Evaluation {
   /** links whose cord is tidy */
   tidy: number;
   total: number;
-  stars: number;
+  /** every link plugged and its cord tidy: the cabinet can be signed off */
+  ready: boolean;
   /** per cable: tidy route, obstructs a port */
   cableRouted: boolean[];
   cableObstructs: boolean[];
@@ -42,10 +44,10 @@ export interface Evaluation {
   relaxed: number;
   /** m the tautest cord lacks to be slack enough (0: none taut) */
   tautShort: number;
-  /** ducts holding cords of more than one family (fibre, copper, power) */
+  /** ducts holding both power and data cords */
   mixedSupports: number;
-  /** families of cords in the cabinet (fibre, copper, power): with more than one, each runs down its own ducts */
-  families: number;
+  /** the cabinet has both power and data cords: the client wants them down separate ducts */
+  hasPowerAndData: boolean;
 }
 
 export type Strain = 'taut' | 'kinked';
@@ -113,60 +115,64 @@ export function evaluate(w: World): Evaluation {
   const tidy = count((s) => s.tidy);
   const tautShort = w.cables.reduce((most, _, c) => cableStrain[c] === 'taut' ? Math.max(most, TAUT_SHORT * w.routeLength(c)! - w.cableLength(c)) : most, 0);
   const mixedSupports = mixedSupportCount(w, supports);
-  const families = new Set(w.cables.map((cb) => CORD_KINDS[cb.type].family)).size;
-  const stars = starsOf({ total: n, connected, routed, clear, relaxed, tidy, tautShort, mixedSupports, families, downtime: w.maintenance.downtime, budget: w.maintenance.budget });
-  return {
-    circuits, connected, routed, clear, relaxed, tidy, tautShort, total: n, stars, cableRouted, cableObstructs, cableStrain,
-    liveDown: w.maintenance.liveDown(), downtime: w.maintenance.downtime, budget: w.maintenance.budget, mixedSupports, families,
-  };
+  const hasPowerAndData = mixesPowerAndData(w.cables.map((cb) => cb.type));
+  const counts: GoalCounts = { total: n, connected, routed, clear, relaxed, tidy, tautShort, mixedSupports, hasPowerAndData, downtime: w.maintenance.downtime, budget: w.maintenance.budget };
+  return { ...counts, circuits, ready: isReady(counts), cableRouted, cableObstructs, cableStrain, liveDown: w.maintenance.liveDown() };
 }
 
-/** the counts the stars are read from */
-export type StarCounts = Pick<Evaluation, 'total' | 'connected' | 'routed' | 'clear' | 'relaxed' | 'tidy' | 'tautShort' | 'mixedSupports' | 'families' | 'downtime' | 'budget'>;
+/** the counts the goals are read from */
+export type GoalCounts = Pick<Evaluation, 'total' | 'connected' | 'routed' | 'clear' | 'relaxed' | 'tidy' | 'tautShort' | 'mixedSupports' | 'hasPowerAndData' | 'downtime' | 'budget'>;
 
 /**
- * What a star asks, and how far the cabinet is from it. One star: every
- * link plugged. Two: every cord tidy (for those not yet, how many hang, cross
- * a port, are strained, a cord may do several, and how much the tautest
- * lacks, m). Three: what the level asks besides, if anything: the downtime
- * within its budget, each family of cords down its own ducts.
+ * What signing off asks, and how far the cabinet is from it: every link
+ * plugged; every cord tidy (for those not yet, how many hang, cross a port,
+ * are strained, a cord may do several, and how much the tautest lacks, m).
  */
-export type StarGoal =
-  | { stars: 1; kind: 'connect'; done: number; total: number }
-  | { stars: 2; kind: 'tidy'; done: number; total: number; hanging: number; front: number; strained: number; short: number }
-  | { stars: 3; kind: 'budget'; spent: number; budget: number }
-  | { stars: 3; kind: 'separate'; mixed: number };
+export type SignOffGoal =
+  | { kind: 'connect'; done: number; total: number }
+  | { kind: 'tidy'; done: number; total: number; hanging: number; front: number; strained: number; short: number };
 
-/** every goal of the three stars, in order (three stars ask nothing more than two when the level has neither budget nor families to keep apart) */
-export function starGoals(c: StarCounts): StarGoal[] {
+/**
+ * What the client asks besides, when the level asks it: the downtime within
+ * its budget (a level in production), power down other ducts than data (a
+ * cabinet with both).
+ */
+export type Requirement =
+  | { kind: 'budget'; spent: number; budget: number }
+  | { kind: 'separate'; mixed: number };
+
+export type Goal = SignOffGoal | Requirement;
+
+/** the goals of signing off, in order */
+export function signOffGoals(c: GoalCounts): SignOffGoal[] {
   const n = c.total;
-  const goals: StarGoal[] = [
-    { stars: 1, kind: 'connect', done: c.connected, total: n },
-    { stars: 2, kind: 'tidy', done: c.tidy, total: n, hanging: n - c.routed, front: n - c.clear, strained: n - c.relaxed, short: c.tautShort },
+  return [
+    { kind: 'connect', done: c.connected, total: n },
+    { kind: 'tidy', done: c.tidy, total: n, hanging: n - c.routed, front: n - c.clear, strained: n - c.relaxed, short: c.tautShort },
   ];
-  if (Number.isFinite(c.budget)) goals.push({ stars: 3, kind: 'budget', spent: c.downtime, budget: c.budget });
-  if (c.families > 1) goals.push({ stars: 3, kind: 'separate', mixed: c.mixedSupports });
-  return goals;
+}
+
+/** the client's requirements this cabinet has (none: a level that asks nothing more than signing off) */
+export function requirementsOf(c: GoalCounts): Requirement[] {
+  const out: Requirement[] = [];
+  if (Number.isFinite(c.budget)) out.push({ kind: 'budget', spent: c.downtime, budget: c.budget });
+  if (c.hasPowerAndData) out.push({ kind: 'separate', mixed: c.mixedSupports });
+  return out;
+}
+
+/** every goal of signing off reached: the cabinet can be signed off, whatever the client's requirements */
+export function isReady(c: GoalCounts): boolean {
+  return signOffGoals(c).every(isGoalMet);
 }
 
 /** a goal reached (the budget: not overrun so far) */
-export function isGoalMet(g: StarGoal): boolean {
+export function isGoalMet(g: Goal): boolean {
   switch (g.kind) {
     case 'connect': case 'tidy': return g.done === g.total;
     case 'budget': return g.spent <= g.budget;
     case 'separate': return g.mixed === 0;
+    default: return assertNever(g);
   }
-}
-
-/** the stars: each one needs its goals and those of the stars before it */
-export function starsOf(c: StarCounts): number {
-  const goals = starGoals(c);
-  let stars = 0;
-  for (const s of [1, 2, 3]) {
-    if (!goals.filter((g) => g.stars === s).every(isGoalMet)) break;
-    stars = s;
-  }
-  return stars;
 }
 
 /** ports of the lines connected as planned (their LEDs are green); without an evaluation, from the plugs alone */
@@ -238,9 +244,8 @@ export function cordStrain(w: World, c: CableIndex): Strain | null {
 }
 
 /**
- * Ducts holding cords of more than one family: fibre, copper and
- * power each run down their own. (A manager next to a switch with fibre and
- * copper ports cannot help serving both.)
+ * Ducts holding both power and data cords: power runs down its own. (A
+ * manager next to a power strip and a switch cannot help serving both.)
  */
 function mixedSupportCount(w: World, supports: SupportBox[]): number {
   const x = w.sim.x;
@@ -248,14 +253,14 @@ function mixedSupportCount(w: World, supports: SupportBox[]): number {
   let mixed = 0;
   for (const sp of supports) {
     if (managers.has(sp.item)) continue;
-    const kinds = new Set<string>();
+    const power = new Set<boolean>();
     w.cables.forEach((cb) => {
       for (let k = 4; k < cb.count - 4; k += 2) {
         const i = cb.start + k;
-        if (insideBox(sp, x[3 * i], x[3 * i + 1], x[3 * i + 2])) { kinds.add(CORD_KINDS[cb.type].family); break; }
+        if (insideBox(sp, x[3 * i], x[3 * i + 1], x[3 * i + 2])) { power.add(carriesPower(cb.type)); break; }
       }
     });
-    if (kinds.size > 1) mixed++;
+    if (power.size > 1) mixed++;
   }
   return mixed;
 }

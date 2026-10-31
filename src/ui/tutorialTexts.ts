@@ -69,11 +69,11 @@ export const STEP_TEXTS: Record<StepId, StepText> = {
     },
     task: { fr: 'Rangez un câble dans le guide-câbles', en: 'Route a cord into the cable manager' },
   },
-  stars: {
-    title: { fr: 'Les étoiles', en: 'The stars' },
+  signOff: {
+    title: { fr: 'Valider la baie', en: 'Signing off the cabinet' },
     text: {
-      fr: '★ : toutes les liaisons sont branchées. ★★ : tous les câbles sont rangés, et le niveau suivant s\'ouvre. ★★★ : les consignes du niveau sont respectées en plus. Un câble est <b>rangé</b> quand il ne pend pas hors des supports, ne passe devant aucun port et n\'est pas tendu. Sous le plan, <b>la liste des étoiles</b> indique ce que chacune demande et où vous en êtes.',
-      en: '★: every link is plugged. ★★: every cord is tidy, and the next level opens. ★★★: the level\'s instructions are met as well. A cord is <b>tidy</b> when it does not hang out of the supports, crosses no port and is not taut. Under the schedule, <b>the list of stars</b> shows what each one asks and where you stand.',
+      fr: 'Une baie se valide quand toutes les liaisons sont branchées et tous les câbles rangés ; valider ouvre le niveau suivant. Un câble est <b>rangé</b> quand il ne pend pas hors des supports, ne passe devant aucun port et n\'est pas tendu. Certaines baies ont en plus des <b>exigences du client</b>, comme rester dans un budget d\'interruption : elles ne bloquent pas la validation, mais le dossier garde celles que vous avez remplies. Sous le plan, la liste indique ce qui reste à faire.',
+      en: 'A cabinet is signed off once every link is plugged and every cord tidy; signing off opens the next level. A cord is <b>tidy</b> when it does not hang out of the supports, crosses no port and is not taut. Some cabinets also have <b>requirements of the client</b>, such as staying within a downtime budget: they do not block signing off, but the record keeps those you met. Under the schedule, the list shows what is left to do.',
     },
   },
   pinch: {
@@ -127,8 +127,8 @@ export const STEP_TEXTS: Record<StepId, StepText> = {
   velcro: {
     title: { fr: 'Le velcro', en: 'The velcro' },
     text: {
-      fr: `Le <b>velcro</b> (touche ${toolKey('velcro')}) serre en faisceau des câbles côte à côte. <b>Tracez un trait en travers</b> des câbles à serrer : ceux qu'il croise s'allument, et au relâcher le velcro les serre là où le trait les croise. Il se place là où le plus de câbles passent côte à côte, et laisse de côté un câble croisé plus loin. Cliquez sur un velcro pour l'enlever. Le velcro est facultatif : il ne compte pas pour les étoiles.`,
-      en: `The <b>velcro</b> (key ${toolKey('velcro')}) straps cords running side by side into a bundle. <b>Draw a line across</b> the cords to strap: those it crosses light up, and when you let go the velcro straps them where the line crosses them. It goes where most cords run side by side, and leaves out a cord crossed further on. Click a velcro to take it off. The velcro is optional: it does not count for the stars.`,
+      fr: `Le <b>velcro</b> (touche ${toolKey('velcro')}) serre en faisceau des câbles côte à côte. <b>Tracez un trait en travers</b> des câbles à serrer : ceux qu'il croise s'allument, et au relâcher le velcro les serre là où le trait les croise. Il se place là où le plus de câbles passent côte à côte, et laisse de côté un câble croisé plus loin. Cliquez sur un velcro pour l'enlever. Le velcro est facultatif : il ne compte pas pour valider.`,
+      en: `The <b>velcro</b> (key ${toolKey('velcro')}) straps cords running side by side into a bundle. <b>Draw a line across</b> the cords to strap: those it crosses light up, and when you let go the velcro straps them where the line crosses them. It goes where most cords run side by side, and leaves out a cord crossed further on. Click a velcro to take it off. The velcro is optional: it does not count for signing off.`,
     },
     task: { fr: 'Posez un velcro', en: 'Place a velcro' },
   },

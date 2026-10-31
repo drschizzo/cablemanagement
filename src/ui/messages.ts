@@ -4,7 +4,7 @@
 
 import type { CordInfo, Hint, HoverNote, PhysicsStats, Toast } from '../play/notices';
 import type { RouteError } from '../game/routeLaying';
-import { isGoalMet, type StarGoal, type Strain } from '../game/evaluation';
+import { isGoalMet, type Goal, type Strain } from '../game/evaluation';
 import type { IncidentEvent } from '../game/incidents';
 import type { FreeError } from '../game/levels/freeLevel';
 import { assertNever } from '../lib/assertNever';
@@ -143,8 +143,8 @@ export function statsText(s: PhysicsStats): string {
   });
 }
 
-/** a goal of the stars as the side panel lists it: what it asks, how far along it is, and what is still wrong (empty: nothing) */
-export function starGoalText(g: StarGoal): { label: string; progress: string; detail: string } {
+/** a goal (of signing off, or a requirement of the client) as the side panel lists it: what it asks, how far along it is, and what is still wrong (empty: nothing) */
+export function goalText(g: Goal): { label: string; progress: string; detail: string } {
   const plural = (n: number, one: string, many: string) => n > 1 ? many : one;
   const met = isGoalMet(g);
   switch (g.kind) {
@@ -169,15 +169,23 @@ export function starGoalText(g: StarGoal): { label: string; progress: string; de
     case 'budget': return {
       label: tr({ fr: 'Rester dans le budget d\'interruption', en: 'Stay within the downtime budget' }),
       progress: `${Math.round(g.spent)}/${g.budget}`,
-      detail: met ? '' : tr({ fr: 'Budget dépassé : ★★★ n\'est plus possible dans cette partie.', en: 'Budget overrun: ★★★ is out of reach in this game.' }),
+      detail: met ? '' : tr({ fr: 'Budget dépassé : cette exigence ne peut plus être remplie dans cette partie.', en: 'Budget overrun: this requirement can no longer be met in this game.' }),
     };
     case 'separate': return {
-      label: tr({ fr: 'Fibre, cuivre et courant dans des goulottes séparées', en: 'Fibre, copper and power in separate ducts' }),
+      label: tr({ fr: 'Le courant dans d\'autres goulottes que les données', en: 'Power in other ducts than data' }),
       progress: '',
-      detail: met ? '' : tr({ fr: `${g.mixed} ${plural(g.mixed, 'goulotte mélange', 'goulottes mélangent')} des familles`, en: `${g.mixed} ${plural(g.mixed, 'duct mixes', 'ducts mix')} families` }),
+      detail: met ? '' : tr({ fr: `${g.mixed} ${plural(g.mixed, 'goulotte mêle', 'goulottes mêlent')} courant et données`, en: `${g.mixed} ${plural(g.mixed, 'duct mixes', 'ducts mix')} power and data` }),
     };
     default: return assertNever(g);
   }
+}
+
+/** the client's requirements met, of those a cabinet asks ('' : it asks none) */
+export function requirementsMetText(met: number, asked: number): string {
+  if (!asked) return '';
+  return asked > 1
+    ? tr({ fr: `${met}/${asked} exigences du client`, en: `${met}/${asked} requirements of the client` })
+    : tr({ fr: `${met}/1 exigence du client`, en: `${met}/1 requirement of the client` });
 }
 
 /** why a free cabinet cannot be played, or a code read */

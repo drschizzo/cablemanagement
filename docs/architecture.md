@@ -21,9 +21,10 @@ src/
     cables.ts       ce qu'est un cordon (Cable, CableEnd, Strap) et ses indices nommés (CableIndex, EndIndex,
                     NodeIndex, CircuitIndex)
     cordShapes.ts   la géométrie d'un cordon hors physique : remis à une autre longueur, enroulé dans le bac
-    evaluation.ts   le score : chaque liaison (branchée, rangée, dégagée, sans tension), les goulottes qui
-                    mêlent les familles, les étoiles et ce que chacune demande (starGoals) — des fonctions qui lisent
-                    un World sans le modifier
+    evaluation.ts   l'évaluation : chaque liaison (branchée, rangée, dégagée, sans tension), ce que demande la
+                    validation (signOffGoals, ready), les exigences du client que le niveau ajoute (requirementsOf :
+                    budget d'interruption, courant à part des données) — des fonctions qui lisent un World sans le
+                    modifier
     maintenanceWindow.ts  liaisons en production, budget d'interruption, dérivations
     cabinetState.ts une baie telle que le joueur la laisse (équipements, supports, plan, cordons branchés, velcros),
                     pour la retrouver à la visite suivante (la carrière)
@@ -33,8 +34,8 @@ src/
     rack.ts         baie 19", ports, éléments de rangement, formes de collision, zones de rangement
     supplies.ts     les fournitures (supports et velcros), décrites une fois : ItemKind et Stock en dérivent
     schedule.ts     le plan de brassage : une ligne (Circuit), et le plan tiré au hasard d'un niveau (makeSchedule)
-    cordTypes.ts    sortes de cordon, décrites une fois (famille, raideur, pliure, connecteur, couleur) et longueurs
-                    du catalogue
+    cordTypes.ts    sortes de cordon, décrites une fois (famille, raideur, pliure, connecteur, couleur), ce qui porte
+                    du courant ou des données (carriesPower), et longueurs du catalogue
     services.ts     les services du plan (données, voix…) : couleur, poids d'une coupure (leurs noms : ui/names.ts)
     idealRoutes.ts  la route idéale de chaque cordon, la baie « finie » d'un niveau (tidyKit), les cordons couchés
                     sur leurs routes (tidyLayout, la baie rangée de la vitrine)
@@ -138,8 +139,8 @@ src/
   ui/           L'INTERFACE HTML autour de la baie
     hud.ts          Hud : assemble les panneaux, et les petites choses (aide, bulle, message, chronomètre)
     toolbar.ts      la barre d'outils et ce qui reste en stock ; stockMenu.ts, le stock de cordons neufs
-    schedulePanel.ts le plan de brassage, le budget d'interruption, les trois étoiles et ce que chacune demande,
-                    le bouton Valider
+    schedulePanel.ts le plan de brassage, le budget d'interruption, ce que demande la validation, les exigences
+                    du client, le bouton Valider
     levelBrief.ts   le brief d'un niveau (ses conseils, les règles qu'on y rencontre pour la première fois),
                     puis la préparation ; ruleTexts.ts, les mots de chaque règle et de chaque geste
     timelapsePlayer.ts le timelapse rejoué en boucle en 5 s, la caméra qui dérive, et enregistré en vidéo (MediaRecorder) ; beforeAfterImage.ts, la baie
@@ -152,7 +153,8 @@ src/
     notebookPanel.ts le carnet du technicien : les trouvailles ramassées et où chercher les autres, les teintes
     freePanel.ts    la baie libre : les grandes baies, ou une baie réglée (câbles, services, désordre, production, la
                     baie en élévation et sa palette), jouer ou copier le lien (?rack=CODE)
-    careerPanel.ts  la carrière : le client, ses tickets un par un, et une nouvelle carrière
+    careerPanel.ts  la carrière : le client, ses tickets un par un, et une nouvelle carrière ; recordBadge.ts,
+                    le dossier d'une baie validée sur sa carte (formation, grandes baies, carrière)
     messages.ts     tous les textes d'une partie : messages, aides, bulle d'un cordon, et pourquoi
                     une baie libre ne se joue pas
     keyHints.ts     les touches qui comptent à l'instant (outil en main, cordon survolé), en touches de clavier sous la baie
@@ -167,18 +169,21 @@ src/
     panelMargins.ts la place que les panneaux couvrent à chaque bord de l'écran : la baie est cadrée dans le reste
     notice.ts       le bandeau qui conseille le joueur quand la carte graphique est trop lente
     format.ts       nombres, longueurs et durées tels que le joueur les lit
-    dom.ts, icons.ts petites aides DOM (dialogue ouvert, étoiles), icônes de la barre d'outils
+    dom.ts, icons.ts petites aides DOM (afficher, cacher, dialogue ouvert), icônes de la barre d'outils
   progression/  CE QUE LE JOUEUR GARDE d'une visite à l'autre, en fonctions pures sur ce qui est sauvé ; l'interface le montre
     storage.ts      les données gardées dans le navigateur (clés, valeurs par défaut, validation) : la progression,
                     et aussi les réglages (langue, qualité de l'image, son)
-    progress.ts     la progression : meilleur score, niveau ouvert, niveau suivant, fin de la formation, règles déjà
-                    rencontrées
+    progress.ts     la progression : le dossier de chaque niveau validé, niveau ouvert, niveau suivant, fin de la
+                    formation, règles déjà rencontrées
+    levelRecord.ts  le dossier d'une baie validée (exigences du client remplies sur celles demandées, temps), le
+                    meilleur de deux, et ses coches au carnet
     modeLocks.ts    quels modes sont ouverts : la formation et la baie libre d'emblée, la carrière à la fin de la
                     formation
-    career.ts       la carrière telle que le joueur l'avance : le ticket à jouer, le ticket validé (la baie gardée)
+    career.ts       la carrière telle que le joueur l'avance : le ticket à jouer, le ticket validé (la baie gardée,
+                    son dossier)
     notebook.ts     le carnet du technicien : quand il s'ouvre, les trouvailles gardées, les teintes (le catalogue,
-                    les étoiles qui ouvrent chacune, celle qu'on porte)
-    outcome.ts      ce que laisse une baie validée, selon sa sorte de niveau : record, baie à partager, niveau suivant
+                    les coches qui ouvrent chacune, celle qu'on porte)
+    outcome.ts      ce que laisse une baie validée, selon sa sorte de niveau : dossier, baie à partager, niveau suivant
   audio/        les sons, synthétisés : effets (sfx.ts), musique d'ambiance de la baie libre hors production (ambient.ts), le contexte
                 audio qu'ils partagent (context.ts)
   lib/          DES OUTILS SANS RAPPORT AVEC LE JEU, que toutes les couches peuvent importer et qui n'importent rien
@@ -295,8 +300,8 @@ sur le fil principal.
 
 ## Données dans le navigateur
 
-`progression/storage.ts` déclare chaque entrée (clé, valeur par défaut, validation) : progression (étoiles et meilleurs temps
-par niveau), tutoriel terminé, règles déjà rencontrées, carrière (tickets faits, la baie du client telle que laissée), dernière baie libre réglée, carnet (teintes portées, trouvailles), langue (celle du navigateur tant que le joueur n'en a pas choisi), musique coupée, qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu), image HDR (automatique, activée ou désactivée, et l'intensité de ses lumières) et son
+`progression/storage.ts` déclare chaque entrée (clé, valeur par défaut, validation) : progression (le dossier de chaque niveau
+validé : exigences du client remplies, meilleur temps), tutoriel terminé, règles déjà rencontrées, carrière (tickets faits, la baie du client telle que laissée, le dossier de chaque ticket), dernière baie libre réglée, carnet (teintes portées, trouvailles), langue (celle du navigateur tant que le joueur n'en a pas choisi), musique coupée, qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu), image HDR (automatique, activée ou désactivée, et l'intensité de ses lumières) et son
 coupé. Une valeur illisible ou d'une autre forme se lit comme la valeur par défaut.
 
 ## Ajouter…
@@ -304,13 +309,13 @@ coupé. Une valeur illisible ou d'une autre forme se lit comme la valeur par dé
 | Évolution | Où |
 |---|---|
 | une règle de niveau | une entrée dans `RULES` et `hasRule` (`game/levels/levelRules.ts`), ses mots dans `ruleTip` (`ui/ruleTexts.ts`) : le brief la dit au premier niveau qui l'a, puis ne la redit plus |
-| un niveau | une entrée dans `TRAINING` (`game/levels/training.ts`) ou `BIG_BAYS` (`game/levels/bigBays.ts`), bâtie avec les équipements de `game/levels/equipment.ts`, et ses mots dans `ui/levelTexts.ts` (un test vérifie qu'aucun ne manque) ; `tests/game/levels/levels.test.ts` vérifie son plan, qu'il ne se gagne pas sans rien faire et qu'il peut atteindre 3 étoiles avec son seul inventaire (`tidyKit`) |
+| un niveau | une entrée dans `TRAINING` (`game/levels/training.ts`) ou `BIG_BAYS` (`game/levels/bigBays.ts`), bâtie avec les équipements de `game/levels/equipment.ts`, et ses mots dans `ui/levelTexts.ts` (un test vérifie qu'aucun ne manque) ; `tests/game/levels/levels.test.ts` vérifie son plan, qu'il ne se valide pas sans rien faire et qu'il peut être validé avec toutes ses exigences avec son seul inventaire (`tidyKit`) |
 | un équipement de baie | `UnitSpec` et le constructeur de `Rack` (`game/rack.ts`), sa face dans `faceOf` et son rendu dans `render/rackView.ts`, son nom dans `unitLabel` (`ui/names.ts`) |
 | une sorte de cordon | une entrée dans `CORD_KINDS` (`game/cordTypes.ts`) ; le compilateur demande son nom (`ui/names.ts`), son marquage (`JACKET_KIND`, `render/jacket.ts`) et, s'il en a un nouveau, son connecteur (`plugShape`, `render/cableView.ts`) |
 | un élément de rangement | une entrée dans `SUPPLIES` (`game/supplies.ts`, d'où `ItemKind` dérive), `canPlace`, `statics` et `supports` dans `game/rack.ts`, `buildItem` dans `render/rackItems.ts`, où l'outil Supports le pose (`play/tools/supportsTool.ts`), son nom dans `ui/names.ts` |
 | un outil | un `ToolHandler` dans `play/tools/`, son nom dans `Tool` (`play/context.ts`) et dans `Controller.tools`, son bouton dans `TOOL_BUTTONS` (`ui/toolbar.ts`) |
 | un repère visuel pendant un geste | une classe dans `play/feedback/`, mise à jour par l'outil ou par `Controller.tick` |
-| un critère de score | `evaluate()` (`game/evaluation.ts`) ; s'il compte pour une étoile, un but dans `StarGoal` et `starGoals`, et ses mots dans `starGoalText` (`ui/messages.ts`) |
+| un critère d'évaluation | `evaluate()` (`game/evaluation.ts`) ; s'il bloque la validation, un but dans `SignOffGoal` et `signOffGoals` ; si c'est une exigence du client, une entrée dans `Requirement` et `requirementsOf` ; ses mots dans `goalText` (`ui/messages.ts`) |
 | un panneau de l'interface | un fichier dans `ui/`, créé et appelé par `Hud` (`ui/hud.ts`) |
 | une étape du tutoriel | son id dans `StepId`, une entrée dans `BASICS` (ce que demande le premier niveau) ou `ADVANCED` (les gestes fins) (`play/tutorialSteps.ts` : `done` lit `ctl.counters` ou l'état du monde), ses mots dans `STEP_TEXTS` (`ui/tutorialTexts.ts`), que le compilateur demande |
 | un texte | à l'endroit où il s'affiche, dans chaque langue : `tr({ fr: '…', en: '…' })` (`lib/language.ts`) ; un texte de `index.html` : une clé `data-i18n` et ses mots dans `ui/pageTexts.ts` (un test vérifie les deux listes) ; une langue : une entrée dans `Language` et `LANGUAGES`, le compilateur liste chaque texte à traduire |
@@ -333,7 +338,7 @@ coupé. Une valeur illisible ou d'une autre forme se lit comme la valeur par dé
 |---|---|
 | `npm run lint` | erreurs probables, et le sens des dépendances entre couches (ESLint) |
 | `npm run typecheck` | types (TypeScript strict) |
-| `npm test` | géométrie, baie, stockage, options de la page, formats, historique d'annulation, fenêtre de maintenance, règles d'une partie (branchement, fenêtre de maintenance, étiquettes, velcro, longueurs, bac), niveaux (plan, emmêlage stable, 3 étoiles possibles), salle d'accueil précalculée à jour, réglages donnés aux nœuds de three.js |
+| `npm test` | géométrie, baie, stockage, options de la page, formats, historique d'annulation, fenêtre de maintenance, règles d'une partie (branchement, fenêtre de maintenance, étiquettes, velcro, longueurs, bac), niveaux (plan, emmêlage stable, validation avec toutes les exigences possible), salle d'accueil précalculée à jour, réglages donnés aux nœuds de three.js |
 | `npm run check` | les trois à la suite |
 | `npm run bake` | précalcule le désordre de la salle d'accueil par défaut (à relancer quand le test `baked` le demande) |
 | `npm run bench` · `precision` · `levels` · `solvable` · `showcase` · `dressing` · `free` · `pinch` · `release` · `fold` · `route` · `plug` · `plugin` | bancs du moteur, des gestes et des niveaux, sans navigateur : ce que mesure chacun et ses réglages dans `tools/README.md` |

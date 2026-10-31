@@ -1,11 +1,12 @@
 // The career panel, from the title screen: the client, its tickets one by one
-// (signed off with their stars, the one to play now, those still locked),
+// (signed off with their record, the one to play now, those still locked),
 // and a new career from the mess.
 
 import { TICKETS, ticketLevel } from '../game/levels/career';
 import type { LevelDef } from '../game/levels/levelDef';
 import { load, save } from '../progression/storage';
-import { hide, show, starsHtml } from './dom';
+import { hide, show } from './dom';
+import { recordBadge } from './recordBadge';
 import { $ } from '../lib/page';
 import { currentTicket } from '../progression/career';
 import { levelBrief, levelTitle } from './levelTexts';
@@ -35,13 +36,13 @@ export class CareerPanel {
     const now = currentTicket(career);
     const box = $('#career-tickets');
     box.innerHTML = '';
-    // the tickets signed off with their stars, then the one to play with its brief
+    // the tickets signed off with their record, then the one to play with its brief
     for (let t = 0; t <= career.done && t < TICKETS.length; t++) {
       const card = document.createElement('div');
       const level = t === now?.ticket ? now : ticketLevel(t, null);
       card.className = 'ticket' + (t < career.done ? ' done' : ' now');
       card.innerHTML = `<b>${levelTitle(level)}</b>`
-        + (t < career.done ? `<span class="stars">${starsHtml(career.stars[t] ?? 0)}</span>` : `<p>${levelBrief(level)}</p>`);
+        + (t < career.done ? recordBadge(career.records[t]) : `<p>${levelBrief(level)}</p>`);
       box.appendChild(card);
     }
     // the locked ones, by their number only: the client has not called yet

@@ -1,6 +1,6 @@
 // The brief of a level, before it starts (and on the Help button): what to
 // do, the tips, the rules met here for the first time (those met before are
-// not told again: the stars of the side panel say what counts), the material
+// not told again: the side panel says what counts), the material
 // given. On a first reading of a level with supports to
 // place, the preparation follows: the cabinet stands still and the clock
 // waits while the player places them.

@@ -1,16 +1,14 @@
 // The side panel: the patching schedule (one row per link: plugged, tidy),
-// the downtime budget, the three stars with what each asks and how far along
-// it is, the stars won, and the Validate button.
+// the downtime budget, what signing off asks and the client's requirements,
+// each with how far along it is, and the Validate button.
 
 import type { Controller } from '../play/controller';
 import { CORD_KINDS } from '../game/cordTypes';
 import { SERVICES } from '../game/services';
-import { isGoalMet, starGoals, type CircuitStatus, type Evaluation, type Strain } from '../game/evaluation';
-import { starGoalText, strainLabel } from './messages';
-import { UNLOCK_STARS } from '../game/levels/training';
+import { isGoalMet, requirementsOf, signOffGoals, type CircuitStatus, type Evaluation, type Goal, type Strain } from '../game/evaluation';
+import { goalText, strainLabel } from './messages';
 import type { LevelDef } from '../game/levels/levelDef';
 import { formatCost } from './format';
-import { starsHtml } from './dom';
 import { $ } from '../lib/page';
 import { cordTypeName, serviceName, serviceWhat } from './names';
 import { tr } from '../lib/language';
@@ -74,12 +72,12 @@ export class SchedulePanel {
     const n = ev.total;
     this.showDowntime(ev, ctl, level);
     this.showGoals(ev);
-    $('#live-stars').innerHTML = starsHtml(ev.stars);
     const validate = $<HTMLButtonElement>('#btn-validate');
-    validate.disabled = ev.stars < 1;
-    validate.classList.toggle('ready', ev.stars >= 1);
-    validate.textContent = ev.stars < 1 ? tr({ fr: `Branchez les ${n} liaisons du plan`, en: `Plug the ${n} links of the schedule` })
-      : ev.stars < UNLOCK_STARS ? tr({ fr: 'Valider · ★ (tout ranger pour ★★)', en: 'Sign off · ★ (tidy everything for ★★)' })
+    const untidy = n - ev.tidy;
+    validate.disabled = !ev.ready;
+    validate.classList.toggle('ready', ev.ready);
+    validate.textContent = ev.connected < n ? tr({ fr: `Branchez les ${n} liaisons du plan`, en: `Plug the ${n} links of the schedule` })
+      : !ev.ready ? (untidy > 1 ? tr({ fr: `Encore ${untidy} câbles à ranger`, en: `${untidy} cords still to tidy` }) : tr({ fr: 'Encore 1 câble à ranger', en: '1 cord still to tidy' }))
       : tr({ fr: 'Valider la baie', en: 'Sign off the cabinet' });
   }
 
@@ -93,26 +91,25 @@ export class SchedulePanel {
     el.innerHTML = `⚡ ${tr({ fr: 'Interruption', en: 'Downtime' })} <b>${Math.round(ev.downtime)}/${ev.budget}</b>${rate > 0 ? ` <em>+${formatCost(rate)}/s</em>` : ''}<div class="bar"><div class="fill" style="width:${percent}%"></div></div>`;
     el.className = ev.downtime > ev.budget ? 'full' : rate > 0 ? 'some' : '';
     el.title = ev.downtime > ev.budget
-      ? tr({ fr: 'Incident : le budget d\'interruption est dépassé, ★★★ n\'est plus possible.', en: 'Incident: the downtime budget is overrun, ★★★ is out of reach.' })
+      ? tr({ fr: 'Incident : le budget d\'interruption est dépassé, l\'exigence du client n\'est plus remplie.', en: 'Incident: the downtime budget is overrun, the client\'s requirement is missed.' })
       : tr({
-        fr: 'Budget d\'interruption : chaque seconde où une liaison ⚡ est coupée coûte le poids de son service (survolez un service du plan). Au-delà du budget, plus de ★★★.',
-        en: 'Downtime budget: every second a ⚡ link is cut costs its service\'s weight (hover a service on the schedule). Beyond the budget, no more ★★★.',
+        fr: 'Budget d\'interruption : chaque seconde où une liaison ⚡ est coupée coûte le poids de son service (survolez un service du plan). Le client demande de rester dans le budget.',
+        en: 'Downtime budget: every second a ⚡ link is cut costs its service\'s weight (hover a service on the schedule). The client asks you to stay within the budget.',
       });
   }
 
-  /** the three stars: each goal, reached or not, with what is still wrong */
+  /** what signing off asks, then the client's requirements (none: their list hides), each reached or not, with what is still wrong */
   private showGoals(ev: Evaluation): void {
-    const goals = starGoals(ev);
-    const line = (stars: number, cls: string, label: string, progress = '', detail = '', title = '') =>
-      `<li class="${cls}"${title ? ` title="${title}"` : ''}><span class="s">${'★'.repeat(stars)}</span><span class="l">${label}</span><span class="p">${progress}</span>${detail ? `<span class="d">${detail}</span>` : ''}</li>`;
-    const items = goals.map((g) => {
-      const text = starGoalText(g);
+    const line = (g: Goal) => {
+      const text = goalText(g);
       const cls = isGoalMet(g) ? 'met' : g.kind === 'budget' ? 'lost' : '';
       const title = g.kind === 'tidy' ? tr({ fr: 'Un câble rangé ne pend nulle part de plus de 20 cm hors des supports, ne passe devant aucun autre port, et n\'est ni tendu ni plié.', en: 'A tidy cord hangs nowhere more than 20 cm out of the supports, crosses no other port, and is neither taut nor kinked.' }) : '';
-      return line(g.stars, cls, text.label, text.progress, text.detail, title);
-    });
-    if (!goals.some((g) => g.stars === 3)) items.push(line(3, 'none', tr({ fr: 'Aucune consigne de plus : ★★★ vient avec ★★', en: 'Nothing more asked: ★★★ comes with ★★' })));
-    $('#goal-list').innerHTML = items.join('');
+      return `<li class="${cls}"${title ? ` title="${title}"` : ''}><span class="l">${text.label}</span><span class="p">${text.progress}</span>${text.detail ? `<span class="d">${text.detail}</span>` : ''}</li>`;
+    };
+    const requirements = requirementsOf(ev);
+    $('#goal-list').innerHTML = signOffGoals(ev).map(line).join('');
+    $('#requirement-list').innerHTML = requirements.map(line).join('');
+    $('#requirements').style.display = requirements.length ? '' : 'none';
   }
 }
 

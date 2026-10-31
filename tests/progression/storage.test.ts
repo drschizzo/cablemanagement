@@ -16,21 +16,21 @@ beforeEach(() => {
 
 describe('browser storage', () => {
   it('a missing entry reads as its default', () => {
-    expect(load('progress')).toEqual({ stars: {}, times: {} });
+    expect(load('progress')).toEqual({ levels: {} });
     expect(load('tutorialDone')).toBe(false);
   });
 
   it('keeps the progress', () => {
-    const p = { stars: { l1: 3 }, times: { l1: 42 } };
+    const p = { levels: { l1: { met: 1, asked: 2, time: 42 } } };
     save('progress', p);
     expect(JSON.parse(mem.get('cable.progress')!)).toEqual(p);
     expect(load('progress')).toEqual(p);
   });
 
   it('an unreadable value, or one of another shape, reads as the default', () => {
-    for (const raw of ['{', 'null', '42', '{"stars":3}', '{"stars":{"l2":1}}']) {
+    for (const raw of ['{', 'null', '42', '{"levels":3}', '{"levels":{"l2":1}}', '{"levels":{"l2":{"met":1}}}']) {
       mem.set('cable.progress', raw);
-      expect(load('progress')).toEqual({ stars: {}, times: {} });
+      expect(load('progress')).toEqual({ levels: {} });
     }
   });
 
@@ -47,11 +47,11 @@ describe('browser storage', () => {
   });
 
   it('a career that cannot be resumed reads as a new one', () => {
-    const fresh = { done: 0, cabinet: null, stars: [] };
-    const kept = { done: 2, cabinet: { units: [], items: [], circuits: [], cords: [], straps: [] }, stars: [3, 2] };
+    const fresh = { done: 0, cabinet: null, records: [] };
+    const kept = { done: 2, cabinet: { units: [], items: [], circuits: [], cords: [], straps: [] }, records: [{ met: 2, asked: 2, time: 80 }, { met: 1, asked: 2, time: 95 }] };
     save('career', kept);
     expect(load('career')).toEqual(kept);
-    for (const raw of ['{"done":-1,"cabinet":null,"stars":[]}', '{"done":1.5,"cabinet":null,"stars":[]}', '{"done":1,"cabinet":{},"stars":[]}', '{"done":1,"cabinet":null}']) {
+    for (const raw of ['{"done":-1,"cabinet":null,"records":[]}', '{"done":1.5,"cabinet":null,"records":[]}', '{"done":1,"cabinet":{},"records":[]}', '{"done":1,"cabinet":null}', '{"done":1,"cabinet":null,"records":[3]}']) {
       mem.set('cable.career', raw);
       expect([raw, load('career')]).toEqual([raw, fresh]);
     }
@@ -95,7 +95,7 @@ describe('browser storage', () => {
   it('a blocked storage does not break the game', () => {
     const blocked = () => { throw new Error('blocked'); };
     vi.stubGlobal('localStorage', { getItem: blocked, setItem: blocked, removeItem: blocked });
-    expect(load('progress')).toEqual({ stars: {}, times: {} });
+    expect(load('progress')).toEqual({ levels: {} });
     expect(() => save('tutorialDone', true)).not.toThrow();
   });
 });

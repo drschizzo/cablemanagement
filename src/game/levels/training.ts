@@ -1,11 +1,7 @@
-// The training (five cabinets, one rule more each), what opens each of them,
-// and the guided tutorial.
+// The training (five cabinets, one rule more each), and the guided tutorial.
 
 import type { TrainingLevel, TutorialLevel } from './levelDef';
 import { BLANK, FIREWALL, ROUTER, UPS, copperPanel, ethernetSwitch, fingerManager, opticalPanel, server } from './equipment';
-
-/** stars a level needs before the next one opens: connected is not enough, it must be tidy */
-export const UNLOCK_STARS = 2;
 
 /** the training: the first cabinets, in order; the career follows it */
 export const TRAINING: TrainingLevel[] = [
@@ -93,8 +89,3 @@ export const TUTORIAL: TutorialLevel = {
   preinstalled: [{ kind: 'fingerManager', unit: 2, side: 0 }],
   seed: 5,
 };
-
-/** the first level of the training not yet tidy enough to open the next one (undefined: all are) */
-export function nextLevelToPlay(stars: Record<string, number>): TrainingLevel | undefined {
-  return TRAINING.find((l) => (stars[l.id] ?? 0) < UNLOCK_STARS);
-}

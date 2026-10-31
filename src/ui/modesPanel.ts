@@ -13,6 +13,7 @@ import { hide, show } from './dom';
 import { load, type Progress } from '../progression/storage';
 import { tr, type Words } from '../lib/language';
 import { isModeOpen, type Mode } from '../progression/modeLocks';
+import { isSignedOff } from '../progression/progress';
 import { levelTitle } from './levelTexts';
 
 /** where the cards lead; each gets `start` (what a level chosen does) and `back` (back to the modes) */
@@ -59,7 +60,8 @@ export class ModesPanel {
 
   private groups(start: (level: LevelDef) => void, reopen: () => void, lead: (open: () => void) => () => void): ModeGroup[] {
     const progress = this.progress();
-    const stars = (ids: string[]) => ids.reduce((sum, id) => sum + (progress.stars[id] ?? 0), 0);
+    const signedOff = (levels: readonly LevelDef[]) => levels.filter((l) => isSignedOff(progress, l.id)).length;
+    const signedOffText = (levels: readonly LevelDef[]) => tr({ fr: `${signedOff(levels)}/${levels.length} validées`, en: `${signedOff(levels)}/${levels.length} signed off` });
     return [
       {
         name: { fr: 'Histoire', en: 'Story' },
@@ -68,8 +70,8 @@ export class ModesPanel {
             mode: 'training',
             name: { fr: 'Formation', en: 'Training' },
             what: { fr: `${TRAINING.length} baies pour apprendre le métier, une règle de plus à chacune. La carrière vient après.`, en: `${TRAINING.length} cabinets to learn the trade, one more rule each. The career comes after.` },
-            status: () => `★ ${stars(TRAINING.map((l) => l.id))}/${3 * TRAINING.length}`,
-            progress: () => stars(TRAINING.map((l) => l.id)) / (3 * TRAINING.length),
+            status: () => signedOffText(TRAINING),
+            progress: () => signedOff(TRAINING) / TRAINING.length,
             open: lead(() => this.actions.training(start, reopen)),
           },
           {
@@ -89,8 +91,8 @@ export class ModesPanel {
             mode: 'free',
             name: { fr: 'Baie libre', en: 'Free cabinet' },
             what: { fr: `Les ${BIG_BAYS.length} grandes baies toutes prêtes, ou une baie que vous réglez : nombre de câbles, désordre, équipement, en production ou non.`, en: `The ${BIG_BAYS.length} big cabinets ready to play, or a cabinet you set up: number of cords, mess, equipment, in production or not.` },
-            status: () => `★ ${stars(BIG_BAYS.map((l) => l.id))}/${3 * BIG_BAYS.length}`,
-            progress: () => stars(BIG_BAYS.map((l) => l.id)) / (3 * BIG_BAYS.length),
+            status: () => signedOffText(BIG_BAYS),
+            progress: () => signedOff(BIG_BAYS) / BIG_BAYS.length,
             open: lead(() => this.actions.free(start, reopen)),
           },
         ],

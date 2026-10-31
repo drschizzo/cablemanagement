@@ -1,5 +1,6 @@
 // The career: each ticket starts from the cabinet as the last one left it,
-// and can end in three stars when the cabinet before was finished well.
+// and can be signed off with every requirement met when the cabinet before
+// was finished well.
 import { describe, expect, it } from 'vitest';
 import { World } from '../../../src/game/world';
 import { TICKETS, ticketLevel } from '../../../src/game/levels/career';
@@ -7,6 +8,10 @@ import { cabinetOf, type CabinetState } from '../../../src/game/cabinetState';
 import { tidyKit, tidyLayout } from '../../../src/game/idealRoutes';
 import type { LevelDef } from '../../../src/game/levels/levelDef';
 import { insideBox } from '../../../src/game/rack';
+import { isGoalMet, requirementsOf, type Evaluation } from '../../../src/game/evaluation';
+
+/** signed off, with every requirement of the client met */
+const isPerfect = (ev: Evaluation) => ev.ready && requirementsOf(ev).every(isGoalMet);
 
 /** the cabinet of a level finished by a careful technician, settled and labelled */
 function finished(level: LevelDef): World {
@@ -56,16 +61,16 @@ describe('a cabinet carried over', () => {
 });
 
 describe('the career, ticket after ticket', () => {
-  it('every ticket can end in three stars, from the cabinet the one before left', () => {
+  it('every ticket can be signed off with every requirement met, from the cabinet the one before left', () => {
     let cabinet: CabinetState | null = null;
     TICKETS.forEach((_, t) => {
       const level = ticketLevel(t, cabinet);
       const start = new World(level);
       // the work is still to do when the ticket opens
-      if (t > 0) expect(start.evaluate().stars).toBeLessThan(3);
+      if (t > 0) expect(start.evaluate().ready).toBe(false);
       start.dispose();
       const w = finished(level);
-      expect([t, w.evaluate().stars]).toEqual([t, 3]);
+      expect([t, isPerfect(w.evaluate())]).toEqual([t, true]);
       cabinet = cabinetOf(w);
       w.dispose();
     });

@@ -52,7 +52,7 @@ describe('a free cabinet', () => {
     w.preroll(20);
     expect(w.circuits.length).toBe(12);
     expect(w.sim.x.every(Number.isFinite)).toBe(true);
-    expect(w.evaluate().stars).toBe(0);
+    expect(w.evaluate().ready).toBe(false);
     w.dispose();
   });
 

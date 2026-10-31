@@ -1,5 +1,5 @@
 // The cabinet before and after, side by side in one image to share: the two
-// views of the result screen, the level, the stars.
+// views of the result screen, the level, the client's requirements met.
 
 import { tr } from '../lib/language';
 import { GAME_URL, downloadBlob } from './share';
@@ -14,7 +14,8 @@ const INK = '#e6ebe7', DIM = '#7d847f', ACCENT = '#8be3b4', BACKGROUND = '#0d0f0
 /** what the image says beside the two views */
 export interface BeforeAfterCaption {
   title: string;
-  stars: number;
+  /** the client's requirements met ('' : the level asks none) */
+  requirements: string;
 }
 
 function loaded(src: string): Promise<HTMLImageElement> {
@@ -43,8 +44,9 @@ export async function saveBeforeAfter(before: string, after: string, caption: Be
   g.font = '600 26px "IBM Plex Sans", system-ui, sans-serif';
   g.fillText(caption.title, PAD, HEAD / 2 - 8);
   g.fillStyle = ACCENT;
+  g.font = '500 18px "IBM Plex Sans", system-ui, sans-serif';
   g.textAlign = 'right';
-  g.fillText('★'.repeat(caption.stars) + '☆'.repeat(3 - caption.stars), canvas.width - PAD, HEAD / 2);
+  g.fillText('✓ ' + (caption.requirements || tr({ fr: 'Validée', en: 'Signed off' })), canvas.width - PAD, HEAD / 2);
   g.font = '15px "IBM Plex Mono", monospace';
   g.fillStyle = DIM;
   g.textAlign = 'left';

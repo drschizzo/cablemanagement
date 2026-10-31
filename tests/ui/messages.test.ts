@@ -1,6 +1,6 @@
 // The game sends data; the words are tested here, where they are written.
 import { describe, expect, it } from 'vitest';
-import { cordTooltipHtml, hintHtml, starGoalText, toastText } from '../../src/ui/messages';
+import { cordTooltipHtml, hintHtml, goalText, toastText } from '../../src/ui/messages';
 
 describe('the messages of a level', () => {
   it('says how much a cord lacks for a route', () => {
@@ -25,8 +25,8 @@ describe('the messages of a level', () => {
   });
 
   it('tells how much the tautest cord lacks', () => {
-    expect(starGoalText({ stars: 2, kind: 'tidy', done: 4, total: 6, hanging: 0, front: 0, strained: 2, short: 0.123 }).detail).toBe('2 sont tendus ou pliés (il manque jusqu\'à 13 cm : prenez un câble plus long au Stock)');
-    expect(starGoalText({ stars: 2, kind: 'tidy', done: 3, total: 6, hanging: 1, front: 2, strained: 0, short: 0 }).detail).toBe('1 pend hors des supports, 2 passent devant un port');
-    expect(starGoalText({ stars: 2, kind: 'tidy', done: 6, total: 6, hanging: 0, front: 0, strained: 0, short: 0 })).toEqual({ label: 'Ranger les 6 câbles', progress: '6/6', detail: '' });
+    expect(goalText({ kind: 'tidy', done: 4, total: 6, hanging: 0, front: 0, strained: 2, short: 0.123 }).detail).toBe('2 sont tendus ou pliés (il manque jusqu\'à 13 cm : prenez un câble plus long au Stock)');
+    expect(goalText({ kind: 'tidy', done: 3, total: 6, hanging: 1, front: 2, strained: 0, short: 0 }).detail).toBe('1 pend hors des supports, 2 passent devant un port');
+    expect(goalText({ kind: 'tidy', done: 6, total: 6, hanging: 0, front: 0, strained: 0, short: 0 })).toEqual({ label: 'Ranger les 6 câbles', progress: '6/6', detail: '' });
   });
 });

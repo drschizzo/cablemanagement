@@ -190,7 +190,7 @@ liaisons qu'on coupe à la main.
 
 **Ce qui est chaotique se mesure, il ne se teste pas.** La physique des câbles change de résultat au moindre
 changement : les bancs de `tools/` la mesurent sur des dizaines de tirages (`tools/README.md`), et les tests ne
-vérifient que ce qui doit rester vrai (un niveau peut atteindre trois étoiles, le désordre ne s'envole pas).
+vérifient que ce qui doit rester vrai (un niveau peut être validé avec toutes ses exigences, le désordre ne s'envole pas).
 
 ## Vérifier et livrer
 

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { isModeOpen } from '../../src/progression/modeLocks';
 import type { Progress } from '../../src/progression/storage';
 
-const signedOff = (...ids: string[]): Progress => ({ stars: Object.fromEntries(ids.map((id) => [id, 1])), times: {} });
+const signedOff = (...ids: string[]): Progress => ({ levels: Object.fromEntries(ids.map((id) => [id, { met: 0, asked: 0, time: 60 }])) });
 
 describe('the game modes', () => {
   it('a first visit has the training and free play', () => {

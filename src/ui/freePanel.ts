@@ -13,7 +13,8 @@ import { BIG_BAYS } from '../game/levels/bigBays';
 import type { LevelDef } from '../game/levels/levelDef';
 import { assertNever } from '../lib/assertNever';
 import { $ } from '../lib/page';
-import { hide, show, starsHtml } from './dom';
+import { hide, show } from './dom';
+import { recordBadge } from './recordBadge';
 import { load, save, type Progress } from '../progression/storage';
 import { freeLink } from './share';
 import { tr } from '../lib/language';
@@ -79,7 +80,7 @@ export class FreePanel {
     this.render();
   }
 
-  /** the big cabinets, ready to play: their title, what they ask, their stars */
+  /** the big cabinets, ready to play: their title, what they ask, their record */
   private renderReady(progress: Progress): void {
     const box = $('#free-ready');
     box.innerHTML = '';
@@ -88,7 +89,7 @@ export class FreePanel {
       card.className = 'level-card';
       card.innerHTML = `<div class="t">${levelTitle(level)}</div>
         <div class="meta">${tr({ fr: `${level.cables} câbles`, en: `${level.cables} cords` })} · ${levelBrief(level).split('. ')[0]}.</div>
-        <div class="stars">${starsHtml(progress.stars[level.id] ?? 0)}</div>`;
+        ${recordBadge(progress.levels[level.id])}`;
       card.onclick = () => this.play(level);
       box.appendChild(card);
     }

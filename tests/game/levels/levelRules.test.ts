@@ -25,8 +25,11 @@ describe('the rules of a level', () => {
   it('reads each rule from what the level is', () => {
     expect(levelRules(byId('l5'))).toContain('kinked');
     expect(levelRules(byId('l8'))).toContain('blind');
-    expect(levelRules(byId('l5'))).toContain('separation');
-    expect(levelRules(byId('l4'))).not.toContain('separation');
+    // power apart from data: fibre and copper alone do not ask it
+    expect(levelRules(byId('l5'))).not.toContain('separation');
+    const plain = plainSpec(8, 1, false);
+    expect(levelRules(freeLevel(plain))).not.toContain('separation');
+    expect(levelRules(freeLevel({ ...plain, units: [...plain.units, 'pdu'] }))).toEqual(expect.arrayContaining(['power', 'separation']));
     expect(levelRules(freeLevel(plainSpec(12, 1, true)))).toContain('incidents');
     expect(levelRules(freeLevel(plainSpec(16, 1, true)))).toContain('faults');
     expect(levelRules(freeLevel(plainSpec(4, 1, true)))).not.toContain('incidents');

@@ -33,8 +33,10 @@
         </table>
       </div>
       <div class="legend" data-i18n="side.legend"></div>
-      <div id="goal"><div class="head" data-i18n="side.stars"></div><ul id="goal-list"></ul></div>
-      <div id="live-stars"></div>
+      <div id="goal">
+        <div class="head" data-i18n="side.signOff"></div><ul id="goal-list"></ul>
+        <div id="requirements"><div class="head" data-i18n="side.requirements"></div><ul id="requirement-list"></ul></div>
+      </div>
       <button id="btn-validate" disabled></button>
     </aside>
 
@@ -81,7 +83,7 @@
             <h1 data-i18n="result.title"></h1>
             <p id="result-level" class="sub"></p>
           </div>
-          <div class="result-score"><div id="result-stars"></div><p id="result-time"></p></div>
+          <div class="result-score"><p id="result-requirements"></p><p id="result-time"></p></div>
         </header>
         <div class="result-body">
           <div class="result-media">
@@ -94,7 +96,7 @@
               <button id="result-image" class="ghost" data-i18n="result.image"></button>
             </div>
           </div>
-          <section class="result-goals"><h2 data-i18n="side.stars"></h2><ul id="result-lines"></ul></section>
+          <section class="result-goals"><h2 data-i18n="side.requirements"></h2><ul id="result-lines"></ul></section>
         </div>
         <div class="row foot">
           <div class="quiet">
@@ -261,7 +263,7 @@
           </section>
           <section>
             <h2 data-i18n="notebook.looks"></h2>
-            <p class="sub"><span data-i18n="notebook.stars"></span> <b id="notebook-stars"></b></p>
+            <p class="sub"><span data-i18n="notebook.ticks"></span> <b id="notebook-ticks"></b></p>
             <div id="notebook-items"></div>
           </section>
         </div>

@@ -18,7 +18,7 @@ export interface TitleActions {
   showNotebook(): void;
   /** where the story stands: a level of the training, then a ticket of the career (undefined: both done) */
   nextLevel(): LevelDef | undefined;
-  /** the player has stars in some level */
+  /** the player has signed off some level */
   hasProgress(): boolean;
 }
 

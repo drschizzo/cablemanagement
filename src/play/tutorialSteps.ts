@@ -8,7 +8,7 @@ import { COLUMN_X, SIDE_BACK, SIDE_IN, SIDE_OUT, U, WALL_X, insideBox } from '..
 
 type Box = { min: [number, number, number]; max: [number, number, number] };
 
-export type StepId = 'welcome' | 'cords' | 'grab' | 'look' | 'unplug' | 'plugBack' | 'route' | 'stars' | 'pinch' | 'seeBends' | 'throwAway' | 'duct' | 'ductRoute' | 'otherHand' | 'velcro';
+export type StepId = 'welcome' | 'cords' | 'grab' | 'look' | 'unplug' | 'plugBack' | 'route' | 'signOff' | 'pinch' | 'seeBends' | 'throwAway' | 'duct' | 'ductRoute' | 'otherHand' | 'velcro';
 
 /** a step of the tutorial; its words are the interface's (ui/tutorialTexts.ts) */
 export interface TutorialStep {
@@ -105,7 +105,7 @@ export const BASICS: TutorialStep[] = [
     tool: 'route',
     done: (ctl) => held(ctl, 'fingerManager') >= 6,
   },
-  { id: 'stars' },
+  { id: 'signOff' },
 ];
 
 /**

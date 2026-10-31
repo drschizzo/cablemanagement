@@ -5,11 +5,11 @@
 // after (ui/levelBrief.ts); its words are the interface's.
 
 import type { LevelDef } from './levelDef';
-import { CORD_KINDS } from '../cordTypes';
+import { CORD_KINDS, carriesPower, mixesPowerAndData } from '../cordTypes';
 import { assertNever } from '../../lib/assertNever';
 
 /** every rule, in the order a brief tells them */
-export const RULES = ['leds', 'taut', 'kinked', 'separation', 'maintenance', 'bypass', 'blind', 'faults', 'power', 'incidents', 'duct'] as const;
+export const RULES = ['leds', 'taut', 'kinked', 'maintenance', 'bypass', 'blind', 'faults', 'power', 'separation', 'incidents', 'duct'] as const;
 
 export type Rule = typeof RULES[number];
 
@@ -24,12 +24,12 @@ function hasRule(level: LevelDef, rule: Rule): boolean {
     // what every cabinet is judged on
     case 'leds': case 'taut': return true;
     case 'kinked': return cordTypes.some((t) => CORD_KINDS[t].kinks);
-    case 'separation': return new Set(cordTypes.map((t) => CORD_KINDS[t].family)).size > 1;
+    case 'separation': return mixesPowerAndData(cordTypes);
     case 'maintenance': return level.downtime !== undefined;
     case 'bypass': return level.downtime !== undefined && (level.bypass ?? 0) > 0;
     case 'blind': return !!level.blind;
     case 'faults': return (level.faults ?? 0) > 0;
-    case 'power': return cordTypes.some((t) => CORD_KINDS[t].family === 'power');
+    case 'power': return cordTypes.some(carriesPower);
     case 'incidents': return (level.incidents?.length ?? 0) > 0;
     case 'duct': return (level.inventory.duct ?? 0) > 0 || level.preinstalled.some((p) => p.kind === 'duct');
     default: return assertNever(rule);

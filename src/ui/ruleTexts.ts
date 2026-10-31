@@ -24,12 +24,12 @@ export function ruleTip(rule: Rule, level: LevelDef, services: number[]): string
       en: '<b>Kinked fibre</b>: a fibre bent at a sharp angle is not tidy.',
     });
     case 'separation': return tr({
-      fr: '<b>Familles séparées</b> : pour ★★★, la fibre, le cuivre et le courant ne partagent pas de goulotte. Les guide-câbles peuvent être partagés.',
-      en: '<b>Separate families</b>: for ★★★, fibre, copper and power never share a duct. Cable managers may be shared.',
+      fr: '<b>Courant à part</b> : le client demande que les câbles d\'alimentation ne partagent aucune goulotte avec les données (cuivre et fibre). Les guide-câbles peuvent être partagés.',
+      en: '<b>Power apart</b>: the client asks that power cords share no duct with data (copper and fibre). Cable managers may be shared.',
     });
     case 'maintenance': return tr({
-      fr: `<b>En production</b> : les liaisons ⚡ portent du trafic. Chaque seconde où l'une est coupée coûte le poids de son service sur un budget de <b>${level.downtime} pts</b> : ${serviceChips(services)}. Pour ★★★, restez dans le budget.`,
-      en: `<b>In production</b>: the ⚡ links carry traffic. Every second one of them is cut costs its service's weight against a budget of <b>${level.downtime} pts</b>: ${serviceChips(services)}. For ★★★, stay within the budget.`,
+      fr: `<b>En production</b> : les liaisons ⚡ portent du trafic. Chaque seconde où l'une est coupée coûte le poids de son service sur un budget de <b>${level.downtime} pts</b> : ${serviceChips(services)}. Le client demande de rester dans le budget.`,
+      en: `<b>In production</b>: the ⚡ links carry traffic. Every second one of them is cut costs its service's weight against a budget of <b>${level.downtime} pts</b>: ${serviceChips(services)}. The client asks you to stay within the budget.`,
     });
     case 'bypass': {
       const n = level.bypass ?? 0;

@@ -1,16 +1,16 @@
-// The result screen, once the cabinet is validated: the stars and the time,
-// the cabinet before and after, the checks one by one, and the way on (next
-// level, back to work, menu, home).
+// The result screen, once the cabinet is signed off: the client's
+// requirements met and the time, the cabinet before and after, the
+// requirements one by one, and the way on (next level, back to work, menu,
+// home).
 
 import type { Controller } from '../play/controller';
-import { isGoalMet, starGoals, type Evaluation } from '../game/evaluation';
-import { UNLOCK_STARS } from '../game/levels/training';
+import { isGoalMet, requirementsOf, type Evaluation } from '../game/evaluation';
 import type { LevelDef } from '../game/levels/levelDef';
 import { formatTime } from './format';
-import { hide, show, starsHtml } from './dom';
+import { hide, show } from './dom';
 import { $ } from '../lib/page';
 import type { Outcome } from '../progression/outcome';
-import { starGoalText } from './messages';
+import { goalText, requirementsMetText } from './messages';
 import { tr } from '../lib/language';
 import { levelPlace, levelTitle } from './levelTexts';
 import { saveBeforeAfter } from './beforeAfterImage';
@@ -27,11 +27,13 @@ export interface ResultActions {
 }
 
 export function showResult(ctl: Controller, level: LevelDef, ev: Evaluation, outcome: Outcome, actions: ResultActions): void {
-  const { result, share } = outcome;
+  const { record, share } = outcome;
   $('#result-place').textContent = levelPlace(level);
   $('#result-level').textContent = levelTitle(level);
-  $('#result-stars').innerHTML = starsHtml(ev.stars, true);
-  $('#result-time').innerHTML = tr({ fr: `<span>Temps</span> ${formatTime(result.time)}`, en: `<span>Time</span> ${formatTime(result.time)}` });
+  const requirements = $('#result-requirements');
+  requirements.textContent = requirementsMetText(record.met, record.asked);
+  requirements.classList.toggle('all', record.met === record.asked);
+  $('#result-time').innerHTML = tr({ fr: `<span>Temps</span> ${formatTime(record.time)}`, en: `<span>Time</span> ${formatTime(record.time)}` });
   $<HTMLImageElement>('#ba-before').src = ctl.before ?? '';
   $<HTMLImageElement>('#ba-after').src = ctl.capture();
   $('#result-lines').innerHTML = resultLines(ev).join('');
@@ -45,32 +47,30 @@ export function showResult(ctl: Controller, level: LevelDef, ev: Evaluation, out
   $('#result-replay').onclick = () => { hide('#result'); actions.replay(); };
   const after = $<HTMLImageElement>('#ba-after').src;
   $('#result-image').onclick = () => void saveBeforeAfter(ctl.before ?? after, after,
-    { title: levelTitle(level), stars: ev.stars }, `${fileName(level)}.png`);
+    { title: levelTitle(level), requirements: requirementsMetText(record.met, record.asked) }, `${fileName(level)}.png`);
   show('#result');
 }
 
-/** the goals of the three stars, a line each: reached, or what was missing */
+/** the client's requirements, a line each: met, or what was missing; a line saying so when the level asks none */
 function resultLines(ev: Evaluation): string[] {
-  return starGoals(ev).map((g) => {
-    const text = starGoalText(g);
-    return `<li class="${isGoalMet(g) ? 'met' : 'missed'}"><span class="s">${'★'.repeat(g.stars)}</span>`
-      + `<span class="l">${text.label}</span><span class="p">${text.progress}</span>`
+  const requirements = requirementsOf(ev);
+  if (!requirements.length) return [`<li class="none"><span class="l">${tr({ fr: 'Cette baie ne demande rien de plus que d\'être rangée.', en: 'This cabinet asks nothing more than being tidy.' })}</span></li>`];
+  return requirements.map((g) => {
+    const text = goalText(g);
+    return `<li class="${isGoalMet(g) ? 'met' : 'missed'}"><span class="l">${text.label}</span><span class="p">${text.progress}</span>`
       + (text.detail ? `<span class="d">${text.detail}</span>` : '') + '</li>';
   });
 }
 
-/** the way on from `level`: the next level (or ticket, or the career after the training), open or what opens it */
-function showNext(level: LevelDef, next: Outcome['next'], actions: ResultActions): void {
+/** the way on from `level`: the next level (or ticket, or the career after the training) */
+function showNext(level: LevelDef, next: LevelDef | null, actions: ResultActions): void {
   const button = $<HTMLButtonElement>('#result-next');
   button.style.display = next ? '' : 'none';
   if (!next) return;
-  button.disabled = !next.open;
-  button.textContent = !next.open
-    ? tr({ fr: `${'★'.repeat(UNLOCK_STARS)} pour le niveau suivant`, en: `${'★'.repeat(UNLOCK_STARS)} for the next level` })
-    : next.level.kind !== 'ticket' ? tr({ fr: 'Niveau suivant →', en: 'Next level →' })
+  button.textContent = next.kind !== 'ticket' ? tr({ fr: 'Niveau suivant →', en: 'Next level →' })
     : level.kind === 'ticket' ? tr({ fr: 'Ticket suivant →', en: 'Next ticket →' })
     : tr({ fr: 'La carrière : Radio Pinède →', en: 'The career: Radio Pinède →' });
-  button.onclick = () => { if (next.open) { hide('#result'); actions.start(next.level); } };
+  button.onclick = () => { hide('#result'); actions.start(next); };
 }
 
 /** the button that copies the link of a free cabinet, when there is one */

@@ -43,7 +43,7 @@ interface LevelBase {
   /**
    * Maintenance window: the links working at the start are in production.
    * Every second one of them is cut costs the weight of its service; past
-   * this budget, an incident is declared and three stars are out of reach.
+   * this budget, an incident is declared and the client's requirement is missed.
    */
   downtime?: number;
   /** incidents while the work goes on (a colleague unplugs a link, a user calls): see incidents.ts */

@@ -275,7 +275,7 @@ export class Hud {
     const ctl = this.ctl, level = this.level;
     if (!ctl || !level) return;
     const ev = ctl.world.evaluate();
-    if (ev.stars < 1 || document.body.classList.contains('touring')) return;
+    if (!ev.ready || document.body.classList.contains('touring')) return;
     const outcome = recordOutcome(level, ev, ctl.world, ctl.elapsed, this.progress);
     sfx.win();
     // the panels step aside while the camera flies round the work

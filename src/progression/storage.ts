@@ -12,11 +12,19 @@ import type { FindId } from '../game/finds';
 import type { Look } from '../render/look';
 import { RULES, type Rule } from '../game/levels/levelRules';
 
-/** the career: tickets done, the client's cabinet as the last one left it, the best stars of each */
+/** a cabinet signed off, at its best: the most of the client's requirements met, of those it asks, and the shortest time */
+export interface LevelRecord {
+  met: number;
+  asked: number;
+  /** s of play */
+  time: number;
+}
+
+/** the career: tickets done, the client's cabinet as the last one left it, the record of each ticket signed off */
 export interface Career {
   done: number;
   cabinet: CabinetState | null;
-  stars: number[];
+  records: LevelRecord[];
 }
 
 /** the notebook: the look equipped in each slot, and the finds picked up */
@@ -27,10 +35,9 @@ export interface Notebook {
   finds: FindId[];
 }
 
-/** best result per level id: stars (1..3), time (s) */
+/** the cabinets signed off outside the career (the tutorial, the training, the big cabinets): their record, by level id */
 export interface Progress {
-  stars: Record<string, number>;
-  times: Record<string, number>;
+  levels: Record<string, LevelRecord>;
 }
 
 interface Entry<T> {
@@ -42,6 +49,10 @@ interface Entry<T> {
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+
+function isLevelRecord(v: unknown): v is LevelRecord {
+  return isRecord(v) && Number.isInteger(v.met) && Number.isInteger(v.asked) && typeof v.time === 'number';
+}
 
 /** a level of QUALITY, or settings of the same shape as its levels */
 function isQualityChoice(v: QualityChoice): boolean {
@@ -55,19 +66,19 @@ function isQualityChoice(v: QualityChoice): boolean {
 const ENTRIES = {
   progress: {
     key: 'cable.progress',
-    fallback: (): Progress => ({ stars: {}, times: {} }),
+    fallback: (): Progress => ({ levels: {} }),
     parse: (raw: string): Progress => JSON.parse(raw),
     format: (v: Progress) => JSON.stringify(v),
-    valid: (v: Progress) => isRecord(v.stars) && isRecord(v.times),
+    valid: (v: Progress) => isRecord(v.levels) && Object.values(v.levels).every(isLevelRecord),
   } satisfies Entry<Progress>,
-  /** the cabinets of the day signed off, by date (YYYY-MM-DD) */
   /** the career, and the client's cabinet as the player left it */
   career: {
     key: 'cable.career',
-    fallback: (): Career => ({ done: 0, cabinet: null, stars: [] }),
+    fallback: (): Career => ({ done: 0, cabinet: null, records: [] }),
     parse: (raw: string): Career => JSON.parse(raw),
     format: (v: Career) => JSON.stringify(v),
-    valid: (v: Career) => Number.isInteger(v.done) && v.done >= 0 && Array.isArray(v.stars) && (v.cabinet === null || (isRecord(v.cabinet) && Array.isArray(v.cabinet.cords))),
+    valid: (v: Career) => Number.isInteger(v.done) && v.done >= 0 && Array.isArray(v.records) && v.records.every(isLevelRecord)
+      && (v.cabinet === null || (isRecord(v.cabinet) && Array.isArray(v.cabinet.cords))),
   } satisfies Entry<Career>,
   /** the looks equipped and the finds */
   notebook: {

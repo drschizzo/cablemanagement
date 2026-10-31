@@ -11,7 +11,7 @@ import { Tutorial } from '../ui/tutorial';
 import { freeErrorText, statsText, toastText } from '../ui/messages';
 import { isDialogOpen } from '../ui/dom';
 import { unitLabel } from '../ui/names';
-import { lookOf, starsWon } from '../progression/notebook';
+import { lookOf, ticksWon } from '../progression/notebook';
 import { load } from '../progression/storage';
 import { nextInStory } from '../progression/progress';
 import type { LevelDef } from '../game/levels/levelDef';
@@ -84,7 +84,7 @@ export class App {
       showSettings: () => this.hud.showSettings(),
       showNotebook: () => this.hud.showNotebook(),
       nextLevel: () => nextInStory(this.hud.progress, load('career')),
-      hasProgress: () => Object.keys(this.hud.progress.stars).length > 0,
+      hasProgress: () => Object.keys(this.hud.progress.levels).length > 0,
     });
     this.showcaseSwitch = new ShowcaseSwitch({
       toggle: () => this.showcase?.toggle(),
@@ -111,7 +111,7 @@ export class App {
         isDialogOpen,
         unitLabel,
         onFind: (find) => hud.found(find),
-      }, this.threaded, lookOf(load('notebook'), starsWon(load('progress'), load('career'))));
+      }, this.threaded, lookOf(load('notebook'), ticksWon(load('progress'), load('career'))));
       this.ctl = ctl;
       hud.attach(ctl, level);
       if (level.kind === 'tutorial') this.mode = new Tutorial(ctl, hud, { home: () => this.startShowcase(), play: () => this.playNext() });

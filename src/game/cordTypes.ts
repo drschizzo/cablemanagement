@@ -9,7 +9,7 @@ export type CordType = 'OS2' | 'OM4' | 'CU' | 'PWR';
 export type CordPlug = 'lc' | 'rj45' | 'c13';
 
 interface CordKind {
-  /** fibre, copper and power are not run in the same supports (three stars) */
+  /** what it is made for: fibre and copper carry data, power feeds the equipment */
   family: 'fibre' | 'copper' | 'power';
   /** bending stiffness of the cord for the solver */
   stiffness: number;
@@ -31,6 +31,16 @@ export const CORD_KINDS: Record<CordType, CordKind> = {
   // a power cord: thick, stiff, black
   PWR: { family: 'power', stiffness: 22, kinks: false, plug: 'c13', color: '#1c1d1f', takesServiceColor: false },
 };
+
+/** a cord of this kind carries power, not data: power runs down other ducts than data (fibre and copper) */
+export function carriesPower(type: CordType): boolean {
+  return CORD_KINDS[type].family === 'power';
+}
+
+/** cords of these kinds carry both power and data: then the client wants them down separate ducts */
+export function mixesPowerAndData(types: readonly CordType[]): boolean {
+  return types.some(carriesPower) && types.some((t) => !carriesPower(t));
+}
 
 /** standard patch cord lengths (m) */
 export const CATALOGUE = [0.15, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 5];

@@ -27,10 +27,11 @@ describe('a cabinet at the start', () => {
     expect(w.maintenance.liveDown()).toBe(0);
   });
 
-  it('nothing tidy yet: one star, with every line connected', () => {
+  it('nothing tidy yet: every line connected, but it cannot be signed off', () => {
     const ev = w.evaluate();
     expect(ev.routed).toBeLessThan(ev.total);
-    expect(ev.stars).toBe(1);
+    expect(ev.connected).toBe(ev.total);
+    expect(ev.ready).toBe(false);
   });
 });
 
@@ -44,7 +45,7 @@ describe('plugging and the maintenance window', () => {
     expect(w.rack.port(port).plugged).toBeNull();
     expect(w.circuitUp(0)).toBe(false);
     expect(w.maintenance.liveDown()).toBe(1);
-    expect(w.evaluate().stars).toBe(0);
+    expect(w.evaluate().connected).toBe(w.circuits.length - 1);
   });
 
   it('every second a production link is cut costs its service\'s weight', () => {

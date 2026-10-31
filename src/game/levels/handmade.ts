@@ -1,5 +1,5 @@
 // The cabinets written by hand, each with its own id, words and find: the
-// training, then the big cabinets. Their stars add up in the notebook.
+// training, then the big cabinets.
 
 import type { BigBayLevel, TrainingLevel } from './levelDef';
 import { TRAINING } from './training';

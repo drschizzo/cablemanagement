@@ -262,15 +262,13 @@ button:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
 #goal { margin: 2px 0 8px; }
 #goal .head { font-size: 10.5px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.08em; }
 #goal ul { list-style: none; margin: 6px 0 0; padding: 0; font-size: 12.5px; line-height: 1.45; color: #c9cec9; }
-#goal li { display: grid; grid-template-columns: 34px 1fr auto; column-gap: 6px; margin: 4px 0; }
-#goal li .s { color: var(--dim); font-size: 11px; letter-spacing: -1px; }
+#goal li { display: grid; grid-template-columns: 1fr auto; column-gap: 6px; margin: 4px 0; }
 #goal li .p { font: 11px var(--mono); color: var(--dim); }
-#goal li .d { grid-column: 2 / -1; font-size: 11.5px; color: var(--dim); }
-#goal li.met .s, #goal li.met .p { color: var(--accent); }
-#goal li.met .l { color: var(--accent); }
+#goal li .d { grid-column: 1 / -1; font-size: 11.5px; color: var(--dim); }
+#goal li.met .l, #goal li.met .p { color: var(--accent); }
 #goal li.met .p::after { content: ' ✓'; }
 #goal li.lost .l, #goal li.lost .d, #goal li.lost .p { color: var(--bad); }
-#goal li.none .l { color: var(--dim); }
+#requirements { margin-top: 10px; }
 #result-ba { display: flex; gap: 8px; }
 #result-ba figure { margin: 0; flex: 1; min-width: 0; }
 #result-ba img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: var(--r); background: #0c0d0e; box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.6); }
@@ -278,10 +276,6 @@ button:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
 #tl-canvas { display: block; width: 100%; max-height: 60vh; object-fit: contain; background: #0c0d0e; border: 1px solid var(--line); border-radius: var(--r); margin: 12px 0 6px; }
 #result-ba figcaption { font-size: 10.5px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; }
 
-#live-stars { text-align: center; padding-top: 2px; }
-.star { font-size: 20px; color: #2a2e2b; margin: 0 3px; }
-.star.on { color: var(--warn); text-shadow: 0 0 10px rgba(233, 182, 92, 0.45); }
-.star.big { font-size: 44px; margin: 0 6px; }
 
 #btn-validate {
   padding: 10px; border-radius: var(--r); border: 1px solid var(--line); background: transparent; color: var(--faint);
@@ -380,23 +374,24 @@ button:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
   padding: 4px 9px; font: 11.5px var(--mono); color: #c9cec9; background: var(--card); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--skin-edge);
 }
 
-/* ---- the result: the score in the head, the cabinet before and after beside the stars' goals, the ways on below */
+/* ---- the result: the requirements met in the head, the cabinet before and after beside the requirements, the ways on below */
 #result .panel { width: min(780px, calc(100% - 40px)); max-width: none; }
 #result .result-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; }
 #result .result-head .sub { margin: 0; }
 #result .result-score { text-align: right; }
-#result .result-score .star.big { font-size: 34px; margin: 0 0 0 4px; }
+#result-requirements { margin: 0 0 2px; font: 13px var(--mono); color: var(--warn); }
+#result-requirements.all { color: var(--accent); }
 #result .result-body { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 24px; margin-top: 18px; }
 #result .result-goals h2 { margin-top: 0; }
 #result-lines { margin: 0; }
-#result-lines li { display: grid; grid-template-columns: 30px 1fr auto; column-gap: 8px; padding: 7px 0 7px 18px; margin: 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+#result-lines li { display: grid; grid-template-columns: 1fr auto; column-gap: 8px; padding: 7px 0 7px 18px; margin: 0; border-bottom: 1px solid var(--line); font-size: 13px; }
 #result-lines li::before { top: 13px; }
 #result-lines li.met::before { background: var(--accent); box-shadow: var(--led-glow); }
 #result-lines li.missed::before { background: var(--bad); box-shadow: 0 0 6px rgba(255, 122, 104, 0.5); }
-#result-lines .s { color: var(--warn); font-size: 11px; letter-spacing: -1px; }
 #result-lines .p { font: 11px var(--mono); color: var(--dim); }
-#result-lines .d { grid-column: 2 / -1; margin-top: 2px; font-size: 12px; color: var(--dim); }
+#result-lines .d { grid-column: 1 / -1; margin-top: 2px; font-size: 12px; color: var(--dim); }
 #result-lines li.missed .l, #result-lines li.missed .d { color: var(--bad); }
+#result-lines li.none .l { color: var(--dim); }
 @media (max-width: 720px) { #result .result-body { grid-template-columns: 1fr; } }
 
 /* ---- pause menu: one column of ways on */
@@ -476,14 +471,14 @@ button:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
 .level-card.tutorial { grid-column: 1 / -1; min-height: 0; }
 .level-card.locked { cursor: not-allowed; background: rgba(0, 0, 0, 0.18); border-style: dashed; box-shadow: none; }
 .level-card.locked > * { opacity: 0.32; }
-/* its LED: dark while locked, dim when open, lit once it has stars */
+/* its LED: dark while locked, dim when open, lit once signed off */
 .level-card .num { padding-left: 14px; font-size: 10.5px; color: var(--dim); transition: color 0.2s; }
 .level-card .num::before { content: '0'; }
 .level-card::after {
   content: ''; position: absolute; left: 14px; top: 18px; width: 6px; height: 6px; border-radius: 1px; background: #3a403c;
   transition: background 0.2s, box-shadow 0.2s;
 }
-.level-card:has(.star.on)::after, .level-card.tutorial:has(.best)::after { background: var(--accent); box-shadow: var(--led-glow); }
+.level-card:has(.record)::after, .level-card.tutorial:has(.best)::after { background: var(--accent); box-shadow: var(--led-glow); }
 .level-card.locked::after { background: #1e211f; }
 .level-card.next { border-color: var(--accent-line); box-shadow: var(--skin-edge), 0 0 0 1px rgba(139, 227, 180, 0.08), 0 10px 30px -14px rgba(139, 227, 180, 0.4); }
 .level-card.next::after { background: var(--accent); box-shadow: var(--led-glow); animation: ledwait 1.2s infinite; }
@@ -491,8 +486,11 @@ button:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
 .level-card:hover:not(.locked) .num { color: var(--accent); }
 .level-card .t { font-weight: 600; margin: 6px 0 4px; }
 .level-card .meta { font-size: 12px; color: var(--dim); }
-.level-card .stars { margin-top: 8px; }
-.level-card .stars .star { font-size: 14px; margin: 0 2px 0 0; }
+/* a cabinet signed off: the tick, then the client's requirements met, lit when all are */
+.record { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 8px; font: 11px var(--mono); }
+.record .signed { color: var(--accent); }
+.record .req { color: var(--warn); }
+.record .req.all { color: var(--accent); }
 .level-card .best { position: absolute; right: 12px; top: 13px; font: 10.5px var(--mono); color: var(--dim); }
 .level-card .lock { margin-top: 6px; font-size: 11px; color: var(--dim); }
 .level-card.locked > .lock { opacity: 0.85; }
@@ -796,7 +794,7 @@ body.touring #toolbar, body.touring #side, body.touring #hint, body.touring #top
 #notebook .swatch small { font: 11px var(--mono); color: var(--dim); }
 #notebook .swatch.cur { border-color: var(--accent-line); background: var(--card-hi); box-shadow: var(--skin-edge), 0 0 18px -6px rgba(139, 227, 180, 0.5); }
 #notebook .swatch.cur small { color: var(--accent); }
-/* not open yet: the stars it takes stand out, the swatch dimmed but still readable */
+/* not open yet: the ticks it takes stand out, the swatch dimmed but still readable */
 #notebook .swatch.locked small { color: var(--warn); }
 #notebook .swatch:disabled { cursor: default; opacity: 0.55; }
 #notebook-finds { display: flex; flex-direction: column; gap: 4px; }
@@ -813,7 +811,7 @@ body.touring #toolbar, body.touring #side, body.touring #hint, body.touring #top
 #career .ticket { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 12px 8px 28px; font-size: 12.5px; }
 #career .ticket b { line-height: 20px; }
 #career .ticket p { margin: 2px 0 0; color: var(--dim); flex-basis: 100%; line-height: 1.5; }
-#career .ticket .star { font-size: 15px; margin: 0 1px; }
+#career .ticket .record { margin-top: 0; }
 /* its LED, level with its title: lit once signed off, blinking for the one to play */
 #career .ticket::after { content: ''; position: absolute; left: 12px; top: 15px; width: 6px; height: 6px; border-radius: 1px; background: var(--accent); box-shadow: var(--led-glow); }
 #career .ticket.now { border-color: var(--accent-line); background: var(--card-hi); box-shadow: var(--skin-edge), 0 10px 30px -14px rgba(139, 227, 180, 0.4); }

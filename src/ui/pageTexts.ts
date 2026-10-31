@@ -20,7 +20,7 @@ export const PAGE_TEXTS: Record<string, Words> = {
   'notebook.sub': { fr: 'Ce que les techniciens d\'avant ont laissé dans les baies, et où chercher le reste.', en: 'What the technicians before you left in the cabinets, and where to look for the rest.' },
   'notebook.finds': { fr: 'Trouvailles', en: 'Finds' },
   'notebook.looks': { fr: 'En prime : les teintes', en: 'A bonus: the colours' },
-  'notebook.stars': { fr: 'Chaque couleur s\'ouvre avec les étoiles gagnées. Vous en avez', en: 'Each colour opens with the stars won. You have' },
+  'notebook.ticks': { fr: 'Chaque couleur s\'ouvre avec les coches gagnées : une par baie validée, une par exigence du client remplie. Vous en avez', en: 'Each colour opens with the ticks won: one per cabinet signed off, one per requirement of the client met. You have' },
   'common.before': { fr: 'Avant', en: 'Before' },
   'common.after': { fr: 'Après', en: 'After' },
   'top.menu': { fr: '☰ Menu', en: '☰ Menu' },
@@ -34,7 +34,8 @@ export const PAGE_TEXTS: Record<string, Words> = {
   'side.cord': { fr: 'Type', en: 'Type' },
   'side.service': { fr: 'Service', en: 'Service' },
   'side.state': { fr: 'État', en: 'State' },
-  'side.stars': { fr: 'Les étoiles', en: 'The stars' },
+  'side.signOff': { fr: 'Pour valider', en: 'To sign off' },
+  'side.requirements': { fr: 'Exigences du client', en: 'Requirements of the client' },
   'side.legend': {
     fr: '<i class="s-conn ok"></i>branchée <i class="s-tidy ok"></i>câble rangé : dans les supports, devant aucun port, ni tendu ni plié',
     en: '<i class="s-conn ok"></i>plugged <i class="s-tidy ok"></i>tidy: in the supports, off the front, neither taut nor kinked',
