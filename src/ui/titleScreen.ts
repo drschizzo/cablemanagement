@@ -5,7 +5,7 @@
 import { TRAINING, TUTORIAL } from '../game/levels/training';
 import type { LevelDef } from '../game/levels/levelDef';
 import { load } from './storage';
-import { isWorkshopOpen } from './shop';
+import { isNotebookOpen } from './notebook';
 import { $ } from '../lib/page';
 import { levelTitle } from './levelTexts';
 import { onLanguageChange, tr } from './language';
@@ -15,7 +15,7 @@ export interface TitleActions {
   playNext(): void;
   showModes(): void;
   showSettings(): void;
-  showShop(): void;
+  showNotebook(): void;
   /** where the story stands: a level of the training, then a ticket of the career (undefined: both done) */
   nextLevel(): LevelDef | undefined;
   /** the player has stars in some level */
@@ -44,7 +44,7 @@ export class TitleScreen {
     byId('title-tuto').onclick = () => actions.start(TUTORIAL);
     byId('title-modes').onclick = () => actions.showModes();
     byId('title-settings').onclick = () => actions.showSettings();
-    byId('title-shop').onclick = () => actions.showShop();
+    byId('title-notebook').onclick = () => actions.showNotebook();
     onLanguageChange(() => this.refresh());
   }
 
@@ -65,7 +65,7 @@ export class TitleScreen {
       : next && next !== TRAINING[0] ? tr({ fr: `Continuer · ${levelTitle(next)} →`, en: `Continue · ${levelTitle(next)} →` })
       : tr({ fr: 'Jouer →', en: 'Play →' });
     play.title = this.firstVisit() ? tr({ fr: 'Le tutoriel, puis le niveau 1', en: 'The tutorial, then level 1' }) : '';
-    byId('title-shop').style.display = isWorkshopOpen(load('progress'), load('workshop')) ? '' : 'none';
+    byId('title-notebook').style.display = isNotebookOpen(load('progress'), load('notebook')) ? '' : 'none';
     byId('title-modes').style.display = this.firstVisit() ? 'none' : '';
   }
 

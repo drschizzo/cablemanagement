@@ -1,12 +1,12 @@
-// The technician's notebook (the workshop it was): the finds picked up, and
-// as a bonus looks that open with the stars won, one equipped per slot (the
-// velcros, the light round the cabinet). Its catalogue, when it opens, and the
+// The technician's notebook: the finds picked up, and as a bonus looks that
+// open with the stars won, one equipped per slot (the velcros, the light
+// round the cabinet). Its catalogue, when it opens, and the
 // rules of equipping: pure functions over the saved record (storage.ts).
 
 import { DEFAULT_LOOK, type Look } from '../render/look';
 import { HANDMADE_LEVELS } from '../game/levels/handmade';
 import type { FindId } from '../game/finds';
-import type { Career, Progress, Workshop } from './storage';
+import type { Career, Progress, Notebook } from './storage';
 import type { Words } from './language';
 
 export type LookSlot = keyof Look;
@@ -21,7 +21,7 @@ export interface LookItem {
   value: string;
 }
 
-export const SHOP: LookItem[] = [
+export const LOOKS: LookItem[] = [
   { id: 'velcro-navy', slot: 'velcro', name: { fr: 'Marine', en: 'Navy' }, stars: 0, value: DEFAULT_LOOK.velcro },
   { id: 'velcro-black', slot: 'velcro', name: { fr: 'Noir', en: 'Black' }, stars: 5, value: '#151617' },
   { id: 'velcro-red', slot: 'velcro', name: { fr: 'Rouge', en: 'Red' }, stars: 10, value: '#a3242a' },
@@ -36,11 +36,11 @@ export const SHOP: LookItem[] = [
 ];
 
 /** the training level whose sign-off opens the notebook, finds or not */
-const WORKSHOP_OPENS_AT = 'l3';
+const NOTEBOOK_OPENS_AT = 'l3';
 
 /** the notebook shows with the first find picked up, or once the player knows the trade (level 3 signed off) */
-export function isWorkshopOpen(progress: Progress, workshop: Workshop): boolean {
-  return workshop.finds.length > 0 || (progress.stars[WORKSHOP_OPENS_AT] ?? 0) > 0;
+export function isNotebookOpen(progress: Progress, notebook: Notebook): boolean {
+  return notebook.finds.length > 0 || (progress.stars[NOTEBOOK_OPENS_AT] ?? 0) > 0;
 }
 
 /** the best stars of every cabinet of the training, big cabinet and ticket of the career, added up */
@@ -49,7 +49,7 @@ export function starsWon(progress: Progress, career: Career): number {
   return levels + career.stars.reduce((sum, s) => sum + (s ?? 0), 0);
 }
 
-/** the slots, in the order of the workshop */
+/** the slots, in the order of the notebook */
 export const LOOK_SLOTS = Object.keys(DEFAULT_LOOK) as LookSlot[];
 
 export function isOpen(stars: number, item: LookItem): boolean {
@@ -57,28 +57,28 @@ export function isOpen(stars: number, item: LookItem): boolean {
 }
 
 /** the item equipped in a slot: the one chosen while it is open, or the one given */
-export function equippedIn(workshop: Workshop, stars: number, slot: LookSlot): LookItem {
-  const chosen = SHOP.find((i) => i.id === workshop.equipped[slot] && i.slot === slot);
-  return chosen && isOpen(stars, chosen) ? chosen : SHOP.find((i) => i.slot === slot && i.stars === 0)!;
+export function equippedIn(notebook: Notebook, stars: number, slot: LookSlot): LookItem {
+  const chosen = LOOKS.find((i) => i.id === notebook.equipped[slot] && i.slot === slot);
+  return chosen && isOpen(stars, chosen) ? chosen : LOOKS.find((i) => i.slot === slot && i.stars === 0)!;
 }
 
 /** equips an item in its slot; false when it is not open yet */
-export function equip(workshop: Workshop, stars: number, item: LookItem): boolean {
+export function equip(notebook: Notebook, stars: number, item: LookItem): boolean {
   if (!isOpen(stars, item)) return false;
-  workshop.equipped[item.slot] = item.id;
+  notebook.equipped[item.slot] = item.id;
   return true;
 }
 
 /** the look the equipped items give */
-export function lookOf(workshop: Workshop, stars: number): Look {
+export function lookOf(notebook: Notebook, stars: number): Look {
   const look = { ...DEFAULT_LOOK };
-  for (const slot of LOOK_SLOTS) look[slot] = equippedIn(workshop, stars, slot).value;
+  for (const slot of LOOK_SLOTS) look[slot] = equippedIn(notebook, stars, slot).value;
   return look;
 }
 
 /** a find picked up joins the collection; false when it was in it already */
-export function collectFind(workshop: Workshop, find: FindId): boolean {
-  if (workshop.finds.includes(find)) return false;
-  workshop.finds.push(find);
+export function collectFind(notebook: Notebook, find: FindId): boolean {
+  if (notebook.finds.includes(find)) return false;
+  notebook.finds.push(find);
   return true;
 }

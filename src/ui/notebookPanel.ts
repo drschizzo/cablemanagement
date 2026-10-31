@@ -5,7 +5,7 @@
 import { load, save } from './storage';
 import { hide, show } from './dom';
 import { $ } from '../lib/page';
-import { LOOK_SLOTS, SHOP, equip, equippedIn, isOpen, starsWon, type LookSlot } from './shop';
+import { LOOK_SLOTS, LOOKS, equip, equippedIn, isOpen, starsWon, type LookSlot } from './notebook';
 import { tr } from './language';
 import { assertNever } from '../lib/assertNever';
 import { FINDS, type FindId } from '../game/finds';
@@ -15,54 +15,54 @@ import { KEYS_FROM, MANUAL_FROM } from '../game/levels/freeLevel';
 import { findName, findStory } from './names';
 import { levelTitle } from './levelTexts';
 
-export class ShopPanel {
+export class NotebookPanel {
   private back = () => {};
 
   constructor() {
-    $('#shop-back').onclick = () => { hide('#shop'); this.back(); };
+    $('#notebook-back').onclick = () => { hide('#notebook'); this.back(); };
   }
 
   /** `back`: where the Back button returns */
   show(back: () => void): void {
     this.back = back;
     this.render();
-    show('#shop');
+    show('#notebook');
   }
 
   private render(): void {
-    const workshop = load('workshop');
+    const notebook = load('notebook');
     const stars = starsWon(load('progress'), load('career'));
-    $('#shop-stars').textContent = `${stars} ★`;
-    const box = $('#shop-items');
+    $('#notebook-stars').textContent = `${stars} ★`;
+    const box = $('#notebook-items');
     box.innerHTML = '';
     for (const slot of LOOK_SLOTS) {
       const title = document.createElement('h2');
       title.textContent = slotName(slot);
       const row = document.createElement('div');
       row.className = 'swatches';
-      const equipped = equippedIn(workshop, stars, slot);
-      for (const item of SHOP.filter((i) => i.slot === slot)) {
+      const equipped = equippedIn(notebook, stars, slot);
+      for (const item of LOOKS.filter((i) => i.slot === slot)) {
         const open = isOpen(stars, item);
         const button = document.createElement('button');
         button.className = 'swatch' + (item === equipped ? ' cur' : '') + (open ? '' : ' locked');
         button.disabled = !open;
         button.innerHTML = `<i style="background:${item.value}"></i><span>${tr(item.name)}</span><small>${item === equipped ? tr({ fr: 'équipé', en: 'equipped' }) : open ? tr({ fr: 'équiper', en: 'equip' }) : `${item.stars} ★`}</small>`;
         button.onclick = () => {
-          const w = load('workshop');
-          if (equip(w, stars, item)) save('workshop', w);
+          const w = load('notebook');
+          if (equip(w, stars, item)) save('notebook', w);
           this.render();
         };
         row.appendChild(button);
       }
       box.append(title, row);
     }
-    this.renderFinds(workshop.finds);
+    this.renderFinds(notebook.finds);
   }
 
   /** the finds: those picked up with their story, the others as where to look */
   private renderFinds(found: readonly string[]): void {
-    $('#shop-finds-count').textContent = `${found.length}/${FINDS.length}`;
-    $('#shop-finds').innerHTML = FINDS.map((id) => found.includes(id)
+    $('#notebook-finds-count').textContent = `${found.length}/${FINDS.length}`;
+    $('#notebook-finds').innerHTML = FINDS.map((id) => found.includes(id)
       ? `<div class="find"><b>${findName(id)}</b><span>${findStory(id)}</span></div>`
       : `<div class="find unknown"><b>???</b><span>${whereHidden(id)}</span></div>`).join('');
   }

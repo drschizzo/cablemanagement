@@ -19,9 +19,9 @@ export interface Career {
   stars: number[];
 }
 
-/** the workshop: the look equipped in each slot, and the finds picked up */
-export interface Workshop {
-  /** the look equipped in each slot, by slot (ui/shop.ts) */
+/** the notebook: the look equipped in each slot, and the finds picked up */
+export interface Notebook {
+  /** the look equipped in each slot, by slot (ui/notebook.ts) */
   equipped: Partial<Record<keyof Look, string>>;
   /** ids of the finds picked up (game/finds.ts) */
   finds: FindId[];
@@ -70,13 +70,13 @@ const ENTRIES = {
     valid: (v: Career) => Number.isInteger(v.done) && v.done >= 0 && Array.isArray(v.stars) && (v.cabinet === null || (isRecord(v.cabinet) && Array.isArray(v.cabinet.cords))),
   } satisfies Entry<Career>,
   /** the looks equipped and the finds */
-  workshop: {
-    key: 'cable.workshop',
-    fallback: (): Workshop => ({ equipped: {}, finds: [] }),
-    parse: (raw: string): Workshop => JSON.parse(raw),
-    format: (v: Workshop) => JSON.stringify(v),
-    valid: (v: Workshop) => isRecord(v.equipped) && Array.isArray(v.finds),
-  } satisfies Entry<Workshop>,
+  notebook: {
+    key: 'cable.notebook',
+    fallback: (): Notebook => ({ equipped: {}, finds: [] }),
+    parse: (raw: string): Notebook => JSON.parse(raw),
+    format: (v: Notebook) => JSON.stringify(v),
+    valid: (v: Notebook) => isRecord(v.equipped) && Array.isArray(v.finds),
+  } satisfies Entry<Notebook>,
   /** the code of the last free cabinet set up ('' : none yet) */
   freeDraft: {
     key: 'cable.free',

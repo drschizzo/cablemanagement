@@ -145,9 +145,9 @@ src/
     settingsPanel.ts les paramètres : qualité de l'image (auto, préréglages, détails) et son
     progress.ts     la progression du joueur : meilleur score, niveau ouvert, niveau suivant, règles déjà
                     rencontrées (fonctions pures)
-    shop.ts         le carnet du technicien : les trouvailles, puis en prime les teintes (le catalogue, les étoiles
+    notebook.ts     le carnet du technicien : les trouvailles, puis en prime les teintes (le catalogue, les étoiles
                     qui ouvrent chaque teinte, celle qu'on porte), quand le carnet s'ouvre, les trouvailles gardées
-                    (fonctions pures) ; shopPanel.ts, son panneau
+                    (fonctions pures) ; notebookPanel.ts, son panneau
     freePanel.ts    la baie libre : les grandes baies, ou une baie réglée (câbles, services, désordre, production, la
                     baie en élévation et sa palette), jouer ou copier le lien (?rack=CODE)
     outcome.ts      ce que laisse une baie validée, selon sa sorte de niveau : record, partage, niveau suivant

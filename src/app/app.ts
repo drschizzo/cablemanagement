@@ -10,7 +10,7 @@ import { Tutorial } from '../ui/tutorial';
 import { freeErrorText, statsText, toastText } from '../ui/messages';
 import { isDialogOpen } from '../ui/dom';
 import { unitLabel } from '../ui/names';
-import { lookOf, starsWon } from '../ui/shop';
+import { lookOf, starsWon } from '../ui/notebook';
 import { load } from '../ui/storage';
 import { nextInStory } from '../ui/progress';
 import type { LevelDef } from '../game/levels/levelDef';
@@ -81,7 +81,7 @@ export class App {
       playNext: () => this.playNext(),
       showModes: () => this.hud.showModes(),
       showSettings: () => this.hud.showSettings(),
-      showShop: () => this.hud.showShop(),
+      showNotebook: () => this.hud.showNotebook(),
       nextLevel: () => nextInStory(this.hud.progress, load('career')),
       hasProgress: () => Object.keys(this.hud.progress.stars).length > 0,
     });
@@ -110,7 +110,7 @@ export class App {
         isDialogOpen,
         unitLabel,
         onFind: (find) => hud.found(find),
-      }, this.threaded, lookOf(load('workshop'), starsWon(load('progress'), load('career'))));
+      }, this.threaded, lookOf(load('notebook'), starsWon(load('progress'), load('career'))));
       this.ctl = ctl;
       hud.attach(ctl, level);
       if (level.kind === 'tutorial') this.mode = new Tutorial(ctl, hud, { home: () => this.startShowcase(), play: () => this.playNext() });

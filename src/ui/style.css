@@ -595,27 +595,27 @@ body.demo #prep { display: none; }
 #toolbar, #side, #hint, #topbar { transition: opacity 0.4s; }
 body.touring #toolbar, body.touring #side, body.touring #hint, body.touring #topbar, body.touring #tooltip { opacity: 0; pointer-events: none; }
 
-/* ---- the workshop: a swatch per look, dark like the rest of the panels */
-#shop-items h2, #shop h2 { margin: 18px 0 8px; font-size: 13px; font-weight: 600; color: var(--text); text-transform: uppercase; letter-spacing: 0.08em; }
-#shop .swatches { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-#shop .swatch {
+/* ---- the notebook: a swatch per look, dark like the rest of the panels */
+#notebook-items h2, #notebook h2 { margin: 18px 0 8px; font-size: 13px; font-weight: 600; color: var(--text); text-transform: uppercase; letter-spacing: 0.08em; }
+#notebook .swatches { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+#notebook .swatch {
   display: grid; grid-template-columns: 26px 1fr; grid-template-rows: auto auto; align-items: center; gap: 1px 10px;
   text-align: left; padding: 8px 10px; background: var(--panel-solid); border: 1px solid var(--line); border-radius: var(--r);
   color: var(--text); transition: border-color 0.15s, background 0.15s;
 }
-#shop .swatch:hover:not(:disabled) { border-color: var(--line-hi); background: #151716; }
-#shop .swatch i { grid-row: span 2; width: 26px; height: 26px; border-radius: 4px; border: 1px solid rgba(255, 255, 255, 0.22); }
-#shop .swatch span { font-size: 13px; }
-#shop .swatch small { font: 11px var(--mono); color: var(--dim); }
-#shop .swatch.cur { border-color: var(--accent); background: var(--accent-soft); }
-#shop .swatch.cur small { color: var(--accent); }
+#notebook .swatch:hover:not(:disabled) { border-color: var(--line-hi); background: #151716; }
+#notebook .swatch i { grid-row: span 2; width: 26px; height: 26px; border-radius: 4px; border: 1px solid rgba(255, 255, 255, 0.22); }
+#notebook .swatch span { font-size: 13px; }
+#notebook .swatch small { font: 11px var(--mono); color: var(--dim); }
+#notebook .swatch.cur { border-color: var(--accent); background: var(--accent-soft); }
+#notebook .swatch.cur small { color: var(--accent); }
 /* not open yet: the stars it takes stand out, the swatch dimmed but still readable */
-#shop .swatch.locked small { color: var(--warn); }
-#shop .swatch:disabled { cursor: default; opacity: 0.55; }
-#shop-finds { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
-#shop .find { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; border: 1px solid var(--line); border-radius: var(--r); font-size: 12px; }
-#shop .find span { color: var(--dim); }
-#shop .find.unknown b { color: var(--dim); }
+#notebook .swatch.locked small { color: var(--warn); }
+#notebook .swatch:disabled { cursor: default; opacity: 0.55; }
+#notebook-finds { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+#notebook .find { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; border: 1px solid var(--line); border-radius: var(--r); font-size: 12px; }
+#notebook .find span { color: var(--dim); }
+#notebook .find.unknown b { color: var(--dim); }
 
 /* ---- the career: one card per ticket */
 #career-tickets { display: flex; flex-direction: column; gap: 4px; margin: 12px 0; }

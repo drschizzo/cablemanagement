@@ -3,7 +3,7 @@
 // its scores (schedulePanel.ts), the brief (levelBrief.ts), the result screen
 // and its timelapse (resultScreen.ts, timelapsePlayer.ts), the pause menu
 // (pauseMenu.ts), the game modes and what they open (modesPanel.ts,
-// levelMenu.ts, careerPanel.ts, freePanel.ts), the workshop (shopPanel.ts),
+// levelMenu.ts, careerPanel.ts, freePanel.ts), the notebook (notebookPanel.ts),
 // the settings (settingsPanel.ts); and the small things (hint, tooltip, toast,
 // timer, call, sound, a find picked up) and the interface's keys. It reads the
 // Controller's state and calls its actions; the Controller tells it what
@@ -29,8 +29,8 @@ import { LevelBrief } from './levelBrief';
 import { fileName, showResult } from './resultScreen';
 import { recordOutcome } from './outcome';
 import { TimelapsePlayer } from './timelapsePlayer';
-import { ShopPanel } from './shopPanel';
-import { collectFind } from './shop';
+import { NotebookPanel } from './notebookPanel';
+import { collectFind } from './notebook';
 import { CareerPanel } from './careerPanel';
 import { ModesPanel } from './modesPanel';
 import { FreePanel } from './freePanel';
@@ -70,7 +70,7 @@ export class Hud {
   private modes: ModesPanel;
   private settings: SettingsPanel;
   private timelapse = new TimelapsePlayer();
-  private shop = new ShopPanel();
+  private notebook = new NotebookPanel();
   private career = new CareerPanel();
   private toastTimer = 0;
   /** the hint of the gesture under way, and the notes of the cord under the pointer (null: none) */
@@ -162,20 +162,20 @@ export class Hud {
     this.modes.show(choose, back);
   }
 
-  /** the player picked up a find: kept in the workshop, its story told */
+  /** the player picked up a find: kept in the notebook, its story told */
   found(find: FindId): void {
-    const workshop = load('workshop');
-    const isNew = collectFind(workshop, find);
-    save('workshop', workshop);
-    const count = `${workshop.finds.length}/${FINDS.length}`;
+    const notebook = load('notebook');
+    const isNew = collectFind(notebook, find);
+    save('notebook', notebook);
+    const count = `${notebook.finds.length}/${FINDS.length}`;
     this.toast(isNew
       ? tr({ fr: `Trouvaille : ${findName(find)} ! ${findStory(find)} (${count})`, en: `Found: ${findName(find)}! ${findStory(find)} (${count})` })
       : tr({ fr: `${findName(find)}, encore. Il est déjà dans votre collection.`, en: `${findName(find)} again. It is in your collection already.` }), STORY_MS);
   }
 
-  /** the workshop, from the title screen */
-  showShop(): void {
-    this.shop.show(() => {});
+  /** the notebook, from the title screen */
+  showNotebook(): void {
+    this.notebook.show(() => {});
   }
 
   /** the settings, from the title screen */

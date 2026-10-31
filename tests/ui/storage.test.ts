@@ -34,15 +34,15 @@ describe('browser storage', () => {
     }
   });
 
-  it('keeps the workshop, its looks and finds; one of another shape reads as empty', () => {
+  it('keeps the notebook, its looks and finds; one of another shape reads as empty', () => {
     const empty = { equipped: {}, finds: [] };
     const kept = { equipped: { velcro: 'velcro-red' }, finds: ['duck' as const] };
-    save('workshop', kept);
-    expect(JSON.parse(mem.get('cable.workshop')!)).toEqual(kept);
-    expect(load('workshop')).toEqual(kept);
+    save('notebook', kept);
+    expect(JSON.parse(mem.get('cable.notebook')!)).toEqual(kept);
+    expect(load('notebook')).toEqual(kept);
     for (const raw of ['{"equipped":[]}', '{"finds":"duck"}', '{"equipped":{}}', '42']) {
-      mem.set('cable.workshop', raw);
-      expect([raw, load('workshop')]).toEqual([raw, empty]);
+      mem.set('cable.notebook', raw);
+      expect([raw, load('notebook')]).toEqual([raw, empty]);
     }
   });
 
