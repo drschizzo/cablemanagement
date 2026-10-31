@@ -1,5 +1,5 @@
 // What the cabinet shows and plays of its state as it changes: the LEDs of
-// its ports, the cords that just became tidy (a glow), the production
+// its ports, the cords that just became tidy (a glow, a note), the production
 // traffic cut and back (a sound, a glow), and the news the player hears of
 // (an incident, links cut).
 
@@ -78,7 +78,7 @@ export class CabinetSignals {
     this.events.onToast({ kind: 'linksCut', links: links.map((i) => ({ link: i, service: this.world.circuits[i].service })), costPerSecond: cost });
   }
 
-  /** the cords that just became tidy: a glow each */
+  /** the cords that just became tidy: a glow and a note each */
   private celebrate(ev: Evaluation): void {
     const now = tidyCablesOf(ev);
     const fresh = [...now].filter((c) => !this.tidyCables.has(c));

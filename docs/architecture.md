@@ -307,10 +307,10 @@ coupé. Une valeur illisible ou d'une autre forme se lit comme la valeur par dé
 | un niveau | une entrée dans `TRAINING` (`game/levels/training.ts`) ou `BIG_BAYS` (`game/levels/bigBays.ts`), bâtie avec les équipements de `game/levels/equipment.ts`, et ses mots dans `ui/levelTexts.ts` (un test vérifie qu'aucun ne manque) ; `tests/game/levels/levels.test.ts` vérifie son plan, qu'il ne se gagne pas sans rien faire et qu'il peut atteindre 3 étoiles avec son seul inventaire (`tidyKit`) |
 | un équipement de baie | `UnitSpec` et le constructeur de `Rack` (`game/rack.ts`), sa face dans `faceOf` et son rendu dans `render/rackView.ts`, son nom dans `unitLabel` (`ui/names.ts`) |
 | une sorte de cordon | une entrée dans `CORD_KINDS` (`game/cordTypes.ts`) ; le compilateur demande son nom (`ui/names.ts`), son marquage (`JACKET_KIND`, `render/jacket.ts`) et, s'il en a un nouveau, son connecteur (`plugShape`, `render/cableView.ts`) |
-| un élément de rangement | `ItemKind`, `canPlace`, `statics` et `supports` dans `game/rack.ts`, `buildItem` dans `render/rackItems.ts`, un outil dans `TOOL_BUTTONS` (`ui/toolbar.ts`) |
+| un élément de rangement | une entrée dans `SUPPLIES` (`game/supplies.ts`, d'où `ItemKind` dérive), `canPlace`, `statics` et `supports` dans `game/rack.ts`, `buildItem` dans `render/rackItems.ts`, où l'outil Supports le pose (`play/tools/supportsTool.ts`), son nom dans `ui/names.ts` |
 | un outil | un `ToolHandler` dans `play/tools/`, son nom dans `Tool` (`play/context.ts`) et dans `Controller.tools`, son bouton dans `TOOL_BUTTONS` (`ui/toolbar.ts`) |
 | un repère visuel pendant un geste | une classe dans `play/feedback/`, mise à jour par l'outil ou par `Controller.tick` |
-| un critère de score | `evaluate()` (`game/evaluation.ts`), sa colonne dans le plan (`ui/schedulePanel.ts`) |
+| un critère de score | `evaluate()` (`game/evaluation.ts`) ; s'il compte pour une étoile, un but dans `StarGoal` et `starGoals`, et ses mots dans `starGoalText` (`ui/messages.ts`) |
 | un panneau de l'interface | un fichier dans `ui/`, créé et appelé par `Hud` (`ui/hud.ts`) |
 | une étape du tutoriel | son id dans `StepId`, une entrée dans `BASICS` (ce que demande le premier niveau) ou `ADVANCED` (les gestes fins) (`play/tutorialSteps.ts` : `done` lit `ctl.counters` ou l'état du monde), ses mots dans `STEP_TEXTS` (`ui/tutorialTexts.ts`), que le compilateur demande |
 | un texte | à l'endroit où il s'affiche, dans chaque langue : `tr({ fr: '…', en: '…' })` (`lib/language.ts`) ; un texte de `index.html` : une clé `data-i18n` et ses mots dans `ui/pageTexts.ts` (un test vérifie les deux listes) ; une langue : une entrée dans `Language` et `LANGUAGES`, le compilateur liste chaque texte à traduire |
@@ -336,7 +336,7 @@ coupé. Une valeur illisible ou d'une autre forme se lit comme la valeur par dé
 | `npm test` | géométrie, baie, stockage, options de la page, formats, historique d'annulation, fenêtre de maintenance, règles d'une partie (branchement, fenêtre de maintenance, étiquettes, velcro, longueurs, bac), niveaux (plan, emmêlage stable, 3 étoiles possibles), salle d'accueil précalculée à jour, réglages donnés aux nœuds de three.js |
 | `npm run check` | les trois à la suite |
 | `npm run bake` | précalcule le désordre de la salle d'accueil par défaut (à relancer quand le test `baked` le demande) |
-| `npm run bench` · `precision` · `levels` · `solvable` · `showcase` · `free` · `pinch` · `release` · `fold` · `route` · `plug` · `plugin` | bancs du moteur, des gestes et des niveaux, sans navigateur : ce que mesure chacun et ses réglages dans `tools/README.md` |
+| `npm run bench` · `precision` · `levels` · `solvable` · `showcase` · `dressing` · `free` · `pinch` · `release` · `fold` · `route` · `plug` · `plugin` | bancs du moteur, des gestes et des niveaux, sans navigateur : ce que mesure chacun et ses réglages dans `tools/README.md` |
 
 Ces vérifications se lancent en local avant de pousser. La CI (`.github/workflows/ci.yml`) fait la même chose,
 plus la construction, mais seulement quand on la lance à la main (onglet *Actions* de GitHub).
