@@ -77,6 +77,7 @@ src/
                     cordons s'écartent, passent devant les guides, y rentrent par leur ouverture)
     aisleLayout.ts  où se tiennent les baies : un demi-cercle autour du spectateur
     cableRain.ts    le décor : des câbles qui tombent et s'entassent au milieu de la salle
+    aisleSettings.ts  les salles de l'écran titre selon les options de la page, et où la caméra s'y pose
   render/       LE DESSIN (three.js) de ce que game décrit
     stage.ts        Stage : la scène, les lumières, le rendu et sa qualité, choisie ou adaptée au GPU
     cameraRig.ts    la caméra et ses mouvements : le cadrage du sujet dans l'écran laissé libre, l'orbite du joueur
@@ -249,7 +250,8 @@ les autres salles, et un test le signale. Pendant qu'une salle est à l'écran, 
 (`App.prepareNextAisle`) : « une autre salle » l'affiche aussitôt. Pendant un niveau, la salle de l'écran titre est
 mise de côté (`Showcase.stop`, `App.keptAisle`), hors de la scène : revenir à l'accueil la remontre aussitôt, dans
 l'état où on l'a laissée (une salle en pleine bascule est jetée, sa chorégraphie tourne sur des minuteries). Les options de la page (`?seed`, `?bays`,
-`?pairs`, `?sync`, `?quality`) sont décrites en tête de `app/urlOptions.ts` ; voir aussi « L'écran d'accueil » dans
+`?pairs`, `?sync`, `?quality`) sont décrites en tête de `app/urlOptions.ts` ; ce qu'elles changent aux salles, et le cadrage de l'accueil
+(`TITLE_VIEW`), est dans `showcase/aisleSettings.ts` ; voir aussi « L'écran d'accueil » dans
 `anatomie-d-une-frame.md`. Chaque chargement passe par `SceneLoader.load()` :
 
 - le voile de chargement s'affiche et peint avant le calcul (bloquant) de l'emmêlage ; pour l'écran titre, pas

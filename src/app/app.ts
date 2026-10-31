@@ -22,7 +22,7 @@ import type { BakedBay } from '../game/mess/baked';
 import { SceneLoader } from './sceneLoader';
 import { TitleScreen, type LoadStep } from '../ui/titleScreen';
 import { onPanelsResized, panelMargins } from '../ui/panelMargins';
-import type { AisleSettings } from './urlOptions';
+import type { AisleSettings } from '../showcase/aisleSettings';
 import { $ } from '../lib/page';
 import { ShowcaseSwitch } from '../ui/showcaseSwitch';
 

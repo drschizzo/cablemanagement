@@ -4,7 +4,8 @@
 
 import { Stage } from './render/stage';
 import { App } from './app/app';
-import { aisleSettings, readUrlOptions } from './app/urlOptions';
+import { readUrlOptions } from './app/urlOptions';
+import { aisleSettings } from './showcase/aisleSettings';
 import { SHOWCASE_DEFAULT } from './game/levels/showcaseRack';
 import { TUTORIAL } from './game/levels/campaign';
 import type { LevelDef } from './game/levels/levelDef';
