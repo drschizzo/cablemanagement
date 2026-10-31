@@ -1,21 +1,17 @@
-// Runs one level: the fixed-step physics loop, the rendering, and what the
-// cabinet shows of its state (LEDs, glows, the cord under the pointer). It
-// puts the pieces together: the gestures live in tools/, the routing of the
-// mouse and keys in inputRouter.ts, the overlays in feedback/.
+// Runs one level: the fixed-step physics loop, the rendering, the cord under
+// the pointer, and the actions of the interface. It puts the pieces together:
+// the gestures live in tools/, the routing of the mouse and keys in
+// inputRouter.ts, the overlays in feedback/, what the cabinet shows of its
+// state in cabinetSignals.ts, the timelapse and its replay in workRecording.ts.
 
 import { Stage } from '../render/stage';
-import { RackView, type UnitLabeller } from '../render/rackView';
+import type { RackView } from '../render/rackView';
 import { CableView } from '../render/cableView';
 import { DEFAULT_LOOK, type Look } from '../render/look';
 import { disposeTree } from '../render/dispose';
-import { levelScenery } from '../render/levelScenery';
-import { warmShaders } from '../render/shaderWarmup';
 import { World } from '../game/world';
 import type { Evaluation } from '../game/evaluation';
 import { ROOM_FLOOR, type Port } from '../game/rack';
-import { SERVICES } from '../game/services';
-import { levelSite } from '../game/levels/site';
-import { seedOf } from '../lib/random';
 import type { CordType } from '../game/cordTypes';
 import type { LevelDef } from '../game/levels/levelDef';
 import { sfx } from '../audio/sfx';
@@ -28,9 +24,9 @@ import type { HoverNote } from './notices';
 import { captureFront } from '../render/frontImage';
 import { buildFind } from '../render/findView';
 import type * as THREE from 'three/webgpu';
-import { Timelapse } from './timelapse';
-import { ReplayRecorder, type ReplayKey } from './replay';
-import { ReplayView } from './replayView';
+import { WorkRecording, type Playback } from './workRecording';
+import type { ReplayView } from './replayView';
+import { CabinetSignals } from './cabinetSignals';
 import { PortHint } from './feedback/portHint';
 import { HoldView, SETTLE_SHOW } from './feedback/holdView';
 import { OtherHandMarker } from './feedback/otherHandMarker';
@@ -44,16 +40,10 @@ import { VelcroTool } from './tools/velcroTool';
 import { SupportsTool } from './tools/supportsTool';
 import { TesterTool } from './tools/testerTool';
 import { InputRouter, type InputCommands } from './inputRouter';
+import { rackViewOf, sceneryOf } from './levelViews';
 import type { CableIndex, CircuitIndex } from '../game/cables';
-import type { IncidentEvent } from '../game/incidents';
 
 export type { ControllerEvents, Tool } from './context';
-
-/** the work played again (see startReplay): before each image, `advance` sets what it shows; `drawn` once it is drawn */
-export interface Playback {
-  advance(dt: number): void;
-  drawn(): void;
-}
 
 /**
  * Where a level is: playing (the clock and the downtime run), paused (a brief
@@ -87,15 +77,10 @@ export class Controller implements PlayContext, InputCommands {
   /** seconds since the level opened, preparation and pauses included (animations) */
   clock = 0;
   readonly counters: GestureCounters = { hovered: 0, dragged: 0, unplugged: 0, orbited: 0, deposited: 0, handedOver: 0 };
-  /** the work as it went, the state of the cabinet a few times a second of play */
-  readonly timelapse = new Timelapse<ReplayKey>();
-  private recorder: ReplayRecorder;
-  /** a key of the timelapse wanted at the next image, whatever the pace (the cabinet signed off) */
-  private frameWanted = false;
-  /** the work played again in place of the cabinet, and what drives it */
-  private replay: { view: ReplayView; playback: Playback } | null = null;
-  /** the cabinet as the player found it (image), taken on the first frame */
-  before: string | null = null;
+  /** the work as it went: the cabinet as found, its timelapse, and its replay */
+  private recording: WorkRecording;
+  /** what the cabinet shows and plays of its state as it changes */
+  private signals: CabinetSignals;
 
   readonly pointer: Pointer;
   readonly picker: CordPicker;
@@ -121,10 +106,6 @@ export class Controller implements PlayContext, InputCommands {
   /** the cord under the pointer */
   private hover: CordPick | null = null;
   private lastHoveredCable = -1;
-  /** cords tidy as of the last evaluation (plugged as planned, routed, clear) */
-  private tidyCables = new Set<number>();
-  /** production lines down as of the last evaluation */
-  private linksDown = new Set<number>();
 
   /** time not yet simulated (s) */
   private physicsBacklog = 0;
@@ -172,47 +153,20 @@ export class Controller implements PlayContext, InputCommands {
     stage.frame((rack.topY + rack.floorY) / 2 + 0.01, rack.topY - rack.floorY + 0.16, 0.6, 0.16);
     this.rackView.syncItems(this.world.itemsVersion);
     this.cableView.update(true);
+    this.recording = new WorkRecording(stage, this.world, this.rackView, look.velcro);
+    this.signals = new CabinetSignals(this.world, this.rackView, events, this.tidyGlows, this.holdView, {
+      clock: () => this.clock,
+      carried: () => this.hand.carried?.cable ?? -1,
+      replaying: () => this.recording.replaying,
+    });
     this.lastEval = this.world.evaluate();
-    this.tidyCables = tidyCablesOf(this.lastEval);
-    this.refreshLeds();
-    this.recorder = new ReplayRecorder(this.world, this.rackView);
+    this.signals.settle(this.lastEval);
+    this.signals.refreshLeds(this.lastEval);
     this.input = new InputRouter(stage, this.pointer, {
       byName: this.tools, withGestures: [this.route, this.velcro, this.hand], hand: this.hand, route: this.route, supports: this.supports,
     }, this);
     this.setTool('hand');
     requestAnimationFrame(this.frame);
-  }
-
-  /**
-   * Builds what `level` shows, out of sight, and its shaders between frames
-   * (warmShaders): the first level opened then does not stall on them. What
-   * was built (the cabinet, its room, its cords) is kept, out of the scene,
-   * until the caller frees it, and every level meanwhile finds the shaders of
-   * the same materials. Given up once `stop()` (a level opens): null.
-   * `progress`: the share of its shaders built (0 to 1).
-   */
-  static async warm(stage: Stage, level: LevelDef, unitLabel: UnitLabeller, stop: () => boolean, progress?: (f: number) => void): Promise<{ dispose(): void } | null> {
-    const world = new World(level);
-    const rackView = rackViewOf(world, unitLabel);
-    const scenery = sceneryOf(world, level);
-    const cableView = new CableView(world);
-    cableView.lightBy(rackView.glow);
-    rackView.syncItems(world.itemsVersion);
-    cableView.update(true);
-    const free = () => {
-      rackView.dispose();
-      disposeTree(scenery);
-      disposeTree(cableView.group);
-    };
-    let warmed = false;
-    try {
-      warmed = await warmShaders(stage, [rackView.group, scenery, cableView.group], stop, progress);
-    } finally {
-      // (what the cords are drawn from, not the cords)
-      world.dispose();
-      if (!warmed) free();
-    }
-    return warmed ? { dispose: free } : null;
   }
 
   dispose(): void {
@@ -292,13 +246,13 @@ export class Controller implements PlayContext, InputCommands {
     const order = w.cables.map((_, c) => c).sort((a, b) => height(b) - height(a));
     this.tidyGlows.wave(order, this.clock, FINISH_TOUR_S * 0.6);
     // the timelapse ends on the cabinet as it is signed off
-    this.frameWanted = true;
+    this.recording.wantKey();
     return this.stage.tour(FINISH_TOUR_S);
   }
 
   /** an image of the cabinet from the front, without the overlays (the before/after of the result screen) */
   capture(): string {
-    return captureFront(this.stage, [this.hand.plumbLine.group, this.otherHand.group, this.connectorGlows.group]);
+    return captureFront(this.stage, this.overlays());
   }
 
   // ------------------------------------------------------------- loop
@@ -322,7 +276,11 @@ export class Controller implements PlayContext, InputCommands {
         this.events.onToast({ kind: 'bypassBack', link: i });
         this.events.onInventory();
       }
-      for (const ev of news.incidents) this.announceIncident(ev);
+      for (const ev of news.incidents) {
+        this.signals.announceIncident(ev);
+        // the cabinet shows it at once
+        if (ev.kind === 'colleague') this.reevaluate();
+      }
     }
     this.clock += dt;
     if (this.highlights.updateTracer(this.clock)) this.focus(this.highlights.focusedLine);
@@ -331,7 +289,7 @@ export class Controller implements PlayContext, InputCommands {
     this.stepPhysics(dt);
     this.syncCableView();
     this.cableView.update();
-    if (!this.replay) this.rackView.syncItems(this.world.itemsVersion);
+    if (!this.recording.replaying) this.rackView.syncItems(this.world.itemsVersion);
     this.sinceEval += dt;
     if (this.sinceEval > EVAL_PERIOD) {
       this.sinceEval = 0;
@@ -343,53 +301,42 @@ export class Controller implements PlayContext, InputCommands {
     const carried = this.hand.carried;
     this.connectorGlows.update(this.world, this.clock, carried && carried.end >= 0 ? carried : null);
     this.otherHand.follow(this.world.sim);
-    // the first key: the cabinet as the player found it
-    if (this.frameWanted || !this.timelapse.frames.length || (this.currentPhase === 'playing' && this.timelapse.due(dt))) {
-      this.frameWanted = false;
-      this.timelapse.add(this.recorder.key(this.elapsed));
-    }
+    this.recording.keep(this.elapsed, dt, this.currentPhase === 'playing');
     if (draw) {
-      if (this.replay) this.drawReplay(dt, this.replay.playback);
+      if (this.recording.replaying) this.recording.draw(dt, [this.cableView.group, ...this.overlays(), ...(this.findView ? [this.findView] : [])]);
       else this.stage.render();
-      if (!this.before) this.before = this.capture();
+      this.recording.before ??= this.capture();
     }
+  }
+
+  /** what is drawn over the cabinet: the plumb line, the other hand, the glows of the connectors */
+  private overlays(): THREE.Object3D[] {
+    return [this.hand.plumbLine.group, this.otherHand.group, this.connectorGlows.group];
   }
 
   // ----------------------------------------------------------- replay
 
-  /**
-   * Plays the recorded work again in place of the cabinet, until stopReplay:
-   * `playback` sets the moment shown before each image (see ReplayView.show).
-   */
+  /** the cabinet as the player found it (image) */
+  get before(): string | null {
+    return this.recording.before;
+  }
+
+  /** the work as it went, a few times a second of play */
+  get timelapse(): WorkRecording['timelapse'] {
+    return this.recording.timelapse;
+  }
+
+  /** plays the recorded work again in place of the cabinet, until stopReplay (see WorkRecording.start) */
   startReplay(playback: Playback): ReplayView {
-    this.stopReplay();
-    const view = new ReplayView(this.timelapse.frames, this.stage.scene, this.rackView, this.world, this.look.velcro);
-    this.replay = { view, playback };
-    // every frame at full rate: the replay moves all along
-    this.stage.moving = true;
-    return view;
+    return this.recording.start(playback);
   }
 
   /** back to the cabinet as it is */
   stopReplay(): void {
-    if (!this.replay) return;
-    this.replay.view.dispose();
-    this.replay = null;
-    this.stage.moving = false;
+    if (!this.recording.stop()) return;
     this.rackView.syncItems(this.world.itemsVersion);
-    this.refreshLeds();
+    this.signals.refreshLeds(this.lastEval);
     this.stage.resetView();
-  }
-
-  /** an image of the replay: the cabinet's own cords and the overlays hidden meanwhile */
-  private drawReplay(dt: number, playback: Playback): void {
-    playback.advance(dt);
-    const hidden = [this.cableView.group, this.hand.plumbLine.group, this.otherHand.group, this.connectorGlows.group, ...(this.findView ? [this.findView] : [])];
-    const wasVisible = hidden.map((o) => o.visible);
-    for (const o of hidden) o.visible = false;
-    this.stage.render();
-    hidden.forEach((o, i) => { o.visible = wasVisible[i]; });
-    playback.drawn();
   }
 
   /** fixed physics steps for the time passed (none while preparing) */
@@ -493,7 +440,7 @@ export class Controller implements PlayContext, InputCommands {
     this.tidyGlows.clear();
     this.cableView.update(true);
     this.reevaluate();
-    this.tidyCables = tidyCablesOf(this.lastEval);
+    this.signals.settle(this.lastEval);
     this.events.onToast({ kind: 'undone' });
   }
 
@@ -590,19 +537,9 @@ export class Controller implements PlayContext, InputCommands {
     sfx.label();
   }
 
-  /** an incident: the player hears of it, and the cabinet shows it at once */
-  private announceIncident(ev: IncidentEvent): void {
-    this.events.onToast({ kind: 'incident', incident: ev });
-    if (ev.kind === 'call') sfx.ring();
-    else if (ev.kind === 'callMissed') sfx.error();
-    if (ev.kind === 'colleague') this.reevaluate();
-  }
-
   /** production links just cut: what each second of them costs */
-  announceCut(links: number[]): void {
-    const cost = links.reduce((a, i) => a + this.world.maintenance.cutCost(i), 0);
-    if (!links.length) return;
-    this.events.onToast({ kind: 'linksCut', links: links.map((i) => ({ link: i, service: this.world.circuits[i].service })), costPerSecond: cost });
+  announceCut(links: CircuitIndex[]): void {
+    this.signals.announceCut(links);
   }
 
   // ------------------------------------------------------- evaluation
@@ -615,41 +552,12 @@ export class Controller implements PlayContext, InputCommands {
   /** scores the cabinet now, and shows it (LEDs, schedule) */
   reevaluate(): void {
     this.lastEval = this.world.evaluate();
-    this.refreshLeds();
-    this.celebrate();
-    this.followTraffic();
+    this.signals.evaluated(this.lastEval);
     this.events.onEval(this.lastEval);
   }
 
   isLineConnectedAt(port: Port): boolean {
     return this.lastEval.circuits.some((s, i) => s.connected && (this.world.circuits[i].a === port.id || this.world.circuits[i].b === port.id));
-  }
-
-  /** a production line cut: the traffic drops; back up: it comes back, and its cord glows */
-  private followTraffic(): void {
-    const w = this.world;
-    const now = new Set([...w.maintenance.live].filter((i) => w.maintenance.isDown(i)));
-    const cut = [...now].some((i) => !this.linksDown.has(i) && !w.maintenance.bypassed.has(i));
-    const back = [...this.linksDown].filter((i) => !now.has(i));
-    this.linksDown = now;
-    if (cut) sfx.cut();
-    if (!back.length) return;
-    sfx.restore();
-    for (const i of back) {
-      const c = this.lastEval.circuits[i].cable;
-      if (c >= 0) this.tidyGlows.flash(c, this.clock + 1.2);
-    }
-  }
-
-  /** the cords that just became tidy: a glow and a note each */
-  private celebrate(): void {
-    const now = tidyCablesOf(this.lastEval);
-    const fresh = [...now].filter((c) => !this.tidyCables.has(c));
-    this.tidyCables = now;
-    if (!fresh.length) return;
-    // the cord just let go of glows as a whole, not stretch by stretch
-    if (!this.hand.carried && fresh.includes(this.holdView.cable)) this.holdView.endAt(this.clock);
-    this.tidyGlows.celebrate(fresh, this.clock);
   }
 
   /** the cords were rebuilt (another length, a new one): a new view */
@@ -666,44 +574,4 @@ export class Controller implements PlayContext, InputCommands {
     this.hover = null;
     this.refreshHighlights();
   }
-
-  private refreshLeds(): void {
-    // (the replay sets them as they were)
-    if (this.replay) return;
-    const w = this.world, down = new Set<string>(), bypass = new Set<string>();
-    for (const i of w.maintenance.live) {
-      if (w.circuitUp(i)) continue;
-      const ci = w.circuits[i];
-      for (const id of [ci.a, ci.b]) (w.maintenance.bypassed.has(i) ? bypass : down).add(id);
-    }
-    // a cord broken inside, plugged as planned: its ports blink red all the same, no light comes through
-    w.circuits.forEach((ci, i) => { if (w.circuitFaulty(i)) down.add(ci.a).add(ci.b); });
-    this.rackView.showLeds(w.okPorts(this.lastEval), down, bypass);
-  }
-}
-
-/** cords plugged as planned, routed and leaving the front clear */
-function tidyCablesOf(ev: Evaluation): Set<number> {
-  const out = new Set<number>();
-  for (const s of ev.circuits) if (s.connected && s.routed && s.clear) out.add(s.cable);
-  return out;
-}
-
-/** the cabinet of a level */
-function rackViewOf(world: World, unitLabel: UnitLabeller): RackView {
-  const types = new Map<number, CordType>();
-  world.circuits.forEach((c) => types.set(world.rack.port(c.a).unit, c.type));
-  // a link carries its service's traffic: the switch shows it in the colour of its cords and labels
-  const traffic = new Map<string, string>();
-  for (const ci of world.circuits) for (const id of [ci.a, ci.b]) traffic.set(id, SERVICES[ci.service].color);
-  return new RackView(world.rack, types, {
-    labelOf: (u) => unitLabel(u),
-    trafficColorOf: (p) => traffic.get(p.id) ?? null,
-    sharedLamp: true,
-  });
-}
-
-/** the room round the cabinet of a level, drawn from where the level is played */
-function sceneryOf(world: World, level: LevelDef): THREE.Group {
-  return levelScenery(world.rack, seedOf(levelSite(level)));
 }

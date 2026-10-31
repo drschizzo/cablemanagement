@@ -70,7 +70,7 @@ tient compte :
 - **three jette un shader quand le dernier objet dessiné avec lui est libéré**, et avec lui les tampons qu'il
   partage : le garder au-delà (en retenant son état dans `nodeBuilderCache`) fait dessiner les objets suivants
   avec des tampons détruits, et le GPU refuse chaque image. Ce qui garde les shaders d'un niveau, c'est donc un
-  niveau construit et gardé hors de la scène (`Controller.warm`, que `App` garde pour la visite).
+  niveau construit et gardé hors de la scène (`warmLevel`, `play/levelViews.ts`, que `App` garde pour la visite).
 - **Une chaîne de l'image reste construite** (`ImagePipeline.chains`, par qualité et mise au point) : des nœuds
   neufs donneraient des shaders neufs à chaque entrée dans un niveau. Mise de côté, elle ne libère que ses cibles
   de rendu, car three ne redessine jamais un nœud libéré (`dispose`).
@@ -78,7 +78,7 @@ tient compte :
   (`ImagePipeline.compile`). `compileAsync` le prépare au premier niveau d'appel, pour un autre contexte, que
   l'image ne retrouve pas. La profondeur est un membre privé, `renderer._callDepth` : `ImagePipeline` la relève
   pendant un vrai rendu et la règle le temps de préparer un objet. `Showcase.warm` prépare ainsi chaque baie de
-  l'allée ; `Controller.warm` construit le prochain niveau pendant l'écran titre, et `warmShaders`
+  l'allée ; `warmLevel` construit le prochain niveau pendant l'écran titre, et `warmShaders`
   (`render/shaderWarmup.ts`) en prépare les pièces, quelques-unes entre deux images.
 
 ### La chaîne de l'image (`render/imagePipeline.ts`, `bloom.ts`, `depthOfField.ts`, `cinema.ts`)

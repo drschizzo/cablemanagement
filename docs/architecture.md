@@ -52,7 +52,7 @@ src/
                     (showcaseRack) ; où se passe un niveau (site : tous les tickets chez le client, chaque autre
                     niveau dans sa propre salle), d'où le décor est tiré
   play/         UNE PARTIE EN COURS : relie game, render et l'interface
-    controller.ts   Controller : la boucle à pas fixe, ce que la baie montre de son état, les actions du HUD
+    controller.ts   Controller : la boucle à pas fixe, le cordon sous la souris, les actions du HUD ; il assemble le reste
     context.ts      PlayContext (ce que les outils voient du contrôleur), ToolHandler (l'interface d'un outil),
                     ControllerEvents (ce que le contrôleur dit à l'interface)
     inputRouter.ts  la souris et le clavier, aiguillés vers l'outil qui a un geste en cours, ou vers la vue
@@ -67,6 +67,11 @@ src/
     replay.ts       ce relevé : l'état de la baie (nœuds, prises, étiquettes, velcros, supports, LEDs), et le temps
                     du rejeu (pris là où les câbles bougent), les câbles d'un relevé à l'autre le long d'une courbe
     replayView.ts   le rejeu dessiné par les vues du jeu, à la place des câbles de la baie
+    workRecording.ts le chantier gardé : la baie telle que trouvée (une image), le timelapse, son rejeu
+    cabinetSignals.ts ce que la baie montre et fait entendre de son état quand il change : voyants, cordons tout
+                    juste rangés, trafic coupé puis rétabli, incidents et coupures annoncés
+    levelViews.ts   la baie et la salle d'un niveau, construites pour jouer, ou hors de la vue pour préparer leurs
+                    shaders (warmLevel)
     notices.ts      ce qu'une partie dit au joueur, en données (Toast, Hint, CordInfo, HoverNote) : ui/ les met en mots
     cordInfo.ts     ce que la bulle dit d'un cordon survolé
   showcase/     L'ÉCRAN TITRE : l'allée avant / après, une scène sans partie en cours
@@ -96,7 +101,7 @@ src/
                     instancedParts.ts, les pièces répétées par centaines (connecteurs, voyants, velcros), dessinées
                     en un appel, qui partagent le shader de leur matériau
     shaderWarmup.ts les shaders préparés hors de la vue, quelques pièces entre deux images (warmShaders) : le niveau
-                    que l'écran titre construit en fond (Controller.warm) s'ouvre sans attendre ses shaders
+                    que l'écran titre construit en fond (warmLevel, play/levelViews.ts) s'ouvre sans attendre ses shaders
     gpu.ts          la carte graphique utilisée, et le conseil à donner quand elle dessine trop lentement
     frontImage.ts   l'image de face de la baie (avant / après de l'écran de résultat)
     frameGrab.ts    une copie de l'image qui vient d'être dessinée, sans les panneaux (une image du timelapse)

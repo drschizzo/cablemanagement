@@ -1,5 +1,5 @@
 // What a signed-off cabinet leaves behind, by kind of level: its record (the
-// progress, the career, the rules met), the link to share a free cabinet, and
+// progress, the career, the rules met), the free cabinet to share, and
 // the level that comes next. The result screen shows it.
 
 import type { World } from '../game/world';

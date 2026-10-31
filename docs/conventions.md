@@ -22,7 +22,8 @@ Si la phrase a besoin de « et puis… et aussi… », le fichier fait sans dout
 
 **La taille est un signal, pas une règle.** Au-delà de 400 à 500 lignes, se demander ce qui pourrait partir dans un
 fichier à soi. `play/controller.ts` mène la partie, mais la souris et le clavier vivent dans `inputRouter.ts`,
-chaque outil dans `tools/`, chaque repère dans `feedback/`. Certains fichiers restent longs parce
+chaque outil dans `tools/`, chaque repère dans `feedback/`, ce que la baie signale de son état dans
+`cabinetSignals.ts`, le timelapse et son rejeu dans `workRecording.ts`. Certains fichiers restent longs parce
 qu'ils sont cohérents : `game/world.ts` est l'état d'une partie, `game/levels/training.ts` est une liste de niveaux.
 
 **Un fichier vit avec ce qu'il sert, pas avec ceux qui l'appellent.** Les couleurs des fibres sont à côté de leurs

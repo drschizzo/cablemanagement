@@ -4,6 +4,7 @@
 
 import type { Stage } from '../render/stage';
 import { Controller } from '../play/controller';
+import { warmLevel } from '../play/levelViews';
 import { Showcase } from '../showcase/showcase';
 import { Hud } from '../ui/hud';
 import { Tutorial } from '../ui/tutorial';
@@ -260,7 +261,7 @@ export class App {
 
   /**
    * While the title screen shows, the shaders of the next level are built
-   * (Controller.warm): the first level opened does not stall on them. What
+   * (warmLevel): the first level opened does not stall on them. What
    * was built for it stays for the visit, so that three keeps them for every
    * level after. Again on the next title screen if a level opened first.
    */
@@ -268,7 +269,7 @@ export class App {
     if (this.levelWarm) return this.levelWarm;
     const showcase = this.showcase;
     const level = nextInStory(this.hud.progress, load('career')) ?? TUTORIAL;
-    this.levelWarm = Controller.warm(this.stage, level, unitLabel, () => this.showcase !== showcase, progress).then((kept) => {
+    this.levelWarm = warmLevel(this.stage, level, unitLabel, () => this.showcase !== showcase, progress).then((kept) => {
       if (!kept) this.levelWarm = null;
       return kept;
     });
