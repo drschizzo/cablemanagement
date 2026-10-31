@@ -177,6 +177,16 @@ export class Stage {
     this.image.compile(object, this.scene, o);
   }
 
+  /**
+   * Once the GPU has done all it was given: three hands it its programs as it
+   * draws with them, and the GPU compiles them before it can draw (seconds,
+   * the first time a browser sees them; it keeps them after). (WebGL: at once.)
+   */
+  gpuDone(): Promise<void> {
+    const device = (this.renderer.backend as { device?: GPUDevice }).device;
+    return device ? device.queue.onSubmittedWorkDone() : Promise.resolve();
+  }
+
   /** what the player chose for HDR */
   get hdrChoice(): HdrChoice {
     return this.hdrChosen;

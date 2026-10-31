@@ -192,8 +192,9 @@ export class Controller implements PlayContext, InputCommands {
    * was built (the cabinet, its room, its cords) is kept, out of the scene,
    * until the caller frees it, and every level meanwhile finds the shaders of
    * the same materials. Given up once `stop()` (a level opens): null.
+   * `progress`: the share of its shaders built (0 to 1).
    */
-  static async warm(stage: Stage, level: LevelDef, unitLabel: UnitLabeller, stop: () => boolean): Promise<{ dispose(): void } | null> {
+  static async warm(stage: Stage, level: LevelDef, unitLabel: UnitLabeller, stop: () => boolean, progress?: (f: number) => void): Promise<{ dispose(): void } | null> {
     const world = new World(level);
     const rackView = rackViewOf(world, unitLabel);
     const scenery = sceneryOf(world, level);
@@ -208,7 +209,7 @@ export class Controller implements PlayContext, InputCommands {
     };
     let warmed = false;
     try {
-      warmed = await warmShaders(stage, [rackView.group, scenery, cableView.group], stop);
+      warmed = await warmShaders(stage, [rackView.group, scenery, cableView.group], stop, progress);
     } finally {
       // (what the cords are drawn from, not the cords)
       world.dispose();

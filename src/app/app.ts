@@ -26,6 +26,21 @@ import type { AisleSettings } from './urlOptions';
 import { $ } from '../lib/page';
 import { ShowcaseSwitch } from '../ui/showcaseSwitch';
 
+/** the title's bar: the aisle falling, then its shaders and the next level's (see settleShaders) */
+const AISLE_SHARE = 0.6;
+
+/** `n` frames drawn, or a moment each if the page draws none */
+const frames = async (n: number) => {
+  for (let k = 0; k < n; k++) {
+    await new Promise<void>((r) => {
+      let gone = false;
+      const go = () => { if (!gone) { gone = true; r(); } };
+      requestAnimationFrame(go);
+      setTimeout(go, 100);
+    });
+  }
+};
+
 /**
  * The next aisle, built and fallen in the background while this one is on
  * screen: "another" then shows it at once (or as soon as it has fallen).
@@ -113,22 +128,55 @@ export class App {
       // the game's panels stay hidden, the title shows its own progress while the aisle falls
       // (not for an aisle already made ready, behind the last one or set aside: it shows at once)
       document.body.classList.add('demo');
-      if (!this.keptAisle && !this.nextAisle?.ready) document.body.classList.add('booting');
+      const booting = !this.keptAisle && !this.nextAisle?.ready;
+      if (booting) document.body.classList.add('booting');
       this.title.refresh();
       this.title.showProgress(0);
       const showcase = await this.takeNextAisle();
       // overtaken while it was falling: thrown away before it ever showed
       if (this.loader.isStale(token)) { showcase.dispose(); return; }
       this.mode = this.showcase = showcase;
-      document.body.classList.remove('booting');
       showcase.view = this.aisles.view;
       showcase.onStateChange = (state, to) => this.showcaseSwitch.render(state, to, showcase.bayCount);
-      this.showcaseSwitch.show();
       showcase.start();
       this.reframe();
+      // still behind the title's bar: its first images, the next level's shaders, and the GPU compiling them
+      if (booting) {
+        await this.settleShaders(showcase);
+        if (this.loader.isStale(token)) return;
+        document.body.classList.remove('booting');
+      } else {
+        this.warmLevel();
+      }
+      this.showcaseSwitch.show();
       this.prepareNextAisle();
-      this.warmLevel();
     });
+  }
+
+  /** the aisle falling, its share of the title's bar */
+  private aisleProgress(f: number): void {
+    this.title.showProgress(AISLE_SHARE * f);
+  }
+
+  /**
+   * The aisle just started, out of sight: its first images (the chain of the
+   * image built, lit as on screen), the next level's shaders (warmLevel), and
+   * the GPU done compiling all of it. The first time a browser runs the game,
+   * that froze the title screen for seconds once it showed. The bar goes on
+   * from where the fall left it.
+   */
+  private async settleShaders(showcase: Showcase): Promise<void> {
+    const shown = (f: number) => this.title.showProgress(AISLE_SHARE + (1 - AISLE_SHARE) * f);
+    shown(0);
+    await frames(3);
+    shown(0.1);
+    await this.warmLevel((f) => shown(0.1 + 0.7 * f));
+    if (this.showcase !== showcase) return;
+    shown(0.8);
+    await this.stage.gpuDone();
+    shown(1);
+    // (an image drawn with all of it before the veil lifts)
+    await frames(2);
   }
 
   /** frames the cabinet in the screen the panels leave free (they change with the scene) */
@@ -183,13 +231,13 @@ export class App {
     const next = this.nextAisle;
     if (next) {
       this.nextAisle = null;
-      next.onProgress = (f) => this.title.showProgress(f);
-      this.title.showProgress(next.done);
+      next.onProgress = (f) => this.aisleProgress(f);
+      this.aisleProgress(next.done);
       return next.aisle;
     }
     const seed = this.pendingSeed;
     this.pendingSeed = undefined;
-    return Showcase.create(this.stage, this.threaded, (f) => this.title.showProgress(f), {
+    return Showcase.create(this.stage, this.threaded, (f) => this.aisleProgress(f), {
       seed,
       labelOf: unitLabel,
       bays: this.aisles.bays,
@@ -218,14 +266,15 @@ export class App {
    * was built for it stays for the visit, so that three keeps them for every
    * level after. Again on the next title screen if a level opened first.
    */
-  private warmLevel(): void {
-    if (this.levelWarm) return;
+  private warmLevel(progress?: (f: number) => void): Promise<unknown> {
+    if (this.levelWarm) return this.levelWarm;
     const showcase = this.showcase;
     const level = nextInStory(this.hud.progress, load('career')) ?? TUTORIAL;
-    this.levelWarm = Controller.warm(this.stage, level, unitLabel, () => this.showcase !== showcase).then((kept) => {
+    this.levelWarm = Controller.warm(this.stage, level, unitLabel, () => this.showcase !== showcase, progress).then((kept) => {
       if (!kept) this.levelWarm = null;
       return kept;
     });
+    return this.levelWarm;
   }
 
   /** a level leaves the title screen: the aisle made ready for it goes, given up if it is still built */
