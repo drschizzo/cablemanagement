@@ -1,13 +1,11 @@
 // The player's progress, level by level: best stars and best time; and the
-// rules and gestures already met. Pure functions over the saved record:
-// saving it is the caller's business (storage.ts).
+// rules already met. Pure functions over the saved record: saving it is the
+// caller's business (storage.ts).
 
 import type { Career, Progress } from './storage';
-import { BIG_BAYS, LEVELS, UNLOCK_STARS, nextLevelToPlay } from '../game/levels/campaign';
+import { LEVELS, UNLOCK_STARS, nextLevelToPlay } from '../game/levels/campaign';
 import { currentTicket } from './career';
 import type { LevelDef } from '../game/levels/levelDef';
-import { levelRules, type Rule } from '../game/levels/levelRules';
-import { levelGestures, type Gesture } from '../game/levels/levelGestures';
 
 /** a level just validated, and what the record said before it */
 export interface LevelResult {
@@ -53,28 +51,7 @@ export function isTrainingDone(progress: Progress): boolean {
   return (progress.stars[LEVELS[LEVELS.length - 1].id] ?? 0) > 0;
 }
 
-/**
- * The rules the player has met: those saved, and those of every campaign
- * level signed off (a save from before the rules were kept).
- */
-export function knownRules(saved: readonly Rule[], progress: Progress): Set<Rule> {
-  return knownOf(saved, progress, levelRules);
-}
-
-/** the gestures the player has been shown, as the rules */
-export function knownGestures(saved: readonly Gesture[], progress: Progress): Set<Gesture> {
-  return knownOf(saved, progress, levelGestures);
-}
-
-function knownOf<T>(saved: readonly T[], progress: Progress, of: (level: LevelDef) => T[]): Set<T> {
-  const known = new Set(saved);
-  for (const level of [...LEVELS, ...BIG_BAYS]) {
-    if ((progress.stars[level.id] ?? 0) > 0) for (const item of of(level)) known.add(item);
-  }
-  return known;
-}
-
-/** the rules (or gestures) met, with those just met, each once */
+/** the rules met, with those just met, each once */
 export function withMet<T>(saved: readonly T[], met: readonly T[]): T[] {
   return [...new Set([...saved, ...met])];
 }

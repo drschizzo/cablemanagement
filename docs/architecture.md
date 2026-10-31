@@ -44,8 +44,7 @@ src/
                     sa version précalculée pour l'écran titre (baked, showcase.bin)
     levels/         ce qu'est un niveau (levelDef : une union par sorte, campagne, ticket, tutoriel, baie libre,
                     vitrine, banc), les règles qu'il joue en plus de brancher et ranger (levelRules : voyants,
-                    tension, production, pannes…) et le geste qu'il demande au-delà du tutoriel (levelGestures : la
-                    goulotte), les équipements nommés, la formation, les grandes baies et le tutoriel, la carrière
+                    tension, production, pannes…, et la goulotte, que le tutoriel n'apprend pas), les équipements nommés, la formation, les grandes baies et le tutoriel, la carrière
                     (un client, ses tickets, chacun bâti sur la baie laissée par le précédent), la baie libre
                     (freeLevel : sa palette, ses réglages, en production ou non, son code de partage), les baies de
                     la vitrine ; site.ts, où se passe un niveau
@@ -132,7 +131,7 @@ src/
     toolbar.ts      la barre d'outils et ce qui reste en stock ; stockMenu.ts, le stock de cordons neufs
     schedulePanel.ts le plan de brassage, le budget d'interruption, les trois étoiles et ce que chacune demande,
                     le bouton Valider
-    levelBrief.ts   le brief d'un niveau (ses conseils, les règles et les gestes qu'on y rencontre pour la première fois),
+    levelBrief.ts   le brief d'un niveau (ses conseils, les règles qu'on y rencontre pour la première fois),
                     puis la préparation ; ruleTexts.ts, les mots de chaque règle et de chaque geste
     timelapsePlayer.ts le timelapse rejoué en boucle en 5 s, la caméra qui dérive, et enregistré en vidéo (MediaRecorder) ; beforeAfterImage.ts, la baie
                     avant / après en une image ; share.ts, l'adresse du jeu et les fichiers offerts au joueur
@@ -276,14 +275,14 @@ sur le fil principal.
 ## Données dans le navigateur
 
 `ui/storage.ts` déclare chaque entrée (clé, valeur par défaut, validation) : progression (étoiles et meilleurs temps
-par niveau), tutoriel terminé, règles et gestes déjà rencontrés, carrière (tickets faits, la baie du client telle que laissée), dernière baie libre réglée, carnet (teintes portées, trouvailles), langue (celle du navigateur tant que le joueur n'en a pas choisi), musique coupée, qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu), image HDR (automatique, activée ou désactivée, et l'intensité de ses lumières) et son
+par niveau), tutoriel terminé, règles déjà rencontrées, carrière (tickets faits, la baie du client telle que laissée), dernière baie libre réglée, carnet (teintes portées, trouvailles), langue (celle du navigateur tant que le joueur n'en a pas choisi), musique coupée, qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu), image HDR (automatique, activée ou désactivée, et l'intensité de ses lumières) et son
 coupé. Une valeur illisible ou d'une autre forme se lit comme la valeur par défaut.
 
 ## Ajouter…
 
 | Évolution | Où |
 |---|---|
-| une règle de niveau | une entrée dans `RULES` et `hasRule` (`game/levels/levelRules.ts`), ses mots dans `ruleTip` (`ui/ruleTexts.ts`) : le brief la dit au premier niveau qui l'a, puis la replie ; un geste de même, dans `GESTURES` (`levelGestures.ts`) et `gestureTip` |
+| une règle de niveau | une entrée dans `RULES` et `hasRule` (`game/levels/levelRules.ts`), ses mots dans `ruleTip` (`ui/ruleTexts.ts`) : le brief la dit au premier niveau qui l'a, puis ne la redit plus |
 | un niveau | une entrée dans `LEVELS` (la formation) ou `BIG_BAYS` (`game/levels/campaign.ts`), bâtie avec les équipements de `game/levels/equipment.ts`, et ses mots dans `ui/levelTexts.ts` (un test vérifie qu'aucun ne manque) ; `tests/game/levels/levels.test.ts` vérifie son plan, qu'il ne se gagne pas sans rien faire et qu'il peut atteindre 3 étoiles avec son seul inventaire (`tidyKit`) |
 | un équipement de baie | `UnitSpec` et le constructeur de `Rack` (`game/rack.ts`), sa face dans `faceOf` et son rendu dans `render/rackView.ts`, son nom dans `unitLabel` (`ui/names.ts`) |
 | une sorte de cordon | une entrée dans `CORD_KINDS` (`game/cordTypes.ts`) ; le compilateur demande son nom (`ui/names.ts`), son marquage (`JACKET_KIND`, `render/jacket.ts`) et, s'il en a un nouveau, son connecteur (`plugShape`, `render/cableView.ts`) |

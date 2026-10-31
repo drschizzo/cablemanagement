@@ -11,7 +11,6 @@ import type { CabinetState } from '../game/cabinetState';
 import type { FindId } from '../game/finds';
 import type { Look } from '../render/look';
 import { RULES, type Rule } from '../game/levels/levelRules';
-import { GESTURES, type Gesture } from '../game/levels/levelGestures';
 
 /** the career: tickets done, the client's cabinet as the last one left it, the best stars of each */
 export interface Career {
@@ -96,16 +95,6 @@ const ENTRIES = {
     },
     format: (v: Rule[]) => JSON.stringify(v),
   } satisfies Entry<Rule[]>,
-  /** the gestures a brief has explained in a cabinet signed off (game/levels/levelGestures.ts) */
-  gestures: {
-    key: 'cable.gestures',
-    fallback: (): Gesture[] => [],
-    parse: (raw: string): Gesture[] => {
-      const v: unknown = JSON.parse(raw);
-      return Array.isArray(v) ? v.filter((g): g is Gesture => (GESTURES as readonly unknown[]).includes(g)) : [];
-    },
-    format: (v: Gesture[]) => JSON.stringify(v),
-  } satisfies Entry<Gesture[]>,
   /** the tutorial was finished or skipped once */
   tutorialDone: {
     key: 'cable.tutorial',

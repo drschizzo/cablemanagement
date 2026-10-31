@@ -31,4 +31,9 @@ describe('the rules of a level', () => {
     expect(levelRules(freeLevel(plainSpec(4, 1, true)))).not.toContain('incidents');
     expect(levelRules(freeLevel(plainSpec(16, 1, false)))).not.toContain('maintenance');
   });
+
+  it('the duct is told where the level first gives one', () => {
+    expect(levelRules(LEVELS[0])).not.toContain('duct');
+    expect(levelRules(LEVELS[1])).toContain('duct');
+  });
 });

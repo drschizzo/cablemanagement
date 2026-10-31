@@ -1,10 +1,8 @@
-// What each rule of a level, and each gesture it calls for, says in its
-// brief (game/levels/levelRules.ts, levelGestures.ts): one tip each, with the
-// level's own figures (its budget, its bypasses).
+// What each rule of a level says in its brief (game/levels/levelRules.ts):
+// one tip each, with the level's own figures (its budget, its bypasses).
 
 import type { LevelDef } from '../game/levels/levelDef';
 import type { Rule } from '../game/levels/levelRules';
-import type { Gesture } from '../game/levels/levelGestures';
 import { SERVICES } from '../game/services';
 import { CALL_PENALTY, CALL_WAIT } from '../game/incidents';
 import { assertNever } from '../lib/assertNever';
@@ -59,18 +57,11 @@ export function ruleTip(rule: Rule, level: LevelDef, services: number[]): string
       fr: `<b>Incidents</b> : un collègue peut débrancher une liaison, puis un utilisateur appeler. Rétablissez la liaison en moins de ${CALL_WAIT} s, sinon l'appel coûte ${CALL_PENALTY} pts sur le budget.`,
       en: `<b>Incidents</b>: a colleague may unplug a link, then a user calls. Restore the link within ${CALL_WAIT} s, or the call costs ${CALL_PENALTY} pts of the budget.`,
     });
-    default: return assertNever(rule);
-  }
-}
-
-/** the tip of a gesture the level calls for */
-export function gestureTip(gesture: Gesture): string {
-  switch (gesture) {
     case 'duct': return tr({
       fr: `<b>Goulotte</b> : outil Supports (${toolKey('supports')}), un clic dans un couloir latéral. Au Chemin, tracez par le guide-câbles puis le long de la goulotte : la longueur en trop y est rangée en boucle.`,
       en: `<b>Duct</b>: Supports tool (${toolKey('supports')}), a click in a side channel. With the Route, draw through the cable manager then along the duct: the extra length is stowed in it as a loop.`,
     });
-    default: return assertNever(gesture);
+    default: return assertNever(rule);
   }
 }
 

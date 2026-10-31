@@ -1,6 +1,6 @@
 // What a signed-off cabinet leaves behind, by kind of level: its record (the
-// progress, the career, the rules and gestures met), the link to share a free
-// cabinet, and the level that comes next. The result screen shows it.
+// progress, the career, the rules met), the link to share a free cabinet, and
+// the level that comes next. The result screen shows it.
 
 import type { World } from '../game/world';
 import type { Evaluation } from '../game/evaluation';
@@ -10,7 +10,6 @@ import { cabinetOf } from '../game/cabinetState';
 import { assertNever } from '../lib/assertNever';
 import { endsTheTraining, levelAfter, recordResult, withMet, type LevelResult } from './progress';
 import { levelRules } from '../game/levels/levelRules';
-import { levelGestures } from '../game/levels/levelGestures';
 import { currentTicket, recordTicket } from './career';
 import { load, save, type Progress } from './storage';
 import { freeLink } from './share';
@@ -27,9 +26,8 @@ export interface Outcome {
 
 /** a signed-off cabinet `w` of `level`, after `time` s: kept where its kind keeps it */
 export function recordOutcome(level: LevelDef, ev: Evaluation, w: World, time: number, progress: Progress): Outcome {
-  // whatever the kind, its rules and gestures are met: the next briefs only recall them
+  // whatever the kind, its rules are met: the next briefs leave them out
   save('rules', withMet(load('rules'), levelRules(level)));
-  save('gestures', withMet(load('gestures'), levelGestures(level)));
   switch (level.kind) {
     case 'campaign': {
       const result = recordResult(progress, level, ev.stars, time);

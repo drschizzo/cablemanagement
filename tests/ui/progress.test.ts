@@ -1,7 +1,7 @@
 // The progress record is plain data: the rules of the best score are tested
 // without a page.
 import { describe, expect, it } from 'vitest';
-import { endsTheTraining, isUnlocked, knownGestures, knownRules, levelAfter, nextInStory, recordResult, withMet } from '../../src/ui/progress';
+import { endsTheTraining, isUnlocked, levelAfter, nextInStory, recordResult, withMet } from '../../src/ui/progress';
 import { levelRules } from '../../src/game/levels/levelRules';
 import { BIG_BAYS, LEVELS } from '../../src/game/levels/campaign';
 import type { Progress } from '../../src/ui/storage';
@@ -51,25 +51,9 @@ describe('the training', () => {
 });
 
 describe('the rules met', () => {
-  it('are those saved, and those of the levels signed off', () => {
-    const p = empty();
-    p.stars[LEVELS[2].id] = 1;
-    const known = knownRules(['power'], p);
-    expect(known.has('power')).toBe(true);
-    expect(known.has('maintenance')).toBe(true);
-    expect(known.has('blind')).toBe(false);
-  });
-
   it('grow with a level signed off, without twice the same', () => {
     const rules = withMet(['leds'], levelRules(LEVELS[2]));
     expect(rules).toContain('maintenance');
     expect(rules.filter((r) => r === 'leds')).toHaveLength(1);
-  });
-
-  it('the gestures of a level signed off are known, as its rules', () => {
-    const p = empty();
-    expect(knownGestures([], p).has('duct')).toBe(false);
-    p.stars[LEVELS[1].id] = 2;
-    expect(knownGestures([], p).has('duct')).toBe(true);
   });
 });

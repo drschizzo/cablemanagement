@@ -1,5 +1,6 @@
 // The rules a level plays by, beyond plugging and tidying: what it adds to
-// the game (a downtime budget, fibres that kink, cords broken inside…). The
+// the game (a downtime budget, fibres that kink, cords broken inside…), and
+// the duct, the one support the tutorial does not teach. The
 // brief tells a rule the first time the player meets it, and only recalls it
 // after (ui/levelBrief.ts); its words are the interface's.
 
@@ -8,7 +9,7 @@ import { CORD_KINDS } from '../cordTypes';
 import { assertNever } from '../../lib/assertNever';
 
 /** every rule, in the order a brief tells them */
-export const RULES = ['leds', 'taut', 'kinked', 'separation', 'maintenance', 'bypass', 'blind', 'faults', 'power', 'incidents'] as const;
+export const RULES = ['leds', 'taut', 'kinked', 'separation', 'maintenance', 'bypass', 'blind', 'faults', 'power', 'incidents', 'duct'] as const;
 
 export type Rule = typeof RULES[number];
 
@@ -30,6 +31,7 @@ function hasRule(level: LevelDef, rule: Rule): boolean {
     case 'faults': return (level.faults ?? 0) > 0;
     case 'power': return cordTypes.some((t) => CORD_KINDS[t].family === 'power');
     case 'incidents': return (level.incidents?.length ?? 0) > 0;
+    case 'duct': return (level.inventory.duct ?? 0) > 0 || level.preinstalled.some((p) => p.kind === 'duct');
     default: return assertNever(rule);
   }
 }
