@@ -74,6 +74,8 @@ src/
                     shaders (warmLevel)
     notices.ts      ce qu'une partie dit au joueur, en données (Toast, Hint, CordInfo, HoverNote) : ui/ les met en mots
     cordInfo.ts     ce que la bulle dit d'un cordon survolé
+    tutorialSteps.ts les étapes du tutoriel : ce que chacune cadre, l'outil qu'elle met en main, quand sa tâche est
+                    faite (les compteurs de gestes ou l'état de la baie) ; ses mots sont dans ui/tutorialTexts.ts
   showcase/     L'ÉCRAN TITRE : l'allée avant / après, une scène sans partie en cours
     showcase.ts     Showcase : l'allée, sa bascule d'un état à l'autre, sa pluie de câbles
     closet.ts       une baie et ses deux états (le désordre et la baie rangée), la chorégraphie de l'un à l'autre
@@ -158,7 +160,8 @@ src/
     names.ts        le nom des choses : services (et ce qu'ils portent), fournitures, sortes de cordon, plaques des
                     équipements, trouvailles, teintes du carnet
     levelTexts.ts   les mots de chaque niveau : titre, brief, conseils (ceux de la formation et des grandes baies par id ; les autres d'après ce qu'ils sont)
-    tutorial.ts     le tutoriel guidé, par-dessus un niveau : les bases du premier niveau, puis, au choix, les gestes avancés
+    tutorial.ts     le tutoriel guidé, par-dessus un niveau : les bases du premier niveau, puis, au choix, les gestes
+                    avancés ; tutorialTexts.ts, les mots de chaque étape
     titleScreen.ts  les boutons de l'écran titre (Commencer seul au premier lancement) ; showcaseSwitch.ts, l'interrupteur
                     Avant / Après et sa légende
     panelMargins.ts la place que les panneaux couvrent à chaque bord de l'écran : la baie est cadrée dans le reste
@@ -309,7 +312,7 @@ coupé. Une valeur illisible ou d'une autre forme se lit comme la valeur par dé
 | un repère visuel pendant un geste | une classe dans `play/feedback/`, mise à jour par l'outil ou par `Controller.tick` |
 | un critère de score | `evaluate()` (`game/evaluation.ts`), sa colonne dans le plan (`ui/schedulePanel.ts`) |
 | un panneau de l'interface | un fichier dans `ui/`, créé et appelé par `Hud` (`ui/hud.ts`) |
-| une étape du tutoriel | `BASICS` (ce que demande le premier niveau) ou `ADVANCED` (les gestes fins) dans `ui/tutorial.ts` (`done` lit `ctl.counters` ou l'état du monde) |
+| une étape du tutoriel | son id dans `StepId`, une entrée dans `BASICS` (ce que demande le premier niveau) ou `ADVANCED` (les gestes fins) (`play/tutorialSteps.ts` : `done` lit `ctl.counters` ou l'état du monde), ses mots dans `STEP_TEXTS` (`ui/tutorialTexts.ts`), que le compilateur demande |
 | un texte | à l'endroit où il s'affiche, dans chaque langue : `tr({ fr: '…', en: '…' })` (`lib/language.ts`) ; un texte de `index.html` : une clé `data-i18n` et ses mots dans `ui/pageTexts.ts` (un test vérifie les deux listes) ; une langue : une entrée dans `Language` et `LANGUAGES`, le compilateur liste chaque texte à traduire |
 | un message du contrôleur à l'interface | `ControllerEvents` (`play/context.ts`), relié dans `app/app.ts` |
 | un raccourci clavier | `InputRouter.bindKeys` (`play/inputRouter.ts`), son action sur le contrôleur ou l'outil |
