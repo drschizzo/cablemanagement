@@ -13,7 +13,7 @@ import { formatCost } from './format';
 import { starsHtml } from './dom';
 import { $ } from '../lib/page';
 import { cordTypeName, serviceName, serviceWhat } from './names';
-import { tr } from './language';
+import { tr } from '../lib/language';
 
 export class SchedulePanel {
   private rows: HTMLTableRowElement[] = [];

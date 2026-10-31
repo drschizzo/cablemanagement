@@ -1,8 +1,8 @@
 // Looks that open with the stars won, and equipping them, over a plain notebook.
 import { describe, expect, it } from 'vitest';
-import { LOOKS, collectFind, equip, equippedIn, isNotebookOpen, lookOf, starsWon } from '../../src/ui/notebook';
+import { LOOKS, collectFind, equip, equippedIn, isNotebookOpen, lookOf, starsWon } from '../../src/progression/notebook';
 import { DEFAULT_LOOK } from '../../src/render/look';
-import type { Career, Progress, Notebook } from '../../src/ui/storage';
+import type { Career, Progress, Notebook } from '../../src/progression/storage';
 
 const notebook = (): Notebook => ({ equipped: {}, finds: [] });
 const item = (id: string) => LOOKS.find((i) => i.id === id)!;

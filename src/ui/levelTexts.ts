@@ -5,7 +5,7 @@
 
 import type { LevelDef } from '../game/levels/levelDef';
 import { assertNever } from '../lib/assertNever';
-import { tr, type Words } from './language';
+import { tr, type Words } from '../lib/language';
 import { DELETE_KEY } from './keyHints';
 
 interface LevelText {

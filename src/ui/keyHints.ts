@@ -5,7 +5,7 @@
 import type { Tool } from '../play/controller';
 import type { HoverNote } from '../play/notices';
 import { assertNever } from '../lib/assertNever';
-import { tr, type Words } from './language';
+import { tr, type Words } from '../lib/language';
 
 /** what the player is doing: the tool chosen, and the notes of the cord under the pointer (null: none) */
 export interface KeyContext {

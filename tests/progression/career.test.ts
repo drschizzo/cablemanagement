@@ -1,9 +1,9 @@
 // The career record: tickets in order, the cabinet kept from the last one signed off.
 import { describe, expect, it } from 'vitest';
-import { currentTicket, recordTicket } from '../../src/ui/career';
+import { currentTicket, recordTicket } from '../../src/progression/career';
 import { TICKETS } from '../../src/game/levels/career';
 import type { CabinetState } from '../../src/game/cabinetState';
-import type { Career } from '../../src/ui/storage';
+import type { Career } from '../../src/progression/storage';
 
 const cabinet = (tag: number): CabinetState => ({ units: [], items: [], circuits: [], cords: [], straps: [{ cords: [tag], at: [0] }] });
 const fresh = (): Career => ({ done: 0, cabinet: null, stars: [] });

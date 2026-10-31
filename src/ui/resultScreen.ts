@@ -9,11 +9,12 @@ import type { LevelDef } from '../game/levels/levelDef';
 import { formatTime } from './format';
 import { hide, show, starsHtml } from './dom';
 import { $ } from '../lib/page';
-import type { Outcome } from './outcome';
+import type { Outcome } from '../progression/outcome';
 import { starGoalText } from './messages';
-import { tr } from './language';
+import { tr } from '../lib/language';
 import { levelTitle } from './levelTexts';
 import { saveBeforeAfter } from './beforeAfterImage';
+import { freeLink } from './share';
 
 export interface ResultActions {
   start(level: LevelDef): void;
@@ -37,7 +38,7 @@ export function showResult(ctl: Controller, level: LevelDef, ev: Evaluation, out
   $('#result-again').onclick = () => { hide('#result'); ctl.resume(); };
   $('#result-menu').onclick = () => { hide('#result'); actions.showModes(); };
   $('#result-home').onclick = () => { hide('#result'); actions.home(); };
-  showShare(share);
+  showShare(share && tr({ fr: `Une baie à ranger sur Brassage : ${freeLink(share)}`, en: `A cabinet to tidy on Brassage: ${freeLink(share)}` }));
   $<HTMLButtonElement>('#result-replay').disabled = ctl.timelapse.frames.length < 2;
   $('#result-replay').onclick = () => { hide('#result'); actions.replay(); };
   const after = $<HTMLImageElement>('#ba-after').src;

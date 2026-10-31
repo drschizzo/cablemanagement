@@ -1,7 +1,7 @@
 // The cabinet before and after, side by side in one image to share: the two
 // views of the result screen, the level, the stars.
 
-import { tr } from './language';
+import { tr } from '../lib/language';
 import { GAME_URL, downloadBlob } from './share';
 
 /** px: the height of each view, the margins, the band of text above and below */

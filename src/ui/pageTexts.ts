@@ -3,7 +3,7 @@
 // attributes), written here in every language. A test checks the page and
 // this table name the same keys.
 
-import { language, tr, type Words } from './language';
+import { language, tr, type Words } from '../lib/language';
 
 export const PAGE_TEXTS: Record<string, Words> = {
   'common.back': { fr: '← Retour', en: '← Back' },

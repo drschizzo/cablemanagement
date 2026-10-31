@@ -6,7 +6,7 @@
 import { AUTO_QUALITY, QUALITY, type QualityChoice } from '../render/quality';
 import type { HdrChoice } from '../render/hdrScreen';
 import { HDR_HEADROOM } from '../render/toneCurve';
-import { LANGUAGES, preferredLanguage, type Language } from './language';
+import { LANGUAGES, preferredLanguage, type Language } from '../lib/language';
 import type { CabinetState } from '../game/cabinetState';
 import type { FindId } from '../game/finds';
 import type { Look } from '../render/look';
@@ -21,7 +21,7 @@ export interface Career {
 
 /** the notebook: the look equipped in each slot, and the finds picked up */
 export interface Notebook {
-  /** the look equipped in each slot, by slot (ui/notebook.ts) */
+  /** the look equipped in each slot, by slot (progression/notebook.ts) */
   equipped: Partial<Record<keyof Look, string>>;
   /** ids of the finds picked up (game/finds.ts) */
   finds: FindId[];

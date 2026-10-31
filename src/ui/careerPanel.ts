@@ -4,13 +4,13 @@
 
 import { TICKETS, ticketLevel } from '../game/levels/career';
 import type { LevelDef } from '../game/levels/levelDef';
-import { load, save } from './storage';
+import { load, save } from '../progression/storage';
 import { hide, show, starsHtml } from './dom';
 import { $ } from '../lib/page';
-import { currentTicket } from './career';
+import { currentTicket } from '../progression/career';
 import { levelBrief, levelTitle } from './levelTexts';
 import { confirmLeaving } from './confirmDialog';
-import { tr } from './language';
+import { tr } from '../lib/language';
 
 export class CareerPanel {
   private back = () => {};

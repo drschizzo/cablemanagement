@@ -179,7 +179,7 @@ nœuds : chaque matériau a son vrai type. Une mise à jour dit ce qui a bougé 
 **Tester d'abord ce qui est pur.** Une fonction qui reçoit des données et rend un résultat se teste en trois lignes
 (`tests/ui/format.test.ts`, `tests/app/urlOptions.test.ts`). C'est une raison de plus pour sortir la logique des
 classes qui touchent au DOM, à three.js ou à la physique : `readUrlOptions` lit une chaîne plutôt que `location` ;
-les règles de la progression (`ui/progress.ts`) vivent hors de l'écran de résultat ; la forme d'un cordon remis à
+les règles de la progression (`progression/progress.ts`) vivent hors de l'écran de résultat ; la forme d'un cordon remis à
 une autre longueur (`game/cordShapes.ts`) vit hors du `World` et se teste sur une liste de points écrite à la
 main. Un hasard qu'on veut tester se passe en paramètre (`coilInCrate(…, random)`).
 

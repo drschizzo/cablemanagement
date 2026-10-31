@@ -3,7 +3,7 @@
 
 import type { GpuAdvice } from '../render/gpu';
 import { assertNever } from '../lib/assertNever';
-import { tr } from './language';
+import { tr } from '../lib/language';
 
 const NOTICE_ID = 'gpu-notice';
 

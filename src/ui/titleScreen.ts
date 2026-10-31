@@ -4,11 +4,11 @@
 
 import { TRAINING, TUTORIAL } from '../game/levels/training';
 import type { LevelDef } from '../game/levels/levelDef';
-import { load } from './storage';
-import { isNotebookOpen } from './notebook';
+import { load } from '../progression/storage';
+import { isNotebookOpen } from '../progression/notebook';
 import { $ } from '../lib/page';
 import { levelTitle } from './levelTexts';
-import { onLanguageChange, tr } from './language';
+import { onLanguageChange, tr } from '../lib/language';
 
 export interface TitleActions {
   start(level: LevelDef): void;

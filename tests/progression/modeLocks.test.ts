@@ -1,7 +1,7 @@
 // The modes open by one rule: the training and free play first, the career once the training is done.
 import { describe, expect, it } from 'vitest';
-import { isModeOpen } from '../../src/ui/modeLocks';
-import type { Progress } from '../../src/ui/storage';
+import { isModeOpen } from '../../src/progression/modeLocks';
+import type { Progress } from '../../src/progression/storage';
 
 const signedOff = (...ids: string[]): Progress => ({ stars: Object.fromEntries(ids.map((id) => [id, 1])), times: {} });
 

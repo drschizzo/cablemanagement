@@ -13,10 +13,10 @@ import { formatLength } from './format';
 import { hide, show } from './dom';
 import { $ } from '../lib/page';
 import { countOf } from './names';
-import { tr } from './language';
+import { tr } from '../lib/language';
 import { levelBrief, levelTips, levelTitle } from './levelTexts';
 import { ruleTip } from './ruleTexts';
-import { load } from './storage';
+import { load } from '../progression/storage';
 
 export class LevelBrief {
   /** the preparation was offered for this level already */

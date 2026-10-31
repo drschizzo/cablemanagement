@@ -1,5 +1,5 @@
 // The player's own touches to the picture: the colour of the velcros, the
-// tint of the light round the cabinet. Opened in the notebook (ui/notebook.ts), they
+// tint of the light round the cabinet. Opened in the notebook (progression/notebook.ts), they
 // change nothing of the rules, nor the colours that carry meaning (cords,
 // labels, LEDs).
 

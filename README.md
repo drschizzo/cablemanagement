@@ -313,8 +313,9 @@ tourne dans le navigateur.
 | `src/play/` | une partie en cours : la boucle, les outils du joueur, les repères visuels |
 | `src/showcase/` | l'écran titre, l'allée de baies avant / après |
 | `src/render/` | le dessin three.js : baie, câbles, connecteurs, éclairage |
+| `src/progression/` | ce que le joueur garde d'une visite à l'autre : progression, carrière, carnet, réglages |
 | `src/ui/` | l'interface HTML : plan de brassage, outils, tutoriel, écran de résultat, écran titre |
-| `src/lib/` | des outils sans rapport avec le jeu (géométrie, tirages au sort), que tout le monde peut importer |
+| `src/lib/` | des outils sans rapport avec le jeu (géométrie, tirages au sort, langue parlée), que tout le monde peut importer |
 | `tests/` | tests unitaires (Vitest), rangés comme `src/` |
 | `tools/` | bancs d'essai du moteur, des gestes et des niveaux, sans navigateur ([index](tools/README.md)) |
 | `vendor/cable-kit/` | sous-module git, le dépôt [cable-kit](https://github.com/drschizzo/cable-kit) : le moteur de câbles et son Web Worker (`@drschizzo/avbd-cables`), les tubes construits par le GPU (`@drschizzo/three-cable-tubes`) |

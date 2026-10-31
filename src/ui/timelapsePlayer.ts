@@ -7,7 +7,7 @@
 import { hide, show } from './dom';
 import { downloadBlob } from './share';
 import { $ } from '../lib/page';
-import { tr } from './language';
+import { tr } from '../lib/language';
 import { formatTime } from './format';
 import { grabFrame } from '../render/frameGrab';
 import { replayPose } from '../render/cameraTour';

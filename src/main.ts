@@ -13,9 +13,9 @@ import { loadBaked } from './game/mess/baked';
 import bakedUrl from './game/mess/showcase.bin?url';
 import { $ } from './lib/page';
 import { showGpuNotice } from './ui/notice';
-import { load } from './ui/storage';
+import { load } from './progression/storage';
 import { QUALITY } from './render/quality';
-import { onLanguageChange, setLanguage } from './ui/language';
+import { onLanguageChange, setLanguage } from './lib/language';
 import { writePageTexts } from './ui/pageTexts';
 
 // the language first: everything written from now on is in it

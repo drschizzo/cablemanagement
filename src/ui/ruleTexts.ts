@@ -9,7 +9,7 @@ import { assertNever } from '../lib/assertNever';
 import { formatCost } from './format';
 import { serviceName, serviceWhat } from './names';
 import { toolKey } from './toolbar';
-import { tr } from './language';
+import { tr } from '../lib/language';
 
 /** the tip of `rule` in the brief of `level`; `services`: those its schedule carries (their weights are shown) */
 export function ruleTip(rule: Rule, level: LevelDef, services: number[]): string {

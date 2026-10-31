@@ -1,13 +1,15 @@
 // What the player calls the things of the game: the services of the schedule,
-// the supplies, the cord types, the equipment of the rack, the finds. game/ describes
-// them by their ids; their names live here, with the rest of the words.
+// the supplies, the cord types, the equipment of the rack, the finds, the
+// looks of the notebook. game/ and the notebook describe them by their ids;
+// their names live here, with the rest of the words.
 
 import type { CordType } from '../game/cordTypes';
 import type { Supply } from '../game/supplies';
+import type { LookId } from '../progression/notebook';
 import type { UnitSpec } from '../game/rack';
 import type { FindId } from '../game/finds';
 import { assertNever } from '../lib/assertNever';
-import { tr, type Words } from './language';
+import { tr, type Words } from '../lib/language';
 
 /** a service's name, and what it carries (who notices when it is cut) */
 interface ServiceText {
@@ -66,6 +68,25 @@ export function supplyName(supply: Supply): string {
 export function countOf(supply: Supply, count: number): string {
   const names = tr(SUPPLY_NAMES[supply]);
   return `${count} ${count > 1 ? names.plural : names.singular}`;
+}
+
+const LOOK_NAMES: Record<LookId, Words> = {
+  'velcro-navy': { fr: 'Marine', en: 'Navy' },
+  'velcro-black': { fr: 'Noir', en: 'Black' },
+  'velcro-red': { fr: 'Rouge', en: 'Red' },
+  'velcro-green': { fr: 'Vert', en: 'Green' },
+  'velcro-orange': { fr: 'Orange', en: 'Orange' },
+  'velcro-pink': { fr: 'Rose', en: 'Pink' },
+  'accent-cool': { fr: 'Froide', en: 'Cool' },
+  'accent-warm': { fr: 'Ambre', en: 'Amber' },
+  'accent-mint': { fr: 'Menthe', en: 'Mint' },
+  'accent-violet': { fr: 'Violette', en: 'Violet' },
+  'accent-red': { fr: 'Alerte rouge', en: 'Red alert' },
+};
+
+/** the name of a look of the notebook: "Marine", "Ambre" */
+export function lookName(id: LookId): string {
+  return tr(LOOK_NAMES[id]);
 }
 
 const CORD_TYPE_NAMES: Record<CordType, Words> = {

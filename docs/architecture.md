@@ -138,26 +138,20 @@ src/
     timelapsePlayer.ts le timelapse rejoué en boucle en 5 s, la caméra qui dérive, et enregistré en vidéo (MediaRecorder) ; beforeAfterImage.ts, la baie
                     avant / après en une image ; share.ts, l'adresse du jeu et les fichiers offerts au joueur
     resultScreen.ts l'écran de résultat ; modesPanel.ts, les modes de jeu en deux groupes (histoire, partie libre) ;
-                    modeLocks.ts, quels modes sont ouverts : la formation et la baie libre d'emblée, la carrière à la
-                    fin de la formation (fonctions pures) ; levelMenu.ts, la formation et son tutoriel
+                    levelMenu.ts, la formation et son tutoriel
     pauseMenu.ts    le menu d'un niveau (☰ Menu, Échap) : le chrono attend ; consignes, recommencer, niveaux,
                     paramètres, accueil ; confirmDialog.ts, la question avant de quitter une baie entamée
     settingsPanel.ts les paramètres : qualité de l'image (auto, préréglages, détails) et son
-    progress.ts     la progression du joueur : meilleur score, niveau ouvert, niveau suivant, règles déjà
-                    rencontrées (fonctions pures)
-    notebook.ts     le carnet du technicien : les trouvailles, puis en prime les teintes (le catalogue, les étoiles
-                    qui ouvrent chaque teinte, celle qu'on porte), quand le carnet s'ouvre, les trouvailles gardées
-                    (fonctions pures) ; notebookPanel.ts, son panneau
+    notebookPanel.ts le carnet du technicien : les trouvailles ramassées et où chercher les autres, les teintes
     freePanel.ts    la baie libre : les grandes baies, ou une baie réglée (câbles, services, désordre, production, la
                     baie en élévation et sa palette), jouer ou copier le lien (?rack=CODE)
-    outcome.ts      ce que laisse une baie validée, selon sa sorte de niveau : record, partage, niveau suivant
-    career.ts       la carrière : le ticket à jouer, le ticket validé (la baie gardée) ; careerPanel.ts, son panneau
+    careerPanel.ts  la carrière : le client, ses tickets un par un, et une nouvelle carrière
     messages.ts     tous les textes d'une partie : messages, aides, bulle d'un cordon, et pourquoi
                     une baie libre ne se joue pas
     keyHints.ts     les touches qui comptent à l'instant (outil en main, cordon survolé), en touches de clavier sous la baie
-    language.ts     la langue parlée (français, anglais) : tr({ fr, en }) choisit les mots, onLanguageChange fait
-                    réécrire ce qui n'est écrit qu'une fois ; pageTexts.ts, les mots de index.html (data-i18n)
-    names.ts        le nom des choses : services (et ce qu'ils portent), fournitures, sortes de cordon, plaques des équipements
+    pageTexts.ts    les mots de index.html (data-i18n)
+    names.ts        le nom des choses : services (et ce qu'ils portent), fournitures, sortes de cordon, plaques des
+                    équipements, trouvailles, teintes du carnet
     levelTexts.ts   les mots de chaque niveau : titre, brief, conseils (ceux de la formation et des grandes baies par id ; les autres d'après ce qu'ils sont)
     tutorial.ts     le tutoriel guidé, par-dessus un niveau : les bases du premier niveau, puis, au choix, les gestes avancés
     titleScreen.ts  les boutons de l'écran titre (Commencer seul au premier lancement) ; showcaseSwitch.ts, l'interrupteur
@@ -165,8 +159,18 @@ src/
     panelMargins.ts la place que les panneaux couvrent à chaque bord de l'écran : la baie est cadrée dans le reste
     notice.ts       le bandeau qui conseille le joueur quand la carte graphique est trop lente
     format.ts       nombres, longueurs et durées tels que le joueur les lit
-    storage.ts      données gardées dans le navigateur (clés, valeurs par défaut, validation)
     dom.ts, icons.ts petites aides DOM (dialogue ouvert, étoiles), icônes de la barre d'outils
+  progression/  CE QUE LE JOUEUR GARDE d'une visite à l'autre, en fonctions pures sur ce qui est sauvé ; l'interface le montre
+    storage.ts      les données gardées dans le navigateur (clés, valeurs par défaut, validation) : la progression,
+                    et aussi les réglages (langue, qualité de l'image, son)
+    progress.ts     la progression : meilleur score, niveau ouvert, niveau suivant, fin de la formation, règles déjà
+                    rencontrées
+    modeLocks.ts    quels modes sont ouverts : la formation et la baie libre d'emblée, la carrière à la fin de la
+                    formation
+    career.ts       la carrière telle que le joueur l'avance : le ticket à jouer, le ticket validé (la baie gardée)
+    notebook.ts     le carnet du technicien : quand il s'ouvre, les trouvailles gardées, les teintes (le catalogue,
+                    les étoiles qui ouvrent chacune, celle qu'on porte)
+    outcome.ts      ce que laisse une baie validée, selon sa sorte de niveau : record, baie à partager, niveau suivant
   audio/        les sons, synthétisés : effets (sfx.ts), musique d'ambiance de la baie libre hors production (ambient.ts), le contexte
                 audio qu'ils partagent (context.ts)
   lib/          DES OUTILS SANS RAPPORT AVEC LE JEU, que toutes les couches peuvent importer et qui n'importent rien
@@ -178,6 +182,8 @@ src/
     scalar.ts       les petites fonctions d'un nombre (smoothstep, fractionalPart)
     once.ts         once : une valeur faite au premier appel et gardée (une texture, une lumière, des nœuds)
     page.ts         $ : un élément de index.html, ou une erreur claire s'il manque (game/ ne s'en sert pas)
+    language.ts     la langue parlée (français, anglais) : tr({ fr, en }) choisit les mots, onLanguageChange fait
+                    réécrire ce qui n'est écrit qu'une fois (game/, render/, play/ et showcase/ ne s'en servent pas)
   dev/          poignées de test, chargées en développement seulement
 tests/        tests unitaires (Vitest), rangés comme src/
 tools/        bancs sans navigateur : moteur, gestes, niveaux, vitrine (index : tools/README.md)
@@ -191,7 +197,11 @@ Une couche n'importe que celles qui sont **en dessous** d'elle :
 ```
                  app                  choisit la scène
           ┌───────┼────────┐
-          ui      │     showcase      interface HTML · écran titre
+          ui      │        │          interface HTML
+          │       │        │
+     progression  │        │          ce que le joueur garde
+          │       │        │
+          ├───────┤     showcase      écran titre
           │       │        │
           └──── play       │          une partie en cours
                   │        │
@@ -206,7 +216,8 @@ Une couche n'importe que celles qui sont **en dessous** d'elle :
 
 `lib/` est tout en bas : des outils qui ne savent rien du jeu (géométrie, tirages au sort, `assertNever`), que
 toutes les couches peuvent importer. `audio/` est une feuille. `game/` reste indépendant de la page : il n'utilise
-pas `lib/page.ts`. **Ce sens est vérifié** : `eslint.config.js` interdit à chaque couche d'importer celles qui
+pas `lib/page.ts`. Les phrases sont l'affaire de l'interface : `game/`, `render/`, `play/` et `showcase/`
+n'importent pas `lib/language.ts`. **Ce sens est vérifié** : `eslint.config.js` interdit à chaque couche d'importer celles qui
 sont au-dessus d'elle, et `npm run lint` échoue avec un message qui dit pourquoi. Le cœur (`game/`) peut ainsi
 tourner sous Node, dans les tests et les bancs, et dans un Web Worker.
 
@@ -276,7 +287,7 @@ sur le fil principal.
 
 ## Données dans le navigateur
 
-`ui/storage.ts` déclare chaque entrée (clé, valeur par défaut, validation) : progression (étoiles et meilleurs temps
+`progression/storage.ts` déclare chaque entrée (clé, valeur par défaut, validation) : progression (étoiles et meilleurs temps
 par niveau), tutoriel terminé, règles déjà rencontrées, carrière (tickets faits, la baie du client telle que laissée), dernière baie libre réglée, carnet (teintes portées, trouvailles), langue (celle du navigateur tant que le joueur n'en a pas choisi), musique coupée, qualité de l'image (le choix du joueur, ou le niveau où l'auto est descendu), image HDR (automatique, activée ou désactivée, et l'intensité de ses lumières) et son
 coupé. Une valeur illisible ou d'une autre forme se lit comme la valeur par défaut.
 
@@ -294,12 +305,12 @@ coupé. Une valeur illisible ou d'une autre forme se lit comme la valeur par dé
 | un critère de score | `evaluate()` (`game/evaluation.ts`), sa colonne dans le plan (`ui/schedulePanel.ts`) |
 | un panneau de l'interface | un fichier dans `ui/`, créé et appelé par `Hud` (`ui/hud.ts`) |
 | une étape du tutoriel | `BASICS` (ce que demande le premier niveau) ou `ADVANCED` (les gestes fins) dans `ui/tutorial.ts` (`done` lit `ctl.counters` ou l'état du monde) |
-| un texte | à l'endroit où il s'affiche, dans chaque langue : `tr({ fr: '…', en: '…' })` (`ui/language.ts`) ; un texte de `index.html` : une clé `data-i18n` et ses mots dans `ui/pageTexts.ts` (un test vérifie les deux listes) ; une langue : une entrée dans `Language` et `LANGUAGES`, le compilateur liste chaque texte à traduire |
+| un texte | à l'endroit où il s'affiche, dans chaque langue : `tr({ fr: '…', en: '…' })` (`lib/language.ts`) ; un texte de `index.html` : une clé `data-i18n` et ses mots dans `ui/pageTexts.ts` (un test vérifie les deux listes) ; une langue : une entrée dans `Language` et `LANGUAGES`, le compilateur liste chaque texte à traduire |
 | un message du contrôleur à l'interface | `ControllerEvents` (`play/context.ts`), relié dans `app/app.ts` |
 | un raccourci clavier | `InputRouter.bindKeys` (`play/inputRouter.ts`), son action sur le contrôleur ou l'outil |
 | une option de la page | `readUrlOptions` (`app/urlOptions.ts`) et son test |
 | une couche, ou une règle entre couches | `eslint.config.js` (`layers`), et le schéma ci-dessus |
-| une donnée gardée | une entrée dans `ui/storage.ts` |
+| une donnée gardée | une entrée dans `progression/storage.ts` |
 | une ressource three.js partagée par tous les niveaux | l'envelopper dans `shared()` (`render/dispose.ts`) |
 | un voyant qui clignote | une `LedSpec` (`render/leds.ts`), posée dans `render/rackView.ts` ; `ledGlow.ts` la reprend sur les câbles et la baie |
 | une passe de post-traitement | un nœud dans la chaîne d'`ImagePipeline` (`render/imagePipeline.ts`) ; un réglage donné par son nom à un nœud de three.js, vérifié par `tests/render/threeNodes.test.ts` |

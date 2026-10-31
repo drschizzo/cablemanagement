@@ -3,7 +3,7 @@
 // this shows it.
 
 import { $ } from '../lib/page';
-import { onLanguageChange, tr } from './language';
+import { onLanguageChange, tr } from '../lib/language';
 
 type AisleState = 'before' | 'after' | 'moving';
 

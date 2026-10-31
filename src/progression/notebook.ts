@@ -7,33 +7,35 @@ import { DEFAULT_LOOK, type Look } from '../render/look';
 import { HANDMADE_LEVELS } from '../game/levels/handmade';
 import type { FindId } from '../game/finds';
 import type { Career, Progress, Notebook } from './storage';
-import type { Words } from './language';
 
 export type LookSlot = keyof Look;
 
-export interface LookItem {
+interface LookSpec {
   id: string;
   slot: LookSlot;
-  name: Words;
   /** stars won that open it (0: given) */
   stars: number;
   /** the colour it gives its slot */
   value: string;
 }
 
-export const LOOKS: LookItem[] = [
-  { id: 'velcro-navy', slot: 'velcro', name: { fr: 'Marine', en: 'Navy' }, stars: 0, value: DEFAULT_LOOK.velcro },
-  { id: 'velcro-black', slot: 'velcro', name: { fr: 'Noir', en: 'Black' }, stars: 5, value: '#151617' },
-  { id: 'velcro-red', slot: 'velcro', name: { fr: 'Rouge', en: 'Red' }, stars: 10, value: '#a3242a' },
-  { id: 'velcro-green', slot: 'velcro', name: { fr: 'Vert', en: 'Green' }, stars: 15, value: '#2f7d3a' },
-  { id: 'velcro-orange', slot: 'velcro', name: { fr: 'Orange', en: 'Orange' }, stars: 25, value: '#d9731a' },
-  { id: 'velcro-pink', slot: 'velcro', name: { fr: 'Rose', en: 'Pink' }, stars: 40, value: '#e05aa3' },
-  { id: 'accent-cool', slot: 'accent', name: { fr: 'Froide', en: 'Cool' }, stars: 0, value: DEFAULT_LOOK.accent },
-  { id: 'accent-warm', slot: 'accent', name: { fr: 'Ambre', en: 'Amber' }, stars: 8, value: '#ffb36b' },
-  { id: 'accent-mint', slot: 'accent', name: { fr: 'Menthe', en: 'Mint' }, stars: 20, value: '#7dffc0' },
-  { id: 'accent-violet', slot: 'accent', name: { fr: 'Violette', en: 'Violet' }, stars: 32, value: '#b48cff' },
-  { id: 'accent-red', slot: 'accent', name: { fr: 'Alerte rouge', en: 'Red alert' }, stars: 50, value: '#ff5a5a' },
-];
+/** the looks, by slot, the given one first; their names are the interface's (ui/names.ts) */
+export const LOOKS = [
+  { id: 'velcro-navy', slot: 'velcro', stars: 0, value: DEFAULT_LOOK.velcro },
+  { id: 'velcro-black', slot: 'velcro', stars: 5, value: '#151617' },
+  { id: 'velcro-red', slot: 'velcro', stars: 10, value: '#a3242a' },
+  { id: 'velcro-green', slot: 'velcro', stars: 15, value: '#2f7d3a' },
+  { id: 'velcro-orange', slot: 'velcro', stars: 25, value: '#d9731a' },
+  { id: 'velcro-pink', slot: 'velcro', stars: 40, value: '#e05aa3' },
+  { id: 'accent-cool', slot: 'accent', stars: 0, value: DEFAULT_LOOK.accent },
+  { id: 'accent-warm', slot: 'accent', stars: 8, value: '#ffb36b' },
+  { id: 'accent-mint', slot: 'accent', stars: 20, value: '#7dffc0' },
+  { id: 'accent-violet', slot: 'accent', stars: 32, value: '#b48cff' },
+  { id: 'accent-red', slot: 'accent', stars: 50, value: '#ff5a5a' },
+] as const satisfies readonly LookSpec[];
+
+export type LookItem = (typeof LOOKS)[number];
+export type LookId = LookItem['id'];
 
 /** the training level whose sign-off opens the notebook, finds or not */
 const NOTEBOOK_OPENS_AT = 'l3';
@@ -58,8 +60,8 @@ export function isOpen(stars: number, item: LookItem): boolean {
 
 /** the item equipped in a slot: the one chosen while it is open, or the one given */
 export function equippedIn(notebook: Notebook, stars: number, slot: LookSlot): LookItem {
-  const chosen = LOOKS.find((i) => i.id === notebook.equipped[slot] && i.slot === slot);
-  return chosen && isOpen(stars, chosen) ? chosen : LOOKS.find((i) => i.slot === slot && i.stars === 0)!;
+  const chosen = (LOOKS as readonly LookItem[]).find((i) => i.id === notebook.equipped[slot] && i.slot === slot);
+  return chosen && isOpen(stars, chosen) ? chosen : (LOOKS as readonly LookItem[]).find((i) => i.slot === slot && i.stars === 0)!;
 }
 
 /** equips an item in its slot; false when it is not open yet */

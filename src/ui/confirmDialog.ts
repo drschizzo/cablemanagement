@@ -3,7 +3,7 @@
 
 import { hide, show } from './dom';
 import { $ } from '../lib/page';
-import { tr } from './language';
+import { tr } from '../lib/language';
 
 /** asks `question`; `action` labels the button that leaves, `stay` runs on Cancel; `lost`: what leaving loses */
 export function confirmLeaving(question: string, action: string, leave: () => void, stay: () => void, lost?: string): void {

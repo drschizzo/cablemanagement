@@ -10,9 +10,9 @@ import { BIG_BAYS } from '../game/levels/bigBays';
 import { TICKETS } from '../game/levels/career';
 import { $ } from '../lib/page';
 import { hide, show } from './dom';
-import { load, type Progress } from './storage';
-import { tr, type Words } from './language';
-import { isModeOpen, type Mode } from './modeLocks';
+import { load, type Progress } from '../progression/storage';
+import { tr, type Words } from '../lib/language';
+import { isModeOpen, type Mode } from '../progression/modeLocks';
 import { levelTitle } from './levelTexts';
 
 /** where the cards lead; each gets `start` (what a level chosen does) and `back` (back to the modes) */

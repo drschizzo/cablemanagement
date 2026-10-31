@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { load, save } from '../../src/ui/storage';
+import { load, save } from '../../src/progression/storage';
 import { HDR_HEADROOM } from '../../src/render/toneCurve';
 import { AUTO_QUALITY, QUALITY } from '../../src/render/quality';
 

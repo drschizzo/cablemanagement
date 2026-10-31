@@ -10,7 +10,7 @@ import type { FreeError } from '../game/levels/freeLevel';
 import { assertNever } from '../lib/assertNever';
 import { formatCost, formatDecimal } from './format';
 import { cordTypeName, serviceName, supplyName } from './names';
-import { tr } from './language';
+import { tr } from '../lib/language';
 import { DELETE_KEY } from './keyHints';
 
 export function strainLabel(strain: Strain): string {

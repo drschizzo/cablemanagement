@@ -3,13 +3,13 @@
 
 import { TRAINING, TUTORIAL, UNLOCK_STARS } from '../game/levels/training';
 import type { LevelDef } from '../game/levels/levelDef';
-import { load, type Progress } from './storage';
+import { load, type Progress } from '../progression/storage';
 import { formatTime } from './format';
 import { hide, show, starsHtml } from './dom';
 import { $ } from '../lib/page';
-import { isUnlocked } from './progress';
+import { isUnlocked } from '../progression/progress';
 import { levelTitle } from './levelTexts';
-import { tr } from './language';
+import { tr } from '../lib/language';
 
 export class LevelMenu {
   private start: (level: LevelDef) => void = () => {};

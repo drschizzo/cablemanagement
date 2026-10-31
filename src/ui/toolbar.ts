@@ -7,7 +7,7 @@ import type { LevelDef } from '../game/levels/levelDef';
 import { $ } from '../lib/page';
 import { countOf } from './names';
 import { iconFingerManager, iconHand, iconRoute, iconStock, iconTester, iconVelcro } from './icons';
-import { tr, type Words } from './language';
+import { tr, type Words } from '../lib/language';
 import { DELETE_KEY } from './keyHints';
 
 interface ToolButton {

@@ -1,7 +1,7 @@
 // Numbers as the player reads them, in the language spoken (a decimal comma
 // in French, a point in English).
 
-import { tr } from './language';
+import { tr } from '../lib/language';
 
 /** a decimal number with the separator of the language spoken */
 export function formatDecimal(value: number, digits: number): string {

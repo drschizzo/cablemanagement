@@ -12,14 +12,13 @@ import { endsTheTraining, levelAfter, recordResult, withMet, type LevelResult } 
 import { levelRules } from '../game/levels/levelRules';
 import { currentTicket, recordTicket } from './career';
 import { load, save, type Progress } from './storage';
-import { freeLink } from './share';
-import { tr } from './language';
+import type { FreeSpec } from '../game/levels/freeLevel';
 
 /** what a signed-off cabinet left in the record */
 export interface Outcome {
   result: LevelResult;
-  /** a line to share, with the link of a free cabinet, or null */
-  share: string | null;
+  /** a free cabinet to share by its link, or null */
+  share: FreeSpec | null;
   /** the level after this one, and whether it is open yet (null: none) */
   next: { level: LevelDef; open: boolean } | null;
 }
@@ -57,7 +56,7 @@ export function recordOutcome(level: LevelDef, ev: Evaluation, w: World, time: n
     }
     // a free cabinet is kept nowhere (it could be made as easy as anything), but its link is to share
     case 'free':
-      return { ...unrecorded(ev, time), share: tr({ fr: `Une baie à ranger sur Brassage : ${freeLink(level.spec)}`, en: `A cabinet to tidy on Brassage: ${freeLink(level.spec)}` }) };
+      return { ...unrecorded(ev, time), share: level.spec };
     // the title screen and the benches are never signed off
     case 'showcase':
     case 'bench':

@@ -7,9 +7,9 @@ import { AUTO_QUALITY, QUALITY, drawAlike, type QualityChoice, type QualitySetti
 import type { HdrChoice, HdrSupport } from '../render/hdrScreen';
 import { HDR_HEADROOM } from '../render/toneCurve';
 import { assertNever } from '../lib/assertNever';
-import { save } from './storage';
+import { save } from '../progression/storage';
 import { hide, show } from './dom';
-import { LANGUAGES, language, onLanguageChange, setLanguage, tr, type Words } from './language';
+import { LANGUAGES, language, onLanguageChange, setLanguage, tr, type Words } from '../lib/language';
 import { $ } from '../lib/page';
 
 /** what the panel sees of the stage */

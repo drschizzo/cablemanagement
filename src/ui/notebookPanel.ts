@@ -2,17 +2,17 @@
 // far, and where to look for the others; then, as a bonus, for each slot the
 // looks open or still to win with the stars (a swatch each).
 
-import { load, save } from './storage';
+import { load, save } from '../progression/storage';
 import { hide, show } from './dom';
 import { $ } from '../lib/page';
-import { LOOK_SLOTS, LOOKS, equip, equippedIn, isOpen, starsWon, type LookSlot } from './notebook';
-import { tr } from './language';
+import { LOOK_SLOTS, LOOKS, equip, equippedIn, isOpen, starsWon, type LookSlot } from '../progression/notebook';
+import { tr } from '../lib/language';
 import { assertNever } from '../lib/assertNever';
 import { FINDS, type FindId } from '../game/finds';
 import { TRAINING } from '../game/levels/training';
 import { BIG_BAYS } from '../game/levels/bigBays';
 import { KEYS_FROM, MANUAL_FROM } from '../game/levels/freeLevel';
-import { findName, findStory } from './names';
+import { findName, findStory, lookName } from './names';
 import { levelTitle } from './levelTexts';
 
 export class NotebookPanel {
@@ -46,7 +46,7 @@ export class NotebookPanel {
         const button = document.createElement('button');
         button.className = 'swatch' + (item === equipped ? ' cur' : '') + (open ? '' : ' locked');
         button.disabled = !open;
-        button.innerHTML = `<i style="background:${item.value}"></i><span>${tr(item.name)}</span><small>${item === equipped ? tr({ fr: 'équipé', en: 'equipped' }) : open ? tr({ fr: 'équiper', en: 'equip' }) : `${item.stars} ★`}</small>`;
+        button.innerHTML = `<i style="background:${item.value}"></i><span>${lookName(item.id)}</span><small>${item === equipped ? tr({ fr: 'équipé', en: 'equipped' }) : open ? tr({ fr: 'équiper', en: 'equip' }) : `${item.stars} ★`}</small>`;
         button.onclick = () => {
           const w = load('notebook');
           if (equip(w, stars, item)) save('notebook', w);

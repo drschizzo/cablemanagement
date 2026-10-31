@@ -1,11 +1,11 @@
 // The progress record is plain data: the rules of the best score are tested
 // without a page.
 import { describe, expect, it } from 'vitest';
-import { endsTheTraining, isUnlocked, levelAfter, nextInStory, recordResult, withMet } from '../../src/ui/progress';
+import { endsTheTraining, isUnlocked, levelAfter, nextInStory, recordResult, withMet } from '../../src/progression/progress';
 import { levelRules } from '../../src/game/levels/levelRules';
 import { TRAINING } from '../../src/game/levels/training';
 import { BIG_BAYS } from '../../src/game/levels/bigBays';
-import type { Progress } from '../../src/ui/storage';
+import type { Progress } from '../../src/progression/storage';
 
 const empty = (): Progress => ({ stars: {}, times: {} });
 const level = TRAINING[0];

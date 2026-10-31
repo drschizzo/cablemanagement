@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { formatCost, formatLength, formatTime } from '../../src/ui/format';
-import { setLanguage } from '../../src/ui/language';
+import { setLanguage } from '../../src/lib/language';
 
 describe('numbers as the player reads them', () => {
   it('writes a cost in points, with a decimal comma', () => {

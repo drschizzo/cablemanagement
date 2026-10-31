@@ -8,7 +8,7 @@ import type { LevelDef } from '../game/levels/levelDef';
 import { formatLength } from './format';
 import { $ } from '../lib/page';
 import { cordTypeName, serviceName } from './names';
-import { tr } from './language';
+import { tr } from '../lib/language';
 import { DELETE_KEY } from './keyHints';
 
 export class StockMenu {
