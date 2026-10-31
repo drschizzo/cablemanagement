@@ -20,7 +20,7 @@ import { dailyLevel, dayKey } from '../game/levels/dailyLevel';
 import { customLevel, decodeSpec } from '../game/levels/customLevel';
 import type { BakedBay } from '../game/mess/baked';
 import { SceneLoader } from './sceneLoader';
-import { TitleScreen } from '../ui/titleScreen';
+import { TitleScreen, type LoadStep } from '../ui/titleScreen';
 import { onPanelsResized, panelMargins } from '../ui/panelMargins';
 import type { AisleSettings } from './urlOptions';
 import { $ } from '../lib/page';
@@ -166,15 +166,15 @@ export class App {
    * from where the fall left it.
    */
   private async settleShaders(showcase: Showcase): Promise<void> {
-    const shown = (f: number) => this.title.showProgress(AISLE_SHARE + (1 - AISLE_SHARE) * f);
-    shown(0);
+    const shown = (f: number, step: LoadStep) => this.title.showProgress(AISLE_SHARE + (1 - AISLE_SHARE) * f, step);
+    shown(0, 'shaders');
     await frames(3);
-    shown(0.1);
-    await this.warmLevel((f) => shown(0.1 + 0.7 * f));
+    shown(0.1, 'shaders');
+    await this.warmLevel((f) => shown(0.1 + 0.7 * f, 'shaders'));
     if (this.showcase !== showcase) return;
-    shown(0.8);
+    shown(0.8, 'gpu');
     await this.stage.gpuDone();
-    shown(1);
+    shown(1, 'gpu');
     // (an image drawn with all of it before the veil lifts)
     await frames(2);
   }

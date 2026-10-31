@@ -107,10 +107,10 @@
 
     <div id="title">
       <div class="kicker" data-i18n="title.kicker"></div>
-      <h1 class="logo">Brassage</h1>
+      <h1 class="logo" aria-label="Brassage"><span class="letters" aria-hidden="true"><span style="--i:0">B</span><span style="--i:1">r</span><span style="--i:2">a</span><span style="--i:3">s</span><span style="--i:4">s</span><span style="--i:5">a</span><span style="--i:6">g</span><span style="--i:7">e</span></span><span class="sheen" aria-hidden="true"><span>Brassage</span></span></h1>
       <div class="leds" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
       <p class="tagline" data-i18n="title.tagline"></p>
-      <div id="title-load"><div class="bar"><div class="fill"></div></div></div>
+      <div id="title-load" role="progressbar" aria-valuemin="0" aria-valuemax="100"><div class="bar"><div class="fill"><i class="flow"></i></div></div><div class="caption"><span class="step"></span><span class="pct"></span></div></div>
       <nav class="menu">
         <button id="title-play" class="primary"></button>
         <div class="more">

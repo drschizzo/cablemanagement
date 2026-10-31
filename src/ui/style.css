@@ -392,10 +392,75 @@ body:not(.booting) #title .leds i { animation: traffic 3.1s steps(1) infinite; }
 #title .leds i:nth-child(4n + 1) { animation-delay: -0.7s; }
 @keyframes traffic { 0%, 90% { opacity: 1; } 91% { opacity: 0.35; } 93% { opacity: 1; } 95% { opacity: 0.35; } 97% { opacity: 1; } }
 #title .tagline { margin: 0; font-size: 15px; color: #c6cbc7; letter-spacing: 0.02em; text-shadow: 0 1px 10px rgba(0, 0, 0, 0.9); }
-#title-load { display: none; flex-direction: column; align-items: center; margin-top: 26px; }
+/*
+ * The loading page. Everything in it that moves is a transform or an opacity: the compositor plays them on its own
+ * while the page builds the aisle and the GPU compiles its shaders, which hold the main thread for most of a second.
+ */
+/* a dim glow behind the name, over a far grid of ports, breathing; it fades as the aisle comes in */
+body::before {
+  content: ''; position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0; transition: opacity 1.2s ease;
+  background:
+    radial-gradient(ellipse 34% 26% at 50% 46%, rgba(139, 227, 180, 0.07), transparent 70%),
+    radial-gradient(circle, rgba(255, 255, 255, 0.07) 1px, transparent 1.6px) 50% 50% / 22px 22px;
+  -webkit-mask-image: radial-gradient(ellipse 46% 40% at 50% 46%, #000, transparent);
+  mask-image: radial-gradient(ellipse 46% 40% at 50% 46%, #000, transparent);
+}
+body.booting::before { opacity: 1; animation: breathe 5s ease-in-out infinite; }
+@keyframes breathe { 50% { opacity: 0.55; } }
+/* the name comes in letter by letter, then a light runs over it now and then */
+#title .logo { position: relative; }
+#title .logo .letters span { display: inline-block; }
+body.booting #title .logo .letters span { animation: rise 0.9s cubic-bezier(.2, .8, .2, 1) calc(0.08s * var(--i)) both; }
+@keyframes rise { from { opacity: 0; transform: translateY(0.4em); filter: blur(8px); } }
+/* a narrow window crosses the name showing a copy of it lit, the copy held still under it: two transforms */
+#title .logo .sheen { display: none; }
+body.booting #title .logo .sheen {
+  display: block; position: absolute; top: 0; left: 0; width: 30%; height: 100%; overflow: hidden; pointer-events: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 50%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 50%, transparent);
+  animation: sheen-window 4.2s linear 1.1s infinite both;
+}
+#title .logo .sheen span {
+  position: absolute; top: 0; left: 0; width: calc(100% / 0.3); white-space: nowrap;
+  color: #f2fff7; text-shadow: 0 0 12px rgba(139, 227, 180, 0.9), 0 0 2px rgba(139, 227, 180, 0.8);
+  animation: sheen-copy 4.2s linear 1.1s infinite both;
+}
+@keyframes sheen-window { from { transform: translateX(-100%); } 45%, to { transform: translateX(calc(100% / 0.3)); } }
+@keyframes sheen-copy { from { transform: translateX(30%); } 45%, to { transform: translateX(-100%); } }
+/* the bar: a fibre lit up to where the loading is, light running along it, a spark at its end */
+#title-load { display: none; flex-direction: column; align-items: center; margin-top: 26px; animation: fade-in 0.8s ease 0.6s both; }
 body.booting #title-load { display: flex; }
-#title-load .bar { width: 240px; height: 2px; background: rgba(255, 255, 255, 0.08); }
-#title-load .fill { height: 100%; width: 0; background: var(--accent); transition: width 0.3s; }
+@keyframes fade-in { from { opacity: 0; } }
+#title-load .bar { position: relative; width: 260px; height: 14px; overflow: hidden; }
+#title-load .bar::before { content: ''; position: absolute; left: 0; right: 0; top: 6.5px; height: 1px; background: rgba(255, 255, 255, 0.09); }
+#title-load .fill { position: absolute; inset: 0; transform: translateX(-100%); transition: transform 0.6s cubic-bezier(.2, .8, .2, 1); }
+#title-load .fill::before {
+  content: ''; position: absolute; left: 0; right: 4px; top: 6px; height: 2px; border-radius: 1px;
+  background: linear-gradient(90deg, rgba(139, 227, 180, 0.15), var(--accent)); box-shadow: 0 0 8px rgba(139, 227, 180, 0.35);
+}
+#title-load .fill::after {
+  content: ''; position: absolute; right: 2px; top: 4px; width: 6px; height: 6px; border-radius: 50%;
+  background: #eafff3; box-shadow: 0 0 6px 2px rgba(139, 227, 180, 0.9), 0 0 18px 4px rgba(139, 227, 180, 0.35);
+  animation: spark 1.4s ease-in-out infinite;
+}
+@keyframes spark { 50% { opacity: 0.55; transform: scale(0.7); } }
+/* packets: short bright dashes sliding along the lit part, forever */
+#title-load .flow {
+  position: absolute; left: -48px; right: 4px; top: 6px; height: 2px;
+  background: repeating-linear-gradient(90deg, transparent 0 30px, rgba(234, 255, 243, 0.85) 30px 36px, transparent 36px 48px);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 40%); mask-image: linear-gradient(90deg, transparent, #000 40%);
+  animation: flow 0.9s linear infinite;
+}
+@keyframes flow { to { transform: translateX(48px); } }
+#title-load .caption {
+  display: flex; justify-content: space-between; gap: 16px; width: 260px; margin-top: 8px;
+  font: 500 10px var(--mono); text-transform: uppercase; letter-spacing: 0.22em; color: var(--dim);
+}
+#title-load .pct { color: var(--accent); font-variant-numeric: tabular-nums; letter-spacing: 0.08em; }
+@media (prefers-reduced-motion: reduce) {
+  body.booting::before, body.booting #title .logo .letters span, #title-load .fill::after, #title-load .flow { animation: none; }
+  body.booting #title .logo .sheen { display: none; }
+}
 /* one way in, two more beside it, and the rest as quiet links */
 #title .menu { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 18px; }
 #title .menu .more { display: flex; gap: 8px; }
