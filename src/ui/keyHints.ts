@@ -3,7 +3,7 @@
 // stays on its button; here, only what the player can do this very moment.
 
 import type { Tool } from '../play/controller';
-import type { HoverNote } from '../play/messages';
+import type { HoverNote } from '../play/notices';
 import { assertNever } from '../lib/assertNever';
 import { tr, type Words } from './language';
 

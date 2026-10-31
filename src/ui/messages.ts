@@ -1,8 +1,8 @@
 // Every sentence a level says to the player: the toasts, the hints under the
-// cabinet, the tooltip of a cord, what each star asks, and why a free cabinet cannot be played. The game sends data (play/messages.ts,
+// cabinet, the tooltip of a cord, what each star asks, and why a free cabinet cannot be played. The game sends data (play/notices.ts,
 // game/evaluation.ts, game/levels/freeLevel.ts); the words live here.
 
-import type { CordInfo, Hint, HoverNote, PhysicsStats, Toast } from '../play/messages';
+import type { CordInfo, Hint, HoverNote, PhysicsStats, Toast } from '../play/notices';
 import type { RouteError } from '../game/routeLaying';
 import { isGoalMet, type StarGoal, type Strain } from '../game/evaluation';
 import type { IncidentEvent } from '../game/incidents';

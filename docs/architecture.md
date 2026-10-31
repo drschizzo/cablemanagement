@@ -67,7 +67,7 @@ src/
     replay.ts       ce relevé : l'état de la baie (nœuds, prises, étiquettes, velcros, supports, LEDs), et le temps
                     du rejeu (pris là où les câbles bougent), les câbles d'un relevé à l'autre le long d'une courbe
     replayView.ts   le rejeu dessiné par les vues du jeu, à la place des câbles de la baie
-    messages.ts     ce qu'une partie dit au joueur, en données (Toast, Hint, CordInfo, HoverNote) : ui/ les met en mots
+    notices.ts      ce qu'une partie dit au joueur, en données (Toast, Hint, CordInfo, HoverNote) : ui/ les met en mots
     cordInfo.ts     ce que la bulle dit d'un cordon survolé
   showcase/     L'ÉCRAN TITRE : l'allée avant / après, une scène sans partie en cours
     showcase.ts     Showcase : l'allée, sa bascule d'un état à l'autre, sa pluie de câbles

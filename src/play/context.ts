@@ -10,7 +10,7 @@ import type { Port, UnitSpec } from '../game/rack';
 import type { FindId } from '../game/finds';
 import type { Pointer } from './pointer';
 import type { CordPick, CordPicker } from './picking';
-import type { CordInfo, Hint, HoverNote, PhysicsStats, Toast } from './messages';
+import type { CordInfo, Hint, HoverNote, PhysicsStats, Toast } from './notices';
 import type { CircuitIndex } from '../game/cables';
 import type { UndoHistory } from './undoHistory';
 import type { PortHint } from './feedback/portHint';

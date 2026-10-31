@@ -24,7 +24,7 @@ import { Pointer } from './pointer';
 import { CordPicker, type CordPick } from './picking';
 import { UndoHistory } from './undoHistory';
 import { cordInfo } from './cordInfo';
-import type { HoverNote } from './messages';
+import type { HoverNote } from './notices';
 import { captureFront } from '../render/frontImage';
 import { buildFind } from '../render/findView';
 import type * as THREE from 'three/webgpu';

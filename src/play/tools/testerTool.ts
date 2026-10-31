@@ -5,7 +5,7 @@
 import { sfx } from '../../audio/sfx';
 import type { CableIndex } from '../../game/cables';
 import type { CordPick } from '../picking';
-import type { HoverNote } from '../messages';
+import type { HoverNote } from '../notices';
 import type { PlayContext, ToolHandler } from '../context';
 
 export class TesterTool implements ToolHandler {

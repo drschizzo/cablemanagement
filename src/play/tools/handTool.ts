@@ -12,7 +12,7 @@ import { PlumbLine } from '../feedback/plumbLine';
 import { SETTLE_SHOW } from '../feedback/holdView';
 import type { PlayContext, ToolHandler } from '../context';
 import type { CordPick } from '../picking';
-import type { HoverNote } from '../messages';
+import type { HoverNote } from '../notices';
 import type { NodeIndex } from '../../game/cables';
 
 /** m per physics step the hand may move */

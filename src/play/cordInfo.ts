@@ -4,7 +4,7 @@
 
 import type { World } from '../game/world';
 import type { Evaluation } from '../game/evaluation';
-import type { CordInfo } from './messages';
+import type { CordInfo } from './notices';
 import type { CordPick } from './picking';
 
 /** `traced`: the cords traced at least once (an unmarked cord then tells where it goes) */

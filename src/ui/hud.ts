@@ -22,7 +22,7 @@ import { $ } from '../lib/page';
 import { STOCK_KEY, Toolbar, toolForKey } from './toolbar';
 import { keysFor, keysHtml } from './keyHints';
 import { cordTooltipHtml, hintHtml } from './messages';
-import type { CordInfo, Hint, HoverNote } from '../play/messages';
+import type { CordInfo, Hint, HoverNote } from '../play/notices';
 import { StockMenu } from './stockMenu';
 import { SchedulePanel } from './schedulePanel';
 import { LevelBrief } from './levelBrief';
