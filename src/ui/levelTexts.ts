@@ -7,6 +7,7 @@ import type { LevelDef } from '../game/levels/levelDef';
 import { assertNever } from '../lib/assertNever';
 import { tr, type Words } from '../lib/language';
 import { DELETE_KEY } from './keyHints';
+import { TRAINING } from '../game/levels/training';
 
 interface LevelText {
   title: string;
@@ -187,6 +188,23 @@ function textOf(level: LevelDef): LevelText {
 
 export function levelTitle(level: LevelDef): string {
   return textOf(level).title;
+}
+
+/** where the level stands in the game, over its title: « Formation · niveau 2 » */
+export function levelPlace(level: LevelDef): string {
+  switch (level.kind) {
+    case 'training': {
+      const n = TRAINING.findIndex((l) => l.id === level.id) + 1;
+      return tr({ fr: `Formation · niveau ${n}`, en: `Training · level ${n}` });
+    }
+    case 'tutorial': return tr({ fr: 'Formation', en: 'Training' });
+    case 'bigBay': return tr({ fr: 'Baie libre · grande baie', en: 'Free cabinet · big cabinet' });
+    case 'ticket': return tr({ fr: 'Carrière · Radio Pinède', en: 'Career · Radio Pinède' });
+    case 'free': return level.spec.production ? tr({ fr: 'Baie libre · en production', en: 'Free cabinet · in production' }) : tr({ fr: 'Baie libre', en: 'Free cabinet' });
+    case 'showcase':
+    case 'bench': return '';
+    default: return assertNever(level);
+  }
 }
 
 export function levelBrief(level: LevelDef): string {

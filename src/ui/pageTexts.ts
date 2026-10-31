@@ -58,6 +58,8 @@ export const PAGE_TEXTS: Record<string, Words> = {
   'free.code': { fr: 'Collez un lien ou un code de baie', en: 'Paste a link or a cabinet code' },
   'free.open': { fr: 'Ouvrir', en: 'Open' },
   'brief.go': { fr: 'Commencer', en: 'Start' },
+  'brief.tips': { fr: 'À savoir', en: 'Good to know' },
+  'brief.supplies': { fr: 'Matériel', en: 'Supplies' },
   'result.title': { fr: 'Baie validée', en: 'Cabinet signed off' },
   'result.beforeAlt': { fr: 'La baie au départ', en: 'The cabinet at the start' },
   'result.afterAlt': { fr: 'La baie validée', en: 'The cabinet signed off' },

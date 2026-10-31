@@ -33,17 +33,26 @@ export class CareerPanel {
     this.back = back;
     const career = load('career');
     const now = currentTicket(career);
-    $('#career-tickets').innerHTML = '';
-    TICKETS.forEach((_, t) => {
+    const box = $('#career-tickets');
+    box.innerHTML = '';
+    // the tickets signed off with their stars, then the one to play with its brief
+    for (let t = 0; t <= career.done && t < TICKETS.length; t++) {
       const card = document.createElement('div');
-      // a locked ticket shows only its number: the client has not called yet
       const level = t === now?.ticket ? now : ticketLevel(t, null);
-      card.className = 'ticket' + (t < career.done ? ' done' : t === now?.ticket ? ' now' : ' later');
-      card.innerHTML = t <= career.done
-        ? `<b>${levelTitle(level)}</b>${t < career.done ? `<span class="stars">${starsHtml(career.stars[t] ?? 0)}</span>` : `<p>${levelBrief(level)}</p>`}`
-        : `<b>${tr({ fr: `Ticket ${t + 1}`, en: `Ticket ${t + 1}` })}</b><span class="sub">🔒 ${tr({ fr: `Validez le ticket ${t} pour l'ouvrir`, en: `Sign off ticket ${t} to open it` })}</span>`;
-      $('#career-tickets').appendChild(card);
-    });
+      card.className = 'ticket' + (t < career.done ? ' done' : ' now');
+      card.innerHTML = `<b>${levelTitle(level)}</b>`
+        + (t < career.done ? `<span class="stars">${starsHtml(career.stars[t] ?? 0)}</span>` : `<p>${levelBrief(level)}</p>`);
+      box.appendChild(card);
+    }
+    // the locked ones, by their number only: the client has not called yet
+    const later = TICKETS.length - career.done - 1;
+    if (later > 0) {
+      const row = document.createElement('div');
+      row.className = 'later';
+      row.innerHTML = Array.from({ length: later }, (_, i) => `<span>${String(career.done + 2 + i).padStart(2, '0')}</span>`).join('')
+        + `<p>${tr({ fr: 'Chaque ticket validé ouvre le suivant.', en: 'Each ticket signed off opens the next.' })}</p>`;
+      box.appendChild(row);
+    }
     const go = $<HTMLButtonElement>('#career-go');
     go.style.display = now ? '' : 'none';
     go.textContent = career.done ? tr({ fr: 'Ticket suivant →', en: 'Next ticket →' }) : tr({ fr: 'Premier jour →', en: 'First day →' });

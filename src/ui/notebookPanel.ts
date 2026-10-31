@@ -36,7 +36,7 @@ export class NotebookPanel {
     const box = $('#notebook-items');
     box.innerHTML = '';
     for (const slot of LOOK_SLOTS) {
-      const title = document.createElement('h2');
+      const title = document.createElement('h3');
       title.textContent = slotName(slot);
       const row = document.createElement('div');
       row.className = 'swatches';
@@ -64,7 +64,7 @@ export class NotebookPanel {
     $('#notebook-finds-count').textContent = `${found.length}/${FINDS.length}`;
     $('#notebook-finds').innerHTML = FINDS.map((id) => found.includes(id)
       ? `<div class="find"><b>${findName(id)}</b><span>${findStory(id)}</span></div>`
-      : `<div class="find unknown"><b>???</b><span>${whereHidden(id)}</span></div>`).join('');
+      : `<div class="find unknown"><span>${whereHidden(id)}</span></div>`).join('');
   }
 }
 

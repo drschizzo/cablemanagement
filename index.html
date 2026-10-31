@@ -64,34 +64,48 @@
 
     <div id="brief" class="overlay">
       <div class="panel">
+        <div id="brief-place" class="kicker"></div>
         <h1 id="brief-title"></h1>
         <p id="brief-text"></p>
-        <ul id="brief-tips"></ul>
-        <p id="brief-inv" class="sub"></p>
-        <button id="brief-go" class="primary" data-i18n="brief.go"></button>
+        <section class="brief-tips"><h2 data-i18n="brief.tips"></h2><ul id="brief-tips"></ul></section>
+        <section class="brief-inv"><h2 data-i18n="brief.supplies"></h2><div id="brief-inv" class="items"></div></section>
+        <div class="row"><button id="brief-go" class="primary" data-i18n="brief.go"></button></div>
       </div>
     </div>
 
     <div id="result" class="overlay">
       <div class="panel">
-        <h1 data-i18n="result.title"></h1>
-        <div id="result-stars"></div>
-        <p id="result-time"></p>
-        <div id="result-ba">
-          <figure><img id="ba-before" data-i18n-alt="result.beforeAlt" /><figcaption data-i18n="common.before"></figcaption></figure>
-          <figure><img id="ba-after" data-i18n-alt="result.afterAlt" /><figcaption data-i18n="common.after"></figcaption></figure>
+        <header class="result-head">
+          <div>
+            <div id="result-place" class="kicker"></div>
+            <h1 data-i18n="result.title"></h1>
+            <p id="result-level" class="sub"></p>
+          </div>
+          <div class="result-score"><div id="result-stars"></div><p id="result-time"></p></div>
+        </header>
+        <div class="result-body">
+          <div class="result-media">
+            <div id="result-ba">
+              <figure><img id="ba-before" data-i18n-alt="result.beforeAlt" /><figcaption data-i18n="common.before"></figcaption></figure>
+              <figure><img id="ba-after" data-i18n-alt="result.afterAlt" /><figcaption data-i18n="common.after"></figcaption></figure>
+            </div>
+            <div class="row media">
+              <button id="result-replay" class="ghost" data-i18n="result.replay"></button>
+              <button id="result-image" class="ghost" data-i18n="result.image"></button>
+            </div>
+          </div>
+          <section class="result-goals"><h2 data-i18n="side.stars"></h2><ul id="result-lines"></ul></section>
         </div>
-        <div class="row media">
-          <button id="result-replay" class="ghost" data-i18n="result.replay"></button>
-          <button id="result-image" class="ghost" data-i18n="result.image"></button>
-        </div>
-        <ul id="result-lines"></ul>
-        <div class="row">
-          <button id="result-share" class="ghost"></button>
-          <button id="result-again" class="ghost" data-i18n="result.again"></button>
-          <button id="result-home" class="ghost" data-i18n="common.home"></button>
-          <button id="result-menu" class="ghost" data-i18n="common.modes"></button>
-          <button id="result-next" class="primary"></button>
+        <div class="row foot">
+          <div class="quiet">
+            <button id="result-home" class="ghost" data-i18n="common.home"></button>
+            <button id="result-menu" class="ghost" data-i18n="common.modes"></button>
+            <button id="result-share" class="ghost"></button>
+          </div>
+          <div class="ways">
+            <button id="result-again" class="ghost" data-i18n="result.again"></button>
+            <button id="result-next" class="primary"></button>
+          </div>
         </div>
       </div>
     </div>
@@ -229,22 +243,28 @@
         <p class="sub" data-i18n="career.sub"></p>
         <div id="career-tickets"></div>
         <p id="career-over" class="sub" data-i18n="career.over"></p>
-        <div class="row">
+        <div class="row foot">
           <button id="career-reset" class="link" data-i18n="career.reset"></button>
           <button id="career-go" class="primary"></button>
         </div>
       </div>
     </div>
     <div id="notebook" class="overlay">
-      <div class="panel">
+      <div class="panel wide">
         <button id="notebook-back" class="link back" data-i18n="common.back"></button>
         <h1 data-i18n="common.notebook"></h1>
         <p class="sub" data-i18n="notebook.sub"></p>
-        <h2><span data-i18n="notebook.finds"></span> <span id="notebook-finds-count"></span></h2>
-        <div id="notebook-finds"></div>
-        <h2 data-i18n="notebook.looks"></h2>
-        <p class="sub"><span data-i18n="notebook.stars"></span> <b id="notebook-stars"></b></p>
-        <div id="notebook-items"></div>
+        <div class="notebook-body">
+          <section>
+            <h2><span data-i18n="notebook.finds"></span> <span id="notebook-finds-count"></span></h2>
+            <div id="notebook-finds"></div>
+          </section>
+          <section>
+            <h2 data-i18n="notebook.looks"></h2>
+            <p class="sub"><span data-i18n="notebook.stars"></span> <b id="notebook-stars"></b></p>
+            <div id="notebook-items"></div>
+          </section>
+        </div>
       </div>
     </div>
     <div id="settings" class="overlay">

@@ -27,6 +27,7 @@ export class LevelMenu {
     box.innerHTML = '';
     $('#menu-title').textContent = tr({ fr: 'Formation', en: 'Training' });
     $('#menu-sub').textContent = tr({ fr: 'Un niveau tout rangé (★★) ouvre le suivant. La carrière commence après le dernier.', en: 'A level all tidy (★★) opens the next one. The career begins after the last.' });
+    box.style.setProperty('--n', String(TRAINING.length));
     box.appendChild(this.tutorialCard());
     TRAINING.forEach((_, i) => box.appendChild(this.levelCard(progress, i)));
     show('#menu');
@@ -53,11 +54,13 @@ export class LevelMenu {
     const stars = progress.stars[level.id] ?? 0;
     const time = progress.times[level.id];
     const best = time ? formatTime(time) : '';
+    // the level to play now: the last one open, while it lacks the stars that open the one after
+    const next = unlocked && stars < UNLOCK_STARS && (index + 1 === TRAINING.length || !isUnlocked(progress, index + 1));
     const card = document.createElement('button');
-    card.className = 'level-card' + (unlocked ? '' : ' locked');
+    card.className = 'level-card' + (unlocked ? '' : ' locked') + (next ? ' next' : '');
     card.innerHTML = `<div class="num">${index + 1}</div><div class="t">${levelTitle(level)}</div>
       <div class="meta">${tr({ fr: `${level.cables} câbles`, en: `${level.cables} cords` })}</div>
-      <div class="stars">${starsHtml(stars)}</div>${best ? `<div class="best">${best}</div>` : ''}
+      <div class="stars">${starsHtml(stars)}</div>${best ? `<div class="best">${best}</div>` : next ? `<div class="best">${tr({ fr: 'à jouer', en: 'up next' })}</div>` : ''}
       ${unlocked ? '' : `<div class="lock">${tr({ fr: `${'★'.repeat(UNLOCK_STARS)} au niveau ${index} pour l'ouvrir`, en: `${'★'.repeat(UNLOCK_STARS)} on level ${index} to open it` })}</div>`}`;
     if (unlocked) card.onclick = () => this.choose(level);
     return card;

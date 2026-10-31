@@ -14,7 +14,7 @@ import { hide, show } from './dom';
 import { $ } from '../lib/page';
 import { countOf } from './names';
 import { tr } from '../lib/language';
-import { levelBrief, levelTips, levelTitle } from './levelTexts';
+import { levelBrief, levelPlace, levelTips, levelTitle } from './levelTexts';
 import { ruleTip } from './ruleTexts';
 import { load } from '../progression/storage';
 
@@ -31,11 +31,12 @@ export class LevelBrief {
   }
 
   show(level: LevelDef, ctl: Controller | null): void {
+    $('#brief-place').textContent = levelPlace(level);
     $('#brief-title').textContent = levelTitle(level);
     $('#brief-text').textContent = levelBrief(level);
     const services = ctl?.world.circuits.map((c) => c.service) ?? [];
     $('#brief-tips').innerHTML = briefTips(level, services).map((t) => `<li>${t}</li>`).join('');
-    $('#brief-inv').textContent = materialLine(level);
+    $('#brief-inv').innerHTML = material(level).map((m) => `<span>${m}</span>`).join('');
     // the clock waits for the player to read
     ctl?.pause();
     $('#brief-go').onclick = () => {
@@ -69,10 +70,11 @@ function briefTips(level: LevelDef, services: number[]): string[] {
   return [...levelTips(level), ...fresh.map((r) => ruleTip(r, level, services))];
 }
 
-/** the material the level gives: supports, velcros, new cords */
-function materialLine(level: LevelDef): string {
+/** the material the level gives, an item each: supports, velcros, new cords */
+function material(level: LevelDef): string[] {
   const parts = ALL_SUPPLIES.filter((s) => level.inventory[s]).map((s) => countOf(s, level.inventory[s]!));
-  const cords = (level.cords ?? []).map(([length, count]) => `${count} × ${formatLength(length)}`);
-  if (cords.length) parts.push(tr({ fr: `câbles neufs : ${cords.join(', ')}`, en: `new cords: ${cords.join(', ')}` }));
-  return parts.length ? tr({ fr: `Matériel : ${parts.join(', ')}.`, en: `Supplies: ${parts.join(', ')}.` }) : '';
+  const cords = (level.cords ?? []).map(([length, count]) => count > 1
+    ? tr({ fr: `${count} câbles neufs de ${formatLength(length)}`, en: `${count} new cords of ${formatLength(length)}` })
+    : tr({ fr: `1 câble neuf de ${formatLength(length)}`, en: `1 new cord of ${formatLength(length)}` }));
+  return [...parts, ...cords];
 }

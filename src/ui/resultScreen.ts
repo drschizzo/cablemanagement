@@ -12,7 +12,7 @@ import { $ } from '../lib/page';
 import type { Outcome } from '../progression/outcome';
 import { starGoalText } from './messages';
 import { tr } from '../lib/language';
-import { levelTitle } from './levelTexts';
+import { levelPlace, levelTitle } from './levelTexts';
 import { saveBeforeAfter } from './beforeAfterImage';
 import { freeLink } from './share';
 
@@ -28,11 +28,13 @@ export interface ResultActions {
 
 export function showResult(ctl: Controller, level: LevelDef, ev: Evaluation, outcome: Outcome, actions: ResultActions): void {
   const { result, share } = outcome;
+  $('#result-place').textContent = levelPlace(level);
+  $('#result-level').textContent = levelTitle(level);
   $('#result-stars').innerHTML = starsHtml(ev.stars, true);
-  $('#result-time').textContent = tr({ fr: `Temps : ${formatTime(result.time)}`, en: `Time: ${formatTime(result.time)}` });
+  $('#result-time').innerHTML = tr({ fr: `<span>Temps</span> ${formatTime(result.time)}`, en: `<span>Time</span> ${formatTime(result.time)}` });
   $<HTMLImageElement>('#ba-before').src = ctl.before ?? '';
   $<HTMLImageElement>('#ba-after').src = ctl.capture();
-  $('#result-lines').innerHTML = resultLines(ev).map((l) => `<li>${l}</li>`).join('');
+  $('#result-lines').innerHTML = resultLines(ev).join('');
 
   showNext(level, outcome.next, actions);
   $('#result-again').onclick = () => { hide('#result'); ctl.resume(); };
@@ -47,12 +49,13 @@ export function showResult(ctl: Controller, level: LevelDef, ev: Evaluation, out
   show('#result');
 }
 
-/** the goals of the three stars, one by one: reached, or what was missing */
+/** the goals of the three stars, a line each: reached, or what was missing */
 function resultLines(ev: Evaluation): string[] {
   return starGoals(ev).map((g) => {
-    const text = starGoalText(g), met = isGoalMet(g);
-    const line = `${'★'.repeat(g.stars)} ${met ? '✓' : '✗'} ${text.label}${text.progress ? ` (${text.progress})` : ''}${text.detail ? ` : ${text.detail}` : ''}`;
-    return met ? line : `<span class="bad">${line}</span>`;
+    const text = starGoalText(g);
+    return `<li class="${isGoalMet(g) ? 'met' : 'missed'}"><span class="s">${'★'.repeat(g.stars)}</span>`
+      + `<span class="l">${text.label}</span><span class="p">${text.progress}</span>`
+      + (text.detail ? `<span class="d">${text.detail}</span>` : '') + '</li>';
   });
 }
 
