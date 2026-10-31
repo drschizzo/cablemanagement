@@ -3,7 +3,7 @@
 // caller's business (storage.ts).
 
 import type { Career, Progress } from './storage';
-import { LEVELS, UNLOCK_STARS, nextLevelToPlay } from '../game/levels/campaign';
+import { TRAINING, UNLOCK_STARS, nextLevelToPlay } from '../game/levels/training';
 import { currentTicket } from './career';
 import type { LevelDef } from '../game/levels/levelDef';
 
@@ -27,13 +27,13 @@ export function recordResult(progress: Progress, level: LevelDef, stars: number,
 
 /** level `index` of the training can be played: the first one, one after a tidy enough level, or one already played */
 export function isUnlocked(progress: Progress, index: number): boolean {
-  return index === 0 || (progress.stars[LEVELS[index - 1].id] ?? 0) >= UNLOCK_STARS || (progress.stars[LEVELS[index].id] ?? 0) > 0;
+  return index === 0 || (progress.stars[TRAINING[index - 1].id] ?? 0) >= UNLOCK_STARS || (progress.stars[TRAINING[index].id] ?? 0) > 0;
 }
 
 /** the level after this one in the training, if any */
 export function levelAfter(level: LevelDef): LevelDef | null {
-  const index = LEVELS.findIndex((l) => l.id === level.id);
-  return index >= 0 && index + 1 < LEVELS.length ? LEVELS[index + 1] : null;
+  const index = TRAINING.findIndex((l) => l.id === level.id);
+  return index >= 0 && index + 1 < TRAINING.length ? TRAINING[index + 1] : null;
 }
 
 /** where the story stands: the first level of the training not tidy enough yet, then the ticket of the career (undefined: both done) */
@@ -43,12 +43,12 @@ export function nextInStory(progress: Progress, career: Career): LevelDef | unde
 
 /** the last cabinet of the training: the career comes after it */
 export function endsTheTraining(level: LevelDef): boolean {
-  return level.id === LEVELS[LEVELS.length - 1].id;
+  return level.id === TRAINING[TRAINING.length - 1].id;
 }
 
 /** the last cabinet of the training signed off: the career is open */
 export function isTrainingDone(progress: Progress): boolean {
-  return (progress.stars[LEVELS[LEVELS.length - 1].id] ?? 0) > 0;
+  return (progress.stars[TRAINING[TRAINING.length - 1].id] ?? 0) > 0;
 }
 
 /** the rules met, with those just met, each once */

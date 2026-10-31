@@ -4,7 +4,7 @@
 
 import type { Controller } from '../play/controller';
 import { isGoalMet, starGoals, type Evaluation } from '../game/evaluation';
-import { UNLOCK_STARS } from '../game/levels/campaign';
+import { UNLOCK_STARS } from '../game/levels/training';
 import type { LevelDef } from '../game/levels/levelDef';
 import { formatTime } from './format';
 import { hide, show, starsHtml } from './dom';

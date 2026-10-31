@@ -15,7 +15,7 @@ import { load } from '../ui/storage';
 import { nextInStory } from '../ui/progress';
 import type { LevelDef } from '../game/levels/levelDef';
 import { SHOWCASE_DEFAULT } from '../game/levels/showcaseRack';
-import { TUTORIAL } from '../game/levels/campaign';
+import { TUTORIAL } from '../game/levels/training';
 import { freeLevel, decodeSpec } from '../game/levels/freeLevel';
 import type { BakedBay } from '../game/mess/baked';
 import { SceneLoader } from './sceneLoader';

@@ -13,7 +13,7 @@
 import { CABLES } from '@drschizzo/avbd-cables';
 import { RackCableSim } from '../src/game/physics/rackCableSim';
 import { World } from '../src/game/world';
-import { LEVELS } from '../src/game/levels/campaign';
+import { TRAINING } from '../src/game/levels/training';
 import { envParams } from './env';
 
 const params = envParams();
@@ -76,7 +76,7 @@ console.log('-- three pinched elbows, in a cabinet');
 for (const pinch of [false, true]) {
   let ke = 0, rev = 0, late = 0, asleepS = 0;
   for (const lvl of [0, 2, 4]) for (const c of [0, 1, 2]) {
-    const w = new World(LEVELS[lvl]);
+    const w = new World(TRAINING[lvl]);
     Object.assign(w.sim.P, params);
     w.preroll(90);
     const sim = w.sim, cb = w.cables[c];

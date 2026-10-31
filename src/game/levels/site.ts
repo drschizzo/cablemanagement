@@ -10,7 +10,8 @@ export function levelSite(level: LevelDef): string {
   switch (level.kind) {
     // the client's premises, visit after visit
     case 'ticket': return 'career';
-    case 'campaign':
+    case 'training':
+    case 'bigBay':
     case 'tutorial':
     case 'showcase':
     case 'bench': return `${level.kind}:${level.id}`;

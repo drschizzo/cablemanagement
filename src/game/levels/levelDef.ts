@@ -70,9 +70,14 @@ interface LevelBase {
   find?: FindId;
 }
 
-/** a level of the campaign, in order */
-export interface CampaignLevel extends LevelBase {
-  kind: 'campaign';
+/** a level of the training, in order (training.ts) */
+export interface TrainingLevel extends LevelBase {
+  kind: 'training';
+}
+
+/** a big cabinet, ready to play in free play (bigBays.ts) */
+export interface BigBayLevel extends LevelBase {
+  kind: 'bigBay';
 }
 
 /** a ticket of the career: one visit to the client's cabinet, as the player left it */
@@ -108,4 +113,4 @@ export interface BenchLevel extends LevelBase {
   kind: 'bench';
 }
 
-export type LevelDef = CampaignLevel | TicketLevel | TutorialLevel | FreeLevel | ShowcaseLevel | BenchLevel;
+export type LevelDef = TrainingLevel | BigBayLevel | TicketLevel | TutorialLevel | FreeLevel | ShowcaseLevel | BenchLevel;

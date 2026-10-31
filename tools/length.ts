@@ -1,8 +1,8 @@
 // Headless check of the cord length swap.
 import { World } from '../src/game/world';
-import { LEVELS } from '../src/game/levels/campaign';
+import { TRAINING } from '../src/game/levels/training';
 
-const w = new World(LEVELS[2]);
+const w = new World(TRAINING[2]);
 w.preroll(60);
 const strap = (() => {
   const x = w.sim.x;

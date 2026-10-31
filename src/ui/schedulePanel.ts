@@ -7,7 +7,7 @@ import { CORD_KINDS } from '../game/cordTypes';
 import { SERVICES } from '../game/services';
 import { isGoalMet, starGoals, type CircuitStatus, type Evaluation, type Strain } from '../game/evaluation';
 import { starGoalText, strainLabel } from './messages';
-import { UNLOCK_STARS } from '../game/levels/campaign';
+import { UNLOCK_STARS } from '../game/levels/training';
 import type { LevelDef } from '../game/levels/levelDef';
 import { formatCost } from './format';
 import { starsHtml } from './dom';

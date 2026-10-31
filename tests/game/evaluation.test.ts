@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { isGoalMet, starGoals, starsOf, type StarCounts } from '../../src/game/evaluation';
 import { World } from '../../src/game/world';
-import { LEVELS } from '../../src/game/levels/campaign';
+import { TRAINING } from '../../src/game/levels/training';
 import type { LevelDef } from '../../src/game/levels/levelDef';
 import { tidyKit, tidyLayout } from '../../src/game/idealRoutes';
 
@@ -70,7 +70,7 @@ describe('what each star asks', () => {
 
 describe('a perfect cabinet spoiled by one thing', () => {
   it('one cord cut too short, pulled taut: no third star', () => {
-    const w = finished(LEVELS[2]);
+    const w = finished(TRAINING[2]);
     expect(w.evaluate().stars).toBe(3);
     // a cord whose ports are far apart: the shortest that joins them cuts the corners of its tidy route
     const cord = w.cables.findIndex((_, k) => w.minCableLength(k) < 0.65 * w.routeLength(k)!);

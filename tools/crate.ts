@@ -1,8 +1,8 @@
 // Headless check of the crate: throw cords in, take new ones from the stock.
 import { World } from '../src/game/world';
-import { LEVELS } from '../src/game/levels/campaign';
+import { TRAINING } from '../src/game/levels/training';
 
-const w = new World(LEVELS[2]);
+const w = new World(TRAINING[2]);
 w.preroll(60);
 const inCrate = (c: number) => {
   const cr = w.rack.crate(), cb = w.cables[c], x = w.sim.x;

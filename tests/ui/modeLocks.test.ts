@@ -7,7 +7,7 @@ const signedOff = (...ids: string[]): Progress => ({ stars: Object.fromEntries(i
 
 describe('the game modes', () => {
   it('a first visit has the training and free play', () => {
-    expect(isModeOpen('campaign', signedOff())).toBe(true);
+    expect(isModeOpen('training', signedOff())).toBe(true);
     expect(isModeOpen('free', signedOff())).toBe(true);
     expect(isModeOpen('career', signedOff())).toBe(false);
   });

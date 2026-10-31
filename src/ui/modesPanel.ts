@@ -5,7 +5,8 @@
 // screen, and from a level's pause menu.
 
 import type { LevelDef } from '../game/levels/levelDef';
-import { BIG_BAYS, LEVELS } from '../game/levels/campaign';
+import { TRAINING } from '../game/levels/training';
+import { BIG_BAYS } from '../game/levels/bigBays';
 import { TICKETS } from '../game/levels/career';
 import { $ } from '../lib/page';
 import { hide, show } from './dom';
@@ -62,10 +63,10 @@ export class ModesPanel {
         name: { fr: 'Histoire', en: 'Story' },
         cards: [
           {
-            mode: 'campaign',
+            mode: 'training',
             name: { fr: 'Formation', en: 'Training' },
-            what: { fr: `${LEVELS.length} baies pour apprendre le métier, une règle de plus à chacune. La carrière vient après.`, en: `${LEVELS.length} cabinets to learn the trade, one more rule each. The career comes after.` },
-            status: () => `★ ${stars(LEVELS.map((l) => l.id))}/${3 * LEVELS.length}`,
+            what: { fr: `${TRAINING.length} baies pour apprendre le métier, une règle de plus à chacune. La carrière vient après.`, en: `${TRAINING.length} cabinets to learn the trade, one more rule each. The career comes after.` },
+            status: () => `★ ${stars(TRAINING.map((l) => l.id))}/${3 * TRAINING.length}`,
             open: lead(() => this.actions.training(start, reopen)),
           },
           {
@@ -123,8 +124,8 @@ export class ModesPanel {
   private lockElement(): HTMLElement {
     const el = document.createElement('div');
     el.className = 'lock';
-    const last = LEVELS.length - 1;
-    el.textContent = tr({ fr: `🔒 S'ouvre à la fin de la formation · niveau ${last + 1}, ${levelTitle(LEVELS[last])}`, en: `🔒 Opens at the end of the training · level ${last + 1}, ${levelTitle(LEVELS[last])}` });
+    const last = TRAINING.length - 1;
+    el.textContent = tr({ fr: `🔒 S'ouvre à la fin de la formation · niveau ${last + 1}, ${levelTitle(TRAINING[last])}`, en: `🔒 Opens at the end of the training · level ${last + 1}, ${levelTitle(TRAINING[last])}` });
     return el;
   }
 }

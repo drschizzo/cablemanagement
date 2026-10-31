@@ -1,5 +1,5 @@
 // Is a perfect cabinet possible in every level, with its own stock? Lay every
-// cord on its tidy route (the level's managers, ducts and rings placed by
+// cord on its tidy route (the level's managers and ducts placed by
 // tidyKit) and score it.
 //
 // Then, from the level's own starting mess: with the same supports placed,
@@ -9,7 +9,8 @@
 // at their service's weight. Is the downtime budget enough for that?
 import { World } from '../src/game/world';
 import { CATALOGUE } from '../src/game/cordTypes';
-import { BIG_BAYS, LEVELS } from '../src/game/levels/campaign';
+import type { LevelDef } from '../src/game/levels/levelDef';
+import { HANDMADE_LEVELS } from '../src/game/levels/handmade';
 import { SERVICES } from '../src/game/services';
 import { polyLength } from '../src/lib/vec3';
 import { routePlan, tidyKit, tidyLayout, tidyRoutes } from '../src/game/idealRoutes';
@@ -19,7 +20,7 @@ import { env } from './env';
 
 
 /** length of every line's tidy route, in the level's finished cabinet (m) */
-function tidyRoutesOf(lv: (typeof LEVELS)[number]): number[] {
+function tidyRoutesOf(lv: LevelDef): number[] {
   const kit = tidyKit(lv);
   const w = new World(kit, tidyLayout(kit).starts);
   return tidyRoutes(w.rack, w.circuits, w.radius, w.seg).map(polyLength);
@@ -28,7 +29,7 @@ function tidyRoutesOf(lv: (typeof LEVELS)[number]): number[] {
 /** seconds a production line stays cut while its cord is taken out of the heap and plugged back */
 const REWORK = 15;
 
-for (const lv of [...LEVELS, ...BIG_BAYS]) {
+for (const lv of HANDMADE_LEVELS) {
   const kit = tidyKit(lv);
   const w = new World(kit, tidyLayout(kit).starts);
   for (let f = 0; f < 240; f++) w.sim.step();
@@ -43,7 +44,7 @@ for (const lv of [...LEVELS, ...BIG_BAYS]) {
 }
 
 console.log('\nAu départ : les liaisons en production rangées sans les débrancher');
-for (const lv of [...LEVELS, ...BIG_BAYS]) {
+for (const lv of HANDMADE_LEVELS) {
   const kit = tidyKit(lv);
   const w = new World(lv);
   w.preroll(60);

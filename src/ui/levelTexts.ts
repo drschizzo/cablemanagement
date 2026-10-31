@@ -1,7 +1,7 @@
 // What each level says to the player: its title, its brief, its own tips.
 // The levels themselves (game/levels/) are data without a sentence: the
-// campaign's words are here, by level id, and the generated levels get
-// theirs from what they are.
+// words of the training and the big cabinets are here, by level id, and the
+// generated levels get theirs from what they are.
 
 import type { LevelDef } from '../game/levels/levelDef';
 import { assertNever } from '../lib/assertNever';
@@ -19,8 +19,8 @@ const STOCK_TIP: Words = {
   en: `<b>Stock</b> (0): a new cord, of the length chosen, arrives in the crate. ${DELETE_KEY.en} over the old one throws it in the crate. Swapping a cord cuts its link while it is replaced.`,
 };
 
-/** the campaign's levels, by id */
-const CAMPAIGN: Record<string, Words<LevelText>> = {
+/** the levels written by hand (game/levels/handmade.ts), by id */
+const HANDMADE: Record<string, Words<LevelText>> = {
   l1: {
     fr: { title: 'Premier brassage', brief: 'Un des quatre câbles pend, débranché, devant le switch. Rebranchez-le, puis rangez les quatre câbles dans le guide-câbles.' },
     en: { title: 'First patch', brief: 'One of the four cords hangs unplugged in front of the switch. Plug it back, then lay the four cords in the cable manager.' },
@@ -156,14 +156,15 @@ export function hasTicketText(index: number): boolean {
   return index < TICKETS.length;
 }
 
-/** the campaign levels that have their words (a test checks every one does) */
+/** the handmade levels that have their words (a test checks every one does) */
 export function hasLevelText(id: string): boolean {
-  return id in CAMPAIGN;
+  return id in HANDMADE;
 }
 
 function textOf(level: LevelDef): LevelText {
   switch (level.kind) {
-    case 'campaign': return tr(CAMPAIGN[level.id]);
+    case 'training':
+    case 'bigBay': return tr(HANDMADE[level.id]);
     case 'ticket': {
       const text = tr(TICKETS[level.ticket]);
       return { ...text, title: tr({ fr: `Ticket ${level.ticket + 1} · ${text.title}`, en: `Ticket ${level.ticket + 1} · ${text.title}` }) };

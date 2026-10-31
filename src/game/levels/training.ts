@@ -1,0 +1,100 @@
+// The training (five cabinets, one rule more each), what opens each of them,
+// and the guided tutorial.
+
+import type { TrainingLevel, TutorialLevel } from './levelDef';
+import { BLANK, FIREWALL, ROUTER, UPS, copperPanel, ethernetSwitch, fingerManager, opticalPanel, server } from './equipment';
+
+/** stars a level needs before the next one opens: connected is not enough, it must be tidy */
+export const UNLOCK_STARS = 2;
+
+/** the training: the first cabinets, in order; the career follows it */
+export const TRAINING: TrainingLevel[] = [
+  {
+    id: 'l1',
+    kind: 'training',
+    find: 'postit',
+    // 0 B, 1 panel, 2 manager, 3 switch
+    units: [BLANK, copperPanel('A', 12), BLANK, ethernetSwitch('S', 12), BLANK, BLANK],
+    // nothing in production yet: plugging and tidying only (the rules come level by level)
+    cables: 4, wrong: 0, loose: 1, slack: [0.12, 0.2], mess: 1,
+    cords: [[0.25, 2], [0.5, 3]],
+    labels: false, services: 1, types: ['CU'], colorByService: true,
+    inventory: { velcro: 2 },
+    preinstalled: [fingerManager(2)],
+    seed: 11,
+  },
+  {
+    id: 'l2',
+    kind: 'training',
+    find: 'usb',
+    // 1 panel, 2 manager, 6 manager (to place), 7 switch
+    units: [BLANK, copperPanel('A', 12), BLANK, BLANK, BLANK, BLANK, BLANK, ethernetSwitch('S', 12), BLANK, BLANK],
+    // production waits for level 3
+    cables: 6, wrong: 1, loose: 0, slack: [0.6, 1.0], mess: 2,
+    // down the side through a duct the cords take 0.6 to 1.07 m, across the front 0.35 to 0.75 m
+    cords: [[0.75, 2], [1, 5], [1.5, 2]],
+    labels: false, services: 2, types: ['CU'], colorByService: true,
+    inventory: { fingerManager: 1, duct: 2, velcro: 3 },
+    preinstalled: [fingerManager(2)],
+    seed: 23,
+  },
+  {
+    id: 'l3',
+    kind: 'training',
+    find: 'mug',
+    // 1 panel, 2 mgr, 4 switch, 5 mgr, 6 firewall
+    units: [BLANK, copperPanel('A', 12), BLANK, BLANK, ethernetSwitch('S', 24), BLANK, FIREWALL, BLANK, BLANK],
+    cables: 8, wrong: 2, loose: 1, slack: [0.25, 0.5], mess: 2,
+    links: [{ a: 'S23', b: 'F1' }, { a: 'S24', b: 'F2' }],
+    downtime: 170, bypass: 1, cords: [[0.5, 2], [1, 4]],
+    labels: false, services: 2, types: ['CU'], colorByService: true,
+    inventory: { fingerManager: 1, duct: 2, velcro: 4 },
+    preinstalled: [fingerManager(2), fingerManager(5)],
+    seed: 37,
+  },
+  {
+    id: 'l4',
+    kind: 'training',
+    find: 'duck',
+    // 1 panel, 2 mgr, 4 switch, 5 mgr, 6 firewall, 7 mgr, 8 router
+    units: [BLANK, copperPanel('A', 12), BLANK, BLANK, ethernetSwitch('S', 24), BLANK, FIREWALL, BLANK, ROUTER, BLANK, BLANK],
+    cables: 10, wrong: 1, loose: 1, slack: [0.3, 0.6], mess: 2,
+    links: [{ a: 'S23', b: 'F1' }, { a: 'S24', b: 'R1', service: 2 }, { a: 'F8', b: 'R8', service: 2 }],
+    downtime: 250, bypass: 1, cords: [[0.25, 1], [0.5, 1], [0.75, 3], [1, 7]],
+    labels: true, services: 3, types: ['CU'], colorByService: true,
+    inventory: { fingerManager: 1, duct: 4, velcro: 5 },
+    preinstalled: [fingerManager(2), fingerManager(5), fingerManager(7)],
+    seed: 41,
+  },
+  {
+    id: 'l5',
+    kind: 'training',
+    find: 'floppy',
+    // 1 fibre drawer, 2 mgr, 3 copper panel, 4 mgr, 7 switch, 8 mgr, 9 firewall, 10 mgr, 11-12 servers
+    units: [BLANK, opticalPanel('A', 12), BLANK, copperPanel('B', 12), BLANK, BLANK, BLANK, ethernetSwitch('S', 24), BLANK, FIREWALL, BLANK, server('X', 0.03), server('Y', 0.09), UPS, BLANK],
+    cables: 12, wrong: 2, loose: 2, slack: [0.3, 0.7], mess: 3,
+    links: [{ a: 'S22', b: 'F1' }, { a: 'F7', b: 'X1', service: 4 }, { a: 'F8', b: 'Y1', service: 4 }],
+    downtime: 150, bypass: 1, cords: [[0.25, 1], [0.5, 2], [0.75, 6], [1, 5], [1.5, 1]],
+    labels: true, services: 3, types: ['OS2', 'CU'], colorByService: true,
+    inventory: { fingerManager: 2, duct: 4, velcro: 6 },
+    preinstalled: [fingerManager(2), fingerManager(4), fingerManager(8), fingerManager(10)],
+    seed: 53,
+  },
+];
+
+/** the guided tutorial: a small cabinet, one wrong port */
+export const TUTORIAL: TutorialLevel = {
+  id: 'tuto',
+  kind: 'tutorial',
+  units: [BLANK, copperPanel('A', 12), BLANK, BLANK, BLANK, BLANK, BLANK, ethernetSwitch('S', 12), BLANK, BLANK],
+  cables: 4, wrong: 1, loose: 0, slack: [0.25, 0.35], mess: 2,
+  labels: true, services: 2, types: ['CU'], colorByService: true,
+  inventory: { fingerManager: 1, duct: 1, velcro: 2 },
+  preinstalled: [{ kind: 'fingerManager', unit: 2, side: 0 }],
+  seed: 5,
+};
+
+/** the first level of the training not yet tidy enough to open the next one (undefined: all are) */
+export function nextLevelToPlay(stars: Record<string, number>): TrainingLevel | undefined {
+  return TRAINING.find((l) => (stars[l.id] ?? 0) < UNLOCK_STARS);
+}

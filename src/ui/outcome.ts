@@ -5,7 +5,7 @@
 import type { World } from '../game/world';
 import type { Evaluation } from '../game/evaluation';
 import type { LevelDef } from '../game/levels/levelDef';
-import { UNLOCK_STARS } from '../game/levels/campaign';
+import { UNLOCK_STARS } from '../game/levels/training';
 import { cabinetOf } from '../game/cabinetState';
 import { assertNever } from '../lib/assertNever';
 import { endsTheTraining, levelAfter, recordResult, withMet, type LevelResult } from './progress';
@@ -29,7 +29,7 @@ export function recordOutcome(level: LevelDef, ev: Evaluation, w: World, time: n
   // whatever the kind, its rules are met: the next briefs leave them out
   save('rules', withMet(load('rules'), levelRules(level)));
   switch (level.kind) {
-    case 'campaign': {
+    case 'training': {
       const result = recordResult(progress, level, ev.stars, time);
       save('progress', progress);
       // after the training, the career (the ticket where it stands)
@@ -38,6 +38,8 @@ export function recordOutcome(level: LevelDef, ev: Evaluation, w: World, time: n
       const next = after && { level: after, open: Math.max(result.previousStars, ev.stars) >= UNLOCK_STARS };
       return { result, share: null, next };
     }
+    // a big cabinet keeps its record, and leads nowhere
+    case 'bigBay':
     case 'tutorial': {
       const result = recordResult(progress, level, ev.stars, time);
       save('progress', progress);

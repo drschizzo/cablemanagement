@@ -7,7 +7,7 @@ import { App } from './app/app';
 import { readUrlOptions } from './app/urlOptions';
 import { aisleSettings } from './showcase/aisleSettings';
 import { SHOWCASE_DEFAULT } from './game/levels/showcaseRack';
-import { TUTORIAL } from './game/levels/campaign';
+import { TUTORIAL } from './game/levels/training';
 import type { LevelDef } from './game/levels/levelDef';
 import { loadBaked } from './game/mess/baked';
 import bakedUrl from './game/mess/showcase.bin?url';

@@ -2,13 +2,13 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { World } from '../../src/game/world';
 import { HOLD } from '../../src/game/evaluation';
-import { LEVELS } from '../../src/game/levels/campaign';
+import { TRAINING } from '../../src/game/levels/training';
 import { SERVICES } from '../../src/game/services';
 import type { LevelDef } from '../../src/game/levels/levelDef';
 import { planRoute, RouteRun } from '../../src/game/routeLaying';
 
 // level 1, every cord on its planned ports: four copper cords, all in production
-const L1: LevelDef = { ...LEVELS[0], wrong: 0, loose: 0 };
+const L1: LevelDef = { ...TRAINING[0], wrong: 0, loose: 0 };
 
 describe('a cabinet at the start', () => {
   const w = new World(L1);
@@ -131,7 +131,7 @@ describe('labels, straps and cord lengths', () => {
   });
 
   it('a cord cut to the shortest that joins its ports is taut, one cut to its tidy route is not', () => {
-    const w = new World({ ...LEVELS[2], wrong: 0, loose: 0 });
+    const w = new World({ ...TRAINING[2], wrong: 0, loose: 0 });
     // a cord whose ports are far apart across the cabinet: the tidy route takes it to the side
     const c = w.cables.findIndex((_, k) => w.minCableLength(k) < 0.65 * w.routeLength(k)!);
     expect(c).toBeGreaterThanOrEqual(0);

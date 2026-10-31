@@ -1,8 +1,8 @@
 // Headless run of every level: build, settle, report timing and tidiness.
 import { World } from '../src/game/world';
-import { BIG_BAYS, LEVELS } from '../src/game/levels/campaign';
+import { HANDMADE_LEVELS } from '../src/game/levels/handmade';
 
-for (const lv of [...LEVELS, ...BIG_BAYS]) {
+for (const lv of HANDMADE_LEVELS) {
   const t0 = performance.now();
   const w = new World(lv);
   const tb = performance.now() - t0;

@@ -1,7 +1,7 @@
 // The training's menu: the tutorial, then one card per level with its stars
 // and its best time, and what opens it while it is locked.
 
-import { LEVELS, TUTORIAL, UNLOCK_STARS } from '../game/levels/campaign';
+import { TRAINING, TUTORIAL, UNLOCK_STARS } from '../game/levels/training';
 import type { LevelDef } from '../game/levels/levelDef';
 import { load, type Progress } from './storage';
 import { formatTime } from './format';
@@ -28,7 +28,7 @@ export class LevelMenu {
     $('#menu-title').textContent = tr({ fr: 'Formation', en: 'Training' });
     $('#menu-sub').textContent = tr({ fr: 'Un niveau tout rangé (★★) ouvre le suivant. La carrière commence après le dernier.', en: 'A level all tidy (★★) opens the next one. The career begins after the last.' });
     box.appendChild(this.tutorialCard());
-    LEVELS.forEach((_, i) => box.appendChild(this.levelCard(progress, i)));
+    TRAINING.forEach((_, i) => box.appendChild(this.levelCard(progress, i)));
     show('#menu');
   }
 
@@ -48,7 +48,7 @@ export class LevelMenu {
 
   /** level `index` of the training: its stars and its best time */
   private levelCard(progress: Progress, index: number): HTMLElement {
-    const level = LEVELS[index];
+    const level = TRAINING[index];
     const unlocked = isUnlocked(progress, index);
     const stars = progress.stars[level.id] ?? 0;
     const time = progress.times[level.id];

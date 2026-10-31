@@ -23,7 +23,7 @@ Si la phrase a besoin de « et puis… et aussi… », le fichier fait sans dout
 **La taille est un signal, pas une règle.** Au-delà de 400 à 500 lignes, se demander ce qui pourrait partir dans un
 fichier à soi. `play/controller.ts` mène la partie, mais la souris et le clavier vivent dans `inputRouter.ts`,
 chaque outil dans `tools/`, chaque repère dans `feedback/`. Certains fichiers restent longs parce
-qu'ils sont cohérents : `game/world.ts` est l'état d'une partie, `game/levels/campaign.ts` est une liste de niveaux.
+qu'ils sont cohérents : `game/world.ts` est l'état d'une partie, `game/levels/training.ts` est une liste de niveaux.
 
 **Un fichier vit avec ce qu'il sert, pas avec ceux qui l'appellent.** Les couleurs des fibres sont à côté de leurs
 noms (`game/cordTypes.ts`), pas dans la vue des câbles qui les dessine. La place que couvrent les
@@ -37,7 +37,7 @@ besoin. Pour vérifier, demander : *si je supprimais ce qui l'appelle, ce fichie
 montre.
 
 **Séparer les données, les types et le code qui les fabrique.** `game/levels/` en est l'exemple : `levelDef.ts` dit
-ce qu'est un niveau, `equipment.ts` nomme les équipements, `campaign.ts` ne contient que des données, et
+ce qu'est un niveau, `equipment.ts` nomme les équipements, `training.ts` et `bigBays.ts` ne contiennent que des données, et
 `showcaseRack.ts` / `freeLevel.ts` sont des générateurs.
 
 ## Dépendre

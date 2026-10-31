@@ -2,7 +2,7 @@
 // falls. A first visit offers one way only, Start; the game modes and the
 // notebook show once they are open.
 
-import { LEVELS, TUTORIAL } from '../game/levels/campaign';
+import { TRAINING, TUTORIAL } from '../game/levels/training';
 import type { LevelDef } from '../game/levels/levelDef';
 import { load } from './storage';
 import { isWorkshopOpen } from './shop';
@@ -62,7 +62,7 @@ export class TitleScreen {
     const next = this.actions.nextLevel();
     const play = byId('title-play');
     play.textContent = this.firstVisit() ? tr({ fr: 'Commencer →', en: 'Start →' })
-      : next && next !== LEVELS[0] ? tr({ fr: `Continuer · ${levelTitle(next)} →`, en: `Continue · ${levelTitle(next)} →` })
+      : next && next !== TRAINING[0] ? tr({ fr: `Continuer · ${levelTitle(next)} →`, en: `Continue · ${levelTitle(next)} →` })
       : tr({ fr: 'Jouer →', en: 'Play →' });
     play.title = this.firstVisit() ? tr({ fr: 'Le tutoriel, puis le niveau 1', en: 'The tutorial, then level 1' }) : '';
     byId('title-shop').style.display = isWorkshopOpen(load('progress'), load('workshop')) ? '' : 'none';

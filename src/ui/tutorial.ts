@@ -8,7 +8,7 @@ import type { Controller, Tool } from '../play/controller';
 import { COLUMN_X, SIDE_BACK, SIDE_IN, SIDE_OUT, U, WALL_X, insideBox } from '../game/rack';
 import { sfx } from '../audio/sfx';
 import { load, save } from './storage';
-import { TUTORIAL } from '../game/levels/campaign';
+import { TUTORIAL } from '../game/levels/training';
 import { levelRules } from '../game/levels/levelRules';
 import { withMet } from './progress';
 import { $ } from '../lib/page';

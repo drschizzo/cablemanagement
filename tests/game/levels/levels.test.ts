@@ -3,13 +3,14 @@ import { describe, it, expect } from 'vitest';
 import { World } from '../../../src/game/world';
 import { ITEM_KINDS } from '../../../src/game/supplies';
 import { SERVICES } from '../../../src/game/services';
-import { BIG_BAYS, LEVELS, TUTORIAL } from '../../../src/game/levels/campaign';
+import { HANDMADE_LEVELS } from '../../../src/game/levels/handmade';
+import { TRAINING, TUTORIAL } from '../../../src/game/levels/training';
 import { freeLevel, plainSpec } from '../../../src/game/levels/freeLevel';
 import { showcaseRack } from '../../../src/game/levels/showcaseRack';
 import type { LevelDef } from '../../../src/game/levels/levelDef';
 import { tidyKit, tidyLayout, tidyTargets } from '../../../src/game/idealRoutes';
 
-const ALL: LevelDef[] = [...LEVELS, ...BIG_BAYS, TUTORIAL, freeLevel(plainSpec(30, 1, true)), showcaseRack('mess', 1), showcaseRack('tidy', 1)];
+const ALL: LevelDef[] = [...HANDMADE_LEVELS, TUTORIAL, freeLevel(plainSpec(30, 1, true)), showcaseRack('mess', 1), showcaseRack('tidy', 1)];
 
 describe.each(ALL.map((lv) => [lv.id, lv] as const))('%s', (_, lv) => {
   const w = new World(lv);
@@ -33,13 +34,13 @@ describe.each(ALL.map((lv) => [lv.id, lv] as const))('%s', (_, lv) => {
 
 describe('levels', () => {
   it('unique ids, the cabinets grow', () => {
-    const campaign = [...LEVELS, ...BIG_BAYS];
-    expect(new Set(campaign.map((l) => l.id)).size).toBe(campaign.length);
-    for (let i = 1; i < campaign.length; i++) expect(campaign[i].cables).toBeGreaterThanOrEqual(campaign[i - 1].cables);
+    const handmade = HANDMADE_LEVELS;
+    expect(new Set(handmade.map((l) => l.id)).size).toBe(handmade.length);
+    for (let i = 1; i < handmade.length; i++) expect(handmade[i].cables).toBeGreaterThanOrEqual(handmade[i - 1].cables);
   });
 
   it('a level’s cabinet is the same every time (seeded)', () => {
-    const a = new World(LEVELS[2]), b = new World(LEVELS[2]);
+    const a = new World(TRAINING[2]), b = new World(TRAINING[2]);
     expect(a.circuits).toEqual(b.circuits);
     expect(a.cables.map((c) => c.ends.map((e) => e.port))).toEqual(b.cables.map((c) => c.ends.map((e) => e.port)));
   });
@@ -60,7 +61,7 @@ function finishedWorld(lv: LevelDef) {
 }
 
 describe('no level is won before the player does anything', () => {
-  for (const lv of [...LEVELS, ...BIG_BAYS]) {
+  for (const lv of HANDMADE_LEVELS) {
     it(lv.id, () => {
       const w = new World(lv);
       w.preroll(60);
@@ -70,7 +71,7 @@ describe('no level is won before the player does anything', () => {
 });
 
 describe('three stars are possible, with the level\'s own stock', () => {
-  for (const lv of [...LEVELS, ...BIG_BAYS]) {
+  for (const lv of HANDMADE_LEVELS) {
     it(lv.id, () => {
       const kit = tidyKit(lv);
       const added = kit.preinstalled.slice(lv.preinstalled.length);
@@ -81,7 +82,7 @@ describe('three stars are possible, with the level\'s own stock', () => {
 
   it('past the downtime budget, an incident: two stars at most', () => {
     // the first level with links in production
-    const lv = LEVELS.find((l) => l.downtime !== undefined)!;
+    const lv = TRAINING.find((l) => l.downtime !== undefined)!;
     const kit = tidyKit(lv);
     const w = new World(kit, tidyLayout(kit).starts);
     for (let f = 0; f < 240; f++) w.sim.step();

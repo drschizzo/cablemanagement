@@ -42,13 +42,15 @@ src/
     physics/        le solveur tel que le jeu le mène (rackCableSim : mains, ports, creux des guides), et son Worker
     mess/           le désordre de départ : les chemins emmêlés des cordons (tangle), leur chute dans un Worker,
                     sa version précalculée pour l'écran titre (baked, showcase.bin)
-    levels/         ce qu'est un niveau (levelDef : une union par sorte, campagne, ticket, tutoriel, baie libre,
-                    vitrine, banc), les règles qu'il joue en plus de brancher et ranger (levelRules : voyants,
-                    tension, production, pannes…, et la goulotte, que le tutoriel n'apprend pas), les équipements nommés, la formation, les grandes baies et le tutoriel, la carrière
-                    (un client, ses tickets, chacun bâti sur la baie laissée par le précédent), la baie libre
-                    (freeLevel : sa palette, ses réglages, en production ou non, son code de partage), les baies de
-                    la vitrine ; site.ts, où se passe un niveau
-                    (tous les tickets chez le client, chaque autre niveau dans sa propre salle) : le décor en est tiré
+    levels/         ce qu'est un niveau (levelDef : une union par sorte, formation, grande baie, ticket, tutoriel,
+                    baie libre, vitrine, banc) ; les règles qu'il joue en plus de brancher et ranger (levelRules :
+                    voyants, tension, production, pannes…, et la goulotte, que le tutoriel n'apprend pas) ; les
+                    équipements nommés (equipment) ; la formation et le tutoriel (training), les grandes baies
+                    (bigBays), les deux réunies, faites à la main (handmade) ; la carrière (career : un client, ses
+                    tickets, chacun bâti sur la baie laissée par le précédent) ; la baie libre (freeLevel : sa
+                    palette, ses réglages, en production ou non, son code de partage) ; les baies de la vitrine
+                    (showcaseRack) ; où se passe un niveau (site : tous les tickets chez le client, chaque autre
+                    niveau dans sa propre salle), d'où le décor est tiré
   play/         UNE PARTIE EN COURS : relie game, render et l'interface
     controller.ts   Controller : la boucle à pas fixe, ce que la baie montre de son état, les actions du HUD
     context.ts      PlayContext (ce que les outils voient du contrôleur), ToolHandler (l'interface d'un outil),
@@ -283,7 +285,7 @@ coupé. Une valeur illisible ou d'une autre forme se lit comme la valeur par dé
 | Évolution | Où |
 |---|---|
 | une règle de niveau | une entrée dans `RULES` et `hasRule` (`game/levels/levelRules.ts`), ses mots dans `ruleTip` (`ui/ruleTexts.ts`) : le brief la dit au premier niveau qui l'a, puis ne la redit plus |
-| un niveau | une entrée dans `LEVELS` (la formation) ou `BIG_BAYS` (`game/levels/campaign.ts`), bâtie avec les équipements de `game/levels/equipment.ts`, et ses mots dans `ui/levelTexts.ts` (un test vérifie qu'aucun ne manque) ; `tests/game/levels/levels.test.ts` vérifie son plan, qu'il ne se gagne pas sans rien faire et qu'il peut atteindre 3 étoiles avec son seul inventaire (`tidyKit`) |
+| un niveau | une entrée dans `TRAINING` (`game/levels/training.ts`) ou `BIG_BAYS` (`game/levels/bigBays.ts`), bâtie avec les équipements de `game/levels/equipment.ts`, et ses mots dans `ui/levelTexts.ts` (un test vérifie qu'aucun ne manque) ; `tests/game/levels/levels.test.ts` vérifie son plan, qu'il ne se gagne pas sans rien faire et qu'il peut atteindre 3 étoiles avec son seul inventaire (`tidyKit`) |
 | un équipement de baie | `UnitSpec` et le constructeur de `Rack` (`game/rack.ts`), sa face dans `faceOf` et son rendu dans `render/rackView.ts`, son nom dans `unitLabel` (`ui/names.ts`) |
 | une sorte de cordon | une entrée dans `CORD_KINDS` (`game/cordTypes.ts`) ; le compilateur demande son nom (`ui/names.ts`), son marquage (`JACKET_KIND`, `render/jacket.ts`) et, s'il en a un nouveau, son connecteur (`plugShape`, `render/cableView.ts`) |
 | un élément de rangement | `ItemKind`, `canPlace`, `statics` et `supports` dans `game/rack.ts`, `buildItem` dans `render/rackItems.ts`, un outil dans `TOOL_BUTTONS` (`ui/toolbar.ts`) |

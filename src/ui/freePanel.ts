@@ -9,7 +9,7 @@ import {
   DIFFICULTIES, FAULT_FROM, INCIDENTS_FROM, MAX_CORDS, MAX_UNITS, PALETTE, checkSpec, decodeSpec, encodeSpec, fitUnits, freeLevel, mostCords, plainSpec,
   type FreeSpec, type Difficulty, type PaletteItem,
 } from '../game/levels/freeLevel';
-import { BIG_BAYS } from '../game/levels/campaign';
+import { BIG_BAYS } from '../game/levels/bigBays';
 import type { LevelDef } from '../game/levels/levelDef';
 import { assertNever } from '../lib/assertNever';
 import { $ } from '../lib/page';

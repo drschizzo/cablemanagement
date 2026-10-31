@@ -4,7 +4,7 @@
 // rules of equipping: pure functions over the saved record (storage.ts).
 
 import { DEFAULT_LOOK, type Look } from '../render/look';
-import { BIG_BAYS, LEVELS } from '../game/levels/campaign';
+import { HANDMADE_LEVELS } from '../game/levels/handmade';
 import type { FindId } from '../game/finds';
 import type { Career, Progress, Workshop } from './storage';
 import type { Words } from './language';
@@ -35,7 +35,7 @@ export const SHOP: LookItem[] = [
   { id: 'accent-red', slot: 'accent', name: { fr: 'Alerte rouge', en: 'Red alert' }, stars: 50, value: '#ff5a5a' },
 ];
 
-/** the campaign level whose sign-off opens the notebook, finds or not */
+/** the training level whose sign-off opens the notebook, finds or not */
 const WORKSHOP_OPENS_AT = 'l3';
 
 /** the notebook shows with the first find picked up, or once the player knows the trade (level 3 signed off) */
@@ -45,7 +45,7 @@ export function isWorkshopOpen(progress: Progress, workshop: Workshop): boolean 
 
 /** the best stars of every cabinet of the training, big cabinet and ticket of the career, added up */
 export function starsWon(progress: Progress, career: Career): number {
-  const levels = [...LEVELS, ...BIG_BAYS].reduce((sum, l) => sum + (progress.stars[l.id] ?? 0), 0);
+  const levels = HANDMADE_LEVELS.reduce((sum, l) => sum + (progress.stars[l.id] ?? 0), 0);
   return levels + career.stars.reduce((sum, s) => sum + (s ?? 0), 0);
 }
 
