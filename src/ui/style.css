@@ -528,7 +528,6 @@ body.tutorial #hint { display: none; }
 #tuto h3 { margin: 6px 0 6px; font-size: 17px; font-weight: 600; }
 #tuto p { margin: 0 0 12px; line-height: 1.55; font-size: 13.5px; color: #cdd2cd; }
 #tuto .ok { color: var(--ok); } #tuto .warn { color: var(--warn); }
-#tuto .os2 { color: #f2c12e; font-weight: 600; } #tuto .om4 { color: #3cc9cf; font-weight: 600; }
 #tuto-task { font-size: 13px; padding: 8px 10px; border-radius: 2px; background: rgba(255, 255, 255, 0.025); border: 1px dashed var(--line-hi); margin-bottom: 12px; }
 #tuto-task::before { content: '[ ] '; font-family: var(--mono); color: var(--dim); white-space: pre; }
 #tuto-task.done { background: var(--accent-soft); border: 1px solid var(--accent-line); color: var(--accent); }
@@ -591,11 +590,6 @@ body.demo #prep { display: none; }
 #call.on { display: block; }
 #call.late { color: var(--bad); animation: pulse 1s infinite; }
 #plan tr.called td { background: rgba(233, 182, 92, 0.12); }
-
-/* ---- a puzzle counts its gestures */
-
-/* ---- zen: no clock */
-body[data-level="zen"] #timer { display: none; }
 
 /* ---- the cabinet signed off: the panels step aside while the camera flies round it (sizes kept: the framing holds) */
 #toolbar, #side, #hint, #topbar { transition: opacity 0.4s; }
